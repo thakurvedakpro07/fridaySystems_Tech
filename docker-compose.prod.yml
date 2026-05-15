@@ -1,0 +1,39 @@
+# ─────────────────────────────────────────────────────────────────
+# docker-compose.prod.yml  —  PRODUCTION OVERRIDES
+#
+# Use together with the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Differences from dev:
+#   • No code volume mounts (runs the built image as-is)
+#   • Gunicorn runs with more workers
+#   • Frontend is NOT started (static files served by Nginx on the host)
+#   • No port exposure for db/redis (Nginx is the only public entry point)
+# ─────────────────────────────────────────────────────────────────
+
+services:
+
+  db:
+    ports: []     # remove the host-exposed port in production
+
+  redis:
+    ports: []
+
+  backend:
+    volumes: []   # do NOT mount source code in production
+    command: >
+      gunicorn supportmitra.wsgi:application
+        --bind 0.0.0.0:8000
+        --workers 4
+        --timeout 60
+
+  celery:
+    volumes: []
+
+  celerybeat:
+    volumes: []
+
+  # In production the frontend is compiled static files — no dev server.
+  # Nginx (running on the host) serves them directly.
+  frontend:
+    profiles: ["dev-only"]   # this service is excluded in production

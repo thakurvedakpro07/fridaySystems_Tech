@@ -1,0 +1,67 @@
+/**
+ * Root application component.
+ * Defines all routes (URL → page component mappings).
+ *
+ * How React Router works:
+ *   <BrowserRouter> — enables URL-based routing
+ *   <Routes>        — container for all route definitions
+ *   <Route>         — maps a URL path to a component
+ */
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import FreelancerList from "./pages/admin/FreelancerList";
+import Dashboard from "./pages/Dashboard";
+import Landing from "./pages/Landing";
+import Login from "./pages/Login";
+import NewTicket from "./pages/NewTicket";
+import Register from "./pages/Register";
+import { useAuthStore } from "./store/authStore";
+
+// A wrapper that redirects unauthenticated users to /login
+function PrivateRoute({ children }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+}
+
+// A wrapper that redirects non-admin users to /dashboard
+function AdminRoute({ children }) {
+  const user = useAuthStore((s) => s.user);
+  return user?.is_staff ? children : <Navigate to="/dashboard" replace />;
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Public pages */}
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        {/* Customer pages — require login */}
+        <Route
+          path="/dashboard"
+          element={<PrivateRoute><Dashboard /></PrivateRoute>}
+        />
+        <Route
+          path="/tickets/new"
+          element={<PrivateRoute><NewTicket /></PrivateRoute>}
+        />
+
+        {/* Admin pages — require login + is_staff */}
+        <Route
+          path="/admin"
+          element={<AdminRoute><AdminDashboard /></AdminRoute>}
+        />
+        <Route
+          path="/admin/freelancers"
+          element={<AdminRoute><FreelancerList /></AdminRoute>}
+        />
+
+        {/* Catch-all: redirect unknown URLs to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}

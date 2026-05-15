@@ -1,0 +1,64 @@
+# Deploy — runs automatically when code is merged to main
+
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Build frontend ────────────────────────────────────────────
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+        # dist/ folder is created here
+
+      # ── Run backend migrations + restart ──────────────────────────
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /opt/supportmitra
+            git pull origin main
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps backend celery celerybeat
+            docker compose exec -T backend python manage.py migrate --noinput
+            docker compose exec -T backend python manage.py collectstatic --noinput
+
+      # ── Health check ──────────────────────────────────────────────
+      - name: Health check
+        run: |
+          sleep 10
+          curl --fail https://supportmitra.in/api/health/ || exit 1
+
+      # ── Notify ────────────────────────────────────────────────────
+      - name: Notify Slack on success
+        if: success()
+        run: |
+          curl -s -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H 'Content-type: application/json' \
+            --data '{"text":"✅ SupportMitra deployed successfully to production."}'
+
+      - name: Notify Slack on failure
+        if: failure()
+        run: |
+          curl -s -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H 'Content-type: application/json' \
+            --data '{"text":"❌ SupportMitra deployment FAILED. Check GitHub Actions."}'

@@ -1,0 +1,27 @@
+# ─────────────────────────────────────────────────────────────────
+# Dockerfile.frontend
+#
+# For LOCAL DEVELOPMENT only — runs the Vite dev server with
+# hot module replacement (HMR) so the browser auto-refreshes
+# whenever you save a file.
+#
+# For PRODUCTION, you run `npm run build` and serve the static
+# dist/ folder through Nginx — no Node.js process needed.
+# ─────────────────────────────────────────────────────────────────
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files first (same caching trick as the backend)
+COPY frontend/package*.json ./
+RUN npm install
+
+# Copy the rest of the frontend source
+COPY frontend/ .
+
+EXPOSE 5173
+
+# Start Vite dev server, binding to all interfaces so Docker can
+# forward the port to your laptop's browser
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

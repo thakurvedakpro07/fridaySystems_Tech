@@ -1,0 +1,37 @@
+# ─────────────────────────────────────────────────────────────────
+# Dockerfile.backend
+#
+# Builds the Django application image.
+# Uses Python 3.11 on a slim Debian base (small download size).
+# ─────────────────────────────────────────────────────────────────
+
+FROM python:3.11-slim
+
+# Prevents Python from writing .pyc bytecode files to disk
+ENV PYTHONDONTWRITEBYTECODE=1
+# Ensures print() and logging output appear in Docker logs immediately
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install system packages needed by psycopg2 (PostgreSQL driver)
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install Python dependencies first.
+# Docker caches this layer — if requirements.txt hasn't changed,
+# pip install is skipped on the next build (faster rebuilds).
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the backend source code
+COPY backend/ .
+
+# Expose the port Gunicorn will listen on
+EXPOSE 8000
+
+# Default command: start Gunicorn (production WSGI server)
+# --reload means it restarts when code changes (useful in dev via docker compose)
+CMD ["gunicorn", "supportmitra.wsgi:application", "--bind", "0.0.0.0:8000", "--reload"]

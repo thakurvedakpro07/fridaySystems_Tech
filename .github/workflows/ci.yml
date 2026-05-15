@@ -1,0 +1,91 @@
+# Continuous Integration — runs on every Pull Request
+# Checks: lint, security scan, tests, frontend build
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [develop]
+
+jobs:
+  backend:
+    name: Backend (lint + test)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: supportmitra
+          POSTGRES_PASSWORD: supportmitra
+          POSTGRES_DB: supportmitra_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint (flake8 + black)
+        run: |
+          cd backend
+          flake8 . --max-line-length 100
+          black --check .
+
+      - name: Security scan (bandit)
+        run: |
+          cd backend
+          bandit -r support_app/ -ll
+
+      - name: Run tests
+        env:
+          SECRET_KEY: ci-test-secret-key-not-real
+          DATABASE_URL: postgres://supportmitra:supportmitra@localhost:5432/supportmitra_test
+          DEBUG: "1"
+        run: |
+          cd backend
+          pytest tests/ -v --cov=support_app --cov-report=term-missing
+
+  frontend:
+    name: Frontend (lint + build)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Lint
+        run: |
+          cd frontend
+          npm run lint
+
+      - name: Build check
+        run: |
+          cd frontend
+          npm run build

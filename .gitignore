@@ -1,0 +1,58 @@
+# ── Python / Django ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+mediafiles/
+
+# ── Node / React ─────────────────────────────────────────────────
+node_modules/
+dist/
+.DS_Store
+*.local
+
+# ── Environment secrets (NEVER commit these) ─────────────────────
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# ── Docker ───────────────────────────────────────────────────────
+# (docker-compose.yml IS committed; only ignore override files you
+#  create locally and don't want to share)
+docker-compose.override.yml
+
+# ── IDEs ─────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS ───────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Testing / Coverage ───────────────────────────────────────────
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml

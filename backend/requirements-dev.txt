@@ -1,0 +1,19 @@
+# Dev-only tools — NOT installed in production Docker image
+
+# Testing
+pytest==8.2.1
+pytest-django==4.8.0
+pytest-cov==5.0.0              # coverage reports
+factory-boy==3.3.0             # create test data easily
+
+# Code quality
+black==24.4.2                  # auto-formatter
+flake8==7.0.0                  # style linter
+isort==5.13.2                  # sort imports
+
+# Security scanning
+bandit==1.7.8                  # scan for common security issues
+
+# Convenience
+ipython==8.24.0                # better interactive Python shell
+django-extensions==3.2.3      # extra management commands (e.g. shell_plus)

@@ -1,0 +1,113 @@
+# ─────────────────────────────────────────────────────────────────
+# docker-compose.yml  —  LOCAL DEVELOPMENT
+#
+# Starts 5 services that talk to each other over a private network:
+#   db        → PostgreSQL database
+#   redis     → Redis (Celery task queue + caching)
+#   backend   → Django API (port 8000)
+#   celery    → Celery worker (processes background tasks)
+#   frontend  → React/Vite dev server (port 5173)
+# ─────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: supportmitra
+      POSTGRES_PASSWORD: supportmitra
+      POSTGRES_DB: supportmitra
+    volumes:
+      # persist database data between docker compose restarts
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      # expose port so you can connect with a DB GUI (e.g. TablePlus)
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supportmitra"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Django Backend ───────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source code so Django's --reload picks up your edits
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate &&
+             gunicorn supportmitra.wsgi:application
+               --bind 0.0.0.0:8000
+               --reload
+               --workers 2"
+
+  # ── Celery Worker ────────────────────────────────────────────────
+  # Picks up background tasks (emails, SLA checks, etc.)
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - backend
+      - redis
+    command: celery -A supportmitra worker --loglevel=info
+
+  # ── Celery Beat (Scheduler) ──────────────────────────────────────
+  # Fires recurring tasks on a schedule (e.g. SLA breach checks every 5 min)
+  celerybeat:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - celery
+    command: celery -A supportmitra beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+  # ── React Frontend ───────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      # Mount source so Vite's HMR (hot reload) works
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+    depends_on:
+      - backend
+
+# ── Named Volumes ────────────────────────────────────────────────
+volumes:
+  postgres_data:
