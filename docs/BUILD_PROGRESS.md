@@ -2,6 +2,50 @@
 
 ---
 
+## 2026-05-15 (Session 4)
+
+### Completed Today
+
+* Fixed bug: clicking a TicketCard on the Dashboard or Admin Dashboard now correctly navigates to the ticket detail page instead of redirecting to home
+* Created `TicketDetailPage.jsx` — a page wrapper that reads the ticket ID from the URL, fetches the ticket from the API, handles loading/error states, and renders the existing `TicketDetail` component
+* Added `/tickets/:id` route to `App.jsx` — 1 import line + 1 route block; all other routes and guards unchanged
+
+### Files Created
+
+* `frontend/src/pages/TicketDetailPage.jsx` — page at `/tickets/:id`; uses `useParams` to read the ID, `getTicket(id)` to fetch, and renders `<TicketDetail />` with the result
+
+### Files Modified
+
+* `frontend/src/App.jsx` — added `import TicketDetailPage` and `<Route path="/tickets/:id">` wrapped in `PrivateRoute`
+
+### Bugs Fixed
+
+* **Ticket card click goes to home page** — `TicketCard.jsx` linked to `/tickets/:id` but no such route existed in `App.jsx`. React Router's catch-all (`*`) was silently redirecting every ticket click to `/`. Fixed by registering the route and creating the missing page.
+
+### Pending Issues
+
+* **`.env` file not created** — `manage.py` will not start without `SECRET_KEY`. Must create `backend/.env` from `.env.example` before running Docker.
+* **No migration files** — `makemigrations` has never been run. Database tables do not exist. Run before testing any API.
+* **AdminRoute always blocks** — `user?.is_staff` is always `undefined` because neither `TokenObtainPairView` nor `RegisterView` returns `is_staff` in the response. Admin pages unreachable through the browser UI.
+* **`TicketDetailView` admin crash** — `get_queryset` calls `request.user.customer_profile` which raises `RelatedObjectDoesNotExist` for staff users.
+* **`TicketDetail.jsx` assigned_to path wrong** — renders `ticket.assigned_to?.user?.email` but the serializer returns `ticket.assigned_to?.email` (email is a top-level field on the nested serializer). No visible impact until Phase 3 adds assignment, but should be corrected then.
+* **No payment redirect after ticket creation** — Phase 2.
+* **Ticket number collision risk** — UUID tail approach, not sequential. Phase 2.
+
+### Architecture Decisions
+
+* **Page wrapper pattern** — `TicketDetail.jsx` remains a pure display component that accepts a `ticket` prop. The new `TicketDetailPage.jsx` owns data fetching. This preserves the existing three-tier model (page → domain component → UI primitive) and keeps `TicketDetail.jsx` reusable if it ever needs to appear embedded somewhere else.
+* **`navigate(-1)` for back button** — sends the user back to whatever page they came from (Dashboard or Admin Dashboard) without hardcoding a path.
+
+### Next Step
+
+* **Fix the two setup blockers** — create `.env` from `.env.example` and run `makemigrations` + `migrate` so the app can actually start
+* **Fix AdminRoute** — add `is_staff` to the login/register API response so admin users can reach `/admin`
+* **Fix TicketDetailView admin crash** — one-line guard in `views.py`
+* **Then start Phase 2** — Razorpay consulting fee integration
+
+---
+
 ## 2026-05-15 (Session 3)
 
 ### Completed Today

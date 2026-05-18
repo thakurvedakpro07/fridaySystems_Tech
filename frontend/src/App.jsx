@@ -16,6 +16,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import NewTicket from "./pages/NewTicket";
 import Register from "./pages/Register";
+import TicketDetailPage from "./pages/TicketDetailPage";
 import { useAuthStore } from "./store/authStore";
 
 // A wrapper that redirects unauthenticated users to /login
@@ -47,6 +48,10 @@ export default function App() {
         <Route
           path="/tickets/new"
           element={<PrivateRoute><NewTicket /></PrivateRoute>}
+        />
+        <Route
+          path="/tickets/:id"
+          element={<PrivateRoute><TicketDetailPage /></PrivateRoute>}
         />
 
         {/* Admin pages — require login + is_staff */}

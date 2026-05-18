@@ -5,6 +5,7 @@ djangorestframework==3.15.2
 # ── Authentication ────────────────────────────────────────────────
 djangorestframework-simplejwt==5.3.1
 django-allauth==0.63.3          # Google / GitHub OAuth2
+cryptography>=42.0.0            # Required by django-allauth Google OAuth (jwtkit)
 
 # ── Database ──────────────────────────────────────────────────────
 psycopg2-binary==2.9.9          # PostgreSQL driver
