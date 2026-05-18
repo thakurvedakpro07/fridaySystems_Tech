@@ -11,13 +11,15 @@
  *   const logout = useAuthStore((s) => s.logout);
  */
 import { create } from "zustand";
+import { getMyProfile } from "../api/auth";
 
 export const useAuthStore = create((set) => ({
   // ── State ─────────────────────────────────────────────────────
   isAuthenticated: !!localStorage.getItem("access_token"),
-  user: null,       // { id, email, is_staff }
+  user: null,         // { id, email, is_staff }
   loading: false,
   error: null,
+  initializing: true, // true until the startup auth check finishes
 
   // ── Actions ───────────────────────────────────────────────────
 
@@ -37,4 +39,30 @@ export const useAuthStore = create((set) => ({
 
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
+
+  /**
+   * Called once on app mount (App.jsx).
+   * If a stored token exists, fetches the user's profile to rehydrate `user`
+   * state after a page refresh. Clears stale tokens if the fetch fails.
+   */
+  initializeAuth: async () => {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      set({ initializing: false });
+      return;
+    }
+    try {
+      const { data } = await getMyProfile();
+      set({
+        user: { id: data.id, email: data.email, is_staff: data.is_staff },
+        isAuthenticated: true,
+        initializing: false,
+      });
+    } catch {
+      // Token is invalid or expired — clear storage and force re-login
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      set({ isAuthenticated: false, user: null, initializing: false });
+    }
+  },
 }));

@@ -10,10 +10,12 @@ import TicketCard from "../../components/tickets/TicketCard";
 export default function AdminDashboard() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     apiClient.get("/admin/tickets/")
       .then(({ data }) => setTickets(data.results ?? data))
+      .catch(() => setError("Could not load tickets. Please refresh the page."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -25,6 +27,10 @@ export default function AdminDashboard() {
 
         {loading ? (
           <p className="text-gray-400">Loading…</p>
+        ) : error ? (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+            {error}
+          </div>
         ) : (
           <div className="space-y-3">
             {tickets.map((ticket) => (

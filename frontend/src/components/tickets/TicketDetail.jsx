@@ -30,7 +30,7 @@ export default function TicketDetail({ ticket }) {
         </div>
         <div>
           <dt className="text-gray-400">Assigned to</dt>
-          <dd className="font-medium">{ticket.assigned_to?.user?.email ?? "Unassigned"}</dd>
+          <dd className="font-medium">{ticket.assigned_to?.email ?? "Unassigned"}</dd>
         </div>
         <div>
           <dt className="text-gray-400">Opened</dt>

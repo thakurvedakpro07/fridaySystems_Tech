@@ -14,6 +14,7 @@ const SEVERITIES = [
 
 export default function TicketForm({ onSubmit, loading }) {
   const [services, setServices] = useState([]);
+  const [serviceError, setServiceError] = useState(false);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -22,7 +23,9 @@ export default function TicketForm({ onSubmit, loading }) {
   });
 
   useEffect(() => {
-    listServices().then(({ data }) => setServices(data));
+    listServices()
+      .then(({ data }) => setServices(data))
+      .catch(() => setServiceError(true));
   }, []);
 
   const handleChange = (e) =>
@@ -55,20 +58,26 @@ export default function TicketForm({ onSubmit, loading }) {
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Service Category *
         </label>
-        <select
-          name="service_type"
-          value={form.service_type}
-          onChange={handleChange}
-          required
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Select a category…</option>
-          {services.map((s) => (
-            <option key={s.key} value={s.key}>
-              {s.name} — ₹{s.resolution_fee} resolution fee
-            </option>
-          ))}
-        </select>
+        {serviceError ? (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
+            Could not load service categories. Please refresh the page.
+          </div>
+        ) : (
+          <select
+            name="service_type"
+            value={form.service_type}
+            onChange={handleChange}
+            required
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select a category…</option>
+            {services.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.name} — ₹{s.resolution_fee} resolution fee
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Severity */}
@@ -109,7 +118,7 @@ export default function TicketForm({ onSubmit, loading }) {
         initial diagnosis. You will be redirected to complete payment.
       </div>
 
-      <Button type="submit" disabled={loading} className="w-full">
+      <Button type="submit" disabled={loading || serviceError} className="w-full">
         {loading ? "Creating…" : "Open Ticket & Pay ₹299"}
       </Button>
     </form>

@@ -12,6 +12,9 @@ export const login = (email, password) =>
 export const refreshToken = (refresh) =>
   apiClient.post("/auth/token/refresh/", { refresh });
 
+export const logout = (refresh) =>
+  apiClient.post("/auth/logout/", { refresh });
+
 export const getMyProfile = () =>
   apiClient.get("/customers/me/");
 

@@ -35,6 +35,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ["email", "password", "company", "phone"]
 
+    def validate_email(self, value):
+        # username is stored as email; check case-insensitively so
+        # "User@Example.com" blocks when "user@example.com" is already taken.
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError("An account with this email already exists.")
+        return value
+
     def create(self, validated_data):
         company = validated_data.pop("company", "")
         phone = validated_data.pop("phone", "")
@@ -51,11 +58,12 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 class CustomerSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source="user.email", read_only=True)
+    is_staff = serializers.BooleanField(source="user.is_staff", read_only=True)
 
     class Meta:
         model = Customer
-        fields = ["id", "email", "company", "phone", "address", "plan", "gstin", "mfa_enabled", "created_at"]
-        read_only_fields = ["id", "plan", "mfa_enabled", "created_at"]
+        fields = ["id", "email", "is_staff", "company", "phone", "address", "plan", "gstin", "mfa_enabled", "created_at"]
+        read_only_fields = ["id", "email", "is_staff", "plan", "mfa_enabled", "created_at"]
 
 
 # ── Freelancer ────────────────────────────────────────────────────

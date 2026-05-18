@@ -53,7 +53,7 @@ INSTALLED_APPS = [
     "django_prometheus",
 
     # Our app
-    "support_app",
+    "support_app.apps.SupportAppConfig",
 ]
 
 # ── Middleware ────────────────────────────────────────────────────

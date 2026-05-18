@@ -4,11 +4,11 @@
  * Custom hooks let you extract reusable logic from components.
  * Any component can call useAuth() and get the login/logout functions.
  */
-import { login as loginApi, register as registerApi } from "../api/auth";
+import { login as loginApi, logout as logoutApi, register as registerApi } from "../api/auth";
 import { useAuthStore } from "../store/authStore";
 
 export function useAuth() {
-  const { setTokens, setUser, logout, setLoading, setError, isAuthenticated, user } =
+  const { setTokens, setUser, logout: storeLogout, setLoading, setError, isAuthenticated, user } =
     useAuthStore();
 
   const loginUser = async (email, password) => {
@@ -43,6 +43,14 @@ export function useAuth() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const logout = async () => {
+    const refreshToken = localStorage.getItem("refresh_token");
+    if (refreshToken) {
+      try { await logoutApi(refreshToken); } catch { /* best effort */ }
+    }
+    storeLogout();
   };
 
   return { loginUser, registerUser, logout, isAuthenticated, user };

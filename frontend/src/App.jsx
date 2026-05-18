@@ -7,6 +7,7 @@
  *   <Routes>        — container for all route definitions
  *   <Route>         — maps a URL path to a component
  */
+import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -32,6 +33,27 @@ function AdminRoute({ children }) {
 }
 
 export default function App() {
+  const initializing = useAuthStore((s) => s.initializing);
+  const initializeAuth = useAuthStore((s) => s.initializeAuth);
+
+  // On first mount: re-fetch the user profile if a stored token exists.
+  // This rehydrates `user` state after a page refresh so AdminRoute works.
+  useEffect(() => {
+    initializeAuth();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Block all route rendering until the auth check completes.
+  // Without this guard, AdminRoute evaluates user===null before the profile
+  // fetch returns and incorrectly redirects admins to /dashboard.
+  if (initializing) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-400 text-sm">Loading…</p>
+      </div>
+    );
+  }
+
   return (
     <BrowserRouter>
       <Routes>

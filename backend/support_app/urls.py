@@ -7,10 +7,7 @@ this file is included in supportmitra/urls.py as:
 """
 
 from django.urls import path
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
+from rest_framework_simplejwt.views import TokenRefreshView
 
 from . import views
 
@@ -20,7 +17,8 @@ urlpatterns = [
 
     # ── Authentication ────────────────────────────────────────────
     path("auth/register/", views.RegisterView.as_view(), name="auth-register"),
-    path("auth/login/", TokenObtainPairView.as_view(), name="auth-login"),
+    path("auth/login/", views.CustomTokenObtainPairView.as_view(), name="auth-login"),
+    path("auth/logout/", views.logout_view, name="auth-logout"),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="auth-token-refresh"),
 
     # ── Customer Profile ─────────────────────────────────────────
@@ -33,8 +31,12 @@ urlpatterns = [
     path("tickets/", views.TicketListCreateView.as_view(), name="ticket-list-create"),
     path("tickets/<uuid:pk>/", views.TicketDetailView.as_view(), name="ticket-detail"),
     path("tickets/<uuid:ticket_id>/comments/", views.TicketCommentListCreateView.as_view(), name="ticket-comments"),
+    path("tickets/<uuid:ticket_id>/csat/", views.submit_csat, name="ticket-csat"),
 
     # ── Payments ─────────────────────────────────────────────────
+    path("customers/me/payments/", views.PaymentListView.as_view(), name="payment-list"),
+    path("payments/<uuid:pk>/", views.PaymentDetailView.as_view(), name="payment-detail"),
+    path("payments/<uuid:pk>/invoice/", views.payment_invoice, name="payment-invoice"),
     path("payments/webhook/", views.payment_webhook, name="payment-webhook"),
 
     # ── Admin: Tickets ───────────────────────────────────────────
