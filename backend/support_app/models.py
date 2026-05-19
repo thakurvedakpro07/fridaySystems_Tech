@@ -800,6 +800,67 @@ class CSATSurvey(models.Model):
         verbose_name_plural = "CSAT Surveys"
 
 
+class Notification(models.Model):
+    """
+    In-app notification delivered to a specific user.
+
+    Created whenever a significant ticket event occurs:
+      - A ticket is assigned    → freelancer receives a notification
+      - A status changes        → customer receives a notification
+      - A comment is added      → ticket participants are notified
+      - An SLA breach occurs    → admin is notified
+
+    Each event creates SEPARATE rows per recipient — one notification
+    for the customer, a different one for the freelancer. This allows
+    each person to mark their own notification as read independently.
+
+    Analogy: Like email — the same event sends separate emails to each
+    person. One person marking their email "read" doesn't affect others.
+    """
+
+    CATEGORY_CHOICES = [
+        ("ticket_assigned",   "Ticket Assigned"),
+        ("ticket_resolved",   "Ticket Resolved"),
+        ("comment_added",     "Comment Added"),
+        ("status_changed",    "Status Changed"),
+        ("sla_breach",        "SLA Breach"),
+        ("payment_confirmed", "Payment Confirmed"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # recipient: who should see this notification.
+    # CASCADE: when a user is deleted, their notifications are deleted too.
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+
+    category   = models.CharField(max_length=32, choices=CATEGORY_CHOICES)
+    title      = models.CharField(max_length=255)
+    body       = models.TextField(blank=True)
+
+    # ticket: the ticket this notification is about (optional).
+    # SET_NULL: if the ticket is deleted, the notification body still makes sense.
+    ticket = models.ForeignKey(
+        Ticket,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="notifications",
+    )
+
+    is_read    = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        read_label = "read" if self.is_read else "unread"
+        return f"→ {self.recipient.email} | {self.get_category_display()} [{read_label}]"
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
 class AuditLog(models.Model):
     """
     Immutable record of every important action in the system.

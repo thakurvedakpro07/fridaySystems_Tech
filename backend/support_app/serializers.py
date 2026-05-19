@@ -19,10 +19,12 @@ from .models import (
     CSATSurvey,
     Customer,
     Freelancer,
+    Notification,
     Payment,
     SLALog,
     Subscription,
     Ticket,
+    TicketActivityLog,
     TicketAttachment,
     TicketComment,
 )
@@ -193,3 +195,60 @@ class CSATSurveySerializer(serializers.ModelSerializer):
         if not 1 <= value <= 5:
             raise serializers.ValidationError("Score must be between 1 and 5.")
         return value
+
+
+# ── Activity Log ──────────────────────────────────────────────────
+
+class TicketActivityLogSerializer(serializers.ModelSerializer):
+    """Read-only serializer for the ticket event timeline."""
+    actor_email = serializers.EmailField(source="actor.email", read_only=True, allow_null=True)
+    action_display = serializers.CharField(source="get_action_display", read_only=True)
+
+    class Meta:
+        model = TicketActivityLog
+        fields = [
+            "id", "actor_email", "action", "action_display",
+            "from_value", "to_value", "note", "created_at",
+        ]
+
+
+# ── Notifications ─────────────────────────────────────────────────
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ["id", "category", "title", "body", "ticket", "is_read", "created_at"]
+        read_only_fields = ["id", "category", "title", "body", "ticket", "created_at"]
+
+
+# ── Admin action serializers ──────────────────────────────────────
+# These are plain Serializers (not ModelSerializer) because they
+# validate a simple request body, not a full model instance.
+
+# Valid ticket status keys — duplicated here to avoid circular imports.
+_TICKET_STATUSES = [
+    "pending_payment", "open", "assigned", "in_progress",
+    "waiting_customer", "resolved", "closed",
+]
+# Freelancers may only move a ticket to these three statuses.
+_FREELANCER_STATUSES = ["in_progress", "waiting_customer", "resolved"]
+
+
+class AdminAssignSerializer(serializers.Serializer):
+    """Validates the body of POST /api/admin/tickets/{id}/assign/."""
+    freelancer_id = serializers.UUIDField()
+
+
+class AdminStatusSerializer(serializers.Serializer):
+    """Validates the body of POST /api/admin/tickets/{id}/status/."""
+    new_status = serializers.ChoiceField(choices=_TICKET_STATUSES)
+    note = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class FreelancerStatusSerializer(serializers.Serializer):
+    """
+    Validates the body of POST /api/freelancer/tickets/{id}/status/.
+    Freelancers cannot close tickets — only admins can do that.
+    """
+    new_status = serializers.ChoiceField(choices=_FREELANCER_STATUSES)
+    note = serializers.CharField(required=False, allow_blank=True, default="")

@@ -1,8 +1,30 @@
 """
 API Views — each class or function handles one URL endpoint.
 
-For now these are skeleton views that return placeholder responses.
-Business logic will be added in the services/ layer later.
+ARCHITECTURE RULE:
+  Views are thin. They:
+    1. Parse and validate the request (via serializers)
+    2. Check permissions
+    3. Call the service layer for business logic
+    4. Return an HTTP response
+
+  Business logic — changing ticket state, logging, sending notifications —
+  lives in services/ticket_service.py and services/notification_service.py.
+
+URL STRUCTURE:
+  /api/auth/          — authentication
+  /api/customers/     — customer profile
+  /api/tickets/       — customer ticket operations
+  /api/freelancer/    — freelancer-specific operations
+  /api/admin/         — admin-only operations
+  /api/notifications/ — in-app notification inbox
+  /api/payments/      — payment history
+  /api/services/      — service catalogue
+
+API VERSIONING NOTE:
+  All routes currently live under /api/.
+  To version: change urls.py to /api/v1/ and add /api/v2/ when needed.
+  The views themselves are version-agnostic — no code changes required.
 """
 
 from django.contrib.auth import get_user_model
@@ -17,15 +39,29 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView as BaseTokenObtainPairView
 
-from .models import Customer, Freelancer, Payment, Subscription, Ticket, TicketComment
-from .permissions import IsAdminUser, IsCustomer, IsFreelancer, IsOwnerOrAdmin
+from .models import (
+    Customer,
+    Freelancer,
+    Notification,
+    Payment,
+    Subscription,
+    Ticket,
+    TicketActivityLog,
+    TicketComment,
+)
+from .permissions import IsAdminUser, IsCustomer, IsFreelancer, IsFreelancerOrAdmin, IsOwnerOrAdmin
 from .serializers import (
+    AdminAssignSerializer,
+    AdminStatusSerializer,
     CSATSurveySerializer,
     CustomerSerializer,
     FreelancerSerializer,
+    FreelancerStatusSerializer,
+    NotificationSerializer,
     PaymentSerializer,
     RegisterSerializer,
     SubscriptionSerializer,
+    TicketActivityLogSerializer,
     TicketCommentSerializer,
     TicketCreateSerializer,
     TicketDetailSerializer,
@@ -39,12 +75,12 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
     Extends the default SimpleJWT login serializer to include user data.
     SimpleJWT returns only {access, refresh} by default; the frontend
-    needs {id, email, is_staff} to set up the auth store correctly.
+    needs {id, email, is_staff, role} to set up the auth store correctly.
     """
     def validate(self, attrs):
         data = super().validate(attrs)
         data["user"] = {
-            "id": str(self.user.id),  # UUID must be stringified for JSON
+            "id": str(self.user.id),
             "email": self.user.email,
             "is_staff": self.user.is_staff,
             "role": self.user.role,
@@ -61,11 +97,7 @@ class CustomTokenObtainPairView(BaseTokenObtainPairView):
 @api_view(["GET"])
 @permission_classes([permissions.AllowAny])
 def health_check(request):
-    """
-    GET /api/health/
-    Returns 200 OK if the app is running and the database is reachable.
-    Used by Docker healthchecks and monitoring tools.
-    """
+    """GET /api/health/ — 200 OK if app is running."""
     return Response({"status": "ok"})
 
 
@@ -91,7 +123,7 @@ class RegisterView(generics.CreateAPIView):
                 "access": str(refresh.access_token),
                 "refresh": str(refresh),
                 "user": {
-                    "id": str(user.id),  # UUID → string for JSON
+                    "id": str(user.id),
                     "email": user.email,
                     "is_staff": user.is_staff,
                     "role": user.role,
@@ -109,9 +141,7 @@ def logout_view(request):
     """
     POST /api/auth/logout/
     Body: { "refresh": "<refresh_token>" }
-    Blacklists the token so it cannot mint new access tokens.
-    Returns 204 regardless — logout goal is achieved even if token was
-    already expired or blacklisted.
+    Blacklists the refresh token — returns 204 regardless.
     """
     try:
         token = RefreshToken(request.data.get("refresh", ""))
@@ -140,10 +170,7 @@ class CustomerMeView(generics.RetrieveUpdateAPIView):
 @api_view(["GET"])
 @permission_classes([permissions.AllowAny])
 def services_list(request):
-    """
-    GET /api/services/
-    Returns all service types with their names and resolution fees.
-    """
+    """GET /api/services/ — all service types with resolution fees."""
     services = [
         {"key": "desktop",  "name": "Desktop / Laptop Support",  "resolution_fee": 499},
         {"key": "linux",    "name": "Linux Provisioning",         "resolution_fee": 999},
@@ -156,14 +183,21 @@ def services_list(request):
     return Response(services)
 
 
-# ── Tickets ───────────────────────────────────────────────────────
+# ── Tickets (Customer) ────────────────────────────────────────────
 
 class TicketListCreateView(generics.ListCreateAPIView):
     """
-    GET  /api/tickets/   — list the logged-in customer's tickets
-    POST /api/tickets/   — open a new ticket
+    GET  /api/tickets/  — list the logged-in customer's tickets
+    POST /api/tickets/  — open a new ticket
+
+    Query params for filtering:
+      ?status=open
+      ?service_type=linux
+      ?severity=high
+      ?search=<text>     (searches title and description)
+      ?ordering=created_at,-priority
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsCustomer]
 
     def get_serializer_class(self):
         if self.request.method == "POST":
@@ -173,7 +207,6 @@ class TicketListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         qs = Ticket.objects.filter(customer=self.request.user.customer_profile)
 
-        # Optional filters via query parameters
         status_filter = self.request.query_params.get("status")
         if status_filter:
             qs = qs.filter(status=status_filter)
@@ -186,21 +219,35 @@ class TicketListCreateView(generics.ListCreateAPIView):
         if severity_filter:
             qs = qs.filter(severity=severity_filter)
 
+        # Full-text search across title and description
+        search = self.request.query_params.get("search")
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(Q(title__icontains=search) | Q(description__icontains=search))
+
+        # Ordering: ?ordering=created_at  or  ?ordering=-priority
+        ordering = self.request.query_params.get("ordering")
+        allowed_orderings = {"created_at", "-created_at", "priority", "-priority", "status", "-status"}
+        if ordering in allowed_orderings:
+            qs = qs.order_by(ordering)
+
         return qs
 
     def perform_create(self, serializer):
-        # TODO: trigger consulting fee payment order (Phase 2)
-        ticket = serializer.save(
+        from .services.ticket_service import create_ticket
+        ticket = create_ticket(
             customer=self.request.user.customer_profile,
-            status="pending_payment",
+            validated_data=serializer.validated_data,
         )
-        return ticket
+        # Set serializer.instance so DRF returns the created ticket as the response
+        # without calling serializer.save() again (which would create a duplicate).
+        serializer.instance = ticket
 
 
 class TicketDetailView(generics.RetrieveUpdateAPIView):
     """
     GET   /api/tickets/{id}/  — get ticket detail
-    PATCH /api/tickets/{id}/  — update description/notes (before assignment)
+    PATCH /api/tickets/{id}/  — customer updates description/notes before assignment
     """
     serializer_class = TicketDetailSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
@@ -221,25 +268,32 @@ class TicketCommentListCreateView(generics.ListCreateAPIView):
 
     def _get_ticket(self):
         """
-        Fetch the ticket for this URL and enforce ownership in one place.
-        - Staff can access any ticket's comments.
-        - Customers can only access comments on their own tickets (404 otherwise).
-        - Any other role (freelancer, etc.) gets 403.
+        Fetch the ticket and enforce ownership in one place.
+        - Staff: any ticket
+        - Customer: only own tickets (404 otherwise)
+        - Freelancer: only assigned tickets
+        - Anyone else: 403
         """
         if self.request.user.is_staff:
             return get_object_or_404(Ticket, pk=self.kwargs["ticket_id"])
-        if not hasattr(self.request.user, "customer_profile"):
-            raise PermissionDenied()
-        return get_object_or_404(
-            Ticket,
-            pk=self.kwargs["ticket_id"],
-            customer=self.request.user.customer_profile,
-        )
+        if hasattr(self.request.user, "freelancer_profile"):
+            return get_object_or_404(
+                Ticket,
+                pk=self.kwargs["ticket_id"],
+                assigned_to=self.request.user.freelancer_profile,
+            )
+        if hasattr(self.request.user, "customer_profile"):
+            return get_object_or_404(
+                Ticket,
+                pk=self.kwargs["ticket_id"],
+                customer=self.request.user.customer_profile,
+            )
+        raise PermissionDenied()
 
     def get_queryset(self):
-        ticket = self._get_ticket()  # raises 404 or 403 if access is denied
+        ticket = self._get_ticket()
         qs = TicketComment.objects.filter(ticket=ticket)
-        # Customers only see public (non-internal) comments
+        # Customers see only public comments; staff/freelancers see all
         if not self.request.user.is_staff and not hasattr(self.request.user, "freelancer_profile"):
             qs = qs.filter(is_internal=False)
         return qs
@@ -247,74 +301,54 @@ class TicketCommentListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         from .services.ticket_service import add_comment
         ticket = self._get_ticket()
-        # is_internal: only staff/freelancers can mark a comment as internal
         is_internal = bool(
             serializer.validated_data.get("is_internal", False)
             and (self.request.user.is_staff or hasattr(self.request.user, "freelancer_profile"))
         )
-        # Delegate to the service layer — handles first_response_at, activity log
         comment = add_comment(
             ticket=ticket,
             author=self.request.user,
             body=serializer.validated_data["body"],
             is_internal=is_internal,
         )
-        # Set the serializer instance so the response uses the service-created object
-        # instead of calling serializer.save() (which would create a duplicate row)
         serializer.instance = comment
 
 
-# ── Payments ─────────────────────────────────────────────────────
+# ── Activity Log ──────────────────────────────────────────────────
 
-class PaymentListView(generics.ListAPIView):
+class TicketActivityLogListView(generics.ListAPIView):
     """
-    GET /api/customers/me/payments/
-    List all payments belonging to the authenticated customer.
+    GET /api/tickets/{ticket_id}/activity/
+
+    Returns the chronological event timeline for a ticket.
+    This is the "history" view shown in the ticket detail page.
+
+    Visibility rules:
+      - Admin: all tickets
+      - Customer: only own tickets
+      - Freelancer: only their currently-assigned tickets
     """
-    serializer_class = PaymentSerializer
-    permission_classes = [permissions.IsAuthenticated, IsCustomer]
+    serializer_class = TicketActivityLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Payment.objects.filter(customer=self.request.user.customer_profile)
+        user = self.request.user
+        ticket_id = self.kwargs["ticket_id"]
 
+        if user.is_staff:
+            ticket = get_object_or_404(Ticket, pk=ticket_id)
+        elif hasattr(user, "freelancer_profile"):
+            ticket = get_object_or_404(
+                Ticket, pk=ticket_id, assigned_to=user.freelancer_profile
+            )
+        elif hasattr(user, "customer_profile"):
+            ticket = get_object_or_404(
+                Ticket, pk=ticket_id, customer=user.customer_profile
+            )
+        else:
+            raise PermissionDenied()
 
-class PaymentDetailView(generics.RetrieveAPIView):
-    """
-    GET /api/payments/{id}/
-    Retrieve a single payment owned by the authenticated customer.
-    Returns 404 if the payment belongs to a different customer.
-    """
-    serializer_class = PaymentSerializer
-    permission_classes = [permissions.IsAuthenticated, IsCustomer]
-
-    def get_queryset(self):
-        return Payment.objects.filter(customer=self.request.user.customer_profile)
-
-
-@api_view(["GET"])
-@permission_classes([permissions.IsAuthenticated, IsCustomer])
-def payment_invoice(request, pk):
-    """
-    GET /api/payments/{id}/invoice/
-    Download invoice PDF.
-    TODO: implement PDF generation with Razorpay details (Phase 2).
-    """
-    return Response(
-        {"detail": "Invoice generation is not yet available."},
-        status=status.HTTP_501_NOT_IMPLEMENTED,
-    )
-
-
-@api_view(["POST"])
-@permission_classes([permissions.AllowAny])  # webhook is not authenticated; HMAC-verified instead
-def payment_webhook(request):
-    """
-    POST /api/payments/webhook/
-    Receives payment status events from Razorpay.
-    The HMAC signature is verified before processing.
-    TODO: implement HMAC verification and status updates (Phase 2).
-    """
-    return Response({"received": True})
+        return TicketActivityLog.objects.filter(ticket=ticket).order_by("created_at")
 
 
 # ── CSAT ─────────────────────────────────────────────────────────
@@ -324,8 +358,7 @@ def payment_webhook(request):
 def submit_csat(request, ticket_id):
     """
     POST /api/tickets/{id}/csat/
-    Submit a satisfaction score (1–5) for a resolved or closed ticket.
-    Each ticket can only receive one CSAT submission.
+    Submit a 1–5 satisfaction score for a resolved/closed ticket.
     """
     ticket = get_object_or_404(
         Ticket,
@@ -348,16 +381,222 @@ def submit_csat(request, ticket_id):
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+# ── Payments ─────────────────────────────────────────────────────
+
+class PaymentListView(generics.ListAPIView):
+    """GET /api/customers/me/payments/ — list own payments."""
+    serializer_class = PaymentSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCustomer]
+
+    def get_queryset(self):
+        return Payment.objects.filter(customer=self.request.user.customer_profile)
+
+
+class PaymentDetailView(generics.RetrieveAPIView):
+    """GET /api/payments/{id}/ — one payment (own only)."""
+    serializer_class = PaymentSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCustomer]
+
+    def get_queryset(self):
+        return Payment.objects.filter(customer=self.request.user.customer_profile)
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, IsCustomer])
+def payment_invoice(request, pk):
+    """GET /api/payments/{id}/invoice/ — TODO: PDF generation in Phase 5."""
+    return Response(
+        {"detail": "Invoice generation is not yet available."},
+        status=status.HTTP_501_NOT_IMPLEMENTED,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([permissions.AllowAny])
+def payment_webhook(request):
+    """POST /api/payments/webhook/ — Razorpay webhook (HMAC TODO in Phase 5)."""
+    return Response({"received": True})
+
+
+# ── Notifications ─────────────────────────────────────────────────
+
+class NotificationListView(generics.ListAPIView):
+    """
+    GET /api/notifications/
+    Returns all notifications for the authenticated user, newest first.
+
+    Query params:
+      ?unread=true   — filter to unread-only
+    """
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = Notification.objects.filter(recipient=self.request.user)
+        if self.request.query_params.get("unread") == "true":
+            qs = qs.filter(is_read=False)
+        return qs
+
+
+@api_view(["PATCH"])
+@permission_classes([permissions.IsAuthenticated])
+def notification_mark_read(request, pk):
+    """
+    PATCH /api/notifications/{id}/read/
+    Marks a single notification as read. Returns the updated notification.
+    """
+    notification = get_object_or_404(Notification, pk=pk, recipient=request.user)
+    notification.is_read = True
+    notification.save(update_fields=["is_read"])
+    return Response(NotificationSerializer(notification).data)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def notification_mark_all_read(request):
+    """
+    POST /api/notifications/mark-all-read/
+    Bulk-marks all unread notifications for this user as read.
+    Returns how many were updated.
+    """
+    updated = Notification.objects.filter(
+        recipient=request.user, is_read=False
+    ).update(is_read=True)
+    return Response({"marked_read": updated})
+
+
+# ── Freelancer APIs ───────────────────────────────────────────────
+
+class FreelancerTicketListView(generics.ListAPIView):
+    """
+    GET /api/freelancer/tickets/
+    Lists all tickets currently assigned to this freelancer.
+
+    Query params:
+      ?status=in_progress   — filter by status
+    """
+    serializer_class = TicketListSerializer
+    permission_classes = [permissions.IsAuthenticated, IsFreelancer]
+
+    def get_queryset(self):
+        qs = Ticket.objects.filter(assigned_to=self.request.user.freelancer_profile)
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        return qs
+
+
+class FreelancerTicketDetailView(generics.RetrieveAPIView):
+    """
+    GET /api/freelancer/tickets/{id}/
+    Full detail of one ticket assigned to this freelancer.
+    Returns 404 if the ticket is not assigned to them.
+    """
+    serializer_class = TicketDetailSerializer
+    permission_classes = [permissions.IsAuthenticated, IsFreelancer]
+
+    def get_queryset(self):
+        return Ticket.objects.filter(assigned_to=self.request.user.freelancer_profile)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsFreelancer])
+def freelancer_update_status(request, ticket_id):
+    """
+    POST /api/freelancer/tickets/{id}/status/
+    Body: {"new_status": "waiting_customer", "note": "optional"}
+
+    Freelancers can move a ticket to: in_progress, waiting_customer, resolved.
+    Only admins can close a ticket.
+    """
+    from .services.ticket_service import update_status
+    from .services.notification_service import create_notification
+
+    ticket = get_object_or_404(
+        Ticket,
+        pk=ticket_id,
+        assigned_to=request.user.freelancer_profile,
+    )
+
+    serializer = FreelancerStatusSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    try:
+        ticket = update_status(
+            ticket=ticket,
+            new_status=serializer.validated_data["new_status"],
+            actor=request.user,
+            note=serializer.validated_data.get("note", ""),
+        )
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    create_notification(
+        recipient=ticket.customer.user,
+        category="status_changed",
+        title=f"Ticket {ticket.ticket_number} update",
+        body=f"Your ticket is now: {ticket.get_status_display()}",
+        ticket=ticket,
+    )
+
+    return Response(TicketDetailSerializer(ticket).data)
+
+
 # ── Admin: Ticket Management ──────────────────────────────────────
 
 class AdminTicketListView(generics.ListAPIView):
     """
     GET /api/admin/tickets/
-    List ALL tickets across all customers. Admin only.
+    List ALL tickets across all customers.
+
+    Query params:
+      ?status=open
+      ?service_type=linux
+      ?severity=high
+      ?priority=urgent
+      ?search=<text>      (title / ticket_number)
+      ?ordering=created_at,-priority
     """
     serializer_class = TicketListSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminUser]
-    queryset = Ticket.objects.all()
+
+    def get_queryset(self):
+        qs = Ticket.objects.all()
+
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+
+        service_filter = self.request.query_params.get("service_type")
+        if service_filter:
+            qs = qs.filter(service_type=service_filter)
+
+        severity_filter = self.request.query_params.get("severity")
+        if severity_filter:
+            qs = qs.filter(severity=severity_filter)
+
+        priority_filter = self.request.query_params.get("priority")
+        if priority_filter:
+            qs = qs.filter(priority=priority_filter)
+
+        search = self.request.query_params.get("search")
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(title__icontains=search) | Q(ticket_number__icontains=search)
+            )
+
+        ordering = self.request.query_params.get("ordering")
+        allowed = {
+            "created_at", "-created_at",
+            "priority", "-priority",
+            "severity", "-severity",
+            "status", "-status",
+        }
+        if ordering in allowed:
+            qs = qs.order_by(ordering)
+
+        return qs
 
 
 @api_view(["POST"])
@@ -365,11 +604,111 @@ class AdminTicketListView(generics.ListAPIView):
 def admin_assign_ticket(request, ticket_id):
     """
     POST /api/admin/tickets/{id}/assign/
-    Assign a ticket to a freelancer.
-    Body: { "freelancer_id": "<uuid>" }
-    TODO: implement assignment logic and notifications (Phase 3).
+    Body: {"freelancer_id": "<uuid>"}
+
+    Assigns a ticket to a freelancer. If the ticket was already assigned,
+    this is treated as a reassignment — the old assignment is closed and
+    a new one is created. Full history is preserved in TicketAssignment.
     """
-    return Response({"message": "Assignment endpoint — coming in Phase 3."})
+    from .services.ticket_service import assign_ticket
+    from .services.notification_service import create_notification
+
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+
+    serializer = AdminAssignSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    freelancer = get_object_or_404(
+        Freelancer, pk=serializer.validated_data["freelancer_id"]
+    )
+
+    try:
+        assign_ticket(ticket=ticket, freelancer=freelancer, assigned_by=request.user)
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Notify the freelancer
+    create_notification(
+        recipient=freelancer.user,
+        category="ticket_assigned",
+        title=f"New ticket assigned: {ticket.ticket_number}",
+        body=f"{ticket.title} — {ticket.get_service_type_display()}",
+        ticket=ticket,
+    )
+    # Notify the customer that their ticket is now in progress
+    create_notification(
+        recipient=ticket.customer.user,
+        category="status_changed",
+        title=f"Your ticket {ticket.ticket_number} is now in progress",
+        body="A support engineer has been assigned to your ticket.",
+        ticket=ticket,
+    )
+
+    ticket.refresh_from_db()
+    return Response(TicketDetailSerializer(ticket).data, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsAdminUser])
+def admin_status_update(request, ticket_id):
+    """
+    POST /api/admin/tickets/{id}/status/
+    Body: {"new_status": "resolved", "note": "optional"}
+
+    Admins can move a ticket to any valid status including "closed".
+    The service layer validates the transition and logs it.
+    """
+    from .services.ticket_service import update_status
+    from .services.notification_service import create_notification
+
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+
+    serializer = AdminStatusSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    try:
+        ticket = update_status(
+            ticket=ticket,
+            new_status=serializer.validated_data["new_status"],
+            actor=request.user,
+            note=serializer.validated_data.get("note", ""),
+        )
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    create_notification(
+        recipient=ticket.customer.user,
+        category="status_changed",
+        title=f"Ticket {ticket.ticket_number} status updated",
+        body=f"Your ticket is now: {ticket.get_status_display()}",
+        ticket=ticket,
+    )
+
+    return Response(TicketDetailSerializer(ticket).data)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsAdminUser])
+def admin_unassign_ticket(request, ticket_id):
+    """
+    POST /api/admin/tickets/{id}/unassign/
+    Body: {"note": "optional reason"}
+
+    Removes the current freelancer from a ticket, setting it back to "open".
+    The TicketAssignment record is closed (unassigned_at is stamped).
+    """
+    from .services.ticket_service import unassign_ticket
+
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    note = request.data.get("note", "")
+
+    try:
+        unassign_ticket(ticket=ticket, actor=request.user, note=note)
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    ticket.refresh_from_db()
+    return Response(TicketDetailSerializer(ticket).data)
 
 
 # ── Admin: Freelancer Management ─────────────────────────────────

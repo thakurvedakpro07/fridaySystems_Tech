@@ -28,6 +28,7 @@ from .models import (
     Customer,
     CustomUser,
     Freelancer,
+    Notification,
     Payment,
     SLALog,
     SLAPolicy,
@@ -309,6 +310,15 @@ class CSATSurveyAdmin(admin.ModelAdmin):
 
 
 # ── Audit Log ─────────────────────────────────────────────────────
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display  = ["recipient", "category", "title", "ticket", "is_read", "created_at"]
+    list_filter   = ["category", "is_read"]
+    search_fields = ["recipient__email", "title", "body"]
+    readonly_fields = ["recipient", "category", "title", "body", "ticket", "created_at"]
+    ordering      = ["-created_at"]
+
 
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
