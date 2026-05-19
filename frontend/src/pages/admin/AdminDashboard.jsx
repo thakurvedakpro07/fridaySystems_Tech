@@ -1,47 +1,87 @@
-/**
- * Admin Dashboard — summary stats and all tickets.
- * Only accessible to staff users (is_staff=true in Django).
- */
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import apiClient from "../../api/client";
-import Header from "../../components/layout/Header";
+import MainLayout from "../../components/layouts/MainLayout";
 import TicketCard from "../../components/tickets/TicketCard";
 
+const STATUS_OPTIONS = ["", "open", "assigned", "in_progress", "waiting_customer", "resolved", "closed", "pending_payment"];
+
 export default function AdminDashboard() {
-  const [tickets, setTickets] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [tickets, setTickets]     = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
+  const [search, setSearch]       = useState("");
+  const [status, setStatus]       = useState("");
+  const [count, setCount]         = useState(0);
 
   useEffect(() => {
-    apiClient.get("/admin/tickets/")
-      .then(({ data }) => setTickets(data.results ?? data))
+    setLoading(true);
+    const params = {};
+    if (search) params.search = search;
+    if (status) params.status = status;
+
+    apiClient.get("/admin/tickets/", { params })
+      .then(({ data }) => {
+        setTickets(data.results ?? data);
+        setCount(data.count ?? (data.results ?? data).length);
+      })
       .catch(() => setError("Could not load tickets. Please refresh the page."))
       .finally(() => setLoading(false));
-  }, []);
+  }, [search, status]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <main className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Admin Dashboard</h1>
+    <MainLayout maxWidth="max-w-5xl">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+          {!loading && (
+            <p className="text-sm text-gray-400 mt-0.5">{count} ticket{count !== 1 ? "s" : ""}</p>
+          )}
+        </div>
+        <Link
+          to="/admin/freelancers"
+          className="text-sm text-blue-600 hover:text-blue-800"
+        >
+          Manage Freelancers →
+        </Link>
+      </div>
 
-        {loading ? (
-          <p className="text-gray-400">Loading…</p>
-        ) : error ? (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
-            {error}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {tickets.map((ticket) => (
-              <TicketCard key={ticket.id} ticket={ticket} />
-            ))}
-            {tickets.length === 0 && (
-              <p className="text-gray-400 text-center py-12">No tickets yet.</p>
-            )}
-          </div>
-        )}
-      </main>
-    </div>
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-5">
+        <input
+          type="text"
+          placeholder="Search tickets…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-56"
+        />
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s}>{s ? s.replaceAll("_", " ") : "All statuses"}</option>
+          ))}
+        </select>
+      </div>
+
+      {loading ? (
+        <p className="text-gray-400 py-8 text-center">Loading…</p>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+          {error}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {tickets.map((ticket) => (
+            <TicketCard key={ticket.id} ticket={ticket} />
+          ))}
+          {tickets.length === 0 && (
+            <p className="text-gray-400 text-center py-12">No tickets match the current filters.</p>
+          )}
+        </div>
+      )}
+    </MainLayout>
   );
 }

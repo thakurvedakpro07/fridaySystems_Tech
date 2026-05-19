@@ -18,6 +18,7 @@ import Login from "./pages/Login";
 import NewTicket from "./pages/NewTicket";
 import Register from "./pages/Register";
 import TicketDetailPage from "./pages/TicketDetailPage";
+import { ToastProvider } from "./context/ToastContext";
 import { useAuthStore } from "./store/authStore";
 
 // A wrapper that redirects unauthenticated users to /login
@@ -55,6 +56,7 @@ export default function App() {
   }
 
   return (
+    <ToastProvider>
     <BrowserRouter>
       <Routes>
         {/* Public pages */}
@@ -90,5 +92,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+    </ToastProvider>
   );
 }

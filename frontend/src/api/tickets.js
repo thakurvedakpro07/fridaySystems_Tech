@@ -26,3 +26,6 @@ export const submitCSAT = (ticketId, score, comment) =>
 
 export const listServices = () =>
   apiClient.get("/services/");
+
+export const listActivityLog = (ticketId) =>
+  apiClient.get(`/tickets/${ticketId}/activity/`);

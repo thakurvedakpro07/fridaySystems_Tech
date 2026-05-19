@@ -7,7 +7,7 @@ export const register = (email, password, company, phone) =>
   apiClient.post("/auth/register/", { email, password, company, phone });
 
 export const login = (email, password) =>
-  apiClient.post("/auth/login/", { username: email, password });
+  apiClient.post("/auth/login/", { email, password });
 
 export const refreshToken = (refresh) =>
   apiClient.post("/auth/token/refresh/", { refresh });
