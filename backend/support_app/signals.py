@@ -46,36 +46,28 @@ def auto_generate_ticket_number(sender, instance, **kwargs):
         instance.ticket_number = f"TKT-{short}"
 
 
-# ── Signal 2: Activity logging on status change ───────────────────
-# We use pre_save to compare old vs new value before the save happens.
-# After save, the old value is gone from the database — we can't compare.
+# ── Signal 2+3: Activity logging + resolved_at stamp ──────────────
+# Combined into ONE signal to avoid two separate DB lookups per save.
+# Both signals need the "old" row — a single query serves both.
 
 @receiver(pre_save, sender="support_app.Ticket")
-def log_ticket_status_change(sender, instance, **kwargs):
+def log_ticket_changes(sender, instance, **kwargs):
     """
-    Write a TicketActivityLog entry whenever a ticket's status changes.
+    On every ticket save:
+      - Write TicketActivityLog entries for status/priority/severity changes.
+      - Stamp resolved_at when status transitions to "resolved".
 
-    WHY NOT post_save?
-      post_save fires after the row is written. At that point, fetching
-      the "old" status from the database gives you the NEW status — Django
-      already committed the change. We must compare in pre_save while
-      the old row still exists.
+    WHY one signal instead of two?
+      Each @receiver on pre_save is a separate DB query to fetch the old row.
+      Combining them halves the number of SELECT queries per ticket save.
 
-    HOW we get the old value:
-      We query the database for the current row before this save overwrites it.
-      If the ticket is brand new (pk doesn't exist yet), there is no old row,
-      so we log "created" instead.
-
-    WHY use string reference "support_app.Ticket" in @receiver?
-      Using the model class directly (sender=Ticket) works but creates a
-      circular import risk if signals.py is imported before models.py is
-      fully loaded. The string reference lets Django resolve it lazily
-      after all models are loaded. Safe regardless of import order.
+    WHY pre_save?
+      We must see the OLD values before the save overwrites them.
+      post_save would give us the new values, making comparison impossible.
     """
     from .models import TicketActivityLog
 
     if not instance.pk:
-        # Brand new ticket — log creation in post_save instead (pk exists then)
         return
 
     try:
@@ -83,20 +75,22 @@ def log_ticket_status_change(sender, instance, **kwargs):
     except sender.DoesNotExist:
         return
 
-    # Status change
+    # ── Status change ──────────────────────────────────────────────
     if old.status != instance.status:
         action = "resolved" if instance.status == "resolved" else (
                  "closed"   if instance.status == "closed"   else "status_changed"
         )
         TicketActivityLog.objects.create(
             ticket     = instance,
-            actor      = None,   # actor is set by the service layer when possible
+            actor      = None,   # actor is patched by the service layer
             action     = action,
             from_value = old.status,
             to_value   = instance.status,
         )
+        # Note: resolved_at is set by ticket_service.update_status() which controls
+        # update_fields. Setting it here would be ignored when update_fields is used.
 
-    # Priority change
+    # ── Priority change ────────────────────────────────────────────
     if old.priority != instance.priority:
         TicketActivityLog.objects.create(
             ticket     = instance,
@@ -106,7 +100,7 @@ def log_ticket_status_change(sender, instance, **kwargs):
             to_value   = instance.priority,
         )
 
-    # Severity change
+    # ── Severity change ────────────────────────────────────────────
     if old.severity != instance.severity:
         TicketActivityLog.objects.create(
             ticket     = instance,
@@ -115,29 +109,6 @@ def log_ticket_status_change(sender, instance, **kwargs):
             from_value = old.severity,
             to_value   = instance.severity,
         )
-
-
-# ── Signal 3: Stamp resolved_at on resolution ────────────────────
-
-@receiver(pre_save, sender="support_app.Ticket")
-def set_ticket_resolved_at(sender, instance, **kwargs):
-    """
-    Set resolved_at timestamp the moment a ticket moves to "resolved".
-
-    WHY not just set this in the view?
-      If anyone resolves a ticket from admin panel, a Celery task, or a
-      management command — they'd all need to remember to set resolved_at.
-      A signal guarantees it happens regardless of who triggers the save.
-    """
-    if not instance.pk:
-        return
-    try:
-        old = sender.objects.get(pk=instance.pk)
-    except sender.DoesNotExist:
-        return
-
-    if old.status != "resolved" and instance.status == "resolved":
-        instance.resolved_at = timezone.now()
 
 
 # ── Signal 4: Log ticket creation ────────────────────────────────

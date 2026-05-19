@@ -51,7 +51,19 @@ export const useAuthStore = create((set) => ({
     set({ user });
   },
 
-  logout: () => {
+  logout: async () => {
+    const refresh = localStorage.getItem("refresh_token");
+    // Blacklist the refresh token on the server so it can't be reused.
+    // Fire-and-forget: even if the API call fails (e.g. server unreachable),
+    // we still clear local state so the user is logged out in the browser.
+    if (refresh) {
+      try {
+        const { default: apiClient } = await import("../api/client");
+        await apiClient.post("/auth/logout/", { refresh });
+      } catch {
+        // Intentionally swallowed — local logout always proceeds.
+      }
+    }
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("user");

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import apiClient from "../../api/client";
 import MainLayout from "../../components/layouts/MainLayout";
@@ -10,9 +10,20 @@ export default function AdminDashboard() {
   const [tickets, setTickets]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch]       = useState("");
   const [status, setStatus]       = useState("");
   const [count, setCount]         = useState(0);
+  const debounceRef               = useRef(null);
+
+  // Debounce: only update the actual search param 400ms after the user stops typing.
+  // Without this, every keystroke fires a new API call.
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearchInput(val);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setSearch(val), 400);
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -51,8 +62,8 @@ export default function AdminDashboard() {
         <input
           type="text"
           placeholder="Search tickets…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchInput}
+          onChange={handleSearchChange}
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-56"
         />
         <select

@@ -36,6 +36,11 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    volumes:
+      # Persist Redis data so Celery task results and cache survive restarts.
+      # Without this, every `docker compose down` wipes the queue and cache.
+      - redis_data:/data
+    command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -128,3 +133,4 @@ services:
 # ── Named Volumes ────────────────────────────────────────────────
 volumes:
   postgres_data:
+  redis_data:

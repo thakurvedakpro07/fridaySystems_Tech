@@ -27,6 +27,7 @@ API VERSIONING NOTE:
   The views themselves are version-agnostic — no code changes required.
 """
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 
@@ -205,7 +206,9 @@ class TicketListCreateView(generics.ListCreateAPIView):
         return TicketListSerializer
 
     def get_queryset(self):
-        qs = Ticket.objects.filter(customer=self.request.user.customer_profile)
+        qs = Ticket.objects.filter(
+            customer=self.request.user.customer_profile
+        ).select_related("customer__user", "assigned_to__user")
 
         status_filter = self.request.query_params.get("status")
         if status_filter:
@@ -253,9 +256,12 @@ class TicketDetailView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
 
     def get_queryset(self):
+        qs = Ticket.objects.select_related("customer__user", "assigned_to__user")
         if self.request.user.is_staff:
-            return Ticket.objects.all()
-        return Ticket.objects.filter(customer=self.request.user.customer_profile)
+            return qs
+        if hasattr(self.request.user, "freelancer_profile"):
+            return qs.filter(assigned_to=self.request.user.freelancer_profile)
+        return qs.filter(customer=self.request.user.customer_profile)
 
 
 class TicketCommentListCreateView(generics.ListCreateAPIView):
@@ -268,27 +274,29 @@ class TicketCommentListCreateView(generics.ListCreateAPIView):
 
     def _get_ticket(self):
         """
-        Fetch the ticket and enforce ownership in one place.
-        - Staff: any ticket
-        - Customer: only own tickets (404 otherwise)
-        - Freelancer: only assigned tickets
-        - Anyone else: 403
+        Fetch the ticket and enforce ownership, cached on the view instance
+        so get_queryset() and perform_create() share the same DB lookup.
         """
-        if self.request.user.is_staff:
-            return get_object_or_404(Ticket, pk=self.kwargs["ticket_id"])
-        if hasattr(self.request.user, "freelancer_profile"):
-            return get_object_or_404(
-                Ticket,
-                pk=self.kwargs["ticket_id"],
-                assigned_to=self.request.user.freelancer_profile,
-            )
-        if hasattr(self.request.user, "customer_profile"):
-            return get_object_or_404(
-                Ticket,
-                pk=self.kwargs["ticket_id"],
-                customer=self.request.user.customer_profile,
-            )
-        raise PermissionDenied()
+        if not hasattr(self, "_cached_ticket"):
+            user = self.request.user
+            if user.is_staff:
+                ticket = get_object_or_404(Ticket, pk=self.kwargs["ticket_id"])
+            elif hasattr(user, "freelancer_profile"):
+                ticket = get_object_or_404(
+                    Ticket,
+                    pk=self.kwargs["ticket_id"],
+                    assigned_to=user.freelancer_profile,
+                )
+            elif hasattr(user, "customer_profile"):
+                ticket = get_object_or_404(
+                    Ticket,
+                    pk=self.kwargs["ticket_id"],
+                    customer=user.customer_profile,
+                )
+            else:
+                raise PermissionDenied()
+            self._cached_ticket = ticket
+        return self._cached_ticket
 
     def get_queryset(self):
         ticket = self._get_ticket()
@@ -414,7 +422,33 @@ def payment_invoice(request, pk):
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 def payment_webhook(request):
-    """POST /api/payments/webhook/ — Razorpay webhook (HMAC TODO in Phase 5)."""
+    """
+    POST /api/payments/webhook/ — Razorpay webhook receiver.
+
+    SECURITY NOTE: Before adding any real payment logic here you MUST:
+      1. Verify the X-Razorpay-Signature header using HMAC-SHA256
+         with RAZORPAY_WEBHOOK_SECRET from settings.
+      2. Check the payment_id was not already processed (idempotency).
+      3. Only then update ticket/payment state.
+
+    Current stub — safely returns 200 with no side effects.
+    """
+    import hashlib
+    import hmac
+
+    webhook_secret = getattr(settings, "RAZORPAY_WEBHOOK_SECRET", "")
+    if webhook_secret:
+        signature = request.headers.get("X-Razorpay-Signature", "")
+        body      = request.body
+        expected  = hmac.new(
+            webhook_secret.encode(), body, hashlib.sha256
+        ).hexdigest()  # type: ignore[attr-defined]
+        if not hmac.compare_digest(expected, signature):
+            return Response(
+                {"detail": "Invalid signature."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
     return Response({"received": True})
 
 
@@ -479,7 +513,9 @@ class FreelancerTicketListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated, IsFreelancer]
 
     def get_queryset(self):
-        qs = Ticket.objects.filter(assigned_to=self.request.user.freelancer_profile)
+        qs = Ticket.objects.filter(
+            assigned_to=self.request.user.freelancer_profile
+        ).select_related("customer__user", "assigned_to__user")
         status_filter = self.request.query_params.get("status")
         if status_filter:
             qs = qs.filter(status=status_filter)
@@ -496,7 +532,9 @@ class FreelancerTicketDetailView(generics.RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticated, IsFreelancer]
 
     def get_queryset(self):
-        return Ticket.objects.filter(assigned_to=self.request.user.freelancer_profile)
+        return Ticket.objects.filter(
+            assigned_to=self.request.user.freelancer_profile
+        ).select_related("customer__user", "assigned_to__user")
 
 
 @api_view(["POST"])
@@ -561,7 +599,7 @@ class AdminTicketListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated, IsAdminUser]
 
     def get_queryset(self):
-        qs = Ticket.objects.all()
+        qs = Ticket.objects.select_related("customer__user", "assigned_to__user")
 
         status_filter = self.request.query_params.get("status")
         if status_filter:

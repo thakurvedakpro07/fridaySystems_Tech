@@ -43,12 +43,18 @@ apiClient.interceptors.response.use(
           refresh: refreshToken,
         });
         localStorage.setItem("access_token", data.access);
+        // Django rotates refresh tokens (ROTATE_REFRESH_TOKENS=True) — save the new one
+        // or the next refresh attempt will fail with 401 (old token is blacklisted).
+        if (data.refresh) {
+          localStorage.setItem("refresh_token", data.refresh);
+        }
         originalRequest.headers.Authorization = `Bearer ${data.access}`;
         return apiClient(originalRequest); // retry the original request
       } catch {
         // Refresh failed — clear tokens and redirect to login
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
+        localStorage.removeItem("user");
         window.location.href = "/login";
       }
     }
