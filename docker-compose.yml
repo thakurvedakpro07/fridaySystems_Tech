@@ -1,12 +1,13 @@
 # ─────────────────────────────────────────────────────────────────
 # docker-compose.yml  —  LOCAL DEVELOPMENT
 #
-# Starts 5 services that talk to each other over a private network:
-#   db        → PostgreSQL database
-#   redis     → Redis (Celery task queue + caching)
-#   backend   → Django API (port 8000)
-#   celery    → Celery worker (processes background tasks)
-#   frontend  → React/Vite dev server (port 5173)
+# Starts 6 services that talk to each other over a private network:
+#   db          → PostgreSQL database
+#   redis       → Redis (Celery task queue + caching)
+#   backend     → Django API (port 8000)
+#   celery      → Celery worker (processes background tasks)
+#   celerybeat  → Celery Beat scheduler (recurring tasks)
+#   frontend    → React/Vite dev server (port 5173)
 # ─────────────────────────────────────────────────────────────────
 
 services:
@@ -47,23 +48,20 @@ services:
       context: .
       dockerfile: Dockerfile.backend
     env_file:
-      - .env
+      # FIXED: was "- .env" which pointed at a non-existent root-level file.
+      # backend/.env is where SECRET_KEY, DATABASE_URL, REDIS_URL, etc. live.
+      - backend/.env
     ports:
       - "8000:8000"
     volumes:
-      # Mount source code so Django's --reload picks up your edits
+      # Mount source code so Gunicorn's --reload picks up your edits
       - ./backend:/app
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: >
-      sh -c "python manage.py migrate &&
-             gunicorn supportmitra.wsgi:application
-               --bind 0.0.0.0:8000
-               --reload
-               --workers 2"
+    command: sh -c "python manage.py collectstatic --noinput && python manage.py migrate && gunicorn supportmitra.wsgi:application --bind 0.0.0.0:8000 --reload --workers 2"
 
   # ── Celery Worker ────────────────────────────────────────────────
   # Picks up background tasks (emails, SLA checks, etc.)
@@ -72,12 +70,15 @@ services:
       context: .
       dockerfile: Dockerfile.backend
     env_file:
-      - .env
+      # FIXED: same env_file path correction as backend
+      - backend/.env
     volumes:
       - ./backend:/app
     depends_on:
-      - backend
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     command: celery -A supportmitra worker --loglevel=info
 
   # ── Celery Beat (Scheduler) ──────────────────────────────────────
@@ -87,7 +88,8 @@ services:
       context: .
       dockerfile: Dockerfile.backend
     env_file:
-      - .env
+      # FIXED: same env_file path correction as backend
+      - backend/.env
     volumes:
       - ./backend:/app
     depends_on:
@@ -99,10 +101,18 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+    environment:
+      # ADDED: tells Vite's proxy where to forward /api/* requests.
+      # Inside Docker, "localhost" means the frontend container itself —
+      # not the Django container. "backend" is the Docker service name,
+      # which Docker's private DNS resolves to the backend container's IP.
+      # vite.config.js reads this via process.env.VITE_API_TARGET and
+      # falls back to http://localhost:8000 when running without Docker.
+      VITE_API_TARGET: http://backend:8000
     ports:
       - "5173:5173"
     volumes:
-      # Mount source so Vite's HMR (hot reload) works
+      # Mount source so Vite's HMR (hot reload) works without a rebuild
       - ./frontend/src:/app/src
       - ./frontend/index.html:/app/index.html
     depends_on:

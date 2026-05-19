@@ -24,6 +24,7 @@ python-dotenv==1.0.1
 
 # ── Web server ───────────────────────────────────────────────────
 gunicorn==22.0.0
+whitenoise==6.7.0          # serve static files directly from Gunicorn (no nginx needed)
 
 # ── Payments ─────────────────────────────────────────────────────
 razorpay==1.4.1

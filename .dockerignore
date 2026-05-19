@@ -1,0 +1,49 @@
+# ─────────────────────────────────────────────────────────────────
+# .dockerignore
+#
+# Tells Docker which files NOT to send to the build daemon when
+# building an image. Keeps the build context small and fast, and
+# prevents local platform-specific binaries from leaking in.
+# ─────────────────────────────────────────────────────────────────
+
+# Python virtual environments — pip install runs inside the container
+backend/.venv
+backend/venv
+
+# Python bytecode
+backend/__pycache__
+backend/**/__pycache__
+backend/**/*.pyc
+backend/**/*.pyo
+
+# Local SQLite database (containers use PostgreSQL)
+backend/db.sqlite3
+
+# Django collected static files (generated inside the container)
+backend/staticfiles/
+backend/mediafiles/
+
+# Node modules — npm install runs inside the container
+# Without this, your local node_modules (compiled for macOS/Windows)
+# overwrites the container's Linux node_modules → crashes at runtime
+frontend/node_modules/
+
+# Vite production build output (not needed in the dev image)
+frontend/dist/
+
+# Git history — not needed inside images
+.git
+.gitignore
+
+# Docker files themselves (no need to copy them in)
+.dockerignore
+Dockerfile.backend
+Dockerfile.frontend
+docker-compose.yml
+docker-compose.prod.yml
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo

@@ -11,6 +11,10 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 # Ensures print() and logging output appear in Docker logs immediately
 ENV PYTHONUNBUFFERED=1
+# Tells Django which settings module to use — needed by gunicorn, celery,
+# and management commands so they all find the same config without any
+# extra flags
+ENV DJANGO_SETTINGS_MODULE=supportmitra.settings
 
 WORKDIR /app
 
