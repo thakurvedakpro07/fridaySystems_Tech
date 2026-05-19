@@ -2,6 +2,137 @@
 
 ---
 
+## 2026-05-19 — Phase 7: Zero-Bug Stabilization + Phase 8: Manual E2E Testing + Docs
+
+### Completed Today
+
+**Phase 7 — Zero-Bug Stabilization (8 critical/high-severity engineering fixes)**
+
+* Fixed double-logout race condition — `useAuth.js` was calling `logoutApi()` twice (once explicitly, once inside `storeLogout()`), causing a second blacklist attempt on an already-invalidated token; removed the duplicate call and added `await storeLogout()` so the success toast fires after auth state is fully cleared
+* Added `transaction.atomic()` to all multi-step service operations — `assign_ticket`, `unassign_ticket`, `add_comment`, and `update_status` in `ticket_service.py` now execute atomically; any partial failure rolls back all changes, preventing inconsistent DB state
+* Created `FreelancerPublicSerializer` to prevent internal field leakage — original `FreelancerSerializer` exposed `contract_signed`, `onboarding_status`, and `active` to any authenticated user; new serializer exposes only `id`, `email`, `skills`, `availability`, `rating`; wired into `TicketDetailSerializer.assigned_to`
+* Added `list_select_related` to Django admin — `TicketAdmin` and `TicketActivityLogAdmin` were firing N+1 queries (one per row) on every admin list page; `list_select_related = ["customer__user", "assigned_to__user"]` reduces this to a single JOIN; also made `TicketCommentInline` fully read-only (`can_delete = False`, all fields in `readonly_fields`)
+* Protected `/metrics/` endpoint — Prometheus metrics were publicly accessible; wrapped with `staff_member_required` decorator so non-staff users receive a 302 redirect to the admin login page
+* Added composite database indexes — `TicketActivityLog(ticket, action)` and `Notification(recipient, is_read)` were missing indexes; the two most-used query patterns both filter on two columns, making single-column indexes insufficient; created via `0004_phase7_composite_indexes.py` migration
+* Added `safeLocalStorage()` wrapper in `authStore.js` — `localStorage.getItem()` throws `DOMException` in Safari private browsing mode; wrapped in try/catch that returns `null` on failure, preventing app crash on initialization
+* Extended ticket number from 5 to 8 hex characters — 5 chars = ~1M unique values; birthday-paradox collision probability becomes significant after ~1,000 tickets; 8 chars = ~4B values; collision-safe at any realistic MVP scale
+
+**Phase 8 — Full Manual End-to-End Testing (70 test scenarios, 3 user roles)**
+
+* Ran 70 E2E test scenarios across auth, customer workflow, admin workflow, freelancer workflow, permission boundaries, failure states, notification flow, and DB consistency checks — 66/70 passed on first run
+* Fixed BUG-001: `POST /api/tickets/` returned only write fields (no `id` or `ticket_number`) — `TicketListCreateView.perform_create` set `serializer.instance = ticket` but the serializer was `TicketCreateSerializer` which has no read fields; overrode `create()` to explicitly return `TicketListSerializer(ticket).data` in the HTTP 201 response
+* Fixed BUG-002: `NewTicket.jsx` navigated to `/dashboard` after creation instead of the new ticket's detail page — `navigate("/dashboard")` was hardcoded and the API response was discarded; changed to `const { data } = await createTicket(formData); navigate(\`/tickets/${data.id}\`)`
+* Fixed BUG-004: `assign_ticket` left `actor=None` on the auto-generated `status_changed` activity log — when `assign_ticket` called `ticket.save()` directly, `log_ticket_changes` pre_save signal fired with no actor context; added an actor-patch query immediately after `ticket.save()` to back-fill the actor, mirroring the existing pattern in `update_status`
+* Fixed BUG-005: `resolved_at` persisted on the ticket after it was reopened — `update_status` only set `resolved_at` when transitioning *to* `resolved`; added `elif new_status not in ("resolved", "closed") and old_status == "resolved": ticket.resolved_at = None` to clear it on reopen
+* Fixed BUG-006: `TicketForm.jsx` had no priority field — all tickets were created with `priority="medium"` regardless of urgency because the `priority` form field was initialised in state but never rendered; added `PRIORITIES` constant and a `<select>` dropdown between Severity and Description
+* Fixed BUG-007: Freelancers hit `403 Forbidden` on `/dashboard` — `Dashboard.jsx` calls `GET /api/tickets/` which has `IsCustomer` permission; freelancers always got a raw Axios error; added a role guard (`if user?.role === "freelancer"`) that renders a clean "Freelancer Portal — coming soon" placeholder instead
+* BUG-003 documented as non-blocking — `GET /api/admin/tickets/{id}/` returns 404 (no admin-specific detail endpoint exists); admins can use `/api/tickets/{id}/` instead as `TicketDetailView` already allows `is_staff`; noted for Phase 9 API cleanup
+* All 73 pytest tests pass after Phase 7 + Phase 8 fixes — zero regressions
+* Generated final MVP Stability Score: **8.15 / 10 — Ready for Controlled Beta Launch**
+
+**Documentation Update**
+
+* Updated `docs/COMPLETE_BEGINNER_GUIDE.md` — merged all Phase 5–8 content into existing structure without rewriting; added Sections 17–20 (Authentication Architecture, Production Engineering, QA & Testing Workflow, Project Status & Roadmap); updated models table (11 → 14), signals explanation (5 → 8 hex chars), service layer (stubs → implemented), component hierarchy (full tree), hooks table, request flow (transaction.atomic + correct redirect); expanded glossary by 22 terms; added test commands to cheat sheet (+538 lines total)
+
+---
+
+### Files Created
+
+* `docs/COMPLETE_MANUAL_TEST_REPORT.md` — 70 E2E test cases with pass/fail results, all 7 bugs documented with root cause and fix, DB consistency checks
+* `docs/UX_IMPROVEMENT_REPORT.md` — full UX audit across loading states, empty states, error messages, forms, navigation, mobile, notifications, accessibility; 13 issues with effort/priority ratings; 10 UX patterns confirmed working well
+* `docs/FINAL_MVP_STABILITY_SCORE.md` — 8-category weighted stability scorecard (8.15 / 10), "must fix before public launch" checklist, phase progress summary, full bug history across Phases 6–8
+* `backend/support_app/migrations/0004_phase7_composite_indexes.py` — migration that applies `idx_activity_log_ticket_action` and `idx_notif_recipient_read` composite indexes
+
+---
+
+### Files Modified
+
+**Phase 7:**
+* `frontend/src/hooks/useAuth.js` — removed duplicate `logoutApi()` call; changed `storeLogout()` → `await storeLogout()`; removed unused `logoutApi` import
+* `backend/support_app/services/ticket_service.py` — added `transaction.atomic()` to `assign_ticket`, `unassign_ticket`, `add_comment`, `update_status`; added actor-patch logic in `assign_ticket`; added `resolved_at` clear on reopen in `update_status`
+* `backend/support_app/serializers.py` — added `FreelancerPublicSerializer`; updated `TicketDetailSerializer` to use it for `assigned_to`; removed `notes` from `TicketDetailSerializer.fields`
+* `backend/support_app/admin.py` — added `list_select_related` to `TicketAdmin` and `TicketActivityLogAdmin`; made `TicketCommentInline` fully read-only
+* `backend/supportmitra/urls.py` — wrapped `prometheus_exports.ExportToDjangoView` with `staff_member_required`
+* `backend/support_app/models.py` — added `idx_activity_log_ticket_action` and `idx_notif_recipient_read` index definitions to model `Meta`
+* `backend/support_app/signals.py` — extended ticket number from `[-5:]` to `[-8:]`
+* `frontend/src/store/authStore.js` — added `safeLocalStorage()` and `loadStoredUser()` helpers; updated `isAuthenticated` initialiser to use `safeLocalStorage`
+
+**Phase 8:**
+* `backend/support_app/views.py` — replaced `perform_create()` with full `create()` override in `TicketListCreateView`; returns `TicketListSerializer(ticket).data` in HTTP 201 response
+* `frontend/src/pages/NewTicket.jsx` — changed to capture `data` from `createTicket()` response; redirects to `/tickets/${data.id}` instead of `/dashboard`
+* `frontend/src/components/tickets/TicketForm.jsx` — added `PRIORITIES` constant; added `priority: "medium"` to initial form state; added priority `<select>` dropdown
+* `frontend/src/pages/Dashboard.jsx` — added `useAuthStore` import and `user` selector; added freelancer role guard rendering placeholder
+
+**Documentation:**
+* `docs/COMPLETE_BEGINNER_GUIDE.md` — merged all Phase 5–8 architecture content (see above)
+
+---
+
+### Bugs Fixed
+
+* **Double-logout race condition** — `logoutApi()` called twice; second call hit an already-blacklisted token; removed duplicate; `await storeLogout()` ensures sequential execution
+* **No transaction safety on multi-step DB operations** — a crash in step 3 of a 4-step assignment would leave the ticket partially updated; all service functions now use `transaction.atomic()`
+* **Freelancer internal data exposed in API** — `contract_signed`, `onboarding_status`, `active` were visible to any authenticated user via `TicketDetailSerializer`; replaced with `FreelancerPublicSerializer`
+* **N+1 queries in Django admin list views** — each row in the admin ticket list fired a separate `SELECT` for the customer and freelancer; fixed with `list_select_related`
+* **`/metrics/` publicly accessible** — Prometheus metrics endpoint had no authentication; any visitor could view request counts, latency, DB query counts; protected with `staff_member_required`
+* **Missing composite indexes** — queries on `(ticket, action)` and `(recipient, is_read)` were doing full-table scans; two composite indexes added
+* **`localStorage` throws in private browsing** — Safari's private mode raises `DOMException` on any `localStorage` access; `safeLocalStorage()` wrapper catches and returns `null`
+* **Ticket number collision risk** — 5 hex chars (~1M space); birthday-paradox collision likely after ~1,000 tickets; extended to 8 chars (~4B space)
+* **BUG-001: `POST /api/tickets/` returned no `id`** — wrong serializer class used in response; overrode `create()` to return `TicketListSerializer`
+* **BUG-002: Ticket creation redirected to dashboard** — `navigate("/dashboard")` hardcoded; fixed to `navigate(\`/tickets/${data.id}\`)`
+* **BUG-004: Activity log `actor=None` on assignment** — `assign_ticket` bypassed `update_status` actor-patching; added post-save actor-patch query
+* **BUG-005: `resolved_at` not cleared on reopen** — `update_status` only set, never cleared; added `elif` branch
+* **BUG-006: No priority field in ticket form** — `priority` initialised in state but never rendered; added `<select>` dropdown
+* **BUG-007: Freelancers saw 403 on dashboard** — no role guard; added early return with "coming soon" placeholder
+
+---
+
+### Pending Issues
+
+* **`SECRET_KEY` is still `django-insecure-...`** — must be replaced with a 50+ char random string before any real users are onboarded
+* **`DEBUG=1` in backend `.env`** — must be set to `0` in production; currently exposes stack traces on 500 errors
+* **`SENTRY_DSN` not configured** — `sentry-sdk` is installed but `SENTRY_DSN` is blank; production errors will go undetected without it
+* **`structlog` installed but unconfigured** — structured logging middleware is a stub; not producing structured output yet
+* **No frontend tests** — zero Cypress or Playwright tests; no browser-level regression protection
+* **No CI pipeline** — GitHub Actions file exists but is not functional; tests are not run automatically on push
+* **Celery tasks are all stubs** — `send_ticket_opened_email`, `check_sla_breaches`, etc. all contain `pass`; background work does not happen
+* **Razorpay payment flow not wired** — tickets remain at `pending_payment` status indefinitely without a real payment integration
+* **Freelancer dashboard is a placeholder** — `Dashboard.jsx` shows "coming soon" for freelancers; no real assigned-ticket view exists
+* **BUG-003 (documented, non-blocking)** — `GET /api/admin/tickets/{id}/` returns 404; admins use `/api/tickets/{id}/` as a workaround; API cleanup deferred to Phase 9
+* **`ALLOWED_HOSTS` must be restricted** — currently `localhost,127.0.0.1,backend`; must be set to the exact production domain before deployment
+* **HTTPS not configured** — JWT tokens sent over plain HTTP in production would be interceptable
+
+---
+
+### Architecture Decisions
+
+* **`FreelancerPublicSerializer` as a separate class** — rather than adding conditional field exclusion logic to one serializer, a dedicated read-only public serializer is cheaper and clearer; it is impossible to accidentally expose a private field when the serializer never declares it
+* **Actor-patch pattern for signal-triggered activity logs** — Django's `pre_save` signal has no caller context, so service functions that call `ticket.save()` directly must immediately query and back-fill the `actor` field on the just-created log entry; this is an accepted pattern given that the alternative (passing actor into every signal) would require monkey-patching Django internals
+* **`transaction.atomic()` as the default for service functions** — every service function that touches more than one table is wrapped; functions that touch only one table (simple reads) are exempt; this is the minimum correct policy for a transactional support workflow
+* **`safeLocalStorage()` as the only access point for localStorage** — all future reads from localStorage should go through this wrapper; raw `localStorage.getItem()` calls should not be introduced elsewhere in the codebase
+* **`TicketListSerializer` used in `create()` response** — `TicketCreateSerializer` is write-only by design; using it in the response would require adding read fields to a write serializer, blurring its responsibility; a clean `create()` override that returns a different serializer is the correct DRF pattern
+* **Stability score methodology** — 8 weighted categories (not a single pass/fail verdict) allow targeted investment: a 6.0 in Observability doesn't block beta, but it clearly identifies the next area to improve
+
+---
+
+### Next Step
+
+* **Phase 9 — Razorpay consulting fee payment integration** (highest business value increment):
+  1. Implement `payment_service.create_consulting_fee_order(ticket, customer)` using Razorpay SDK
+  2. Wire into `TicketListCreateView.create()` — call after ticket save, return `checkout_url` in the 201 response
+  3. In `NewTicket.jsx` — change from `navigate(\`/tickets/${data.id}\`)` to `window.location.href = data.checkout_url`
+  4. Implement `payment_webhook` view with HMAC-SHA256 signature verification
+  5. On verified webhook: transition ticket to `open` status, create `Payment` record
+  6. Add tests for full payment + webhook flow
+
+* **Pre-beta production hardening** (run before any real user onboards):
+  1. Replace `SECRET_KEY` with a random 50+ char key
+  2. Set `DEBUG=0`, `ALLOWED_HOSTS=<production-domain>`, configure HTTPS
+  3. Set `SENTRY_DSN` for error tracking
+  4. Tune DRF throttle rates
+
+---
+
 ## 2026-05-19 — Docker Infrastructure Stabilisation + Full Environment Audit
 
 ### Completed Today
