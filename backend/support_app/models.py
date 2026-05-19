@@ -229,50 +229,149 @@ class Freelancer(models.Model):
         ordering = ["-rating"]
 
 
+# ── Ticket System ────────────────────────────────────────────────
+#
+# The ticket is the central object in SupportMitra. Everything else
+# (comments, attachments, activity logs, assignments) hangs off it.
+#
+# Design principles applied here:
+#   1. UUIDs everywhere — safe to expose in URLs, non-guessable
+#   2. ForeignKeys instead of raw UUIDs — database enforces relationships
+#   3. Separate priority AND severity — they measure different things
+#   4. Status as a string field — readable in logs, easy to add new states
+#   5. Timestamps on every important event — SLA, debugging, billing
+
+
 class Ticket(models.Model):
     """
-    A support request opened by a customer.
+    A support request raised by a customer.
+
+    The Ticket is the single source of truth for one support incident.
+    It records: who raised it, what service is needed, how urgent it is,
+    who is handling it, and what state it is currently in.
+
+    Lifecycle:
+      pending_payment → open → in_progress → waiting_customer
+                                           → resolved → closed
     """
+
+    # ── Service catalogue ─────────────────────────────────────────
+    # Each service type maps to a different resolution fee and SLA target.
+    # Adding a new service = add one tuple here + update SLAPolicy table.
     SERVICE_CHOICES = [
-        ("desktop", "Desktop / Laptop Support"),
-        ("linux", "Linux Provisioning"),
-        ("windows", "Windows Provisioning"),
+        ("desktop",  "Desktop / Laptop Support"),
+        ("linux",    "Linux Provisioning"),
+        ("windows",  "Windows Provisioning"),
         ("patching", "OS Patching"),
         ("security", "Security Hardening"),
-        ("vmware", "VMware / Hypervisor"),
-        ("sap", "SAP Basis Lite"),
-    ]
-    SEVERITY_CHOICES = [
-        ("low", "Low"),
-        ("medium", "Medium"),
-        ("high", "High"),
-        ("critical", "Critical"),
-    ]
-    STATUS_CHOICES = [
-        ("pending_payment", "Pending Payment"),
-        ("open", "Open"),
-        ("assigned", "Assigned"),
-        ("in_progress", "In Progress"),
-        ("resolved", "Resolved"),
-        ("closed", "Closed"),
+        ("vmware",   "VMware / Hypervisor"),
+        ("sap",      "SAP Basis Lite"),
     ]
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name="tickets")
+    # ── Severity — TECHNICAL impact ───────────────────────────────
+    # How badly is the system broken?
+    # "critical" = complete outage, all users blocked
+    # "low"      = cosmetic issue, workaround available
+    # Used by SLA engine to set response/resolution time targets.
+    SEVERITY_CHOICES = [
+        ("low",      "Low — Minor inconvenience"),
+        ("medium",   "Medium — Partial degradation"),
+        ("high",     "High — Major function blocked"),
+        ("critical", "Critical — Complete outage"),
+    ]
+
+    # ── Priority — BUSINESS urgency ───────────────────────────────
+    # How fast does the business need this fixed?
+    # "urgent" = CEO's machine, production payment system, etc.
+    # A low-severity issue can still be urgent (e.g. CEO's mouse broken).
+    # A high-severity issue can be medium priority (dev server, no customers affected).
+    PRIORITY_CHOICES = [
+        ("low",    "Low"),
+        ("medium", "Medium"),
+        ("high",   "High"),
+        ("urgent", "Urgent"),
+    ]
+
+    # ── Status — the lifecycle state machine ──────────────────────
+    # Each status represents a distinct stage in the support workflow.
+    # Status transitions are logged automatically in TicketActivityLog.
+    #
+    # pending_payment  → customer has submitted; awaiting consulting fee payment
+    # open             → payment received; ticket visible to admin queue
+    # assigned         → freelancer assigned; they haven't started yet
+    # in_progress      → freelancer is actively working
+    # waiting_customer → freelancer needs info or action from customer
+    # resolved         → freelancer marks fixed; customer can confirm or reopen
+    # closed           → customer confirmed OR auto-closed after 48h
+    STATUS_CHOICES = [
+        ("pending_payment",  "Pending Payment"),
+        ("open",             "Open"),
+        ("assigned",         "Assigned"),
+        ("in_progress",      "In Progress"),
+        ("waiting_customer", "Waiting for Customer"),
+        ("resolved",         "Resolved"),
+        ("closed",           "Closed"),
+    ]
+
+    # ── Core identity fields ──────────────────────────────────────
+    id            = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     ticket_number = models.CharField(max_length=16, unique=True, blank=True)
-    title = models.CharField(max_length=255)
+
+    # ── Ownership ─────────────────────────────────────────────────
+    # PROTECT means: cannot delete a Customer who has tickets.
+    # This protects business records. If a customer churns, we archive them,
+    # not delete them.
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.PROTECT,
+        related_name="tickets",
+    )
+
+    # ── Problem description ───────────────────────────────────────
+    title       = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     service_type = models.CharField(max_length=32, choices=SERVICE_CHOICES)
+
+    # ── Urgency fields ────────────────────────────────────────────
     severity = models.CharField(max_length=16, choices=SEVERITY_CHOICES, default="medium")
+    priority = models.CharField(max_length=16, choices=PRIORITY_CHOICES,  default="medium")
+
+    # ── Workflow state ────────────────────────────────────────────
     status = models.CharField(max_length=32, choices=STATUS_CHOICES, default="pending_payment")
+
+    # ── Assignment ────────────────────────────────────────────────
+    # SET_NULL means: if a Freelancer account is deleted, ticket stays
+    # open but becomes unassigned. The TicketAssignment table preserves
+    # the history of who was previously assigned.
     assigned_to = models.ForeignKey(
-        Freelancer, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_tickets"
+        Freelancer,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="assigned_tickets",
     )
-    remote_session_url = models.URLField(max_length=512, blank=True)
-    external_ticket_id = models.CharField(max_length=255, blank=True)
-    notes = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+
+    # ── SLA tracking ──────────────────────────────────────────────
+    # first_response_at: when the FIRST public comment was posted by non-customer.
+    # Used to measure "first response SLA" compliance.
+    first_response_at   = models.DateTimeField(null=True, blank=True)
+    # due_at: SLA deadline for resolution. Set when ticket moves to "open".
+    due_at              = models.DateTimeField(null=True, blank=True)
+    # sla_breach_notified: prevents sending duplicate breach alerts.
+    sla_breach_notified = models.BooleanField(default=False)
+
+    # ── Tooling ───────────────────────────────────────────────────
+    # remote_session_url: AnyDesk / TeamViewer link shared with customer.
+    remote_session_url  = models.URLField(max_length=512, blank=True)
+    # external_ticket_id: if customer also uses Jira/Freshdesk, store cross-reference.
+    external_ticket_id  = models.CharField(max_length=255, blank=True)
+    # notes: admin-level freeform notes. Internal comments (TicketComment with
+    # is_internal=True) are preferred for structured notes, but this field
+    # handles quick admin annotations without creating a comment thread entry.
+    notes               = models.TextField(blank=True)
+
+    # ── Timestamps ───────────────────────────────────────────────
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
@@ -280,27 +379,69 @@ class Ticket(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            # Composite index: admin dashboard loads tickets by status + customer often.
+            # Without this, each page load does a full table scan.
+            models.Index(fields=["status", "customer"], name="idx_ticket_status_customer"),
+            models.Index(fields=["assigned_to", "status"], name="idx_ticket_assigned_status"),
+        ]
 
 
 class TicketComment(models.Model):
     """
-    A message thread on a ticket (customer, freelancer, or admin can comment).
-    """
-    AUTHOR_TYPE_CHOICES = [
-        ("customer", "Customer"),
-        ("freelancer", "Freelancer"),
-        ("admin", "Admin"),
-    ]
+    One message in the conversation thread on a ticket.
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    Three types of participants can comment:
+      - Customer   (always sees all non-internal comments)
+      - Freelancer (sees and writes public + internal)
+      - Admin      (sees everything, can write internal-only notes)
+
+    is_internal = True  → "private note" — only freelancer + admin can read it.
+                           Hidden from customer.
+    is_internal = False → "public message" — all parties can read it.
+
+    WHY separate from AuditLog?
+      AuditLog tracks system events (login, payment, delete).
+      TicketComment is the human conversation — it has a body, can be
+      edited (is_edited=True), and is surfaced in the customer-facing UI.
+
+    WHY ForeignKey instead of author_id + author_type (old design)?
+      A raw UUIDField has no database-level enforcement. If the user is
+      deleted, the UUID becomes a dangling reference — nothing catches it.
+      With ForeignKey + SET_NULL, the database automatically sets author=NULL
+      when the user is deleted, and your code handles it cleanly.
+    """
+
+    id     = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="comments")
-    author_id = models.UUIDField()
-    author_type = models.CharField(max_length=16, choices=AUTHOR_TYPE_CHOICES)
-    body = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
+
+    # author → who posted this comment.
+    # SET_NULL: if user is deleted, comment body is preserved (important for
+    # legal/audit reasons) but author becomes NULL ("Deleted User").
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="ticket_comments",
+    )
+
+    body       = models.TextField()
+
+    # is_internal: True = admin/freelancer private note, hidden from customer.
+    # This enables "thinking out loud" without alarming customers.
+    is_internal = models.BooleanField(default=False)
+
+    # is_edited: True = the body was changed after posting.
+    # Displayed as "(edited)" in the UI — transparency to all parties.
+    is_edited   = models.BooleanField(default=False)
+
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Comment on {self.ticket.ticket_number} by {self.author_type}"
+        author_label = self.author.email if self.author else "Deleted User"
+        visibility   = "internal" if self.is_internal else "public"
+        return f"[{visibility}] {author_label} on {self.ticket.ticket_number}"
 
     class Meta:
         ordering = ["created_at"]
@@ -308,20 +449,201 @@ class TicketComment(models.Model):
 
 class TicketAttachment(models.Model):
     """
-    Files uploaded to a ticket (screenshots, logs, etc.).
-    Stored in object storage; this model holds the metadata.
+    Metadata for a file attached to a ticket.
+
+    The actual file lives in AWS S3 / Google Cloud Storage.
+    This model stores ONLY the pointer to it (URL) and metadata
+    needed for display (filename, size, type).
+
+    WHY not store files in the database?
+      Databases are optimised for structured data (rows and columns).
+      Files are binary blobs — storing them in a database:
+        - Balloons the database size
+        - Slows down every backup
+        - Makes scaling expensive
+      S3/GCS is designed exactly for files — cheap, fast, infinitely scalable.
+
+    WHY track uploaded_by as ForeignKey?
+      If a malicious file is uploaded, you need to know who did it.
+      A raw UUID field (old design) gives you nothing if the user is deleted.
+      With FK + SET_NULL, you preserve the record even if the user is gone.
     """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="attachments")
-    file_name = models.CharField(max_length=255)
+    ALLOWED_MIME_TYPES = [
+        "image/png", "image/jpeg", "image/gif", "image/webp",
+        "application/pdf",
+        "text/plain", "text/csv",
+        "application/zip",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ]
+
+    id      = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    ticket  = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="attachments")
+
+    file_name   = models.CharField(max_length=255)
     storage_url = models.URLField(max_length=1024)
-    file_size = models.IntegerField(help_text="File size in bytes")
-    mime_type = models.CharField(max_length=128, blank=True)
-    uploaded_by = models.UUIDField()
+    file_size   = models.PositiveIntegerField(help_text="File size in bytes")
+    mime_type   = models.CharField(max_length=128, blank=True)
+
+    # uploaded_by: FK to user who uploaded — security audit trail.
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="ticket_attachments",
+    )
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.file_name
+        return f"{self.file_name} ({self.ticket.ticket_number})"
+
+    class Meta:
+        ordering = ["-uploaded_at"]
+
+
+class TicketActivityLog(models.Model):
+    """
+    An immutable audit trail of every significant change on a ticket.
+
+    IMMUTABLE means: rows are only INSERTED here, never UPDATED or DELETED.
+    This makes it a reliable source of truth for:
+      - Debugging ("why did this ticket take 3 days?")
+      - SLA compliance reporting
+      - Dispute resolution
+      - Performance metrics ("average resolution time by freelancer")
+      - Future ML training data
+
+    Every meaningful action on a ticket triggers one log entry:
+      - Status change
+      - Priority/severity change
+      - Assignment / reassignment
+      - First public comment
+      - Resolution / closure
+
+    WHY different from AuditLog?
+      AuditLog is system-wide: logins, payments, deletions.
+      TicketActivityLog is ticket-scoped: only ticket-level events.
+      It is shown in the customer-facing "ticket timeline" UI.
+
+    WHY store from_value and to_value as strings?
+      Status names, priority names, and email addresses are all short strings.
+      Storing them as strings means the log is self-contained — readable even
+      if the referenced records are later changed or deleted.
+    """
+
+    ACTION_CHOICES = [
+        ("created",          "Ticket Created"),
+        ("status_changed",   "Status Changed"),
+        ("priority_changed", "Priority Changed"),
+        ("severity_changed", "Severity Changed"),
+        ("assigned",         "Assigned to Freelancer"),
+        ("unassigned",       "Unassigned"),
+        ("reassigned",       "Reassigned"),
+        ("comment_added",    "Comment Added"),
+        ("resolved",         "Resolved"),
+        ("closed",           "Closed"),
+        ("reopened",         "Reopened"),
+        ("sla_breached",     "SLA Breached"),
+    ]
+
+    id     = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="activity_logs")
+
+    # actor: who triggered this event. NULL if triggered by the system
+    # (e.g. automated SLA breach detection by Celery task).
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="ticket_activities",
+    )
+
+    action     = models.CharField(max_length=32, choices=ACTION_CHOICES)
+
+    # from_value / to_value: human-readable record of the change.
+    # Examples:
+    #   status change: from_value="open"       to_value="in_progress"
+    #   assignment:    from_value=""            to_value="ravi@supportmitra.in"
+    #   reassignment:  from_value="ravi@..."   to_value="priya@..."
+    from_value = models.CharField(max_length=255, blank=True)
+    to_value   = models.CharField(max_length=255, blank=True)
+
+    # note: optional human context. Example: "Customer escalated — reassigning to senior."
+    note       = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.ticket.ticket_number} | {self.get_action_display()} at {self.created_at:%Y-%m-%d %H:%M}"
+
+    class Meta:
+        ordering = ["created_at"]
+        verbose_name      = "Activity Log"
+        verbose_name_plural = "Activity Logs"
+
+
+class TicketAssignment(models.Model):
+    """
+    The complete history of freelancer assignments for a ticket.
+
+    Ticket.assigned_to shows who is handling it RIGHT NOW.
+    TicketAssignment shows who handled it HISTORICALLY.
+
+    WHY this matters:
+      - If a ticket is reassigned, Ticket.assigned_to is overwritten.
+        The old assignment is gone with no trace.
+      - TicketAssignment preserves every row, including unassigned_at timestamp.
+      - Business use: "Ravi was assigned for 2 hours before being replaced —
+        do we pay him a partial fee?"
+      - Future ML use: assignment duration → freelancer efficiency metrics.
+
+    RELATIONSHIP to Ticket.assigned_to:
+      When you assign a ticket, BOTH are updated:
+        1. Ticket.assigned_to = freelancer  (current state)
+        2. TicketAssignment row created     (permanent history)
+      When you reassign, you ALSO:
+        3. Set unassigned_at on the old TicketAssignment row.
+
+    This dual-write is handled in ticket_service.assign_ticket().
+    """
+
+    REASON_CHOICES = [
+        ("initial",               "Initial Assignment"),
+        ("reassigned",            "Reassigned"),
+        ("freelancer_unavailable","Freelancer Unavailable"),
+        ("customer_request",      "Customer Request"),
+        ("admin_action",          "Admin Action"),
+        ("auto_assigned",         "Auto-Assigned"),
+    ]
+
+    id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    ticket     = models.ForeignKey(Ticket,     on_delete=models.CASCADE,   related_name="assignments")
+    freelancer = models.ForeignKey(Freelancer, on_delete=models.SET_NULL,  null=True,  related_name="assignment_history")
+
+    # assigned_by: the admin who made the assignment.
+    # SET_NULL: if that admin account is deleted, assignment record stays.
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="assignments_made",
+    )
+
+    assigned_at   = models.DateTimeField(auto_now_add=True)
+    # unassigned_at: NULL while assignment is active; set when freelancer is removed.
+    unassigned_at = models.DateTimeField(null=True, blank=True)
+
+    reason = models.CharField(max_length=32, choices=REASON_CHOICES, default="initial")
+    note   = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        status = "active" if self.unassigned_at is None else f"ended {self.unassigned_at:%Y-%m-%d}"
+        return f"{self.ticket.ticket_number} → {self.freelancer} ({status})"
+
+    class Meta:
+        ordering = ["-assigned_at"]
+        verbose_name      = "Ticket Assignment"
+        verbose_name_plural = "Ticket Assignments"
 
 
 class Payment(models.Model):

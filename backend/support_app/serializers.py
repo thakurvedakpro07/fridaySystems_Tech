@@ -97,7 +97,7 @@ class TicketListSerializer(serializers.ModelSerializer):
         model = Ticket
         fields = [
             "id", "ticket_number", "title", "service_type",
-            "severity", "status", "created_at",
+            "severity", "priority", "status", "created_at",
         ]
 
 
@@ -109,13 +109,15 @@ class TicketDetailSerializer(serializers.ModelSerializer):
         model = Ticket
         fields = [
             "id", "ticket_number", "title", "description",
-            "service_type", "severity", "status",
+            "service_type", "severity", "priority", "status",
             "assigned_to", "remote_session_url", "notes",
             "created_at", "updated_at", "resolved_at",
+            "first_response_at", "due_at",
         ]
         read_only_fields = [
             "id", "ticket_number", "status", "assigned_to",
             "created_at", "updated_at", "resolved_at",
+            "first_response_at", "due_at",
         ]
 
 
@@ -124,14 +126,23 @@ class TicketCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Ticket
-        fields = ["title", "description", "service_type", "severity"]
+        fields = ["title", "description", "service_type", "severity", "priority"]
 
 
 class TicketCommentSerializer(serializers.ModelSerializer):
+    # Expose the author's email as a read-only string for the frontend.
+    # source="author.email" follows the FK to get the email.
+    # allow_null=True handles deleted-user comments where author=NULL.
+    author_email = serializers.EmailField(source="author.email", read_only=True, allow_null=True)
+
     class Meta:
         model = TicketComment
-        fields = ["id", "author_id", "author_type", "body", "created_at"]
-        read_only_fields = ["id", "author_id", "author_type", "created_at"]
+        fields = [
+            "id", "author_email", "body",
+            "is_internal", "is_edited",
+            "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "author_email", "is_edited", "created_at", "updated_at"]
 
 
 class TicketAttachmentSerializer(serializers.ModelSerializer):

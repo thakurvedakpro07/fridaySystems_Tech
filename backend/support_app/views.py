@@ -237,19 +237,31 @@ class TicketCommentListCreateView(generics.ListCreateAPIView):
         )
 
     def get_queryset(self):
-        self._get_ticket()  # raises 404 or 403 if access is denied
-        return TicketComment.objects.filter(ticket_id=self.kwargs["ticket_id"])
+        ticket = self._get_ticket()  # raises 404 or 403 if access is denied
+        qs = TicketComment.objects.filter(ticket=ticket)
+        # Customers only see public (non-internal) comments
+        if not self.request.user.is_staff and not hasattr(self.request.user, "freelancer_profile"):
+            qs = qs.filter(is_internal=False)
+        return qs
 
     def perform_create(self, serializer):
+        from .services.ticket_service import add_comment
         ticket = self._get_ticket()
-        if self.request.user.is_staff:
-            # CustomUser.pk is already a UUID — no conversion needed
-            author_id = self.request.user.pk
-            author_type = "admin"
-        else:
-            author_id = self.request.user.customer_profile.id
-            author_type = "customer"
-        serializer.save(ticket=ticket, author_id=author_id, author_type=author_type)
+        # is_internal: only staff/freelancers can mark a comment as internal
+        is_internal = bool(
+            serializer.validated_data.get("is_internal", False)
+            and (self.request.user.is_staff or hasattr(self.request.user, "freelancer_profile"))
+        )
+        # Delegate to the service layer — handles first_response_at, activity log
+        comment = add_comment(
+            ticket=ticket,
+            author=self.request.user,
+            body=serializer.validated_data["body"],
+            is_internal=is_internal,
+        )
+        # Set the serializer instance so the response uses the service-created object
+        # instead of calling serializer.save() (which would create a duplicate row)
+        serializer.instance = comment
 
 
 # ── Payments ─────────────────────────────────────────────────────

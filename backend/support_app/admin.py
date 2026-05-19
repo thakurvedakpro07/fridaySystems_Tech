@@ -6,10 +6,21 @@ After running the server, you can manage data at:
 
 Log in with the superuser you created via:
   python manage.py createsuperuser
+
+Admin optimisation principles applied here:
+  - list_display: columns visible on the list page (shows without clicking in)
+  - search_fields: fields searched when you type in the search box
+    __ (double underscore) traverses FK relationships:
+    "ticket__ticket_number" searches the related Ticket's number field
+  - list_filter: sidebar filters — show a filter for each listed field
+  - readonly_fields: fields shown but not editable (audit fields, timestamps)
+  - date_hierarchy: breadcrumb navigation by year → month → day
+  - ordering: default sort on list page
 """
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.utils.html import format_html
 
 from .models import (
     AuditLog,
@@ -22,20 +33,14 @@ from .models import (
     SLAPolicy,
     Subscription,
     Ticket,
+    TicketActivityLog,
+    TicketAssignment,
     TicketAttachment,
     TicketComment,
 )
 
 
 # ── Custom User Admin ─────────────────────────────────────────────
-# We extend UserAdmin (not ModelAdmin) so we get:
-#   - Password change form  ("Change password" link in admin)
-#   - Group management      (assign groups to users)
-#   - Permission management (granular per-user permissions)
-#
-# We MUST override fieldsets and add_fieldsets because Django's default
-# UserAdmin references the "username" field that we removed. Without
-# overriding, opening any user in admin would raise FieldError.
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
@@ -44,16 +49,13 @@ class CustomUserAdmin(UserAdmin):
     ordering      = ["-date_joined"]
     list_filter   = ["role", "is_staff", "is_active"]
 
-    # fieldsets controls which fields appear when EDITING an existing user
     fieldsets = (
-        (None,             {"fields": ("email", "password")}),
-        ("Personal info",  {"fields": ("first_name", "last_name")}),
-        ("Role",           {"fields": ("role",)}),
-        ("Permissions",    {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
-        ("Important dates",{"fields": ("last_login", "date_joined")}),
+        (None,              {"fields": ("email", "password")}),
+        ("Personal info",   {"fields": ("first_name", "last_name")}),
+        ("Role",            {"fields": ("role",)}),
+        ("Permissions",     {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
+        ("Important dates", {"fields": ("last_login", "date_joined")}),
     )
-
-    # add_fieldsets controls which fields appear when CREATING a new user
     add_fieldsets = (
         (None, {
             "classes": ("wide",),
@@ -62,68 +64,263 @@ class CustomUserAdmin(UserAdmin):
     )
 
 
+# ── Customer / Freelancer ─────────────────────────────────────────
+
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ["user", "company", "plan", "created_at"]
-    search_fields = ["user__email", "company"]
-    list_filter = ["plan"]
+    list_display   = ["user", "company", "plan", "created_at"]
+    search_fields  = ["user__email", "company"]
+    list_filter    = ["plan"]
+    readonly_fields = ["created_at", "updated_at"]
 
 
 @admin.register(Freelancer)
 class FreelancerAdmin(admin.ModelAdmin):
-    list_display = ["user", "onboarding_status", "availability", "rating", "active"]
-    search_fields = ["user__email", "skills"]
-    list_filter = ["onboarding_status", "active"]
+    list_display   = ["user", "onboarding_status", "availability", "rating", "active"]
+    search_fields  = ["user__email", "skills"]
+    list_filter    = ["onboarding_status", "active"]
+    readonly_fields = ["created_at", "updated_at", "rating"]
+
+
+# ── Ticket Admin — with inline activity log ───────────────────────
+#
+# Inlines let you see related records on the same admin page.
+# When you open a ticket, you see its activity log and assignments
+# without navigating to separate pages.
+
+class TicketActivityLogInline(admin.TabularInline):
+    """
+    Shows the activity timeline directly on the Ticket admin page.
+
+    TabularInline: each log entry is one row in a compact table.
+    (vs StackedInline which stacks each entry vertically — more space).
+
+    extra = 0: do not show any blank "add new" rows by default.
+    can_delete = False: logs are immutable — no deleting allowed.
+    """
+    model       = TicketActivityLog
+    extra       = 0
+    can_delete  = False
+    readonly_fields = ["actor", "action", "from_value", "to_value", "note", "created_at"]
+    fields          = ["created_at", "actor", "action", "from_value", "to_value", "note"]
+    ordering        = ["created_at"]
+
+
+class TicketAssignmentInline(admin.TabularInline):
+    """Shows the full assignment history on the Ticket page."""
+    model       = TicketAssignment
+    extra       = 0
+    can_delete  = False
+    readonly_fields = ["freelancer", "assigned_by", "assigned_at", "unassigned_at", "reason"]
+    fields          = ["freelancer", "assigned_by", "reason", "assigned_at", "unassigned_at"]
+    ordering        = ["-assigned_at"]
+
+
+class TicketCommentInline(admin.TabularInline):
+    """Shows all comments on the Ticket page. Internal notes flagged visually."""
+    model   = TicketComment
+    extra   = 0
+    fields  = ["author", "is_internal", "is_edited", "body", "created_at"]
+    readonly_fields = ["created_at"]
 
 
 @admin.register(Ticket)
 class TicketAdmin(admin.ModelAdmin):
-    list_display = ["ticket_number", "customer", "service_type", "severity", "status", "assigned_to", "created_at"]
-    search_fields = ["ticket_number", "title"]
-    list_filter = ["status", "service_type", "severity"]
-    readonly_fields = ["ticket_number", "created_at", "updated_at"]
+    # ── List view ────────────────────────────────────────────────
+    list_display  = [
+        "ticket_number", "customer", "service_type",
+        "priority_badge", "severity", "status_badge",
+        "assigned_to", "created_at",
+    ]
+    search_fields = ["ticket_number", "title", "customer__user__email"]
+    list_filter   = ["status", "priority", "severity", "service_type"]
+    date_hierarchy = "created_at"
+    ordering       = ["-created_at"]
 
+    # ── Detail view ──────────────────────────────────────────────
+    readonly_fields = [
+        "ticket_number", "id",
+        "created_at", "updated_at",
+        "resolved_at", "first_response_at",
+        "due_at", "sla_breach_notified",
+    ]
+    fieldsets = (
+        ("Identity", {
+            "fields": ("id", "ticket_number"),
+        }),
+        ("Problem", {
+            "fields": ("customer", "title", "description", "service_type"),
+        }),
+        ("Urgency", {
+            "fields": ("priority", "severity"),
+        }),
+        ("Workflow", {
+            "fields": ("status", "assigned_to"),
+        }),
+        ("SLA Tracking", {
+            "fields": ("first_response_at", "due_at", "sla_breach_notified"),
+            "classes": ("collapse",),
+        }),
+        ("Tooling", {
+            "fields": ("remote_session_url", "external_ticket_id", "notes"),
+            "classes": ("collapse",),
+        }),
+        ("Timestamps", {
+            "fields": ("created_at", "updated_at", "resolved_at"),
+            "classes": ("collapse",),
+        }),
+    )
+
+    inlines = [TicketActivityLogInline, TicketAssignmentInline, TicketCommentInline]
+
+    def priority_badge(self, obj):
+        """
+        Render priority as a coloured label in the list view.
+        format_html() safely escapes the string to prevent XSS —
+        never use plain string concatenation with user data in admin.
+        """
+        colours = {
+            "low":    "#28a745",  # green
+            "medium": "#fd7e14",  # orange
+            "high":   "#dc3545",  # red
+            "urgent": "#6f1b1b",  # dark red
+        }
+        colour = colours.get(obj.priority, "#6c757d")
+        return format_html(
+            '<span style="color:white; background:{}; padding:2px 6px; '
+            'border-radius:3px; font-size:11px">{}</span>',
+            colour, obj.get_priority_display(),
+        )
+    priority_badge.short_description = "Priority"
+    priority_badge.admin_order_field = "priority"
+
+    def status_badge(self, obj):
+        colours = {
+            "pending_payment": "#6c757d",
+            "open":            "#007bff",
+            "assigned":        "#17a2b8",
+            "in_progress":     "#fd7e14",
+            "waiting_customer":"#ffc107",
+            "resolved":        "#28a745",
+            "closed":          "#343a40",
+        }
+        colour = colours.get(obj.status, "#6c757d")
+        return format_html(
+            '<span style="color:white; background:{}; padding:2px 6px; '
+            'border-radius:3px; font-size:11px">{}</span>',
+            colour, obj.get_status_display(),
+        )
+    status_badge.short_description = "Status"
+    status_badge.admin_order_field = "status"
+
+
+# ── Ticket sub-models ─────────────────────────────────────────────
 
 @admin.register(TicketComment)
 class TicketCommentAdmin(admin.ModelAdmin):
-    list_display = ["ticket", "author_type", "created_at"]
-    list_filter = ["author_type"]
+    list_display   = ["ticket", "author", "is_internal", "is_edited", "created_at"]
+    list_filter    = ["is_internal", "is_edited"]
+    search_fields  = ["ticket__ticket_number", "author__email", "body"]
+    readonly_fields = ["created_at", "updated_at"]
+    date_hierarchy  = "created_at"
 
+
+@admin.register(TicketAttachment)
+class TicketAttachmentAdmin(admin.ModelAdmin):
+    list_display   = ["file_name", "ticket", "uploaded_by", "file_size", "mime_type", "uploaded_at"]
+    search_fields  = ["ticket__ticket_number", "file_name"]
+    readonly_fields = ["uploaded_at"]
+
+
+@admin.register(TicketActivityLog)
+class TicketActivityLogAdmin(admin.ModelAdmin):
+    """
+    Fully read-only — activity logs must never be edited or deleted.
+
+    WHY readonly:
+      If admins could delete or edit activity logs, they could cover up
+      mistakes. The logs exist precisely to be tamper-resistant.
+      In a compliance scenario (DPDP Act 2023), modifiable logs are worthless.
+    """
+    list_display   = ["ticket", "actor", "action", "from_value", "to_value", "created_at"]
+    list_filter    = ["action"]
+    search_fields  = ["ticket__ticket_number", "actor__email", "note"]
+    date_hierarchy  = "created_at"
+    ordering       = ["-created_at"]
+
+    # Everything is readonly — no modification allowed
+    readonly_fields = ["ticket", "actor", "action", "from_value", "to_value", "note", "created_at"]
+
+    def has_add_permission(self, request):
+        return False  # logs are created only by the system, not manually
+
+    def has_change_permission(self, request, obj=None):
+        return False  # immutable
+
+    def has_delete_permission(self, request, obj=None):
+        return False  # immutable
+
+
+@admin.register(TicketAssignment)
+class TicketAssignmentAdmin(admin.ModelAdmin):
+    list_display   = ["ticket", "freelancer", "assigned_by", "reason", "assigned_at", "unassigned_at"]
+    list_filter    = ["reason"]
+    search_fields  = ["ticket__ticket_number", "freelancer__user__email"]
+    date_hierarchy  = "assigned_at"
+    readonly_fields = ["assigned_at"]
+
+
+# ── Payment / Subscription ────────────────────────────────────────
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ["invoice_number", "customer", "amount", "payment_type", "status", "created_at"]
-    search_fields = ["invoice_number", "gateway_payment_id"]
-    list_filter = ["status", "payment_type", "gateway"]
+    list_display   = ["invoice_number", "customer", "amount", "payment_type", "status", "created_at"]
+    search_fields  = ["invoice_number", "gateway_payment_id"]
+    list_filter    = ["status", "payment_type", "gateway"]
     readonly_fields = ["created_at", "updated_at"]
 
 
 @admin.register(Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
-    list_display = ["customer", "plan", "status", "tickets_used", "expires_at"]
-    list_filter = ["plan", "status"]
+    list_display   = ["customer", "plan", "status", "tickets_used", "expires_at"]
+    list_filter    = ["plan", "status"]
 
+
+# ── SLA ───────────────────────────────────────────────────────────
 
 @admin.register(SLAPolicy)
 class SLAPolicyAdmin(admin.ModelAdmin):
-    list_display = ["service_type", "severity", "plan", "first_response_seconds", "resolution_seconds"]
-    list_filter = ["service_type", "severity"]
+    list_display  = ["service_type", "severity", "plan", "first_response_seconds", "resolution_seconds"]
+    list_filter   = ["service_type", "severity"]
 
 
 @admin.register(SLALog)
 class SLALogAdmin(admin.ModelAdmin):
-    list_display = ["ticket", "event", "status", "timestamp"]
-    list_filter = ["event", "status"]
+    list_display  = ["ticket", "event", "status", "timestamp"]
+    list_filter   = ["event", "status"]
 
+
+# ── CSAT ─────────────────────────────────────────────────────────
 
 @admin.register(CSATSurvey)
 class CSATSurveyAdmin(admin.ModelAdmin):
-    list_display = ["ticket", "customer", "score", "submitted_at"]
-    list_filter = ["score"]
+    list_display  = ["ticket", "customer", "score", "submitted_at"]
+    list_filter   = ["score"]
 
+
+# ── Audit Log ─────────────────────────────────────────────────────
 
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
-    list_display = ["user_type", "user_id", "entity", "action", "created_at"]
-    list_filter = ["user_type", "action"]
+    list_display   = ["user_type", "user_id", "entity", "action", "created_at"]
+    list_filter    = ["user_type", "action"]
     readonly_fields = ["created_at"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
