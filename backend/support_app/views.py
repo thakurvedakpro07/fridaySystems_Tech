@@ -236,15 +236,17 @@ class TicketListCreateView(generics.ListCreateAPIView):
 
         return qs
 
-    def perform_create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        serializer = TicketCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         from .services.ticket_service import create_ticket
         ticket = create_ticket(
-            customer=self.request.user.customer_profile,
+            customer=request.user.customer_profile,
             validated_data=serializer.validated_data,
         )
-        # Set serializer.instance so DRF returns the created ticket as the response
-        # without calling serializer.save() again (which would create a duplicate).
-        serializer.instance = ticket
+        # Return TicketListSerializer so the response includes id + ticket_number,
+        # allowing the frontend to navigate directly to /tickets/{id}.
+        return Response(TicketListSerializer(ticket).data, status=status.HTTP_201_CREATED)
 
 
 class TicketDetailView(generics.RetrieveUpdateAPIView):

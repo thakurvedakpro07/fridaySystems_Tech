@@ -1,10 +1,29 @@
 import { Link } from "react-router-dom";
 import MainLayout from "../components/layouts/MainLayout";
 import TicketCard from "../components/tickets/TicketCard";
+import { useAuthStore } from "../store/authStore";
 import { useTickets } from "../hooks/useTickets";
 
 export default function Dashboard() {
+  const user = useAuthStore((s) => s.user);
   const { tickets, loading, error } = useTickets();
+
+  if (user?.role === "freelancer") {
+    return (
+      <MainLayout maxWidth="max-w-2xl">
+        <div className="text-center py-16">
+          <h1 className="text-xl font-semibold text-gray-900 mb-2">Freelancer Portal</h1>
+          <p className="text-gray-500 text-sm mb-1">
+            Logged in as: <span className="font-medium">{user.email}</span>
+          </p>
+          <p className="text-gray-400 text-sm mt-4">
+            Your full freelancer dashboard is coming soon.
+            Check with your administrator for assigned tickets.
+          </p>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout maxWidth="max-w-4xl">

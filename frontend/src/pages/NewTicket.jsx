@@ -15,9 +15,9 @@ export default function NewTicket() {
     setLoading(true);
     setError("");
     try {
-      await createTicket(formData);
-      toast("Ticket created successfully!", "success");
-      navigate("/dashboard");
+      const { data } = await createTicket(formData);
+      toast("Ticket created! Redirecting to your ticket…", "success");
+      navigate(`/tickets/${data.id}`);
     } catch (err) {
       const msg = err.response?.data?.detail || "Failed to create ticket. Please try again.";
       setError(msg);

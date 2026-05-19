@@ -76,9 +76,20 @@ def assign_ticket(ticket: Ticket, freelancer, assigned_by) -> TicketAssignment:
 
         # Step 2: Update the ticket itself
         # update_fields avoids overwriting fields another concurrent request changed
+        old_status = ticket.status
         ticket.assigned_to = freelancer
         ticket.status = "in_progress"
         ticket.save(update_fields=["assigned_to", "status", "updated_at"])
+
+        # Patch the signal-written status_changed log so it shows the real actor
+        # (signals can't know who triggered the save; the service layer can)
+        TicketActivityLog.objects.filter(
+            ticket=ticket,
+            action="status_changed",
+            from_value=old_status,
+            to_value="in_progress",
+            actor__isnull=True,
+        ).order_by("-created_at").update(actor=assigned_by)
 
         # Step 3: Record the new assignment
         assignment = TicketAssignment.objects.create(
@@ -219,6 +230,9 @@ def update_status(ticket: Ticket, new_status: str, actor, note: str = "") -> Tic
 
         if new_status == "resolved" and ticket.resolved_at is None:
             ticket.resolved_at = timezone.now()
+        elif new_status not in ("resolved", "closed") and old_status == "resolved":
+            # Ticket reopened from resolved — clear the resolved timestamp
+            ticket.resolved_at = None
 
         ticket.save(update_fields=["status", "resolved_at", "updated_at"])
 
