@@ -23,6 +23,10 @@
 13. [Git + GitHub Explained](#13-git--github-explained)
 14. [Important Code Explained Line-by-Line](#14-important-code-explained-line-by-line)
 15. [Learning Roadmap](#15-learning-roadmap)
+17. [Authentication Architecture Deep Dive](#17-authentication-architecture-deep-dive)
+18. [Production Engineering — Stability & Safety](#18-production-engineering--stability--safety)
+19. [QA, Testing & Bug-Fix Workflow](#19-qa-testing--bug-fix-workflow)
+20. [Project Status & Roadmap](#20-project-status--roadmap)
 16. [Glossary + Command Cheat Sheet](#16-glossary--command-cheat-sheet)
 
 ---
@@ -48,6 +52,9 @@ Think of it like Swiggy — but instead of delivering food, it delivers IT suppo
 4. Freelancer resolves the issue remotely
 5. Customer rates the service (CSAT score)
 6. Freelancer gets paid via bank transfer or UPI
+
+**Current project status (Phase 8 complete):**
+The core MVP is built and tested. All three user roles work end-to-end. 73 automated tests pass. Stability score: **8.15 / 10 — Ready for Controlled Beta Launch.** See [Section 20](#20-project-status--roadmap) for the full roadmap.
 
 ---
 
@@ -218,7 +225,13 @@ fridaySystems_Tech/              ← Your project root
 
 *Technical:* Separates concerns — views handle HTTP, services handle business rules. This makes code testable without a running web server.
 
-*Currently:* All service files are stubs (`raise NotImplementedError`). They will be filled in during Phase 2 and beyond.
+*Currently implemented:*
+| Service file | What it does |
+|---|---|
+| `ticket_service.py` | `create_ticket`, `assign_ticket`, `unassign_ticket`, `update_status`, `add_comment` — all wrapped in `transaction.atomic()` |
+| `notification_service.py` | Creates `Notification` records when status changes, assignments, or comments happen |
+
+All operations use Django's `transaction.atomic()` so if a step fails midway, the entire operation rolls back — no partial data ever lands in the database.
 
 ---
 
@@ -356,19 +369,22 @@ app.autodiscover_tasks()                   # find all tasks.py files automatical
 
 *Technical:* Django ORM models. Django reads these classes and generates SQL `CREATE TABLE` statements (stored in migrations).
 
-*Your 11 models:*
+*Your 14 models:*
 | Model | What it stores |
 |-------|---------------|
 | `Customer` | SMB company accounts |
 | `Freelancer` | IT engineer profiles |
 | `Ticket` | Support requests |
-| `TicketComment` | Messages on tickets |
+| `TicketComment` | Messages on tickets (public or internal) |
 | `TicketAttachment` | Files uploaded to tickets |
+| `TicketAssignment` | History of every freelancer assignment to a ticket |
+| `TicketActivityLog` | Immutable audit trail: every action on every ticket |
+| `Notification` | In-app notifications for status changes, assignments, comments |
 | `Payment` | Transaction records |
 | `Subscription` | Monthly plan records |
 | `SLAPolicy` | Response time rules |
 | `SLALog` | SLA event records |
-| `CSATSurvey` | Customer ratings |
+| `CSATSurvey` | Customer ratings (1–5) after resolution |
 | `AuditLog` | Security audit trail |
 
 *Example model explained:*
@@ -467,10 +483,14 @@ class SupportAppConfig(AppConfig):
 @receiver(pre_save, sender=Ticket)
 def auto_generate_ticket_number(sender, instance, **kwargs):
     if not instance.ticket_number:
-        short = str(instance.id).replace("-", "")[-5:].upper()
+        short = str(instance.id).replace("-", "")[-8:].upper()
         instance.ticket_number = f"TKT-{short}"
 ```
-*What this does:* Before every Ticket save, if the ticket has no number yet, generate one like `TKT-A3F7C`.
+*What this does:* Before every Ticket save, if the ticket has no number yet, generate one like `TKT-A3F7C2E1`.
+
+*Why 8 characters (not 5):* With 5 hex characters there are ~1 million unique values. At MVP scale that's fine, but the "birthday paradox" means collisions become likely after ~1,000 tickets. With 8 characters (~4 billion values) collisions become negligible even at large scale. This was extended in Phase 7 as a proactive improvement.
+
+*The signal also tracks activity:* A second pre_save signal (`log_ticket_changes`) runs before every Ticket save and records what changed (old status → new status, who made the change) into `TicketActivityLog`. This creates a permanent, tamper-proof history of every action on every ticket.
 
 ---
 
@@ -1078,17 +1098,24 @@ A React component is a reusable piece of UI. Like LEGO bricks — you build big 
 *Your component hierarchy:*
 ```
 App.jsx
-├── Header.jsx              (navigation bar)
-├── Footer.jsx              (page footer)
-└── [various pages]
+├── ToastContext.jsx          (global toast notification provider — wraps all pages)
+├── MainLayout.jsx            (shared page wrapper: Header + main content + Footer)
+│   ├── Header.jsx            (navigation bar with NotificationBell)
+│   │   └── NotificationBell.jsx  (polls for new notifications every 30s)
+│   └── Footer.jsx
+└── [various pages — all wrapped by MainLayout]
     ├── Landing.jsx
     ├── Login.jsx
+    ├── Register.jsx
     ├── Dashboard.jsx
-    │   └── TicketCard.jsx  (repeated for each ticket)
+    │   └── TicketCard.jsx    (repeated for each ticket)
     ├── NewTicket.jsx
-    │   └── TicketForm.jsx
-    └── TicketDetailPage.jsx
-        └── TicketDetail.jsx
+    │   └── TicketForm.jsx    (title, service type, severity, priority, description)
+    ├── TicketDetailPage.jsx
+    │   ├── TicketDetail.jsx  (ticket metadata, status badge, activity timeline)
+    │   └── CommentSection.jsx (public + internal comments; Ctrl+Enter to submit)
+    ├── AdminDashboard.jsx    (admin-only; full ticket list with filters + search)
+    └── FreelancerList.jsx    (admin-only; list of freelancers with assignment)
 ```
 
 ---
@@ -1136,8 +1163,13 @@ setTickets(data);
 Hooks are functions that let you "hook into" React features. `useState` gives you state. `useEffect` lets you run code when the component loads. Custom hooks (like `useAuth`, `useTickets`) bundle related logic together.
 
 *Your hooks:*
-- `useAuth.js` — login, logout, register logic
-- `useTickets.js` — fetching and creating tickets
+| Hook | What it does |
+|------|-------------|
+| `useAuth.js` | login, logout, register — calls the API and updates Zustand store |
+| `useTickets.js` | fetches ticket list; returns `{ tickets, loading, error }` |
+| `useNotifications.js` | polls `/api/notifications/` every 30 seconds; returns unread count |
+
+Custom hooks are the React equivalent of Python service functions — they bundle related API calls and state into one reusable piece of logic that any component can use.
 
 ---
 
@@ -1860,14 +1892,18 @@ Step 10: Serializer validates the incoming data
          └── Checks: is severity valid? (yes, "high" is valid)
          └── All valid ✓
 
-Step 11: perform_create() saves the ticket
-         └── serializer.save(customer=request.user.customer_profile)
-         └── Django ORM: INSERT INTO support_app_ticket (id, customer_id, title, ...) VALUES (...)
+Step 11: create() saves the ticket inside transaction.atomic()
+         └── The entire step is wrapped in a database transaction
+         └── If any part fails (signal, notification), ALL changes roll back
+         └── create_ticket() service function is called:
+             - Creates the Ticket row
+             - Creates the initial TicketActivityLog entry (action="created")
+             - Creates a Notification for the customer
 
 Step 12: Signal fires automatically
          └── pre_save signal: auto_generate_ticket_number()
-         └── Generates: TKT-A3F7C
-         └── Sets instance.ticket_number = "TKT-A3F7C"
+         └── Generates: TKT-A3F7C2E1  (8 hex chars for 4 billion unique values)
+         └── Sets instance.ticket_number = "TKT-A3F7C2E1"
          └── Database row is saved with the ticket number
 
 Step 13: (Future) Celery task is queued
@@ -1875,17 +1911,20 @@ Step 13: (Future) Celery task is queued
          └── Message goes into Redis queue
          └── Django continues without waiting
 
-Step 14: Django serializes the response
-         └── TicketSerializer converts the Ticket object to JSON:
+Step 14: Django serializes the response using TicketListSerializer
+         └── TicketListSerializer is used here (not TicketCreateSerializer)
+         └── This matters because TicketCreateSerializer only includes write fields
+         └── TicketListSerializer includes: id, ticket_number, status, priority, etc.
              {
                "id": "a3f7c2e1-...",
-               "ticket_number": "TKT-A3F7C",
+               "ticket_number": "TKT-A3F7C2E1",
                "title": "Server down",
                "status": "pending_payment",
+               "priority": "high",
                ...
              }
 
-Step 15: Django returns HTTP 201 Created with the JSON
+Step 15: Django returns HTTP 201 Created with the full JSON
 
 Step 16: Response travels back to Vite proxy → back to Axios
 
@@ -1895,8 +1934,9 @@ Step 17: Axios response interceptor runs
 Step 18: createTicket() in tickets.js returns the response data
 
 Step 19: React in NewTicket.jsx receives the response
-         └── (Future) Redirects to Razorpay payment page
-         └── Or: redirects to /dashboard
+         └── Shows a success toast: "Ticket created! Redirecting to your ticket…"
+         └── navigate(`/tickets/${data.id}`)  ← user sees their new ticket immediately
+         └── (NOT /dashboard — that was a bug fixed in Phase 8)
 
 Step 20: (Meanwhile, in background)
          └── Celery worker picks up the email task from Redis
@@ -2228,16 +2268,17 @@ def auto_generate_ticket_number(sender, instance, **kwargs):
         # Only generate a number if one hasn't been set yet
         # (prevents overwriting an existing number on updates)
 
-        short = str(instance.id).replace("-", "")[-5:].upper()
+        short = str(instance.id).replace("-", "")[-8:].upper()
         # instance.id is a UUID like "a3f7c2e1-1234-5678-abcd-ef0123456789"
         # str() converts it to a string
         # .replace("-", "") removes dashes: "a3f7c2e112345678abcdef0123456789"
-        # [-5:] takes the last 5 characters: "56789"
-        # .upper() capitalizes: "56789"
+        # [-8:] takes the last 8 characters: "23456789"
+        # .upper() capitalizes: "23456789"
 
         instance.ticket_number = f"TKT-{short}"
-        # Result: "TKT-56789"
+        # Result: "TKT-23456789"
         # This is set before the database save happens
+        # 8 hex chars = ~4 billion unique values (safe at any realistic scale)
 ```
 
 ---
@@ -2385,6 +2426,471 @@ These topics are real but not relevant at your current stage:
 
 ---
 
+## 17. Authentication Architecture Deep Dive
+
+This section explains every piece of the authentication system built across Phases 5–7. If you're confused about how login works, why tokens expire, or what role-based access means — read this.
+
+---
+
+### Custom User Model
+
+Django comes with a built-in `User` model. SupportMitra uses it directly (`auth_user` table) but extends it with two profile tables:
+
+```
+auth_user (Django built-in)
+    id, email, password (hashed), is_staff, is_active
+         │
+         ├── Customer profile   (one-to-one)
+         │       company_name, phone, address, ...
+         │
+         └── Freelancer profile (one-to-one)
+                 skills, availability, rating, contract_signed, ...
+```
+
+**Why two profile tables?** A Customer and a Freelancer are both "users" who can log in — but they have completely different data. Instead of putting all fields in one giant table, each role gets its own table. `user.customer_profile` and `user.freelancer_profile` let you navigate between them.
+
+**The `role` field:** The login response includes a `role` field (`customer`, `freelancer`, or `admin`). The React frontend uses this to decide what to show each user.
+
+---
+
+### JWT Tokens — What They Are and How They Work
+
+**Simple explanation:**
+After you log in, Django gives you two signed "passes":
+- **Access token** — your daily pass. Shows to the security guard (Django) on every request. Expires in 15 minutes.
+- **Refresh token** — your monthly pass. Use it to get a new daily pass when the old one expires. Expires in 7 days.
+
+**Why two tokens?**
+If Django checked the database on every API request to see if the user is still logged in, the database would get hammered. Tokens are self-contained — Django just checks the cryptographic signature (no database needed). The short expiry (15 min) limits damage if a token is stolen.
+
+**Token rotation and blacklisting:**
+```
+Setting: ROTATE_REFRESH_TOKENS = True
+Setting: BLACKLIST_AFTER_ROTATION = True
+
+What this means:
+- Every time you use a refresh token to get a new access token,
+  you also get a NEW refresh token
+- The OLD refresh token is added to a blacklist in the database
+- If an attacker steals an old refresh token, it will be rejected
+```
+
+This means even if someone intercepts a refresh token, they can use it only once before it's invalidated.
+
+---
+
+### Axios Interceptors — The Invisible Helper
+
+Every API call from the React frontend passes through the Axios interceptors in `frontend/src/api/client.js`. Think of interceptors as middleware but on the frontend.
+
+**Request interceptor** (runs before every call):
+```
+1. Read access_token from localStorage
+2. Add "Authorization: Bearer <token>" header to the request
+3. Send the request
+```
+
+**Response interceptor** (runs after every call):
+```
+If Django says 401 (Unauthorized):
+  → Get the refresh_token from localStorage
+  → Ask Django for a new access_token
+  → Save the new access_token to localStorage
+  → Retry the original request with the new token
+  → User never sees any disruption
+
+If refresh also fails:
+  → Clear both tokens from localStorage
+  → Redirect user to /login
+```
+
+This is why you never see "your session expired" errors — the app silently handles token refresh in the background.
+
+---
+
+### Role-Based Access Control (RBAC)
+
+Three roles, three permission levels:
+
+| Role | `is_staff` | `role` field | What they can do |
+|------|------------|--------------|-----------------|
+| Customer | false | `customer` | See own tickets, create tickets, add comments, submit CSAT |
+| Freelancer | false | `freelancer` | See assigned tickets, update status, add internal comments |
+| Admin | true | `admin` | See all tickets, assign freelancers, change any status |
+
+**How permissions are enforced on the backend:**
+
+Every API view has a `permission_classes` list:
+```python
+class TicketListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated, IsCustomer]
+    # Only logged-in customers can reach this view
+```
+
+Custom permission classes check the user's role:
+- `IsCustomer` — `return hasattr(request.user, 'customer_profile')`
+- `IsFreelancer` — `return hasattr(request.user, 'freelancer_profile')`
+- `IsAdminUser` — `return request.user.is_staff`
+
+**How route guards work on the frontend:**
+
+```jsx
+// PrivateRoute — any logged-in user can pass
+function PrivateRoute({ children }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  return isAuthenticated ? children : <Navigate to="/login" />;
+}
+
+// AdminRoute — only is_staff=true users can pass
+function AdminRoute({ children }) {
+  const user = useAuthStore((s) => s.user);
+  return user?.is_staff ? children : <Navigate to="/dashboard" />;
+}
+```
+
+**The freelancer role guard in Dashboard.jsx:**
+Freelancers log in and land on `/dashboard`. That page calls `GET /api/tickets/` which is `IsCustomer` only — so freelancers would get a 403 error. To prevent this, Dashboard shows a friendly "Freelancer Portal — coming soon" message instead of making the broken API call.
+
+---
+
+### Session Persistence — Surviving Browser Refresh
+
+**The problem:** Zustand stores state in JavaScript memory. When you refresh the browser, all JavaScript memory is wiped. The user's `user` object (email, is_staff, role) is gone.
+
+**The solution:** Three layers of persistence:
+
+1. **localStorage** — JWT tokens are stored here (survives page refresh)
+2. **`safeLocalStorage()`** — wraps localStorage reads in a try/catch to handle private browsing mode (Safari's private mode throws an error on localStorage access):
+   ```javascript
+   function safeLocalStorage(key) {
+     try { return localStorage.getItem(key); }
+     catch { return null; }
+   }
+   ```
+3. **`initializeAuth()`** — called once on app startup. Reads the token from localStorage, calls `GET /api/customers/me/` (or `/api/freelancers/me/`) to get the user object, and rebuilds the Zustand store state.
+
+Without `initializeAuth()`, after every page refresh the user would appear logged out even though their token is still valid.
+
+---
+
+## 18. Production Engineering — Stability & Safety
+
+This section covers the engineering improvements made in Phase 7 (Zero-Bug Stabilization) that make the codebase production-grade.
+
+---
+
+### Transaction Safety
+
+**The problem without transactions:**
+A ticket assignment involves multiple database writes:
+1. Update `ticket.assigned_to = freelancer`
+2. Create a `TicketAssignment` row
+3. Create a `TicketActivityLog` entry
+4. Create a `Notification` for the freelancer
+
+Without transactions, if step 3 fails (e.g., database error), steps 1 and 2 are already committed. The database is now inconsistent — the ticket shows as assigned but has no activity log and no notification.
+
+**The solution — `transaction.atomic()`:**
+```python
+from django.db import transaction
+
+def assign_ticket(ticket, freelancer, assigned_by):
+    with transaction.atomic():
+        ticket.assigned_to = freelancer
+        ticket.save()                          # step 1
+        TicketAssignment.objects.create(...)   # step 2
+        TicketActivityLog.objects.create(...)  # step 3
+        Notification.objects.create(...)       # step 4
+```
+
+If ANY step inside `with transaction.atomic()` raises an exception, Django automatically rolls back ALL changes in that block. Either all 4 steps succeed or none of them do. No partial data ever lands in the database.
+
+---
+
+### Database Indexes — Why Queries Are Fast
+
+**Simple explanation:**
+An index in a database is like the index at the back of a book. Instead of reading every page to find "Django", you look in the index and jump straight to page 247. Without an index, the database reads every row.
+
+**The two composite indexes added in Phase 7:**
+
+```python
+# In models.py, on TicketActivityLog:
+class Meta:
+    indexes = [
+        Index(fields=["ticket", "action"], name="idx_activity_log_ticket_action"),
+    ]
+
+# On Notification:
+class Meta:
+    indexes = [
+        Index(fields=["recipient", "is_read"], name="idx_notif_recipient_read"),
+    ]
+```
+
+**Why composite (two fields) not single?**
+The most common queries are:
+- "Give me all `status_changed` logs for ticket X" → filter by `ticket` AND `action`
+- "Give me all unread notifications for user Y" → filter by `recipient` AND `is_read`
+
+A single-field index on `ticket` would still have to scan all log types. A composite index on `(ticket, action)` answers both filters in one lookup.
+
+---
+
+### N+1 Query Problem (and How It's Fixed)
+
+**The problem:**
+```python
+# Bad code:
+tickets = Ticket.objects.all()
+for ticket in tickets:
+    print(ticket.customer.user.email)   # separate DB query per ticket!
+```
+
+If there are 100 tickets, this makes 101 database queries (1 for all tickets + 100 for each customer). This is called the N+1 problem.
+
+**The fix — `select_related`:**
+```python
+# Good code:
+tickets = Ticket.objects.select_related("customer__user", "assigned_to__user").all()
+for ticket in tickets:
+    print(ticket.customer.user.email)   # already loaded — no extra query
+```
+
+`select_related` tells Django to do a SQL JOIN and fetch all related objects in a single query.
+
+**In admin.py:**
+```python
+class TicketAdmin(admin.ModelAdmin):
+    list_select_related = ["customer__user", "assigned_to__user"]
+    # Django admin uses this when rendering the list view
+```
+
+Without `list_select_related`, the Django admin panel would fire a separate DB query for every row shown — catastrophically slow with hundreds of tickets.
+
+---
+
+### Serializer Security — Hiding Private Fields
+
+**The problem:**
+If a serializer exposes all fields of a model, sensitive admin data can leak to customers or freelancers.
+
+**What was hidden and why:**
+
+| Field | Model | Hidden from | Reason |
+|-------|-------|-------------|--------|
+| `notes` | Ticket | Customers | Internal admin notes |
+| `contract_signed` | Freelancer | Customers + Freelancers | Admin contract status |
+| `onboarding_status` | Freelancer | Customers | Internal onboarding state |
+| `active` | Freelancer | Customers | Internal admin flag |
+
+**`FreelancerPublicSerializer`** was created to expose only safe fields:
+```python
+class FreelancerPublicSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(source="user.email", read_only=True)
+    class Meta:
+        model = Freelancer
+        fields = ["id", "email", "skills", "availability", "rating"]
+```
+
+When a ticket shows "assigned to" info, customers see only email + skills — not the freelancer's contract details.
+
+---
+
+### Activity Log — The Immutable Audit Trail
+
+Every meaningful action on a ticket creates a `TicketActivityLog` row. This row can never be edited or deleted (enforced in admin.py with `can_delete = False` and all fields readonly).
+
+**Example log entries for a ticket's lifecycle:**
+```
+created        | actor=customer@company.com  | at: 2026-05-19 10:00
+status_changed | actor=admin@supportmitra.com | open → in_progress | at: 10:05
+assigned       | actor=admin@supportmitra.com | assigned to: freelancer@email.com
+status_changed | actor=freelancer@email.com   | in_progress → resolved
+status_changed | actor=admin@supportmitra.com | resolved → closed
+```
+
+**Why this matters:** If a customer disputes how a ticket was handled, you have a permanent, timestamped record of every action and who performed it. This is essential for a paid support service.
+
+**The `actor=None` problem (and fix):** Django's pre_save signal doesn't know who triggered a save — it just fires. When the service layer called `ticket.save()` directly (not through `update_status`), the signal created activity log entries with `actor=None`. This was fixed by adding an actor-patch step immediately after the save in `assign_ticket`.
+
+---
+
+### Prometheus Metrics — Protected Monitoring
+
+`/metrics/` is a URL that exposes internal Django performance data (request counts, response times, DB query counts) in a format Prometheus can scrape.
+
+**The security problem:** By default, anyone could visit `http://yourdomain.com/metrics/` and see detailed internal system information — essentially a map for attackers.
+
+**The fix:**
+```python
+from django.contrib.admin.views.decorators import staff_member_required
+path("metrics/", staff_member_required(prometheus_exports.ExportToDjangoView), ...)
+```
+
+Now only users logged into the Django admin (is_staff=True) can access metrics. Everyone else gets a 302 redirect to the login page.
+
+---
+
+## 19. QA, Testing & Bug-Fix Workflow
+
+### The Test Suite
+
+SupportMitra has 73 automated tests that run in seconds and verify everything works correctly.
+
+**Run all tests:**
+```bash
+docker compose exec backend python -m pytest tests/ -v
+```
+
+**What the tests cover:**
+| Category | Tests | What's verified |
+|----------|-------|----------------|
+| Authentication | 14 | Register, login, logout, refresh, token blacklisting |
+| Ticket CRUD | ~15 | Create, read, update; permissions per role |
+| Admin actions | ~10 | Assign, unassign, status change, activity logging |
+| Signals | ~8 | resolved_at stamping, ticket number generation |
+| Service layer | ~10 | assign_ticket, update_status, add_comment |
+| Notifications | ~5 | Created on status change, assignment, comment |
+| Permissions | ~8 | Role boundaries enforced at API level |
+| Edge cases | ~3 | CSAT validation, duplicate prevention, closed ticket protection |
+
+**Test isolation:** Every test creates its own test data and database transaction, then rolls it back. Tests never share state — running them in any order gives the same result.
+
+---
+
+### What Was Tested in Phase 8 (E2E Testing)
+
+Phase 8 simulated 70 real-world test cases using actual HTTP calls to the running API, covering all three user roles:
+
+**Categories tested:**
+- Full authentication flow (register, login, logout, token rotation)
+- Customer workflow (create ticket, list, filter, search, comment, CSAT)
+- Freelancer workflow (list assigned tickets, update status, add internal comments)
+- Admin workflow (assign, unassign, change status, view all tickets)
+- Permission boundaries (cross-role blocks, data isolation)
+- Failure states (invalid data, out-of-range values, duplicate submissions)
+- Database consistency (no orphaned rows, no inconsistent states)
+
+**Result: 66/70 passed. 4 failures turned into 3 fixed bugs + 1 documented gap.**
+
+---
+
+### The Bug-Fix Workflow
+
+When a bug is found, this is the process followed:
+
+1. **Symptom** — what the user sees (e.g., "after creating a ticket, I land on the dashboard")
+2. **Root cause** — why it happens (e.g., "NewTicket.jsx discards the API response and hardcodes `navigate('/dashboard')`")
+3. **Fix** — the minimum change to solve the problem
+4. **Verification** — confirm the fix works and nothing else broke
+5. **Commit** — descriptive commit message with the bug ID
+
+**Key bugs found and fixed in Phase 8:**
+
+| Bug | Symptom | Root Cause | Fix |
+|-----|---------|-----------|-----|
+| BUG-001 | POST /api/tickets/ returned no `id` | Wrong serializer used in response | Overrode `create()` to return `TicketListSerializer` |
+| BUG-002 | After ticket creation → redirected to dashboard | `navigate('/dashboard')` hardcoded | Changed to `navigate('/tickets/${data.id}')` |
+| BUG-004 | Activity log showed actor=None on assignment | Signal fires before service layer patches it | Added actor-patch step in `assign_ticket` |
+| BUG-005 | `resolved_at` persisted after ticket reopened | `update_status` only set, never cleared it | Added `elif` branch to clear `resolved_at` on reopen |
+| BUG-006 | All tickets created as "medium" priority | Priority field rendered in form state but not in UI | Added `<select>` dropdown for priority in TicketForm |
+| BUG-007 | Freelancers saw error 403 on dashboard | Dashboard calls customer-only endpoint | Added role guard to show "coming soon" instead |
+
+---
+
+### MVP Stability Score
+
+After Phase 8, a structured audit gave SupportMitra a final score:
+
+| Category | Score |
+|----------|-------|
+| Authentication & Authorization | 9.0 / 10 |
+| Backend API Correctness | 8.5 / 10 |
+| Data Integrity | 8.0 / 10 |
+| Security | 8.5 / 10 |
+| Frontend Stability | 7.5 / 10 |
+| Performance | 7.0 / 10 |
+| Observability | 6.0 / 10 |
+| Test Coverage | 8.0 / 10 |
+| **Overall (weighted)** | **8.15 / 10** |
+
+**8.15 / 10 = Ready for Controlled Beta Launch** with real users under supervision.
+
+See `docs/FINAL_MVP_STABILITY_SCORE.md` for the full breakdown.
+
+---
+
+## 20. Project Status & Roadmap
+
+### What's Complete (Phases 1–8)
+
+| Phase | What was built |
+|-------|---------------|
+| 1–2 | Custom user model, Customer + Freelancer profiles, Ticket model, migrations |
+| 3 | REST API: ticket CRUD, authentication (JWT), admin endpoints |
+| 4 | Celery tasks (stubs), Celery Beat schedules, Redis integration |
+| 5 | React frontend: login, register, dashboard, ticket detail, admin dashboard |
+| 6 | QA pass: serializer security, CSAT, notification system, activity log |
+| 7 | Zero-bug stabilization: transactions, indexes, N+1 fixes, Prometheus protection |
+| 8 | Manual E2E testing: 6 bugs fixed, UX audit, stability score |
+
+**73 automated tests. 0 failing. 0 regressions since Phase 6.**
+
+---
+
+### Before Beta Launch — Required Steps
+
+These must be done before letting real users in:
+
+| # | What to do | Why it matters |
+|---|-----------|---------------|
+| 1 | Replace `SECRET_KEY` in backend/.env with a 50+ char random string | Current key is the Django insecure default — it's public knowledge |
+| 2 | Set `DEBUG=0` | `DEBUG=1` shows Python stack traces to anyone who hits a 500 error |
+| 3 | Configure `SENTRY_DSN` | Without this, you won't know when users hit errors |
+| 4 | Set `ALLOWED_HOSTS` to your actual domain | Prevents Host header injection |
+| 5 | Enable HTTPS (SSL/TLS) | JWT tokens over plain HTTP are interceptable |
+| 6 | Tune DRF throttle rates | Defaults are for development, not production load |
+
+---
+
+### Phase 9+ — What's Still To Build
+
+| Feature | Why it matters |
+|---------|---------------|
+| Razorpay payment flow | Tickets are stuck at `pending_payment` without real payment |
+| Email notifications (send_ticket_opened_email etc.) | Celery tasks exist but are stubs |
+| WhatsApp notifications | Core to Indian SMB user behaviour |
+| SLA engine | Automatic escalation when response time exceeds target |
+| Freelancer dashboard | Frontend "coming soon" page needs real implementation |
+| Frontend tests (Cypress or Playwright) | No browser-level regression protection |
+| CI/CD pipeline (GitHub Actions) | Tests should run automatically on every push |
+| Structured logging (structlog) | Installed but not configured — needed for production debugging |
+| Error tracking (Sentry) | SDK installed, `SENTRY_DSN` blank |
+
+---
+
+### Understanding the Codebase at a Glance
+
+```
+When you want to...           Look in...
+─────────────────────────     ──────────────────────────────────
+Change database structure      backend/support_app/models.py
+Add an API endpoint            backend/support_app/views.py + urls.py
+Change what JSON looks like    backend/support_app/serializers.py
+Add business logic             backend/support_app/services/
+Change automatic reactions     backend/support_app/signals.py
+Add a background task          backend/support_app/tasks.py
+Change a page's appearance     frontend/src/pages/
+Add a reusable UI piece        frontend/src/components/
+Add shared API call logic      frontend/src/hooks/
+Change global auth state       frontend/src/store/authStore.js
+Change Docker setup            docker-compose.yml + Dockerfile.*
+Change Django config           backend/supportmitra/settings.py
+```
+
+---
+
 ## 16. Glossary + Command Cheat Sheet
 
 ### Glossary of Technical Terms
@@ -2430,6 +2936,32 @@ These topics are real but not relevant at your current stage:
 | **Health check** | A test Docker runs to verify a service is working, not just started |
 | **HMR** | Hot Module Replacement — Vite's ability to update the browser instantly on file save |
 | **Proxy** | A middleman that forwards requests from one place to another |
+| **Transaction** | A group of database operations that either ALL succeed or ALL fail together (no partial state) |
+| **transaction.atomic()** | Django's way to wrap multiple DB operations in a transaction — if any step fails, all roll back |
+| **N+1 query** | A performance bug where fetching N items triggers N extra DB queries — one per item |
+| **select_related** | Django ORM method that does a SQL JOIN to load related objects in a single query (fixes N+1) |
+| **Service layer** | A layer of Python functions (in services/) that contains business logic, separate from views |
+| **Index / DB index** | A database structure that speeds up lookups — like the index at the back of a book |
+| **Composite index** | An index on two or more columns together, for queries that filter on both |
+| **RBAC** | Role-Based Access Control — different users get different permissions based on their role |
+| **Activity log** | A permanent, immutable record of every action taken on a ticket (who, what, when) |
+| **Audit trail** | The complete history of changes to a record — used for accountability and dispute resolution |
+| **Token rotation** | Each time you use a refresh token, you get a new one and the old one is invalidated |
+| **Blacklisting** | Adding a used refresh token to a database list so it can never be reused |
+| **Interceptor** | A function that runs on every request or response in Axios — like middleware for the frontend |
+| **Toast notification** | A brief popup message that appears and disappears automatically (e.g., "Ticket created!") |
+| **Zustand** | A lightweight React state management library — a shared memory box any component can read |
+| **Prometheus** | A monitoring system that collects performance metrics from your running app |
+| **structlog** | A Python library for structured (machine-readable JSON) log output |
+| **Sentry** | An error tracking service — captures exceptions and shows you a dashboard of what's breaking |
+| **WhiteNoise** | Python library that lets Gunicorn serve static files (CSS/JS) without Nginx |
+| **Internal comment** | A comment on a ticket visible only to admins and freelancers, not to customers |
+| **Debounce** | A technique that delays an action until the user stops typing — prevents API spam on search |
+| **Birthday paradox** | A probability concept: collisions (e.g., duplicate ticket numbers) happen sooner than expected in a random space |
+| **Permission class** | A DRF class that checks whether the current user is allowed to access a view |
+| **Route guard** | A React component (PrivateRoute, AdminRoute) that redirects unauthorized users away from a page |
+| **initializeAuth** | A function called on app startup that reads the stored JWT and restores the logged-in user state |
+| **safeLocalStorage** | A wrapper around localStorage that returns null instead of throwing in private browsing mode |
 
 ---
 
@@ -2487,6 +3019,13 @@ git push origin master
 git log --oneline                           # see history
 ```
 
+**Testing:**
+```bash
+docker compose exec backend python -m pytest tests/ -v        # run all 73 tests
+docker compose exec backend python -m pytest tests/ -v -k auth # run only auth tests
+docker compose exec backend python -m pytest tests/ --tb=short # compact error output
+```
+
 **Shutdown:**
 ```bash
 docker compose down                         # stop everything (data preserved)
@@ -2507,4 +3046,4 @@ docker compose down -v                      # stop + DELETE database (irreversib
 
 ---
 
-*This guide was generated on 2026-05-19 based on the actual source code and live environment state of the SupportMitra project. All explanations reflect the real code — not a hypothetical example.*
+*This guide was last updated on 2026-05-19 to reflect the state of the SupportMitra project after Phase 8 (Manual E2E Testing + Zero-Bug Stabilization). All explanations reflect the real code — not a hypothetical example. Sections 17–20 cover all architecture additions made in Phases 5–8.*
