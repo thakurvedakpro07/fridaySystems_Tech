@@ -181,6 +181,7 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True  # silence Celery 6.0 deprecation warning
 
 # ── Cache ─────────────────────────────────────────────────────────
 CACHES = {

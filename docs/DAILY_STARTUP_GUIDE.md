@@ -1,4 +1,7 @@
 # SupportMitra — Daily Startup Guide
+_Last audited: 2026-05-19. All systems verified healthy._
+
+---
 
 ## Project Location
 
@@ -8,364 +11,356 @@
 
 ---
 
-# IMPORTANT
+## Stack Overview
 
-SupportMitra now runs using:
+| Service      | Technology              | Port  | Notes                          |
+|-------------|------------------------|-------|-------------------------------|
+| `backend`   | Django 4.2 + Gunicorn  | 8000  | Static files via WhiteNoise   |
+| `frontend`  | React + Vite           | 5173  | HMR hot reload active         |
+| `db`        | PostgreSQL 15          | 5432  | Persisted via Docker volume   |
+| `redis`     | Redis 7                | 6379  | Celery broker + Django cache  |
+| `celery`    | Celery worker          | —     | 5 registered tasks            |
+| `celerybeat`| Celery Beat scheduler  | —     | DatabaseScheduler             |
 
-- Docker
-- PostgreSQL
-- Redis
-- Django Backend
-- React Frontend
-- Celery
-- Celery Beat
+---
 
-Always use Docker commands to start the project.
+## IMPORTANT — Always Use Docker
 
-DO NOT USE:
-
+**Never run these manually:**
 ```bash
-python3 manage.py runserver
-```
-
-OR
-
-```bash
+# DO NOT USE
+python manage.py runserver
 npm run dev
 ```
 
-unless intentionally using old local setup.
+Always use `docker compose` commands.
 
 ---
 
-# STEP 1 — Open VS Code
+## Daily Startup (Step by Step)
 
-Open:
-
-```text
-fridaySystems_Tech
-```
-
----
-
-# STEP 2 — Open Terminal
-
-Inside VS Code:
-
-```text
-Terminal → New Terminal
-```
-
----
-
-# STEP 3 — Go To Project Root
+### Step 1 — Open Terminal in Project Root
 
 ```bash
 cd ~/Documents/fridaySystems_Tech
 ```
 
----
+### Step 2 — Fix Docker Permissions (if needed)
 
-# STEP 4 — Enable Docker Permissions
-
-Run:
-
+If you see `permission denied` on Docker commands:
 ```bash
 newgrp docker
 ```
 
-This prevents Docker permission errors.
-
----
-
-# STEP 5 — Start Entire Project
-
-Run:
+### Step 3 — Start Everything
 
 ```bash
 docker compose up -d
 ```
 
-This starts:
-
-- Frontend
-- Backend
-- PostgreSQL
-- Redis
-- Celery
-- Celery Beat
-
----
-
-# STEP 6 — Verify Containers
-
-Run:
+### Step 4 — Verify All Containers Are Healthy
 
 ```bash
 docker compose ps
 ```
 
-Expected:
-
-```text
-backend     Up
-frontend    Up
-db          Up
-redis       Up
-celery      Up
-celerybeat  Up
+Expected output:
 ```
+NAME                 STATUS
+backend-1            Up (healthy)
+frontend-1           Up
+db-1                 Up (healthy)
+redis-1              Up (healthy)
+celery-1             Up
+celerybeat-1         Up
+```
+
+> **Note:** `backend` takes ~30-40 seconds to show as `(healthy)` — it runs
+> `collectstatic` + `migrate` before gunicorn starts. This is normal.
+
+### Step 5 — Open in Browser
+
+| URL                              | What it is          |
+|----------------------------------|---------------------|
+| `http://localhost:5173`          | React frontend      |
+| `http://127.0.0.1:8000/admin/`  | Django admin panel  |
 
 ---
 
-# STEP 7 — Open Website
-
-## Frontend
-
-```text
-http://localhost:5173
-```
-
-## Django Admin
-
-```text
-http://127.0.0.1:8000/admin/
-```
-
----
-
-# DAILY DEVELOPMENT WORKFLOW
-
-## Start Project
-
-```bash
-cd ~/Documents/fridaySystems_Tech
-newgrp docker
-docker compose up -d
-```
-
----
-
-## Stop Project
+## Daily Shutdown
 
 ```bash
 docker compose down
 ```
 
----
-
-## Restart Project
-
-```bash
-docker compose restart
-```
+Always shut down properly to prevent corrupted container states.
 
 ---
 
-# USEFUL COMMANDS
-
-## Check Running Containers
+## Full Stop + Wipe (last resort only)
 
 ```bash
-docker compose ps
+docker compose down -v    # removes containers AND volumes (DELETES DB DATA)
 ```
+
+> **Warning:** `-v` deletes the PostgreSQL volume. All database data is lost.
+> Only use this if the database is corrupted and needs a fresh start.
 
 ---
 
-## View Backend Logs
+## Useful Daily Commands
+
+### View logs
 
 ```bash
-docker compose logs backend
+docker compose logs backend          # backend only
+docker compose logs -f backend       # follow (live tail) backend
+docker compose logs -f               # follow all services
 ```
 
-Live logs:
+### Run Django management commands
 
 ```bash
-docker compose logs -f backend
-```
-
----
-
-## View Frontend Logs
-
-```bash
-docker compose logs frontend
-```
-
----
-
-## View All Logs
-
-```bash
-docker compose logs -f
-```
-
----
-
-# DJANGO COMMANDS
-
-## Run Migrations
-
-```bash
+# Apply migrations after model changes
+docker compose exec backend python manage.py makemigrations
 docker compose exec backend python manage.py migrate
-```
 
----
-
-## Create Superuser
-
-```bash
+# Create admin superuser (first time or if lost)
 docker compose exec backend python manage.py createsuperuser
-```
 
----
-
-## Open Django Shell
-
-```bash
+# Django interactive shell
 docker compose exec backend python manage.py shell
+
+# Rebuild static files manually (happens automatically on startup)
+docker compose exec backend python manage.py collectstatic --noinput
 ```
 
----
-
-# GIT WORKFLOW
-
-## Check Changes
+### Restart a single service
 
 ```bash
-git status
+docker compose restart backend
+docker compose restart celery
+docker compose restart frontend
 ```
 
----
-
-## Add Changes
-
-```bash
-git add .
-```
-
----
-
-## Commit Changes
-
-```bash
-git commit -m "your message"
-```
-
-Example:
-
-```bash
-git commit -m "Fixed Docker backend startup issue"
-```
-
----
-
-## Push Changes
-
-```bash
-git push origin master
-```
-
----
-
-# COMMON ERRORS & FIXES
-
-## 1. Docker Permission Denied
-
-Error:
-
-```text
-permission denied while trying to connect to docker.sock
-```
-
-Fix:
-
-```bash
-newgrp docker
-```
-
----
-
-## 2. Port Already In Use
-
-Check port:
-
-```bash
-sudo lsof -i :8000
-```
-
-Kill process:
-
-```bash
-kill -9 PID
-```
-
----
-
-## 3. Backend Not Opening
-
-Check backend logs:
-
-```bash
-docker compose logs backend
-```
-
----
-
-## 4. Frontend Not Opening
-
-Check frontend logs:
-
-```bash
-docker compose logs frontend
-```
-
----
-
-## 5. Full Clean Restart
+### Rebuild after dependency changes
 
 ```bash
 docker compose down
 docker compose up --build -d
 ```
 
+Use `--build` whenever you change:
+- `requirements.txt`
+- `Dockerfile.backend` or `Dockerfile.frontend`
+- `package.json`
+
 ---
 
-# BEFORE SHUTTING DOWN SYSTEM
+## Hot Reload — How It Works
 
-Recommended:
+### Backend (Python/Django)
+- `./backend/` is mounted live into the backend container
+- Gunicorn runs with `--reload` — it detects `.py` file changes and restarts automatically
+- **No Docker restart needed** when editing Python files
+
+### Frontend (React/Vite)
+- `./frontend/src/` and `./frontend/index.html` are mounted live
+- Vite HMR reflects changes in the browser within milliseconds
+- **No Docker restart needed** when editing `.jsx`, `.js`, `.css` files
+
+---
+
+## Git Workflow
 
 ```bash
+# Check what changed
+git status
+git diff
+
+# Stage and commit
+git add -p                          # stage interactively (recommended over git add .)
+git commit -m "describe what changed"
+
+# Push
+git push origin master
+```
+
+### What is git-ignored (never committed)
+- `backend/.env` — secrets, never commit this
+- `backend/staticfiles/` — auto-generated on startup
+- `frontend/node_modules/` — installed inside Docker image
+- `backend/.venv/` — local virtualenv, not used by Docker
+- `backend/db.sqlite3` — local SQLite fallback, Docker uses PostgreSQL
+
+---
+
+## Troubleshooting
+
+### Problem: `failed to bind host port 0.0.0.0:6379 — address already in use`
+
+**Cause:** Ubuntu's system Redis is occupying port 6379.
+
+**Fix:**
+```bash
+sudo systemctl stop redis-server
+sudo systemctl disable redis-server   # prevent it auto-starting on reboot
+docker compose up -d
+```
+
+---
+
+### Problem: Django admin has no CSS styling
+
+**Cause:** Static files not collected, or WhiteNoise not in middleware.
+
+**Fix:**
+```bash
+docker compose exec backend python manage.py collectstatic --noinput
+docker compose restart backend
+```
+
+---
+
+### Problem: `ERR_SOCKET_NOT_CONNECTED` at `127.0.0.1:8000`
+
+**Cause:** Gunicorn bound to container loopback (`127.0.0.1`) instead of all interfaces (`0.0.0.0`).
+
+**Check:**
+```bash
+docker compose logs backend | grep "Listening at"
+```
+
+Expected: `Listening at: http://0.0.0.0:8000`
+
+**Fix:** The `command:` in `docker-compose.yml` must pass `--bind 0.0.0.0:8000` on a **single line** (never multi-line YAML with `>`).
+
+---
+
+### Problem: Backend shows `Up` but `/admin/` still doesn't load
+
+**Cause:** Startup sequence still running (`collectstatic` + `migrate` take ~20-30s).
+
+**Fix:** Wait for the health check to pass:
+```bash
+docker compose logs -f backend
+# Wait for: "Listening at: http://0.0.0.0:8000"
+```
+
+---
+
+### Problem: Database connection refused
+
+```bash
+docker compose ps db          # is db (healthy)?
+docker compose logs db        # any PostgreSQL errors?
+docker compose restart db
+docker compose restart backend
+```
+
+---
+
+### Problem: Celery tasks not running
+
+```bash
+docker compose logs celery --tail=30
+# Look for: "celery@... ready."
+
+docker compose restart celery celerybeat
+```
+
+---
+
+### Problem: Frontend blank screen
+
+```bash
+docker compose logs frontend --tail=20
+
+# Verify the Vite proxy target
+docker compose exec frontend env | grep VITE
+# Expected: VITE_API_TARGET=http://backend:8000
+```
+
+---
+
+### Problem: `docker compose` permission denied
+
+```bash
+newgrp docker
+```
+
+Permanent fix (requires logout/login):
+```bash
+sudo usermod -aG docker $USER
+```
+
+---
+
+### Problem: Containers in a restart loop
+
+```bash
+docker compose logs backend --tail=50   # find the error
 docker compose down
-```
-
-This prevents corrupted container states.
-
----
-
-# DAILY CHECKLIST
-
-## Startup
-
-```text
-✓ Open VS Code
-✓ Open terminal
-✓ cd into project
-✓ newgrp docker
-✓ docker compose up -d
-✓ Open localhost:5173
-✓ Start development
+docker compose up --build -d            # force full rebuild
 ```
 
 ---
 
-## Shutdown
+## Known Non-Critical Warnings (Safe to Ignore in Dev)
 
-```text
-✓ git status
-✓ git add .
-✓ git commit
-✓ git push
-✓ docker compose down
-✓ Shutdown PC
+| Warning | Source | Why Safe |
+|---------|--------|----------|
+| `WARNING Memory overcommit must be enabled` | Redis startup | Kernel setting; no data loss risk in dev |
+| Django security warnings `W004 W008 W009 W012 W016 W018` | `manage.py check --deploy` | Production-only settings, not relevant for dev |
+| `django-insecure-` prefix on SECRET_KEY | Django | Fine for dev — **must be replaced before production** |
+
+---
+
+## Full Recovery — When Everything Is Broken
+
+```bash
+# 1. Stop conflicting system services
+sudo systemctl stop redis-server
+sudo systemctl stop postgresql
+
+# 2. Tear down the Docker stack completely
+docker compose down
+
+# 3. Rebuild and restart
+docker compose up --build -d
+
+# 4. Watch backend startup (takes ~40s)
+docker compose logs -f backend
+# Wait for: "Listening at: http://0.0.0.0:8000"
+
+# 5. Verify everything
+docker compose ps
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/admin/login/
+# Expected: 200
+
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5173
+# Expected: 200
+```
+
+---
+
+## Daily Development Checklist
+
+### Startup
+```
+[ ] cd ~/Documents/fridaySystems_Tech
+[ ] docker compose up -d
+[ ] docker compose ps  →  all containers Up / healthy
+[ ] http://localhost:5173  →  frontend loads
+[ ] http://127.0.0.1:8000/admin/  →  admin styled and working
+[ ] Start coding
+```
+
+### Before Shutdown
+```
+[ ] git status
+[ ] git add -p  (stage your changes)
+[ ] git commit -m "meaningful message"
+[ ] git push origin master
+[ ] docker compose down
 ```

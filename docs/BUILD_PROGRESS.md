@@ -2,6 +2,155 @@
 
 ---
 
+## 2026-05-19 — Docker Infrastructure Stabilisation + Full Environment Audit
+
+### Completed Today
+
+* Diagnosed and resolved system Redis port conflict — Ubuntu's `redis-server.service` was auto-starting at boot and holding port 6379, blocking Docker Redis from binding
+* Root-caused gunicorn binding to `127.0.0.1` (loopback) instead of `0.0.0.0` — traced to a YAML `>` folded scalar bug in `docker-compose.yml` where indented continuation lines preserved literal `\n` characters, causing `sh -c` to treat `--bind 0.0.0.0:8000` as a separate shell command that never reached gunicorn
+* Fixed Django admin CSS/JS not loading — gunicorn does not serve static files; added WhiteNoise middleware to serve them directly from the WSGI process without nginx
+* Added `collectstatic --noinput` to backend startup command so static files are always rebuilt on container start
+* Added `DJANGO_SETTINGS_MODULE=supportmitra.settings` to `Dockerfile.backend` ENV so gunicorn, celery, and management commands all find the same settings without extra flags
+* Fixed `docker-compose.yml` `env_file` path — was pointing at a non-existent root-level `.env`; corrected to `backend/.env`
+* Added `celerybeat` as a 6th Docker service (was missing from compose file)
+* Fixed Vite proxy target — added `VITE_API_TARGET: http://backend:8000` env var so the frontend container's proxy forwards `/api/*` to the Django container, not to `localhost` (which resolves to the frontend container itself)
+* Added frontend volume mounts (`./frontend/src`, `./frontend/index.html`) for live Vite HMR
+* Created `.dockerignore` to exclude `.venv`, `node_modules`, `staticfiles`, `.git` from Docker build context
+* Conducted a 13-point full environment audit — all services verified healthy (backend, frontend, db, redis, celery, celerybeat, static files, migrations, CORS, hot reload, git hygiene)
+* Fixed Celery 6.0 deprecation warning — added `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True` to settings
+* Added Python urllib healthcheck to backend service so Docker knows when Django is actually ready to serve
+* Updated `frontend.depends_on` to `condition: service_healthy` so the frontend container waits for Django before starting
+* Completely rewrote `docs/DAILY_STARTUP_GUIDE.md` — added stack table, hot reload explanation, troubleshooting section for every known failure mode, known warnings table, full recovery sequence, and shutdown checklist
+
+### Files Created
+
+* `.dockerignore` — excludes `.venv`, `node_modules`, `staticfiles`, `.git`, `dist`, local DB files from build context
+* `docs/DAILY_STARTUP_GUIDE.md` — comprehensive daily reference with startup/shutdown, troubleshooting, recovery, and hot reload explanation (replaces the old startup guide)
+
+### Files Modified
+
+* `Dockerfile.backend` — added `ENV DJANGO_SETTINGS_MODULE=supportmitra.settings`
+* `backend/requirements.txt` — added `whitenoise==6.7.0`
+* `backend/supportmitra/settings.py` — added `WhiteNoiseMiddleware` (position: immediately after `SecurityMiddleware`); added `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True`
+* `docker-compose.yml` — fixed `env_file` path; fixed gunicorn `--bind` flag (YAML single-line command); added `collectstatic` to startup; added `celerybeat` service; fixed celery `depends_on` to use `service_healthy`; added `VITE_API_TARGET`; added frontend HMR volume mounts; added backend healthcheck; updated frontend `depends_on` to `condition: service_healthy`
+* `frontend/vite.config.js` — Vite proxy `target` now reads `process.env.VITE_API_TARGET` with `http://localhost:8000` fallback (works both in Docker and bare local dev)
+* `docs/How To Start Guide.md` — renamed to `docs/How To Start Guide_OLD_version.md`
+
+### Bugs Fixed
+
+* **Redis port 6379 occupied at startup** — Ubuntu installs `redis-server` as a systemd service set to `enabled`, so it claims port 6379 before Docker starts. Fix: `sudo systemctl stop redis-server && sudo systemctl disable redis-server`. Root cause: two Redis processes cannot bind the same port simultaneously.
+* **`ERR_SOCKET_NOT_CONNECTED` on `127.0.0.1:8000`** — YAML `>` (folded block scalar) preserves newlines on lines that are indented more than the first content line. The multi-line gunicorn command had `--bind 0.0.0.0:8000` on a more-indented line, so it was parsed as a separate shell command rather than a flag. Gunicorn started without `--bind`, defaulted to `127.0.0.1:8000` (container loopback), and Docker's port mapping from the bridge network could not reach it. Fix: single-line command string.
+* **Django admin unstyled (no CSS/JS)** — Gunicorn is a pure WSGI server; it does not serve static files. `django.contrib.staticfiles` only serves files when using `runserver`. Fix: WhiteNoise middleware wraps the WSGI app and intercepts all `/static/` requests before they reach Django. `collectstatic` must run first to populate `STATIC_ROOT`.
+* **`env_file` pointing at non-existent file** — `docker-compose.yml` referenced `- .env` (project root) but the actual file is `backend/.env`. All env vars (SECRET_KEY, DATABASE_URL, REDIS_URL) were silently absent, forcing Django to use insecure defaults.
+* **Frontend proxy pointing at itself** — Vite proxy `target: "http://localhost:8000"` inside a Docker container resolves `localhost` to the frontend container's own loopback, not the Django container. Fix: use Docker service name `http://backend:8000` via `VITE_API_TARGET` env var.
+* **Celery `CPendingDeprecationWarning` on startup** — `broker_connection_retry` setting will be removed in Celery 6.0. Fix: explicit `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True` in settings.
+
+### Pending Issues
+
+* **`SECRET_KEY` is `django-insecure-supportmitra123`** — acceptable for local dev (`.env` is git-ignored) but must be replaced with a 50+ character random key before any staging or production deployment
+* **JWT refresh token in `localStorage`** — XSS-vulnerable; must move to `httpOnly` cookie in Phase 5 (security hardening)
+* **Redis `vm.overcommit_memory` kernel warning** — non-critical for dev; requires `sudo sysctl vm.overcommit_memory=1` on the host to suppress
+* **No `npm audit` run** — frontend dependencies not security-scanned
+* **Consulting fee Razorpay checkout not wired** — Phase 2 (next priority)
+
+### Architecture Decisions
+
+* **WhiteNoise over nginx for dev** — adding nginx as a sidecar just to serve static files in development is over-engineering. WhiteNoise handles it with two lines of config, works identically in dev and production, and removes the nginx-vs-Django routing complexity entirely.
+* **Backend healthcheck via Python urllib** — curl is not installed in the `python:3.11-slim` image. Using `python -c "import urllib.request; urllib.request.urlopen(...)"` avoids adding a system-level dependency just for health checks.
+* **Single-line docker-compose command** — multi-line `sh -c` via YAML `>` (folded scalar) is unsafe because indented continuation lines preserve newlines, breaking argument parsing. Convention: always write the full command as a single quoted string.
+* **`VITE_API_TARGET` environment variable** — decouples the Vite proxy target from the build. Inside Docker it is `http://backend:8000`; outside Docker it falls back to `http://localhost:8000`. Zero code change needed between the two environments.
+
+### Next Step
+
+* **Phase 2 — Razorpay consulting fee integration** (environment is now stable enough to build on):
+  1. Implement `payment_service.create_consulting_fee_order(ticket, customer)` using the Razorpay SDK
+  2. Wire into `TicketListCreateView.perform_create` — call after ticket save, return `checkout_url`
+  3. In `NewTicket.jsx` — redirect to `checkout_url` after successful ticket creation
+  4. Implement `payment_webhook` view with HMAC-SHA256 signature verification
+  5. On successful webhook: set ticket status `open`, generate GST invoice PDF via ReportLab, send email via SendGrid
+
+---
+
+## 2026-05-18 — MVP Auth + Ticketing Stabilisation (First Full Run)
+
+### Completed Today
+
+* Created the first Django migration (`0001_initial.py`) — all 11 models written to the PostgreSQL schema for the first time; database is now functional
+* Fixed `AdminRoute always blocks` bug — `CustomTokenObtainPairView` and `CustomTokenObtainPairSerializer` added to return `{id, email, is_staff}` in the login response; without `is_staff`, the frontend `AdminRoute` guard always redirected admins to the login page
+* Added `is_staff` to `RegisterView` response — ensures new admin accounts also receive the flag on first registration
+* Implemented proper `logout_view` — POSTs the refresh token to the SimpleJWT blacklist; previously there was no logout endpoint and tokens lived indefinitely
+* Fixed `TicketDetailView` admin crash — `get_queryset` was calling `request.user.customer_profile` which raises `RelatedObjectDoesNotExist` for staff users; added `if self.request.user.is_staff: return Ticket.objects.all()` guard
+* Fixed `TicketCommentListCreateView` — replaced direct queryset filter with `_get_ticket()` helper that correctly handles staff (all tickets), customers (own tickets only), and other roles (403)
+* Fixed `TicketDetail.jsx` `assigned_to` path — was rendering `ticket.assigned_to?.user?.email` but serializer returns `ticket.assigned_to?.email`; silent bug until assignment feature is built
+* Added `initializeAuth()` action to Zustand auth store — on page refresh the app re-fetches the user's profile to rehydrate `{id, email, is_staff}` from a valid stored token; without this, `user` was always `null` after refresh even when logged in, breaking all auth-gated UI
+* Added `initializing` flag to auth store — `App.jsx` now waits for `initializeAuth()` to complete before rendering routes, preventing a flash of the login page on refresh for authenticated users
+* Added `getMyProfile()` API function (`api/auth.js`) called by `initializeAuth`
+* Created `backend/support_app/apps.py` — `AppConfig` subclass that registers signals in `ready()`; without this, `signals.py` was never imported and ticket numbers were not auto-generated
+* Added `/api/auth/logout/` and wired login to `CustomTokenObtainPairView` in `urls.py`
+* Substantially expanded the test suite — `test_auth.py`, `test_tickets.py` (+227 lines), `test_payments.py` all updated to cover the fixed flows end-to-end
+* Created `docs/How To Start Guide.md` and `docs/SupportMitra_Startup_Guide.pdf` — first written startup documentation for the project
+* Added prompt templates to `prompts/` directory for structured Claude sessions
+
+### Files Created
+
+* `backend/support_app/migrations/0001_initial.py` — initial database migration for all 11 models
+* `backend/support_app/apps.py` — `SupportAppConfig` with `ready()` signal registration
+* `frontend/src/pages/TicketDetailPage.jsx` — page wrapper at `/tickets/:id` (reads `useParams`, fetches ticket, renders `TicketDetail`)
+* `docs/How To Start Guide.md` — first startup guide (later superseded by `DAILY_STARTUP_GUIDE.md`)
+* `docs/SupportMitra_Startup_Guide.pdf` — PDF version of startup guide
+* `docs/Git commit changes guide.md` — git workflow reference
+* `prompts/MASTER_BUG_AUDIT_PROMPT step-1.md` — structured bug audit prompt template
+* `prompts/Bug fixing step-2.md` — structured bug fixing prompt template
+
+### Files Modified
+
+* `backend/support_app/views.py` — added `CustomTokenObtainPairSerializer`, `CustomTokenObtainPairView`, `logout_view`; fixed `TicketDetailView.get_queryset`; fixed `TicketCommentListCreateView` with `_get_ticket()` helper
+* `backend/support_app/serializers.py` — minor updates to align with view changes
+* `backend/support_app/urls.py` — added `/api/auth/logout/`; wired `/api/auth/login/` to `CustomTokenObtainPairView`
+* `backend/supportmitra/settings.py` — minor update (signal / app registration)
+* `backend/requirements.txt` — added `django-prometheus==2.3.1`
+* `backend/tests/test_auth.py` — expanded auth flow coverage
+* `backend/tests/test_tickets.py` — major expansion (+227 lines) covering ticket CRUD, ownership, admin access
+* `backend/tests/test_payments.py` — expanded webhook and payment flow tests
+* `frontend/src/App.jsx` — added `TicketDetailPage` route (`/tickets/:id`); added `initializeAuth()` call on mount
+* `frontend/src/api/auth.js` — added `getMyProfile()` function
+* `frontend/src/store/authStore.js` — added `initializing` state and `initializeAuth()` async action
+* `frontend/src/hooks/useAuth.js` — updated to consume `initializeAuth` and `initializing`
+* `frontend/src/components/tickets/TicketDetail.jsx` — fixed `assigned_to` email path
+* `frontend/src/components/tickets/TicketForm.jsx` — refactored API call pattern
+* `frontend/src/components/ui/Badge.jsx` — minor status colour fix
+* `frontend/src/pages/admin/AdminDashboard.jsx` — minor update
+* `docs/BUILD_PROGRESS.md` — added 2026-05-15 Session 4 entry
+
+### Bugs Fixed
+
+* **`AdminRoute` always redirects to login** — `is_staff` was absent from the login/register API response, so `user?.is_staff` was always `undefined` (falsy) in the Zustand store. `AdminRoute` correctly blocked every user including real admins. Fixed by implementing `CustomTokenObtainPairSerializer` that extends SimpleJWT's default serializer to inject `{id, email, is_staff}` into every login response.
+* **`TicketDetailView` crashes for staff** — `get_queryset` called `self.request.user.customer_profile` which raises `RelatedObjectDoesNotExist` for `is_staff` users who have no `Customer` record. Fixed by adding an early `if self.request.user.is_staff: return Ticket.objects.all()` guard.
+* **`TicketDetail.jsx` renders blank assigned freelancer** — path was `ticket.assigned_to?.user?.email` but the `FreelancerSerializer` exposes email at `ticket.assigned_to?.email`. No visible impact yet but corrected before Phase 3 assignment feature.
+* **Auth state lost on page refresh** — Zustand store was initialised with `user: null` on every load. Even with a valid token in `localStorage`, the `user` object (and therefore `is_staff`) was not available until the next login. Fixed by `initializeAuth()` which fetches `/api/profile/me/` on app mount and rehydrates the store, or clears stale tokens on failure.
+* **Signal handler never ran** — `signals.py` (ticket number generator) was never imported because `apps.py` did not exist. Ticket numbers were not being auto-generated. Fixed by creating `SupportAppConfig.ready()` with `import support_app.signals`.
+* **No logout endpoint** — there was no way to blacklist a refresh token server-side. Added `POST /api/auth/logout/` which blacklists the token and returns 204.
+
+### Pending Issues
+
+* **Docker never successfully started** — `env_file: .env` points at a root-level file that does not exist; gunicorn command had YAML multi-line bug; no `.dockerignore`; celerybeat missing from compose. These blockers were resolved in the 2026-05-19 session.
+* **Consulting fee checkout not wired** — Phase 2
+* **Ticket number not truly sequential** — UUID tail approach; collision risk at scale; Phase 2 fix
+* **JWT refresh token in `localStorage`** — Phase 5 security hardening
+
+### Architecture Decisions
+
+* **`CustomTokenObtainPairSerializer` pattern** — extending SimpleJWT's serializer rather than writing a custom login view keeps JWT token generation logic inside the library. Only the response payload is extended. This approach is the official SimpleJWT recommendation for enriching login responses.
+* **`initializeAuth` in Zustand + `initializing` flag** — prevents the "flash of login page" on refresh by blocking route rendering until the auth state is known. The flag starts `true` and is set `false` when the profile fetch settles, regardless of outcome.
+* **`_get_ticket()` helper in comment view** — consolidates the ownership-check logic that would otherwise be duplicated between `get_queryset` and `perform_create`. Single point of truth for "which users can see this ticket's comments."
+
+### Next Step
+
+* Fix Docker environment (all startup blockers — addressed 2026-05-19)
+* Then Phase 2: Razorpay consulting fee integration
+
+---
+
 ## 2026-05-15 (Session 4)
 
 ### Completed Today
