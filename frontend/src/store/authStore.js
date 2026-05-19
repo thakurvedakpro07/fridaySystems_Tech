@@ -19,9 +19,18 @@
  */
 import { create } from "zustand";
 
+function safeLocalStorage(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    // SecurityError in private-browsing modes that block localStorage entirely
+    return null;
+  }
+}
+
 function loadStoredUser() {
   try {
-    const raw = localStorage.getItem("user");
+    const raw = safeLocalStorage("user");
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -30,7 +39,7 @@ function loadStoredUser() {
 
 export const useAuthStore = create((set) => ({
   // ── State ─────────────────────────────────────────────────────
-  isAuthenticated: !!localStorage.getItem("access_token"),
+  isAuthenticated: !!safeLocalStorage("access_token"),
   user: loadStoredUser(),   // { id, email, is_staff, role }
   loading: false,
   error: null,

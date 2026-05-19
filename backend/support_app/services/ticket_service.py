@@ -12,6 +12,7 @@ All public functions in this module follow the same contract:
   - Never raise HTTP exceptions (that's the view's job)
 """
 
+from django.db import transaction
 from django.utils import timezone
 
 from ..models import Ticket, TicketActivityLog, TicketAssignment, TicketComment
@@ -62,39 +63,40 @@ def assign_ticket(ticket: Ticket, freelancer, assigned_by) -> TicketAssignment:
 
     Returns: the new TicketAssignment record
     """
-    old_freelancer = ticket.assigned_to
-    reason = "initial" if old_freelancer is None else "reassigned"
+    with transaction.atomic():
+        old_freelancer = ticket.assigned_to
+        reason = "initial" if old_freelancer is None else "reassigned"
 
-    # Step 1: Close any currently open assignment for this ticket
-    if old_freelancer:
-        TicketAssignment.objects.filter(
+        # Step 1: Close any currently open assignment for this ticket
+        if old_freelancer:
+            TicketAssignment.objects.filter(
+                ticket=ticket,
+                unassigned_at__isnull=True,  # only the active (open) assignment
+            ).update(unassigned_at=timezone.now())
+
+        # Step 2: Update the ticket itself
+        # update_fields avoids overwriting fields another concurrent request changed
+        ticket.assigned_to = freelancer
+        ticket.status = "in_progress"
+        ticket.save(update_fields=["assigned_to", "status", "updated_at"])
+
+        # Step 3: Record the new assignment
+        assignment = TicketAssignment.objects.create(
             ticket=ticket,
-            unassigned_at__isnull=True,  # only the active (open) assignment
-        ).update(unassigned_at=timezone.now())
+            freelancer=freelancer,
+            assigned_by=assigned_by,
+            reason=reason,
+        )
 
-    # Step 2: Update the ticket itself
-    # update_fields avoids overwriting fields another concurrent request changed
-    ticket.assigned_to = freelancer
-    ticket.status = "in_progress"
-    ticket.save(update_fields=["assigned_to", "status", "updated_at"])
-
-    # Step 3: Record the new assignment
-    assignment = TicketAssignment.objects.create(
-        ticket=ticket,
-        freelancer=freelancer,
-        assigned_by=assigned_by,
-        reason=reason,
-    )
-
-    # Step 4: Log the event with the actor explicitly set
-    from_label = old_freelancer.user.email if old_freelancer else ""
-    TicketActivityLog.objects.create(
-        ticket=ticket,
-        actor=assigned_by,
-        action="assigned" if reason == "initial" else "reassigned",
-        from_value=from_label,
-        to_value=freelancer.user.email,
-    )
+        # Step 4: Log the event with the actor explicitly set
+        from_label = old_freelancer.user.email if old_freelancer else ""
+        TicketActivityLog.objects.create(
+            ticket=ticket,
+            actor=assigned_by,
+            action="assigned" if reason == "initial" else "reassigned",
+            from_value=from_label,
+            to_value=freelancer.user.email,
+        )
 
     return assignment
 
@@ -114,25 +116,26 @@ def unassign_ticket(ticket: Ticket, actor, reason: str = "admin_action", note: s
     if ticket.assigned_to is None:
         raise ValueError("This ticket is not currently assigned to anyone.")
 
-    old_freelancer = ticket.assigned_to
+    with transaction.atomic():
+        old_freelancer = ticket.assigned_to
 
-    TicketAssignment.objects.filter(
-        ticket=ticket,
-        unassigned_at__isnull=True,
-    ).update(unassigned_at=timezone.now())
+        TicketAssignment.objects.filter(
+            ticket=ticket,
+            unassigned_at__isnull=True,
+        ).update(unassigned_at=timezone.now())
 
-    ticket.assigned_to = None
-    ticket.status = "open"
-    ticket.save(update_fields=["assigned_to", "status", "updated_at"])
+        ticket.assigned_to = None
+        ticket.status = "open"
+        ticket.save(update_fields=["assigned_to", "status", "updated_at"])
 
-    TicketActivityLog.objects.create(
-        ticket=ticket,
-        actor=actor,
-        action="unassigned",
-        from_value=old_freelancer.user.email,
-        to_value="",
-        note=note,
-    )
+        TicketActivityLog.objects.create(
+            ticket=ticket,
+            actor=actor,
+            action="unassigned",
+            from_value=old_freelancer.user.email,
+            to_value="",
+            note=note,
+        )
 
 
 def add_comment(
@@ -158,29 +161,30 @@ def add_comment(
 
     Returns: the saved TicketComment instance
     """
-    comment = TicketComment.objects.create(
-        ticket=ticket,
-        author=author,
-        body=body,
-        is_internal=is_internal,
-    )
-
-    # Track first response time for SLA
-    # Condition: public comment by a non-customer who hasn't responded before
-    is_responder = (
-        not hasattr(author, "customer_profile")
-        or author.customer_profile != ticket.customer
-    )
-    if not is_internal and is_responder and ticket.first_response_at is None:
-        ticket.first_response_at = comment.created_at
-        ticket.save(update_fields=["first_response_at", "updated_at"])
-
-    if not is_internal:
-        TicketActivityLog.objects.create(
+    with transaction.atomic():
+        comment = TicketComment.objects.create(
             ticket=ticket,
-            actor=author,
-            action="comment_added",
+            author=author,
+            body=body,
+            is_internal=is_internal,
         )
+
+        # Track first response time for SLA
+        # Condition: public comment by a non-customer who hasn't responded before
+        is_responder = (
+            not hasattr(author, "customer_profile")
+            or author.customer_profile != ticket.customer
+        )
+        if not is_internal and is_responder and ticket.first_response_at is None:
+            ticket.first_response_at = comment.created_at
+            ticket.save(update_fields=["first_response_at", "updated_at"])
+
+        if not is_internal:
+            TicketActivityLog.objects.create(
+                ticket=ticket,
+                actor=author,
+                action="comment_added",
+            )
 
     return comment
 
@@ -209,21 +213,22 @@ def update_status(ticket: Ticket, new_status: str, actor, note: str = "") -> Tic
     if ticket.status == "closed":
         raise ValueError("A closed ticket cannot be updated.")
 
-    old_status = ticket.status
-    ticket.status = new_status
+    with transaction.atomic():
+        old_status = ticket.status
+        ticket.status = new_status
 
-    if new_status == "resolved" and ticket.resolved_at is None:
-        ticket.resolved_at = timezone.now()
+        if new_status == "resolved" and ticket.resolved_at is None:
+            ticket.resolved_at = timezone.now()
 
-    ticket.save(update_fields=["status", "resolved_at", "updated_at"])
+        ticket.save(update_fields=["status", "resolved_at", "updated_at"])
 
-    # Patch the signal-written log entry to include the real actor
-    TicketActivityLog.objects.filter(
-        ticket=ticket,
-        action__in=["status_changed", "resolved", "closed"],
-        from_value=old_status,
-        to_value=new_status,
-        actor__isnull=True,
-    ).order_by("-created_at").update(actor=actor, note=note)
+        # Patch the signal-written log entry to include the real actor
+        TicketActivityLog.objects.filter(
+            ticket=ticket,
+            action__in=["status_changed", "resolved", "closed"],
+            from_value=old_status,
+            to_value=new_status,
+            actor__isnull=True,
+        ).order_by("-created_at").update(actor=actor, note=note)
 
     return ticket

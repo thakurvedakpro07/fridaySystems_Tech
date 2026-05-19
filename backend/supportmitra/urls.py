@@ -4,6 +4,7 @@ Root URL configuration for SupportMitra.
 Every URL in the project is listed here (or included from an app).
 """
 from django.contrib import admin
+from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import include, path
 from django_prometheus import exports as prometheus_exports
 
@@ -15,5 +16,6 @@ urlpatterns = [
     path("api/", include("support_app.urls")),
 
     # ── Prometheus metrics scrape endpoint ───────────────────────
-    path("metrics/", prometheus_exports.ExportToDjangoView, name="prometheus-metrics"),
+    # Restricted to staff — exposes request counts, DB query times, etc.
+    path("metrics/", staff_member_required(prometheus_exports.ExportToDjangoView), name="prometheus-metrics"),
 ]

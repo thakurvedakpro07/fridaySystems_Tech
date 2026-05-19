@@ -5,7 +5,7 @@
  * Any component can call useAuth() and get the login/logout functions
  * without knowing anything about Zustand or localStorage.
  */
-import { login as loginApi, logout as logoutApi, register as registerApi } from "../api/auth";
+import { login as loginApi, register as registerApi } from "../api/auth";
 import { useToast } from "../context/ToastContext";
 import { useAuthStore } from "../store/authStore";
 
@@ -64,11 +64,7 @@ export function useAuth() {
   };
 
   const logout = async () => {
-    const refreshToken = localStorage.getItem("refresh_token");
-    if (refreshToken) {
-      try { await logoutApi(refreshToken); } catch { /* best effort */ }
-    }
-    storeLogout();
+    await storeLogout();  // blacklists token server-side, clears localStorage + Zustand state
     toast("You have been signed out.", "info");
   };
 

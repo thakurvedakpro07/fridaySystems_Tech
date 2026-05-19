@@ -118,11 +118,12 @@ class TicketAssignmentInline(admin.TabularInline):
 
 
 class TicketCommentInline(admin.TabularInline):
-    """Shows all comments on the Ticket page. Internal notes flagged visually."""
+    """Shows all comments on the Ticket page. All fields readonly — audit trail must be immutable."""
     model   = TicketComment
     extra   = 0
+    can_delete = False
     fields  = ["author", "is_internal", "is_edited", "body", "created_at"]
-    readonly_fields = ["created_at"]
+    readonly_fields = ["author", "is_internal", "is_edited", "body", "created_at"]
 
 
 @admin.register(Ticket)
@@ -137,6 +138,7 @@ class TicketAdmin(admin.ModelAdmin):
     list_filter   = ["status", "priority", "severity", "service_type"]
     date_hierarchy = "created_at"
     ordering       = ["-created_at"]
+    list_select_related = ["customer__user", "assigned_to__user"]
 
     # ── Detail view ──────────────────────────────────────────────
     readonly_fields = [
@@ -248,6 +250,7 @@ class TicketActivityLogAdmin(admin.ModelAdmin):
     search_fields  = ["ticket__ticket_number", "actor__email", "note"]
     date_hierarchy  = "created_at"
     ordering       = ["-created_at"]
+    list_select_related = ["ticket", "actor"]
 
     # Everything is readonly — no modification allowed
     readonly_fields = ["ticket", "actor", "action", "from_value", "to_value", "note", "created_at"]

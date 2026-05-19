@@ -42,7 +42,8 @@ def auto_generate_ticket_number(sender, instance, **kwargs):
     sequential numbers (TKT-00001, TKT-00002) using PostgreSQL SEQUENCE.
     """
     if not instance.ticket_number:
-        short = str(instance.id).replace("-", "")[-5:].upper()
+        # 8 hex chars → 16^8 ≈ 4B possibilities, collision-safe up to ~100k tickets
+        short = str(instance.id).replace("-", "")[-8:].upper()
         instance.ticket_number = f"TKT-{short}"
 
 

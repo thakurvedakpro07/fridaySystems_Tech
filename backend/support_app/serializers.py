@@ -78,7 +78,21 @@ class CustomerSerializer(serializers.ModelSerializer):
 
 # ── Freelancer ────────────────────────────────────────────────────
 
+class FreelancerPublicSerializer(serializers.ModelSerializer):
+    """
+    Safe subset of freelancer data for customer-facing responses.
+    Excludes internal fields: contract_signed, onboarding_status, active.
+    """
+    email = serializers.EmailField(source="user.email", read_only=True)
+
+    class Meta:
+        model = Freelancer
+        fields = ["id", "email", "skills", "availability", "rating"]
+        read_only_fields = ["id", "rating"]
+
+
 class FreelancerSerializer(serializers.ModelSerializer):
+    """Full serializer for admin-only views (FreelancerListView)."""
     email = serializers.EmailField(source="user.email", read_only=True)
 
     class Meta:
@@ -104,15 +118,16 @@ class TicketListSerializer(serializers.ModelSerializer):
 
 
 class TicketDetailSerializer(serializers.ModelSerializer):
-    """Full serializer for the ticket detail view."""
-    assigned_to = FreelancerSerializer(read_only=True)
+    """Full serializer for the ticket detail view (customer-facing)."""
+    # Use the public subset — customers must not see contract_signed etc.
+    assigned_to = FreelancerPublicSerializer(read_only=True)
 
     class Meta:
         model = Ticket
         fields = [
             "id", "ticket_number", "title", "description",
             "service_type", "severity", "priority", "status",
-            "assigned_to", "remote_session_url", "notes",
+            "assigned_to", "remote_session_url",
             "created_at", "updated_at", "resolved_at",
             "first_response_at", "due_at",
         ]

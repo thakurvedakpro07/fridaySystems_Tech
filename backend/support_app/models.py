@@ -380,8 +380,6 @@ class Ticket(models.Model):
     class Meta:
         ordering = ["-created_at"]
         indexes = [
-            # Composite index: admin dashboard loads tickets by status + customer often.
-            # Without this, each page load does a full table scan.
             models.Index(fields=["status", "customer"], name="idx_ticket_status_customer"),
             models.Index(fields=["assigned_to", "status"], name="idx_ticket_assigned_status"),
         ]
@@ -580,6 +578,10 @@ class TicketActivityLog(models.Model):
         ordering = ["created_at"]
         verbose_name      = "Activity Log"
         verbose_name_plural = "Activity Logs"
+        indexes = [
+            # Speeds up the actor-patch query in update_status() and the timeline fetch
+            models.Index(fields=["ticket", "action"], name="idx_activity_log_ticket_action"),
+        ]
 
 
 class TicketAssignment(models.Model):
@@ -859,6 +861,10 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            # Speeds up the unread-count query: WHERE recipient_id=? AND is_read=false
+            models.Index(fields=["recipient", "is_read"], name="idx_notif_recipient_read"),
+        ]
 
 
 class AuditLog(models.Model):
