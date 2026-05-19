@@ -123,6 +123,13 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "mediafiles"
 
+# ── Custom User Model ─────────────────────────────────────────────
+# CRITICAL: must be set before the first migration.
+# Tells Django to use support_app.CustomUser instead of auth.User everywhere:
+#   - Admin login, JWT auth, allauth, permissions, sessions — all updated automatically.
+# Format: "app_label.ModelName"
+AUTH_USER_MODEL = "support_app.CustomUser"
+
 # ── Primary Key Type ──────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -209,6 +216,9 @@ SITE_ID = 1
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_AUTHENTICATION_METHOD = "email"
+# Tell allauth we removed the username field entirely from our CustomUser model.
+# Without this, allauth tries to access user.username and crashes on every login.
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 
 # ── Business / GST ────────────────────────────────────────────────
 GST_RATE = float(os.getenv("GST_RATE", "0.18"))

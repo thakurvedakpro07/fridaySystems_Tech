@@ -6,8 +6,13 @@ Think of a serializer as a translation layer:
   JSON          →  serializer  →  validated Python data  (for API requests)
 """
 
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
+
+# get_user_model() returns whatever AUTH_USER_MODEL points to.
+# This is safer than `from django.contrib.auth.models import User` because
+# it automatically uses our CustomUser without any import path changes.
+User = get_user_model()
 
 from .models import (
     AuditLog,
@@ -36,19 +41,22 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ["email", "password", "company", "phone"]
 
     def validate_email(self, value):
-        # username is stored as email; check case-insensitively so
-        # "User@Example.com" blocks when "user@example.com" is already taken.
-        if User.objects.filter(username__iexact=value).exists():
+        # Check case-insensitively: "User@Example.com" blocks when "user@example.com" exists.
+        # We now check email directly (no more username field — it was removed from CustomUser).
+        if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("An account with this email already exists.")
         return value
 
     def create(self, validated_data):
         company = validated_data.pop("company", "")
         phone = validated_data.pop("phone", "")
+        # CustomUser.objects.create_user() runs CustomUserManager.create_user().
+        # No username= kwarg — CustomUser has no username field.
+        # role="customer" is explicit: every self-registered user is a customer.
         user = User.objects.create_user(
-            username=validated_data["email"],
             email=validated_data["email"],
             password=validated_data["password"],
+            role="customer",
         )
         Customer.objects.create(user=user, company=company, phone=phone)
         return user

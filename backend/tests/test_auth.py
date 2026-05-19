@@ -7,8 +7,10 @@ Run with:
 """
 
 import pytest
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
+
+User = get_user_model()
 
 
 @pytest.fixture
@@ -19,12 +21,13 @@ def client():
 
 @pytest.fixture
 def sample_user(db):
-    """A saved User + Customer for use in tests."""
+    """A saved CustomUser + Customer for use in tests."""
     from support_app.models import Customer
+    # No username= kwarg: CustomUser has no username field.
     user = User.objects.create_user(
-        username="test@example.com",
         email="test@example.com",
         password="StrongPass123!",
+        role="customer",
     )
     Customer.objects.create(user=user, company="Test Co")
     return user
@@ -50,7 +53,9 @@ def test_register_creates_user_and_customer(client):
 @pytest.mark.django_db
 def test_login_returns_tokens(client, sample_user):
     """POST /api/auth/login/ should return access and refresh tokens."""
-    payload = {"username": "test@example.com", "password": "StrongPass123!"}
+    # Key is "email" (not "username") because USERNAME_FIELD = "email" on CustomUser.
+    # SimpleJWT dynamically uses USERNAME_FIELD as the JSON key name.
+    payload = {"email": "test@example.com", "password": "StrongPass123!"}
     response = client.post("/api/auth/login/", payload, format="json")
 
     assert response.status_code == 200
@@ -60,7 +65,7 @@ def test_login_returns_tokens(client, sample_user):
 
 @pytest.mark.django_db
 def test_login_wrong_password_returns_401(client, sample_user):
-    payload = {"username": "test@example.com", "password": "WrongPassword!"}
+    payload = {"email": "test@example.com", "password": "WrongPassword!"}
     response = client.post("/api/auth/login/", payload, format="json")
 
     assert response.status_code == 401

@@ -9,11 +9,13 @@ Log in with the superuser you created via:
 """
 
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
 
 from .models import (
     AuditLog,
     CSATSurvey,
     Customer,
+    CustomUser,
     Freelancer,
     Payment,
     SLALog,
@@ -23,6 +25,41 @@ from .models import (
     TicketAttachment,
     TicketComment,
 )
+
+
+# ── Custom User Admin ─────────────────────────────────────────────
+# We extend UserAdmin (not ModelAdmin) so we get:
+#   - Password change form  ("Change password" link in admin)
+#   - Group management      (assign groups to users)
+#   - Permission management (granular per-user permissions)
+#
+# We MUST override fieldsets and add_fieldsets because Django's default
+# UserAdmin references the "username" field that we removed. Without
+# overriding, opening any user in admin would raise FieldError.
+
+@admin.register(CustomUser)
+class CustomUserAdmin(UserAdmin):
+    list_display  = ["email", "role", "is_staff", "is_active", "date_joined"]
+    search_fields = ["email", "first_name", "last_name"]
+    ordering      = ["-date_joined"]
+    list_filter   = ["role", "is_staff", "is_active"]
+
+    # fieldsets controls which fields appear when EDITING an existing user
+    fieldsets = (
+        (None,             {"fields": ("email", "password")}),
+        ("Personal info",  {"fields": ("first_name", "last_name")}),
+        ("Role",           {"fields": ("role",)}),
+        ("Permissions",    {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
+        ("Important dates",{"fields": ("last_login", "date_joined")}),
+    )
+
+    # add_fieldsets controls which fields appear when CREATING a new user
+    add_fieldsets = (
+        (None, {
+            "classes": ("wide",),
+            "fields":  ("email", "role", "password1", "password2"),
+        }),
+    )
 
 
 @admin.register(Customer)

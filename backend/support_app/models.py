@@ -10,8 +10,141 @@ Only the schema is defined here — no business logic yet.
 
 import uuid
 
-from django.contrib.auth.models import User
+from django.conf import settings
+from django.contrib.auth.base_user import BaseUserManager
+from django.contrib.auth.models import AbstractUser
 from django.db import models
+
+
+# ── Custom User System ───────────────────────────────────────────
+#
+# Django's built-in User model is fixed — you cannot add columns to it.
+# AbstractUser gives us everything the built-in User has (password hashing,
+# permissions, groups, is_staff, date_joined, last_login) PLUS the ability
+# to add our own fields (uuid primary key, role).
+#
+# AUTH_USER_MODEL in settings.py tells Django to use this model everywhere
+# instead of the default auth.User.
+
+
+class CustomUserManager(BaseUserManager):
+    """
+    Replaces Django's default manager because we removed the username field.
+
+    The manager is the factory that knows HOW to create a User object.
+    When you call User.objects.create_user(...) anywhere in the codebase,
+    this is the code that actually runs.
+    """
+
+    def create_user(self, email, password=None, **extra_fields):
+        """
+        Called by: RegisterSerializer, tests, and any code that creates a user.
+
+        normalize_email() lowercases the domain part only:
+          "User@GMAIL.COM" → "User@gmail.com"
+        (RFC 5321: the local part before @ IS case-sensitive)
+
+        set_password() hashes the password using PBKDF2-SHA256 — never stores plain text.
+        """
+        if not email:
+            raise ValueError("An email address is required to create a user.")
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        """
+        Called by: python manage.py createsuperuser
+
+        Must set is_staff=True (allows admin login) and
+        is_superuser=True (bypasses all permission checks).
+        """
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("role", "admin")
+
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Superuser must have is_staff=True.")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Superuser must have is_superuser=True.")
+
+        return self.create_user(email, password, **extra_fields)
+
+
+class CustomUser(AbstractUser):
+    """
+    The single authentication model for ALL user types: customers, freelancers, admins.
+
+    This replaces Django's built-in auth.User completely.
+    AUTH_USER_MODEL = "support_app.CustomUser" in settings.py activates this.
+
+    What we inherit from AbstractUser (FREE — we don't define these):
+      - password         (hashed, never stored plain)
+      - first_name       (optional, for future personalisation)
+      - last_name        (optional)
+      - is_active        (False = account disabled, can't log in)
+      - is_staff         (True = can log into /admin/)
+      - is_superuser     (True = bypasses all permission checks)
+      - date_joined      (auto-set when account is created)
+      - last_login       (auto-updated on each login)
+      - groups           (ManyToMany — for future role-based permissions)
+      - user_permissions (ManyToMany — granular permission flags)
+
+    What we ADD:
+      - UUID primary key  (replaces the insecure auto-increment integer id)
+      - email as login    (replaces username, which is now removed)
+      - role              (customer / freelancer / admin)
+
+    What we REMOVE:
+      - username          (set to None — we use email to log in instead)
+    """
+
+    ROLE_CHOICES = [
+        ("customer", "Customer"),
+        ("freelancer", "Freelancer"),
+        ("admin", "Admin"),
+    ]
+
+    # ── Primary key ──────────────────────────────────────────────
+    # Override Django's default integer auto-increment id.
+    # UUIDs are non-guessable, globally unique, and safe to expose in URLs.
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # ── Remove username ──────────────────────────────────────────
+    # Setting to None removes the column from the database table.
+    # We must also tell Django and allauth about this (done in settings.py).
+    username = None
+
+    # ── Login field ──────────────────────────────────────────────
+    # unique=True is required because no two accounts can share an email.
+    # This replaces both the old username and email fields in one.
+    email = models.EmailField(unique=True)
+
+    # ── Role ─────────────────────────────────────────────────────
+    # Stored on the User table (not on profiles) because role is needed
+    # on every authenticated request, before any profile is loaded.
+    role = models.CharField(max_length=16, choices=ROLE_CHOICES, default="customer")
+
+    # ── Auth configuration ───────────────────────────────────────
+    # USERNAME_FIELD: tells Django, SimpleJWT, and allauth: "use email to log in"
+    USERNAME_FIELD = "email"
+
+    # REQUIRED_FIELDS: extra fields prompted by `createsuperuser` command.
+    # Empty because email (our USERNAME_FIELD) is already prompted automatically.
+    REQUIRED_FIELDS = []
+
+    # Use our custom manager so create_user() and create_superuser() work
+    objects = CustomUserManager()
+
+    def __str__(self):
+        return self.email
+
+    class Meta:
+        ordering = ["-date_joined"]
+        verbose_name = "User"
+        verbose_name_plural = "Users"
 
 
 class Customer(models.Model):
@@ -27,7 +160,11 @@ class Customer(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="customer_profile")
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="customer_profile",
+    )
     company = models.CharField(max_length=255, blank=True)
     phone = models.CharField(max_length=32, blank=True)
     address = models.TextField(blank=True)
@@ -67,7 +204,11 @@ class Freelancer(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="freelancer_profile")
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="freelancer_profile",
+    )
     skills = models.TextField(blank=True, help_text="Comma-separated skill tags, e.g. linux,sap,vmware")
     availability = models.CharField(max_length=32, choices=AVAILABILITY_CHOICES, default="ad_hoc")
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.0)

@@ -4,14 +4,16 @@ TODO: expand in Phase 2 when Razorpay integration is implemented.
 """
 
 import pytest
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from support_app.models import Customer, Payment, Ticket
 
+User = get_user_model()
+
 
 def _make_customer_client(db, email):
-    user = User.objects.create_user(username=email, email=email, password="StrongPass123!")
+    user = User.objects.create_user(email=email, password="StrongPass123!", role="customer")
     customer = Customer.objects.create(user=user, company="Co")
     client = APIClient()
     client.force_authenticate(user=user)

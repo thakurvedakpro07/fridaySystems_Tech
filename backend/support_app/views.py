@@ -5,10 +5,10 @@ For now these are skeleton views that return placeholder responses.
 Business logic will be added in the services/ layer later.
 """
 
-import uuid
-
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+
+User = get_user_model()
 from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
@@ -44,9 +44,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
         data["user"] = {
-            "id": self.user.id,
+            "id": str(self.user.id),  # UUID must be stringified for JSON
             "email": self.user.email,
             "is_staff": self.user.is_staff,
+            "role": self.user.role,
         }
         return data
 
@@ -89,7 +90,12 @@ class RegisterView(generics.CreateAPIView):
             {
                 "access": str(refresh.access_token),
                 "refresh": str(refresh),
-                "user": {"id": user.id, "email": user.email, "is_staff": user.is_staff},
+                "user": {
+                    "id": str(user.id),  # UUID → string for JSON
+                    "email": user.email,
+                    "is_staff": user.is_staff,
+                    "role": user.role,
+                },
             },
             status=status.HTTP_201_CREATED,
         )
@@ -237,8 +243,8 @@ class TicketCommentListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         ticket = self._get_ticket()
         if self.request.user.is_staff:
-            # Django User.pk is an int; convert to UUID to fit the UUIDField schema
-            author_id = uuid.UUID(int=self.request.user.pk)
+            # CustomUser.pk is already a UUID — no conversion needed
+            author_id = self.request.user.pk
             author_type = "admin"
         else:
             author_id = self.request.user.customer_profile.id

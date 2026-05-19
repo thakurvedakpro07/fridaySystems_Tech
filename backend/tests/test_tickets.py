@@ -7,19 +7,21 @@ Run with:
 """
 
 import pytest
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from support_app.models import Customer, Ticket
+
+User = get_user_model()
 
 
 @pytest.fixture
 def auth_client(db):
     """An API client authenticated as a customer (uses force_authenticate to avoid rate limits)."""
     user = User.objects.create_user(
-        username="customer@example.com",
         email="customer@example.com",
         password="StrongPass123!",
+        role="customer",
     )
     Customer.objects.create(user=user, company="Test Co")
     client = APIClient()
@@ -99,10 +101,10 @@ def test_admin_can_retrieve_any_ticket(auth_client):
 
     # Create a staff user (no Customer profile — that's intentional)
     admin_user = User.objects.create_user(
-        username="admin@example.com",
         email="admin@example.com",
         password="AdminPass123!",
         is_staff=True,
+        role="admin",
     )
     admin_client = APIClient()
     admin_client.force_authenticate(user=admin_user)
@@ -122,7 +124,7 @@ def _make_customer_client(db, email):
     consuming the anonymous rate-limit quota during tests.
     """
     user = User.objects.create_user(
-        username=email, email=email, password="StrongPass123!"
+        email=email, password="StrongPass123!", role="customer"
     )
     from support_app.models import Customer
     Customer.objects.create(user=user, company="Co")
