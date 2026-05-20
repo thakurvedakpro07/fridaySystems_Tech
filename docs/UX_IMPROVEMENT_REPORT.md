@@ -1,6 +1,6 @@
 # SupportMitra — UX Improvement Report
-**Phase 8: UX Audit**
-**Date:** 2026-05-19
+**Phase 9: UX Audit (updated)**
+**Date:** 2026-05-20
 
 ---
 
@@ -13,220 +13,182 @@ A feature can be technically correct but still feel broken if:
 - The app is silent when something goes wrong
 - Loading doesn't show feedback
 
-This report covers every UX pattern in SupportMitra.
+This report covers every UX pattern in SupportMitra, updated for Phase 9 (ticket workflow complete).
 
 ---
 
 ## 1. Loading States
 
-How the app communicates that work is happening.
+| Component | Has Loading State? | Quality |
+|-----------|-------------------|---------|
+| Login form | YES — "Signing in…" | Good — button disabled |
+| Register form | YES — "Creating account…" | Good |
+| New Ticket form | YES — "Creating…" | Good |
+| Comment post | YES — "Posting…" | Good |
+| Customer dashboard | YES — "Loading tickets…" | Good |
+| Freelancer dashboard | YES — "Loading…" | Good |
+| Admin dashboard | YES — "Loading…" | Good |
+| Ticket detail | YES — "Loading ticket…" | Good |
+| Admin action modals (assign/status/unassign) | YES — "Assigning…/Saving…/Removing…" | Good |
+| Notification bell | No loading indicator | Low |
 
-| Component          | Has Loading State? | Quality | Notes |
-|--------------------|--------------------|---------|-------|
-| Login form         | YES — "Signing in…" | Good   | Button disabled during request |
-| Register form      | YES — "Creating account…" | Good | Button disabled |
-| New Ticket form    | YES — "Creating…" | Good   | Button disabled |
-| Comment post       | YES — "Posting…" | Good   | Button disabled |
-| Dashboard list     | YES — "Loading tickets…" | Good | Full-page spinner |
-| Ticket detail page | YES — "Loading ticket…" | Good | |
-| Admin dashboard    | YES — "Loading…" | Adequate | Could show skeleton cards |
-| Notification bell  | NO loading indicator | Low  | Bell doesn't show when fetching |
-
-**Issue:** Notification bell fetches every 30 seconds silently. If a fetch fails, users don't know. The `useNotifications` hook should surface errors but does not.
-
-**Recommendation:** Add a subtle error indicator on the bell icon if the notification poll fails 3+ consecutive times.
+**Issue:** Notification bell polls every 30s silently. Poll errors drop notifications silently.
 
 ---
 
 ## 2. Empty States
 
-What the user sees when there's no data to show.
-
-| Page/Component         | Has Empty State? | Quality | Notes |
-|------------------------|-----------------|---------|-------|
-| Dashboard (no tickets) | YES | Excellent | "No tickets yet." + "Open your first ticket" button |
-| Admin dashboard (no results) | YES | Good | "No tickets match the current filters." |
-| Comment section (no comments) | YES | Good | "No comments yet. Be the first to reply." |
-| Activity timeline (no logs) | NOT VERIFIED | Unknown | Component not explicitly audited |
-| Notification bell (0 notifications) | NOT VERIFIED | Unknown | Depends on bell icon state |
-
-**Issue:** The comment section empty state says "Be the first to reply" even on closed/resolved tickets where adding more comments may not be appropriate. Misleading for tickets in terminal states.
-
-**Recommendation:** Show different text for closed tickets: "This ticket has been closed." and hide the comment form.
+| Page/Component | Has Empty State? | Quality |
+|----------------|-----------------|---------|
+| Dashboard (no tickets) | YES | Excellent — CTA to create first ticket |
+| Dashboard (search returns nothing) | YES | Good — "No tickets match your filters." |
+| Freelancer dashboard (no assigned) | YES | Good — "No tickets assigned to you yet." |
+| Admin dashboard (no results) | YES | Good |
+| Comment section (no comments) | YES | Good |
+| Comment section on closed ticket | Show form | Medium — form shows even for terminal states |
+| Activity timeline | YES | Good |
+| Notifications (empty) | YES | "No notifications" |
 
 ---
 
 ## 3. Error Messages
 
-Quality of error messages shown to users.
+### Backend errors (quality assessment)
 
-### Backend error quality
+| Scenario | Message | Quality |
+|----------|---------|---------|
+| Wrong password | "No active account found with the given credentials." | Good |
+| Duplicate email | "An account with this email already exists." | Excellent |
+| CSAT on open ticket | "CSAT can only be submitted for resolved or closed tickets." | Excellent |
+| Duplicate CSAT | "CSAT survey already submitted for this ticket." | Excellent |
+| Invalid score | "Score must be between 1 and 5." | Excellent |
+| Closed ticket update | "A closed ticket cannot be updated." | Excellent |
+| Admin unassign unassigned | "This ticket is not currently assigned to anyone." | Excellent |
 
-| Scenario                         | Message Shown                                  | Quality |
-|----------------------------------|------------------------------------------------|---------|
-| Missing required field           | "This field is required."                      | Good    |
-| Invalid service_type             | "'flying_car' is not a valid choice."          | Good    |
-| Whitespace-only title            | "This field may not be blank."                 | Good    |
-| Wrong password                   | "No active account found with the given credentials." | Good |
-| Duplicate email                  | "An account with this email already exists."   | Excellent |
-| CSAT on non-resolved             | "CSAT can only be submitted for resolved or closed tickets." | Excellent |
-| Duplicate CSAT                   | "CSAT survey already submitted for this ticket." | Excellent |
-| Invalid score range              | "Score must be between 1 and 5."               | Excellent |
-| Closed ticket update             | "A closed ticket cannot be updated."           | Excellent |
-| Unassigned ticket unassign       | "This ticket is not currently assigned to anyone." | Excellent |
+### Frontend error handling (quality assessment)
 
-### Frontend error quality
-
-| Page                             | Error Handling Quality | Notes |
-|----------------------------------|------------------------|-------|
-| Login page                       | Excellent | Shows API error message in red box |
-| Register page                    | Adequate  | Shows first error found; misses multi-field errors |
-| New Ticket page                  | Adequate  | Shows generic "Failed to create ticket" if API fails |
-| Dashboard                        | Adequate  | "Failed to load tickets: {err.message}" — shows raw JS error |
-| Ticket detail                    | Good      | Distinguishes 404 ("Ticket not found.") from other errors |
-| Comment section                  | Adequate  | Toast "Failed to post comment. Please try again." |
-
-**Issues Found:**
-
-**UX-001:** `Register.jsx` error extraction only tries `email[0]`, `password[0]`, `detail`. If the backend returns errors for other fields (e.g., `phone`, `company`), they are silently dropped. Users see no feedback for non-email/password errors.
-
-**UX-002:** `Dashboard.jsx` uses `setError(err.message)` in `useTickets`. When the API returns 403, `err.message` is the Axios internal message "Request failed with status code 403" — not user-friendly. Now mitigated by the freelancer role check, but the pattern is fragile.
-
-**UX-003:** `NewTicket.jsx` error extraction: `err.response?.data?.detail || "Failed to create ticket. Please try again."` — does not show field-level validation errors (e.g., "title: This field may not be blank."). The backend returns them in a dict format that the frontend doesn't unpack.
+| Page | Quality | Issue |
+|------|---------|-------|
+| Login | Excellent | Shows API error in red box |
+| Register | Adequate | Only shows first error; multi-field errors dropped |
+| New Ticket | Adequate | Generic "Failed to create ticket" — doesn't unpack field errors |
+| Dashboard | Adequate | Shows raw Axios error message (e.g. "Request failed with status 403") |
+| Ticket detail | Good | Distinguishes 404 from other errors |
+| Admin action modals | Good | toast with API error detail |
+| Freelancer status update | Good | toast with API error detail |
 
 ---
 
-## 4. Form UX
+## 4. Role-Specific Navigation
 
-### Login form
-- Email + password fields — clean
-- Button text changes during loading — good
-- No "show password" toggle — minor omission
-- No "forgot password" link — MVP gap (acceptable)
-- Pressing Enter submits — works via form's onSubmit
+### Fixed in Phase 9 QA
+- Freelancer header now shows "My Tickets" link → `/freelancer` (not "Dashboard" → `/dashboard`)
+- "+ New Ticket" button hidden for freelancers
+- Admin ticket detail page now works (was 404)
 
-### Register form
-- Works for basic registration
-- Password minLength=10 enforced at HTML level (browser-native validation)
-- Company and phone are optional but no visual indication they're optional (no asterisk difference)
-- No confirmation of password field — acceptable for MVP
-
-### New Ticket form (before fix)
-- No priority field — all tickets created as medium priority — FIXED
-- Title field: HTML `required` prevents empty submission but doesn't prevent whitespace-only (backend catches it with a 400)
-- Services loaded from API — error state shown if API fails (good pattern)
-
-### New Ticket form (after fix)
-- Priority field added between Severity and Description
-- 4 priority options with clear labels
-- Correct form state includes priority
-
-### Comment form
-- `Ctrl+Enter` to submit — excellent power-user feature
-- Submit button disabled when body is empty — prevents accidental empty posts
-- Textarea resizes as user types? No — `resize-none` class is set. Users with lots of text can scroll. Low-priority UX gap.
+### Remaining issues
+- **UX-004:** Logged-in users can still visit `/login` — no redirect guard (PublicOnlyRoute now added in App.jsx — actually this IS fixed)
+- **UX-005:** Browser tab title is always "SupportMitra" regardless of page
+- Header doesn't show the current user's role/context (e.g., "Admin Panel" header for admins)
 
 ---
 
-## 5. Navigation and Routing
+## 5. Admin Action UX (New in Phase 9)
 
-| Scenario                        | Behavior                               | Quality |
-|---------------------------------|----------------------------------------|---------|
-| Customer creates ticket         | Redirects to /tickets/{id} (after fix) | Excellent |
-| Customer clicks "Back" on detail| navigate(-1) — goes to previous page   | Good |
-| Admin accesses /admin           | AdminRoute checks is_staff             | Good |
-| Freelancer accesses /dashboard  | Shows "coming soon" message (after fix)| Adequate |
-| Unknown URL                     | Redirects to / (landing page)          | Good |
-| Logged-in user visits /login    | Does NOT redirect away — minor gap     | Low |
-| Browser refresh                 | initializeAuth() rehydrates state      | Good |
+### What works well
+- AdminTicketActions panel has clear amber background with "Admin Actions" label
+- Modals for assign/status/unassign prevent accidental clicks
+- Assign modal loads freelancer list on demand (no wasted API calls when closed)
+- Cancel buttons on all modals
+- Notes fields on status change and unassign give context to actions
 
-**UX-004:** When an already-logged-in user visits `/login`, they see the login form again instead of being redirected to `/dashboard`. A simple `if (isAuthenticated) return <Navigate to="/dashboard"/>` guard would prevent confusion.
-
-**UX-005:** There are no breadcrumbs or page titles in the browser tab. The `<title>` in `index.html` is static "SupportMitra" for all pages. Adding `document.title = "My Tickets | SupportMitra"` in each page would improve tab management.
+### Identified gaps
+- **UX-010:** Assign modal shows freelancer email but no skills preview. Admin can't tell which freelancer to pick without navigating to /admin/freelancers.
+- **UX-011:** After assigning, the ticket status jumps to "in_progress" (skips "assigned" status). The STATUS_TRANSITIONS in AdminTicketActions shows "assigned" as reachable from "open" — but assignment always bypasses it. Low confusion risk but slightly inconsistent.
+- **UX-012:** No confirmation when unassigning. The modal has Cancel/Unassign but no "are you sure?" for the potentially disruptive action.
 
 ---
 
-## 6. Mobile Responsiveness Audit (Code Review)
+## 6. Freelancer Action UX (New in Phase 9)
 
-Tailwind CSS responsive breakpoints used in key components:
+### What works well
+- FreelancerTicketActions panel has green background ("Update Status")
+- Human-readable button labels ("Mark Resolved" not "resolved")
+- Notes modal before status change — good for customer communication
 
-| Component              | Responsive Classes Found                     | Assessment |
-|------------------------|----------------------------------------------|------------|
-| Dashboard              | `max-w-4xl` centered layout                  | Good       |
-| Ticket detail          | `grid-cols-2 sm:grid-cols-3` metadata grid   | Good       |
-| Comment section        | `max-w-[80%]` bubbles                        | Good       |
-| Header                 | `hidden sm:block` for email display          | Good       |
-| New Ticket form        | `max-w-xl` centered                          | Good       |
-| Admin dashboard        | `flex-wrap` for filters                      | Good       |
-| Notification bell      | Absolute positioned dropdown                 | Needs check |
-
-**Assessment:** Tailwind breakpoints are in place for most components. The notification bell dropdown uses `right-0 w-72` which could overflow on small screens (< 320px). Generally, the layout is mobile-aware.
+### Identified gaps
+- **UX-013:** No way for freelancer to see all tickets they have ever worked on (only currently assigned). Historical resolved tickets disappear after closure.
+- **UX-014:** Freelancer has no way to add internal notes (is_internal=true comments). The comment form only posts public comments.
 
 ---
 
-## 7. Notification UX
+## 7. CSAT UX (New in Phase 9)
 
-### What works
-- 30-second polling for new notifications
-- Unread count badge on bell icon
-- Click notification → navigates to related ticket
-- "Mark all read" functionality present in API
+### What works well
+- Emoji-based rating (5 options: 😄😊😐😕😞) is more intuitive than numbered stars
+- Optional comment field
+- After rating: "Thank you for your feedback!" confirmation
+- Already-rated tickets show "You rated this ticket X/5" (FIXED in Phase 9)
 
-### What needs improvement
-
-**UX-006:** The `NotificationBell` component shows a count badge but doesn't show notification previews on hover/tap. Users have to click to see what notifications are about. A dropdown preview list would be far more useful.
-
-**UX-007:** There is no visual distinction between notification categories (ticket_assigned vs. status_changed vs. comment_added). All notifications look the same. Color-coding or icons per category would help users scan.
-
-**UX-008:** Notifications are not automatically marked as read when the user views the related ticket. Users who navigate to a ticket from a notification still see it as "unread" until they manually trigger mark-as-read.
+### Identified gaps
+- **UX-015:** Emoji labels ("Excellent", "Good", "Neutral", "Poor", "Terrible") are below the emoji and may be too small on mobile
+- **UX-016:** No call to action prompting customer to submit CSAT. They might not notice the widget unless scrolling to it.
 
 ---
 
-## 8. Accessibility (A11y) Notes
+## 8. Mobile Responsiveness (Code Audit)
 
-| Issue                                      | Severity | Component |
-|--------------------------------------------|----------|-----------|
-| Form inputs lack `id`/`htmlFor` pairing    | Medium   | All forms — labels use className but not `htmlFor` |
-| No `aria-label` on icon buttons            | Medium   | Notification bell, back button |
-| No skip-to-content link                    | Low      | Global |
-| Color is the only status indicator         | Medium   | Badge.jsx — status colors; should add text pattern or icon |
-| Toast notifications not ARIA-live          | Medium   | ToastContext.jsx — screen readers may miss them |
-
----
-
-## 9. Priority Improvement Backlog
-
-Listed by impact vs. effort:
-
-| Priority | Issue        | Description                                              | Effort |
-|----------|--------------|----------------------------------------------------------|--------|
-| HIGH     | UX-001       | Register shows only first error; multi-field errors dropped | 30 min |
-| HIGH     | UX-004       | Logged-in users can revisit /login (no redirect guard)   | 10 min |
-| HIGH     | UX-006       | Notification bell needs dropdown preview list            | 2 hrs  |
-| HIGH     | A11y-forms   | Add `htmlFor`/`id` to all form inputs                    | 1 hr   |
-| MEDIUM   | UX-003       | NewTicket doesn't unpack field-level API errors          | 30 min |
-| MEDIUM   | UX-005       | Dynamic browser tab titles per page                      | 20 min |
-| MEDIUM   | UX-007       | Notification category icons/colors                       | 1 hr   |
-| MEDIUM   | UX-008       | Auto-mark notification read when viewing ticket          | 1 hr   |
-| MEDIUM   | Empty state  | Hide comment form on closed/resolved tickets             | 20 min |
-| LOW      | UX-002       | Dashboard error message uses raw Axios err.message       | 15 min |
-| LOW      | Comment form | Textarea `resize-none` — user can't expand for long text | 5 min  |
-| LOW      | A11y-toasts  | ARIA-live region for toast notifications                 | 30 min |
-| LOW      | UX-009       | No "show password" toggle on login/register              | 15 min |
+| Component | Responsive? | Notes |
+|-----------|-------------|-------|
+| Dashboard | ✅ | max-w-4xl centered |
+| Freelancer dashboard | ✅ | Same pattern |
+| Ticket detail header | ✅ | grid-cols-2 sm:grid-cols-3 |
+| Admin action panels | ✅ | flex-wrap gap-2 |
+| Notification dropdown | ⚠️ | w-80 fixed width — may overflow on small phones |
+| Modals | ✅ | max-w-md with mx-4 margin |
+| Header nav | ✅ | hidden sm:block for email |
 
 ---
 
-## 10. What's Working Very Well
+## 9. Accessibility Notes
 
-These are UX patterns done right — don't change them:
+| Issue | Severity | Component |
+|-------|----------|-----------|
+| Form inputs missing htmlFor/id pairing | Medium | All forms |
+| No aria-label on icon-only buttons (bell, back) | Medium | Header, TicketDetailPage |
+| Color is only status indicator | Medium | Badge.jsx |
+| Toast not ARIA-live | Medium | ToastContext.jsx |
+| No skip-to-content | Low | Global |
 
-1. **Toast notifications** — every meaningful action (login, ticket create, comment) gives immediate feedback
-2. **Disabled buttons during loading** — prevents double-click submissions across all forms
+---
+
+## 10. Priority Improvement Backlog
+
+| Priority | ID | Description | Effort |
+|----------|----|-------------|--------|
+| HIGH | UX-001 | Register shows only first API error | 30 min |
+| HIGH | UX-010 | Assign modal: show freelancer skills | 1 hr |
+| MEDIUM | UX-003 | NewTicket: unpack field-level errors | 30 min |
+| MEDIUM | UX-005 | Dynamic browser tab titles | 20 min |
+| MEDIUM | UX-013 | Freelancer: view historical resolved tickets | 2 hrs |
+| MEDIUM | UX-014 | Freelancer: ability to post internal notes | 1 hr |
+| LOW | UX-002 | Dashboard: better error message text | 15 min |
+| LOW | UX-012 | Unassign: stronger confirmation language | 10 min |
+| LOW | UX-015 | CSAT: larger emoji labels on mobile | 15 min |
+| LOW | A11y | Add htmlFor/id to all form inputs | 1 hr |
+| LOW | A11y | ARIA-live toasts | 30 min |
+
+---
+
+## 11. What's Working Very Well (Keep These)
+
+1. **Toast notifications** — every meaningful action gives instant feedback
+2. **Disabled buttons during loading** — prevents double-submissions everywhere
 3. **Ctrl+Enter to submit comments** — power-user friendly
-4. **Ticket card hover states** — subtle border/shadow change shows interactivity clearly
-5. **Badge component** — consistent color-coded status/priority/severity across the app
-6. **Back button on ticket detail** — `navigate(-1)` preserves scroll position
-7. **Debounced admin search** — 400ms debounce prevents API spam on every keystroke
+4. **Role-specific action panels** — amber for admin, green for freelancer, blue for customer CSAT
+5. **Debounced search** — 400ms debounce on all search inputs
+6. **Badge component** — consistent color coding across app
+7. **PrivateRoute + AdminRoute + FreelancerRoute** — clean role guards
 8. **initializeAuth() on mount** — page refresh doesn't log users out
-9. **PrivateRoute + AdminRoute guards** — clean role-based access control
-10. **Empty states with CTAs** — both dashboard and comment section guide users to take action
+9. **Empty states with CTAs** — guide users to take action
+10. **Modal pattern** — all destructive actions gated by a modal
