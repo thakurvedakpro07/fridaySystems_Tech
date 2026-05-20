@@ -1,20 +1,31 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { getTicket } from "../api/tickets";
+import { adminGetTicket, freelancerGetTicket, getTicket } from "../api/tickets";
+import { useAuthStore } from "../store/authStore";
 import TicketDetail from "../components/tickets/TicketDetail";
 import MainLayout from "../components/layouts/MainLayout";
+
+// Choose the right fetch function and role label based on who's logged in.
+function useRoleTicketFetcher(id) {
+  const user = useAuthStore((s) => s.user);
+  if (user?.is_staff) return { fetchFn: () => adminGetTicket(id), role: "admin" };
+  if (user?.role === "freelancer") return { fetchFn: () => freelancerGetTicket(id), role: "freelancer" };
+  return { fetchFn: () => getTicket(id), role: "customer" };
+}
 
 export default function TicketDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { fetchFn, role } = useRoleTicketFetcher(id);
 
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    getTicket(id)
+  const loadTicket = useCallback(() => {
+    setLoading(true);
+    fetchFn()
       .then(({ data }) => setTicket(data))
       .catch((err) => {
         if (err.response?.status === 404) {
@@ -24,7 +35,11 @@ export default function TicketDetailPage() {
         }
       })
       .finally(() => setLoading(false));
+  // fetchFn is derived from user object — stable for the lifetime of the page
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => { loadTicket(); }, [loadTicket]);
 
   return (
     <MainLayout maxWidth="max-w-3xl">
@@ -43,7 +58,9 @@ export default function TicketDetailPage() {
         </div>
       )}
 
-      {!loading && !error && ticket && <TicketDetail ticket={ticket} />}
+      {!loading && !error && ticket && (
+        <TicketDetail ticket={ticket} role={role} onUpdate={loadTicket} />
+      )}
     </MainLayout>
   );
 }

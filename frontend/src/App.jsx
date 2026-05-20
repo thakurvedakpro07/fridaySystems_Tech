@@ -12,6 +12,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import FreelancerList from "./pages/admin/FreelancerList";
+import FreelancerDashboard from "./pages/freelancer/FreelancerDashboard";
 import Dashboard from "./pages/Dashboard";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -31,6 +32,13 @@ function PrivateRoute({ children }) {
 function AdminRoute({ children }) {
   const user = useAuthStore((s) => s.user);
   return user?.is_staff ? children : <Navigate to="/dashboard" replace />;
+}
+
+// Redirects non-freelancer users to their appropriate home
+function FreelancerRoute({ children }) {
+  const user = useAuthStore((s) => s.user);
+  if (user?.role === "freelancer") return children;
+  return <Navigate to={user?.is_staff ? "/admin" : "/dashboard"} replace />;
 }
 
 // Redirects already-authenticated users away from /login and /register.
@@ -86,6 +94,12 @@ export default function App() {
         <Route
           path="/tickets/:id"
           element={<PrivateRoute><TicketDetailPage /></PrivateRoute>}
+        />
+
+        {/* Freelancer pages — require login + role=freelancer */}
+        <Route
+          path="/freelancer"
+          element={<PrivateRoute><FreelancerRoute><FreelancerDashboard /></FreelancerRoute></PrivateRoute>}
         />
 
         {/* Admin pages — require login + is_staff */}

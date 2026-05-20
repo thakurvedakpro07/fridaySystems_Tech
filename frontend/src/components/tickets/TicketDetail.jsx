@@ -1,10 +1,23 @@
 /**
  * TicketDetail — full view of a single ticket with tabs for
  * comments (the live conversation thread) and activity (the event log).
+ *
+ * Renders role-specific action panels below the header:
+ *   Admin     → AdminTicketActions  (assign, status change, unassign)
+ *   Freelancer → FreelancerTicketActions (status updates)
+ *   Customer  → CSATWidget on resolved/closed tickets
+ *
+ * Props:
+ *   ticket   — the full ticket object
+ *   onUpdate — optional callback to refetch ticket after an action
+ *   role     — "admin" | "freelancer" | "customer"  (default: "customer")
  */
 import { useState } from "react";
 import ActivityTimeline from "./ActivityTimeline";
 import CommentSection from "./CommentSection";
+import AdminTicketActions from "./AdminTicketActions";
+import FreelancerTicketActions from "./FreelancerTicketActions";
+import CSATWidget from "./CSATWidget";
 import Badge from "../ui/Badge";
 
 const TABS = [
@@ -12,8 +25,9 @@ const TABS = [
   { id: "activity", label: "Activity" },
 ];
 
-export default function TicketDetail({ ticket }) {
+export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
   const [activeTab, setActiveTab] = useState("comments");
+  const handleUpdate = onUpdate ?? (() => {});
 
   if (!ticket) return null;
 
@@ -113,6 +127,17 @@ export default function TicketDetail({ ticket }) {
           </div>
         )}
       </div>
+
+      {/* ── Role-specific action panels ──────────────────── */}
+      {role === "admin" && (
+        <AdminTicketActions ticket={ticket} onUpdate={handleUpdate} />
+      )}
+      {role === "freelancer" && (
+        <FreelancerTicketActions ticket={ticket} onUpdate={handleUpdate} />
+      )}
+      {role === "customer" && (
+        <CSATWidget ticket={ticket} onUpdate={handleUpdate} />
+      )}
 
       {/* ── Tab navigation ──────────────────────────────── */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">

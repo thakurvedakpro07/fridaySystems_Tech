@@ -1,15 +1,18 @@
+import { useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import MainLayout from "../components/layouts/MainLayout";
 import TicketCard from "../components/tickets/TicketCard";
 import { useAuthStore } from "../store/authStore";
 import { useTickets } from "../hooks/useTickets";
 
+const STATUS_OPTIONS = ["", "open", "assigned", "in_progress", "waiting_customer", "resolved", "closed"];
+
 /**
  * Dashboard — the post-login landing page.
  *
  * This component acts as a role router:
  *   - Admin    → redirect to /admin (they have no customer profile)
- *   - Freelancer → placeholder page (freelancer portal not yet built)
+ *   - Freelancer → redirect to /freelancer (FreelancerDashboard)
  *   - Customer  → renders CustomerDashboard with the ticket list
  *
  * WHY the split into two components?
@@ -27,20 +30,7 @@ export default function Dashboard() {
   }
 
   if (user?.role === "freelancer") {
-    return (
-      <MainLayout maxWidth="max-w-2xl">
-        <div className="text-center py-16">
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">Freelancer Portal</h1>
-          <p className="text-gray-500 text-sm mb-1">
-            Logged in as: <span className="font-medium">{user.email}</span>
-          </p>
-          <p className="text-gray-400 text-sm mt-4">
-            Your full freelancer dashboard is coming soon.
-            Check with your administrator for assigned tickets.
-          </p>
-        </div>
-      </MainLayout>
-    );
+    return <Navigate to="/freelancer" replace />;
   }
 
   return <CustomerDashboard />;
@@ -52,7 +42,23 @@ export default function Dashboard() {
  * so useTickets() (which calls the IsCustomer-protected endpoint) is safe here.
  */
 function CustomerDashboard() {
-  const { tickets, loading, error } = useTickets();
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch]           = useState("");
+  const [status, setStatus]           = useState("");
+  const debounceRef                   = useRef(null);
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearchInput(val);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setSearch(val), 400);
+  };
+
+  const filters = {};
+  if (search) filters.search = search;
+  if (status) filters.status = status;
+
+  const { tickets, loading, error } = useTickets(filters);
 
   return (
     <MainLayout maxWidth="max-w-4xl">
@@ -64,6 +70,26 @@ function CustomerDashboard() {
         >
           + New Ticket
         </Link>
+      </div>
+
+      {/* Search and filter */}
+      <div className="flex flex-wrap gap-3 mb-5">
+        <input
+          type="text"
+          placeholder="Search tickets…"
+          value={searchInput}
+          onChange={handleSearchChange}
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-56"
+        />
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s}>{s ? s.replaceAll("_", " ") : "All statuses"}</option>
+          ))}
+        </select>
       </div>
 
       {loading && (
@@ -78,13 +104,17 @@ function CustomerDashboard() {
 
       {!loading && !error && tickets.length === 0 && (
         <div className="text-center py-16">
-          <p className="text-gray-400 mb-4">No tickets yet.</p>
-          <Link
-            to="/tickets/new"
-            className="bg-blue-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-blue-700"
-          >
-            Open your first ticket
-          </Link>
+          <p className="text-gray-400 mb-4">
+            {search || status ? "No tickets match your filters." : "No tickets yet."}
+          </p>
+          {!search && !status && (
+            <Link
+              to="/tickets/new"
+              className="bg-blue-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-blue-700"
+            >
+              Open your first ticket
+            </Link>
+          )}
         </div>
       )}
 
