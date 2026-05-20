@@ -6,10 +6,12 @@ import { useEffect, useRef, useState } from "react";
 import { freelancerListTickets } from "../../api/tickets";
 import MainLayout from "../../components/layouts/MainLayout";
 import TicketCard from "../../components/tickets/TicketCard";
+import { usePageTitle } from "../../hooks/usePageTitle";
 
 const STATUS_OPTIONS = ["", "assigned", "in_progress", "waiting_customer", "resolved", "closed"];
 
 export default function FreelancerDashboard() {
+  usePageTitle("My Assigned Tickets");
   const [tickets, setTickets]       = useState([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);

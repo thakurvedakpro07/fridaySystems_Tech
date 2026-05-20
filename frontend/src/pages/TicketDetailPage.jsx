@@ -5,6 +5,7 @@ import { adminGetTicket, freelancerGetTicket, getTicket } from "../api/tickets";
 import { useAuthStore } from "../store/authStore";
 import TicketDetail from "../components/tickets/TicketDetail";
 import MainLayout from "../components/layouts/MainLayout";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 // Choose the right fetch function and role label based on who's logged in.
 function useRoleTicketFetcher(id) {
@@ -22,6 +23,7 @@ export default function TicketDetailPage() {
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  usePageTitle(ticket ? ticket.ticket_number : "Ticket");
 
   const loadTicket = useCallback(() => {
     setLoading(true);

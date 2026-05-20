@@ -4,24 +4,34 @@ import MainLayout from "../components/layouts/MainLayout";
 import TicketForm from "../components/tickets/TicketForm";
 import { createTicket } from "../api/tickets";
 import { useToast } from "../context/ToastContext";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function NewTicket() {
+  usePageTitle("Open a Ticket");
   const navigate = useNavigate();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState([]);
 
   const handleSubmit = async (formData) => {
     setLoading(true);
-    setError("");
+    setErrors([]);
     try {
       const { data } = await createTicket(formData);
       toast("Ticket created! Redirecting to your ticket…", "success");
       navigate(`/tickets/${data.id}`);
     } catch (err) {
-      const msg = err.response?.data?.detail || "Failed to create ticket. Please try again.";
-      setError(msg);
-      toast(msg, "error");
+      const responseData = err.response?.data || {};
+      const msgs = [];
+      Object.entries(responseData).forEach(([key, val]) => {
+        const list = Array.isArray(val) ? val : [val];
+        list.forEach((m) => {
+          msgs.push(key === "detail" || key === "non_field_errors" ? String(m) : `${key}: ${m}`);
+        });
+      });
+      if (msgs.length === 0) msgs.push("Failed to create ticket. Please try again.");
+      setErrors(msgs);
+      toast(msgs[0], "error");
     } finally {
       setLoading(false);
     }
@@ -34,9 +44,15 @@ export default function NewTicket() {
         Describe your issue and a vetted engineer will be assigned within the SLA window.
       </p>
 
-      {error && (
+      {errors.length > 0 && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
-          {error}
+          {errors.length === 1 ? (
+            errors[0]
+          ) : (
+            <ul className="list-disc list-inside space-y-0.5">
+              {errors.map((e, i) => <li key={i}>{e}</li>)}
+            </ul>
+          )}
         </div>
       )}
 

@@ -6,8 +6,10 @@ import { Link } from "react-router-dom";
 import apiClient from "../../api/client";
 import MainLayout from "../../components/layouts/MainLayout";
 import Badge from "../../components/ui/Badge";
+import { usePageTitle } from "../../hooks/usePageTitle";
 
 export default function FreelancerList() {
+  usePageTitle("Freelancers");
   const [freelancers, setFreelancers] = useState([]);
   const [loading, setLoading] = useState(true);
 

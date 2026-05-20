@@ -3,10 +3,12 @@ import { Link } from "react-router-dom";
 import apiClient from "../../api/client";
 import MainLayout from "../../components/layouts/MainLayout";
 import TicketCard from "../../components/tickets/TicketCard";
+import { usePageTitle } from "../../hooks/usePageTitle";
 
 const STATUS_OPTIONS = ["", "open", "assigned", "in_progress", "waiting_customer", "resolved", "closed", "pending_payment"];
 
 export default function AdminDashboard() {
+  usePageTitle("Admin Dashboard");
   const [tickets, setTickets]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);

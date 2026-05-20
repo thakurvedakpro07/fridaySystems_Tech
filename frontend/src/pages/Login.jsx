@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Button from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function Login() {
+  usePageTitle("Sign In");
   const navigate = useNavigate();
   const { loginUser, loading } = useAuth();
   const [form, setForm] = useState({ email: "", password: "" });

@@ -29,6 +29,20 @@ DEBUG = os.getenv("DEBUG", "0") == "1"
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
+# ── Security Headers (production only) ───────────────────────────
+# These are handled by Django's SecurityMiddleware, which is already in MIDDLEWARE.
+# In development (DEBUG=True) they're off so HTTPS isn't forced on localhost.
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True                         # redirect HTTP → HTTPS
+    SESSION_COOKIE_SECURE = True                       # session cookie over HTTPS only
+    CSRF_COOKIE_SECURE = True                          # CSRF cookie over HTTPS only
+    SECURE_HSTS_SECONDS = 31536000                     # tell browsers: only HTTPS for 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_BROWSER_XSS_FILTER = True                   # legacy IE XSS filter header
+    SECURE_CONTENT_TYPE_NOSNIFF = True                 # block MIME-type sniffing
+    X_FRAME_OPTIONS = "DENY"                           # prevent clickjacking (no iframes)
+
 # ── Installed Apps ────────────────────────────────────────────────
 INSTALLED_APPS = [
     # Django built-ins

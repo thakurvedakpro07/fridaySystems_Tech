@@ -52,14 +52,23 @@ export function useAuth() {
       toast("Account created! Welcome to SupportMitra.", "success");
       return { success: true };
     } catch (err) {
-      const message =
-        err.response?.data?.email?.[0] ||
-        err.response?.data?.password?.[0] ||
-        err.response?.data?.detail ||
-        "Registration failed. Please try again.";
+      const responseData = err.response?.data || {};
+      const errors = [];
+      Object.entries(responseData).forEach(([key, val]) => {
+        const msgs = Array.isArray(val) ? val : [val];
+        msgs.forEach((msg) => {
+          if (key === "detail" || key === "non_field_errors") {
+            errors.push(String(msg));
+          } else {
+            errors.push(`${key}: ${msg}`);
+          }
+        });
+      });
+      if (errors.length === 0) errors.push("Registration failed. Please try again.");
+      const message = errors[0];
       setError(message);
       toast(message, "error");
-      return { success: false, message };
+      return { success: false, message, errors };
     } finally {
       setLoading(false);
     }

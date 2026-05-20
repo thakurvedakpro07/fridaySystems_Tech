@@ -4,6 +4,7 @@ import MainLayout from "../components/layouts/MainLayout";
 import TicketCard from "../components/tickets/TicketCard";
 import { useAuthStore } from "../store/authStore";
 import { useTickets } from "../hooks/useTickets";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 const STATUS_OPTIONS = ["", "open", "assigned", "in_progress", "waiting_customer", "resolved", "closed"];
 
@@ -42,6 +43,7 @@ export default function Dashboard() {
  * so useTickets() (which calls the IsCustomer-protected endpoint) is safe here.
  */
 function CustomerDashboard() {
+  usePageTitle("My Tickets");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch]           = useState("");
   const [status, setStatus]           = useState("");

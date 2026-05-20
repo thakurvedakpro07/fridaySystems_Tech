@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Button from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function Register() {
+  usePageTitle("Create Account");
   const navigate = useNavigate();
   const { registerUser, loading } = useAuth();
   const [form, setForm] = useState({
@@ -12,19 +14,19 @@ export default function Register() {
     company: "",
     phone: "",
   });
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState([]);
 
   const handleChange = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setErrors([]);
     const result = await registerUser(form.email, form.password, form.company, form.phone);
     if (result.success) {
       navigate("/dashboard");
     } else {
-      setError(result.message);
+      setErrors(result.errors || [result.message]);
     }
   };
 
@@ -36,9 +38,15 @@ export default function Register() {
         </Link>
         <h1 className="text-2xl font-semibold text-gray-900 mb-6">Create account</h1>
 
-        {error && (
+        {errors.length > 0 && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2 mb-4">
-            {error}
+            {errors.length === 1 ? (
+              errors[0]
+            ) : (
+              <ul className="list-disc list-inside space-y-0.5">
+                {errors.map((e, i) => <li key={i}>{e}</li>)}
+              </ul>
+            )}
           </div>
         )}
 
