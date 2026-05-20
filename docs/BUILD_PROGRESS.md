@@ -2,6 +2,188 @@
 
 ---
 
+## 2026-05-20 — Phase 10: UX Polish + Security Hardening + Production Readiness
+
+### Completed Today
+
+* Fixed **UX-001** — registration form now surfaces every field-level API error as a bullet list; `registerUser()` in `useAuth.js` iterates all keys in `err.response.data` and accumulates them into an `errors[]` array; `Register.jsx` renders a `<ul>` when `errors.length > 1` and an inline string when it is 1
+* Fixed **UX-003** — new ticket form applies the same multi-error unpacking pattern; generic "Failed to create ticket" fallback replaced by exact field names and messages from the DRF response
+* Fixed **UX-005** — created `usePageTitle(title)` hook (8 lines) that calls `document.title` inside a `useEffect`; applied to all 7 page components; tab titles now read e.g. "TKT-ABC123 — SupportMitra" on the ticket detail page, "Admin Dashboard — SupportMitra" for admins, and "My Assigned Tickets — SupportMitra" for freelancers
+* Added production-grade **secure HTTP headers** to `settings.py` gated by `if not DEBUG` — `SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `SECURE_HSTS_SECONDS = 31536000`, `SECURE_HSTS_INCLUDE_SUBDOMAINS`, `SECURE_HSTS_PRELOAD`, `SECURE_BROWSER_XSS_FILTER`, `SECURE_CONTENT_TYPE_NOSNIFF`, `X_FRAME_OPTIONS = "DENY"` — none of these affect local development
+* Created `backend/.env.example` — complete environment variable reference covering SECRET_KEY, DEBUG, ALLOWED_HOSTS, DATABASE_URL, REDIS_URL, email SMTP, Razorpay, AWS S3, JWT lifetimes, feature flags, timezone; no `.env.example` existed before
+* Created `nginx/nginx.conf` — production reverse proxy configuration covering HTTP→HTTPS redirect, SSL/TLS 1.2+, Let's Encrypt certificate paths, HSTS + security headers, gzip compression, rate-limit zones for API and auth endpoints, `/api/` and `/django-admin/` proxy pass to Gunicorn, `/metrics` access restriction (localhost only), React SPA `try_files` routing, and aggressive cache headers for hashed static assets
+* Generated 5 production-readiness documentation files (see Files Created)
+* Verified frontend build is clean after all changes: `135 modules, 0 errors, 268 KB bundle (84 KB gzip)` — commit `842557f`
+
+---
+
+### Files Created
+
+* `frontend/src/hooks/usePageTitle.js` — 8-line custom hook; calls `document.title` in `useEffect`; cleanup resets to "SupportMitra" on unmount
+* `backend/.env.example` — complete commented environment variable reference for new deployments
+* `nginx/nginx.conf` — production nginx reverse proxy (HTTP→HTTPS, SSL termination, rate limiting, static file serving, React SPA routing)
+* `docs/PRODUCTION_DEPLOYMENT_GUIDE.md` — step-by-step Ubuntu 22.04 server deployment walkthrough: Docker, certbot, nginx, migrations, backups, update process
+* `docs/UI_UX_IMPROVEMENT_REPORT.md` — Phase 10 UX changes documented with before/after; full prioritised UX backlog (HIGH/MEDIUM/LOW); confirmed "keep these" patterns
+* `docs/PERFORMANCE_AUDIT.md` — backend query analysis (`select_related` confirmed, missing `prefetch_related` for comment authors identified); frontend bundle and render pattern review; baseline metrics table; prioritised optimisation backlog
+* `docs/SECURITY_AUDIT.md` — 7-category security scorecard (**8.6/10**); all auth/authz controls verified; Phase 10 header additions documented; identified gaps: CSP header missing, Django admin URL not hardened, no per-user session invalidation on password change
+* `docs/FINAL_LAUNCH_CHECKLIST.md` — 80-item pre-launch checklist across infrastructure, env config, Django settings, database, nginx/SSL, security, payments, email, S3, monitoring, smoke tests, and launch-day operations; ✅ marks items already complete in the codebase
+
+---
+
+### Files Modified
+
+* `frontend/src/hooks/useAuth.js` — `registerUser()` catch block rewritten to collect all field errors from `err.response.data` into `errors[]`; returns `{ success: false, message, errors }` (backward-compatible: `message` still present for toast)
+* `frontend/src/pages/Register.jsx` — `error: string` state replaced with `errors: string[]`; error box renders inline string for 1 error, `<ul>` bullet list for multiple
+* `frontend/src/pages/NewTicket.jsx` — same multi-error unpacking pattern as Register; `error: string` → `errors: string[]`; added `usePageTitle("Open a Ticket")`
+* `frontend/src/pages/Login.jsx` — added `usePageTitle("Sign In")`
+* `frontend/src/pages/Dashboard.jsx` — added `usePageTitle("My Tickets")` in `CustomerDashboard` inner component
+* `frontend/src/pages/TicketDetailPage.jsx` — added `usePageTitle(ticket?.ticket_number ?? "Ticket")` so the ticket number appears in the tab once loaded
+* `frontend/src/pages/admin/AdminDashboard.jsx` — added `usePageTitle("Admin Dashboard")`
+* `frontend/src/pages/admin/FreelancerList.jsx` — added `usePageTitle("Freelancers")`
+* `frontend/src/pages/freelancer/FreelancerDashboard.jsx` — added `usePageTitle("My Assigned Tickets")`
+* `backend/supportmitra/settings.py` — added 9 production security header settings under `if not DEBUG` guard
+
+---
+
+### Bugs Fixed
+
+* **UX-001: Register form silently drops all but the first API error** — `registerUser()` used `||` chain to pick the first truthy field; fix: iterate `Object.entries(err.response.data)` and push all messages with field names as prefixes
+* **UX-003: New ticket form shows generic error on any backend failure** — only `err.response?.data?.detail` was extracted; fix: same full-error unpacking as Register
+* **UX-005: Browser tab always shows "SupportMitra" on every page** — no page set `document.title`; fix: `usePageTitle` hook applied to all 7 pages
+
+---
+
+### Pending Issues
+
+* **Git push blocked** — no SSH key or HTTPS credentials configured in the shell session; commit `842557f` exists locally; run `git push origin master` from a terminal with GitHub auth to complete the push
+* **CSP (Content Security Policy) header not yet implemented** — identified in SECURITY_AUDIT.md as Medium priority; requires frontend audit of inline scripts before a `Content-Security-Policy` header can be set without breaking Tailwind
+* **Django admin URL still at `/django-admin/`** — should be changed to a non-obvious path before public launch; documented in SECURITY_AUDIT.md
+* **`prefetch_related` missing for comment authors** — identified in PERFORMANCE_AUDIT.md; N+1 queries on ticket detail with many comments; Medium priority fix
+* **No pagination UI on admin ticket list** — backend paginates at 20 results; frontend has no page navigation controls; acceptable at MVP scale
+* **Celery task concurrency** — workers default to 1 process; should be set to `--concurrency 4` in `docker-compose.prod.yml` before production load
+* **Razorpay payment flow** — still the highest-impact missing feature; tickets stuck at `pending_payment` until wired
+* **File upload API endpoint** — `TicketAttachment` model exists; S3 integration and upload endpoint are Phase 11 work
+
+---
+
+### Architecture Decisions
+
+* **`usePageTitle` as a standalone hook rather than a library** — avoids adding `react-helmet` or `react-helmet-async` as a dependency for an 8-line `useEffect`; the hook is clean enough to extend with description/meta tags if needed later
+* **Multi-error accumulator pattern in `registerUser`** — returns both `message` (string, for backward-compat toast) and `errors` (string array, for the UI list); callers that only check `message` continue to work; callers that check `errors` get the full set
+* **Secure headers gated by `if not DEBUG`** — `SECURE_SSL_REDIRECT=True` in development would break the local HTTP stack; all 9 headers are production-only; no environment-specific settings files or overrides needed
+* **`nginx.conf` uses `limit_req_zone` at http block** — the zones must be declared in `/etc/nginx/nginx.conf` (the global http block), not inside the server block; the site config references them; this is documented in the deployment guide to prevent "zone not found" errors
+
+---
+
+### Next Step
+
+* **Run `git push origin master`** from a terminal with GitHub credentials to publish commit `842557f`
+* **Phase 11 — Razorpay payment integration** (highest business value; tickets currently stuck at `pending_payment` indefinitely):
+  1. Implement `payment_service.create_consulting_fee_order(ticket, customer)` using Razorpay SDK
+  2. Wire into `TicketListCreateView.create()` — return `checkout_url` in the 201 response
+  3. `NewTicket.jsx` — `window.location.href = data.checkout_url` after ticket creation
+  4. Implement `payment_webhook` view with HMAC-SHA256 signature verification
+  5. On verified webhook: transition ticket to `open`, create `Payment` record, trigger email
+* **Implement file upload endpoint** (second most visible missing feature):
+  1. Configure `django-storages` + S3 bucket
+  2. Add `POST /api/tickets/{id}/attachments/` endpoint
+  3. Add file picker UI to `TicketDetail.jsx`
+
+---
+
+## 2026-05-20 — Phase 9: Complete Ticket Workflow + Full QA Audit (7 Bugs Fixed)
+
+### Completed Today
+
+**Ticket Workflow — Admin Actions**
+* Built `AdminTicketActions.jsx` — amber-bordered panel with three modals: (1) Assign Freelancer — loads `listFreelancers()` on demand, renders email dropdown; (2) Change Status — uses `STATUS_TRANSITIONS` map to show only valid next states; (3) Unassign — with optional note field; all three call `onUpdate()` on success so the ticket detail refreshes
+* Added `assignTicket`, `adminUpdateStatus`, `unassignTicket`, `adminListTickets`, `adminGetTicket`, `listFreelancers` API functions to `api/tickets.js`
+
+**Ticket Workflow — Freelancer Portal**
+* Built `FreelancerDashboard.jsx` at `/freelancer` — search + status filter with 400ms debounce; calls `freelancerListTickets(params)`; "No tickets assigned to you yet." empty state
+* Built `FreelancerTicketActions.jsx` — green-bordered panel; `FREELANCER_TRANSITIONS` map (`assigned→in_progress`, `in_progress→waiting_customer/resolved`, `waiting_customer→in_progress/resolved`); modal with note field before each status change
+* Added `FreelancerRoute` guard in `App.jsx`; registered `/freelancer` route
+
+**Ticket Workflow — Customer CSAT**
+* Built `CSATWidget.jsx` — 5-emoji rating (😄😊😐😕😞); only shown for `resolved`/`closed` tickets; checks `ticket.csat_score != null` to show "already rated" view; calls `submitCSAT` API; optional comment field
+
+**Role-Aware Ticket Detail**
+* Extended `TicketDetailPage.jsx` with `useRoleTicketFetcher(id)` hook — returns the correct fetch function and `role` label based on `user.is_staff` / `user.role`; passes `role` prop to `TicketDetail`
+* Extended `TicketDetail.jsx` to render role-specific action panels between header and tabs: `AdminTicketActions` (amber) for admin, `FreelancerTicketActions` (green) for freelancer, `CSATWidget` (blue) for customer
+
+**Phase 9 QA — 7 Bugs Found and Fixed (commit eca45b2)**
+* Executed 90+ live API tests via curl across all three user flows; found 3 Critical, 3 High, 1 Low severity bugs; all fixed in the same session
+
+**Documentation (4 QA docs)**
+* Generated `docs/COMPLETE_MANUAL_TEST_REPORT.md`, `docs/BUG_REPORT.md`, updated `docs/UX_IMPROVEMENT_REPORT.md`, `docs/FINAL_MVP_STABILITY_SCORE.md` (8.2/10)
+
+---
+
+### Files Created
+
+* `frontend/src/components/tickets/AdminTicketActions.jsx` — admin action panel with three modals (assign/status/unassign)
+* `frontend/src/components/tickets/FreelancerTicketActions.jsx` — freelancer status update panel with note modal
+* `frontend/src/components/tickets/CSATWidget.jsx` — 5-emoji CSAT rating widget for customers
+* `frontend/src/pages/freelancer/FreelancerDashboard.jsx` — freelancer assigned-ticket list with search + status filter
+* `docs/COMPLETE_MANUAL_TEST_REPORT.md` — 90+ E2E test results across all three user roles
+* `docs/BUG_REPORT.md` — 7 bugs documented with root cause, reproduction steps, and fix (all resolved)
+* `docs/FINAL_MVP_STABILITY_SCORE.md` — weighted 8.2/10 scorecard; beta launch assessment
+
+---
+
+### Files Modified
+
+* `frontend/src/api/tickets.js` — added 7 new API functions: `assignTicket`, `adminUpdateStatus`, `unassignTicket`, `adminListTickets`, `adminGetTicket`, `freelancerListTickets`, `freelancerGetTicket`, `freelancerUpdateStatus`, `listFreelancers`, `submitCSAT`
+* `frontend/src/components/tickets/TicketDetail.jsx` — now accepts `ticket`, `role`, `onUpdate` props; renders role-appropriate action panel
+* `frontend/src/pages/TicketDetailPage.jsx` — added `useRoleTicketFetcher` hook; passes `role` and `onUpdate={loadTicket}` to `TicketDetail`
+* `frontend/src/pages/Dashboard.jsx` — freelancer gets `<Navigate to="/freelancer">` instead of placeholder; added customer search input + status filter with debounce
+* `frontend/src/App.jsx` — added `FreelancerRoute` guard; added `/freelancer` route; added `/freelancer/tickets/:id` route
+* `frontend/src/components/layout/Header.jsx` — (QA fix) freelancer sees "My Tickets" → `/freelancer`; `+ New Ticket` hidden for `role === "freelancer"`
+* `frontend/src/components/ui/Badge.jsx` — (QA fix) added `if (!label) return null` guard
+* `backend/support_app/serializers.py` — (QA fix) `TicketDetailSerializer` now includes `csat_score = SerializerMethodField()` reading `obj.csat_survey.score`; added to `fields` and `read_only_fields`
+* `backend/support_app/views.py` — (QA fix) `FreelancerTicketListView.get_queryset()` now handles `?search=` via `Q(title__icontains=search) | Q(ticket_number__icontains=search)`
+* `docs/UX_IMPROVEMENT_REPORT.md` — updated for Phase 9 (new admin/freelancer/CSAT UX sections, 10-item backlog)
+
+---
+
+### Bugs Fixed
+
+* **BUG-C1 (Critical): `adminUpdateStatus` sent `{ status: newStatus }` — backend expected `new_status`** — every admin status change returned `{"new_status": ["This field is required."]}` (400); fix: changed payload field name to `new_status` in `api/tickets.js`
+* **BUG-C2 (Critical): `freelancerUpdateStatus` same field name mismatch** — same 400 error on every freelancer status update; fix: same field rename
+* **BUG-C3 (Critical): `adminGetTicket` called non-existent `/admin/tickets/{id}/` endpoint** — admin ticket detail always showed "Could not load ticket" (404); fix: changed to `/tickets/${id}/` — `TicketDetailView` already handles `is_staff=True`
+* **BUG-H1 (High): `csat_score` missing from `TicketDetailSerializer`** — `CSATWidget` always showed the rating form on refresh even after submission because `ticket.csat_score` was always `undefined`; fix: added `SerializerMethodField` returning `obj.csat_survey.score`
+* **BUG-H2 (High): Freelancer dashboard search silently ignored** — `FreelancerTicketListView` had no `?search=` handling; all tickets always returned; fix: added `Q` filter on `title` and `ticket_number`
+* **BUG-H3 (High): Header showed wrong nav links for freelancers** — "Dashboard" link pointed to `/dashboard` (causing redirect confusion); `+ New Ticket` button visible despite freelancers not being able to create tickets; fix: role-aware header logic
+* **BUG-L1 (Low): `Badge.jsx` crashed on `null` label** — `label.replaceAll("_", " ")` threw `TypeError` when `ticket.severity` or `ticket.priority` was null; fix: `if (!label) return null`
+
+---
+
+### Pending Issues
+
+* **Payment integration** — tickets created at `pending_payment` status; admin must manually transition them until Razorpay is wired
+* **File upload** — `TicketAttachment` model exists in DB; no S3/API endpoint; customers cannot attach screenshots
+* **Freelancer historical tickets** — freelancer dashboard only shows currently assigned tickets; resolved/closed tickets disappear
+* **Freelancer internal notes** — no way for freelancers to post `is_internal=true` comments; backend supports it but no UI toggle
+* **Customer ticket reopen button** — backend state machine supports reopen; no customer-facing UI button
+* **Admin analytics** — no metrics or reporting dashboard for admins
+* **No pagination UI on any list** — backend paginates at PAGE_SIZE=20 but no page controls in the frontend
+
+---
+
+### Architecture Decisions
+
+* **`useRoleTicketFetcher` hook in `TicketDetailPage`** — single page component serves all three roles by selecting the correct API function and role label at runtime; avoids three separate page components for admin/freelancer/customer ticket detail
+* **`STATUS_TRANSITIONS` map in `AdminTicketActions`** — hardcoded valid next-states per current state; keeps the transition logic readable and co-located with the UI; mirrors the backend's state machine without a round-trip
+* **Role-specific action panel colour coding** — amber = admin, green = freelancer, blue = CSAT; consistent visual language makes the role context immediately clear; defined in panel background class, not a theme system
+
+---
+
+### Next Step
+
+* **Phase 10 — Production hardening + UX polish** (see Phase 10 entry above — completed same day)
+
+---
+
 ## 2026-05-20 — Django Admin Login Debugging + Root Cause Fix
 
 ### Completed Today
