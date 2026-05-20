@@ -93,8 +93,21 @@ TEMPLATES = [
 WSGI_APPLICATION = "supportmitra.wsgi.application"
 
 # ── Database ──────────────────────────────────────────────────────
-# Reads DATABASE_URL from env; falls back to SQLite for quick local testing
-# without Docker (not suitable for production).
+#
+# THIS PROJECT ALWAYS USES POSTGRESQL — set via DATABASE_URL in backend/.env
+#
+# WARNING — SQLite fallback trap (incident 2026-05-20):
+#   If DATABASE_URL is not in your shell environment, dj_database_url silently
+#   falls back to a local SQLite file (backend/db.sqlite3). That is a DIFFERENT
+#   database from the PostgreSQL container. Any user you create or password you
+#   change there will NOT be visible to the Docker backend — and vice versa.
+#
+#   RULE: NEVER run "python manage.py ..." directly in your terminal.
+#         ALWAYS use: docker compose exec backend python manage.py ...
+#
+#   The SQLite fallback default below exists only so Django can start without
+#   crashing in CI or test environments where no DATABASE_URL is set. It is
+#   not a supported workflow for this project. Do not recreate backend/db.sqlite3.
 DATABASES = {
     "default": dj_database_url.config(
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",

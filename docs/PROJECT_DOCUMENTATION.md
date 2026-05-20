@@ -1186,7 +1186,7 @@ ENABLE_AUTO_ASSIGNMENT=false
 | `DEBUG` | `1` | `0` |
 | `CORS_ALLOW_ALL_ORIGINS` | `True` | `False` (specific origins only) |
 | `DEFAULT_PERMISSION_CLASSES` | `AllowAny` | `IsAuthenticated` |
-| Database | SQLite fallback | PostgreSQL (required) |
+| Database | PostgreSQL (set via `DATABASE_URL` in `backend/.env`) | PostgreSQL (required) |
 | Email backend | Console backend | SendGrid / SES |
 | Static files | Vite dev server | Nginx + CDN |
 | HTTPS | Not required | Required (enforced) |
@@ -1241,13 +1241,21 @@ npm run dev
 
 ### Backend Development (without Docker)
 
+> **Warning:** Running Django outside Docker is only supported for automated CI/test
+> pipelines where DATABASE_URL is explicitly set. For normal development, always use
+> Docker so that your commands target the same PostgreSQL container that Gunicorn uses.
+> Running `python manage.py` bare in a terminal without DATABASE_URL in your shell
+> causes Django to silently fall back to a local SQLite file — a completely separate
+> database from the one the backend reads. See DAILY_STARTUP_GUIDE.md Golden Rule.
+
 ```bash
+# Only for CI / isolated test runs — set DATABASE_URL explicitly
 cd backend
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
-cp .env.example .env
+export DATABASE_URL=postgres://supportmitra:supportmitra@localhost:5432/supportmitra
 python manage.py migrate
 python manage.py runserver
 ```

@@ -1,5 +1,33 @@
 # SupportMitra — Daily Startup Guide
-_Last audited: 2026-05-19. All systems verified healthy._
+_Last audited: 2026-05-20. All systems verified healthy._
+
+---
+
+## ⚠️ GOLDEN RULE — Always Use Docker
+
+> **NEVER run Django or Python commands directly in your terminal.**
+> **ALWAYS prefix every Django command with `docker compose exec backend`.**
+
+Why: Without Docker, `python manage.py` has no access to the environment variables in
+`backend/.env`. Django silently falls back to a local SQLite file instead of the
+PostgreSQL container. Any user you create or password you change there is invisible to
+the real database — and vice versa.
+
+**Incident example (2026-05-20):** Ran `python manage.py changepassword` locally.
+Django used SQLite. The Docker backend read PostgreSQL. Admin login failed for hours.
+Fix: always `docker compose exec backend python manage.py ...`
+
+**The two commands you must never run bare:**
+```bash
+# WRONG — DO NOT USE THESE
+python manage.py <anything>
+python manage.py runserver
+```
+
+**Always do this instead:**
+```bash
+docker compose exec backend python manage.py <anything>
+```
 
 ---
 
@@ -118,21 +146,66 @@ docker compose logs -f backend       # follow (live tail) backend
 docker compose logs -f               # follow all services
 ```
 
-### Run Django management commands
+### Docker-Safe Django Command Reference
+
+All Django commands must go through `docker compose exec backend`. Never run them bare.
 
 ```bash
-# Apply migrations after model changes
+# ── Migrations ───────────────────────────────────────────────────
+# Generate new migration files after editing models.py
 docker compose exec backend python manage.py makemigrations
+
+# Apply all pending migrations to PostgreSQL
 docker compose exec backend python manage.py migrate
 
-# Create admin superuser (first time or if lost)
+# Check for unapplied migrations (shows nothing = all applied)
+docker compose exec backend python manage.py showmigrations
+
+
+# ── Users ────────────────────────────────────────────────────────
+# Create a new Django admin superuser (interactive prompt)
 docker compose exec backend python manage.py createsuperuser
 
-# Django interactive shell
+# Change any user's password by email
+docker compose exec backend python manage.py changepassword <email>
+# Example: docker compose exec backend python manage.py changepassword admin@supportmitra.in
+
+
+# ── Shell ────────────────────────────────────────────────────────
+# Interactive Python shell with Django models loaded
 docker compose exec backend python manage.py shell
 
-# Rebuild static files manually (happens automatically on startup)
+# Example: verify a user exists in the real database
+# >>> from support_app.models import CustomUser
+# >>> CustomUser.objects.filter(email="admin@supportmitra.in").first()
+
+
+# ── Static Files ─────────────────────────────────────────────────
+# Collect all static files (runs automatically on startup via docker-compose command)
 docker compose exec backend python manage.py collectstatic --noinput
+
+
+# ── Tests ────────────────────────────────────────────────────────
+# Run the full test suite (73 tests)
+docker compose exec backend python -m pytest tests/ -v
+
+# Run a specific test file
+docker compose exec backend python -m pytest tests/test_tickets.py -v
+
+
+# ── Logs ─────────────────────────────────────────────────────────
+docker compose logs backend             # show backend logs
+docker compose logs -f backend          # live-follow backend logs
+docker compose logs -f                  # live-follow all services
+
+
+# ── Restart / Rebuild ────────────────────────────────────────────
+docker compose restart backend          # restart backend only
+docker compose restart celery celerybeat
+
+# Full rebuild (after changing requirements.txt or Dockerfiles)
+docker compose down
+docker compose up --build -d
 ```
 
 ### Restart a single service
@@ -341,6 +414,20 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/admin/login/
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5173
 # Expected: 200
 ```
+
+---
+
+## Common Beginner Mistakes
+
+| Mistake | What Goes Wrong | Correct Approach |
+|---------|----------------|-----------------|
+| `python manage.py createsuperuser` (bare) | Creates user in SQLite, invisible to Docker PostgreSQL | `docker compose exec backend python manage.py createsuperuser` |
+| `python manage.py changepassword` (bare) | Resets password in SQLite; Django backend still reads old PostgreSQL password | `docker compose exec backend python manage.py changepassword <email>` |
+| `python manage.py migrate` (bare) | Migrates SQLite; PostgreSQL stays behind; containers fail | `docker compose exec backend python manage.py migrate` |
+| Editing backend code then wondering why changes don't appear | Forgot Docker is running; or Gunicorn hasn't reloaded yet | File changes auto-reload via Gunicorn `--reload`. Wait 2-3 seconds. |
+| `docker compose down -v` to "fix" a login problem | `-v` deletes the entire PostgreSQL volume — ALL DATA LOST | Only use `-v` as a last resort after backing up |
+| Changing `SECRET_KEY` in `.env` on a running system | Invalidates all existing sessions and tokens | Never change SECRET_KEY in dev; replace before production only |
+| Running `pip install` locally to add a dependency | Package installs on your machine, not in the Docker image | Add to `requirements.txt`, then `docker compose up --build -d` |
 
 ---
 
