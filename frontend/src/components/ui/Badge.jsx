@@ -33,6 +33,7 @@ const LABEL_MAP = {
 };
 
 export default function Badge({ label }) {
+  if (!label) return null;
   const colours = COLOUR_MAP[label] ?? "bg-gray-100 text-gray-700";
   const display = LABEL_MAP[label] ?? label.replaceAll("_", " ");
 

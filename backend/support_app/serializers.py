@@ -121,6 +121,15 @@ class TicketDetailSerializer(serializers.ModelSerializer):
     """Full serializer for the ticket detail view (customer-facing)."""
     # Use the public subset — customers must not see contract_signed etc.
     assigned_to = FreelancerPublicSerializer(read_only=True)
+    # csat_score: None if no survey submitted yet; 1-5 once submitted.
+    # Used by CSATWidget to show "already rated" state after page refresh.
+    csat_score = serializers.SerializerMethodField()
+
+    def get_csat_score(self, obj):
+        try:
+            return obj.csat_survey.score
+        except Exception:
+            return None
 
     class Meta:
         model = Ticket
@@ -129,12 +138,12 @@ class TicketDetailSerializer(serializers.ModelSerializer):
             "service_type", "severity", "priority", "status",
             "assigned_to", "remote_session_url",
             "created_at", "updated_at", "resolved_at",
-            "first_response_at", "due_at",
+            "first_response_at", "due_at", "csat_score",
         ]
         read_only_fields = [
             "id", "ticket_number", "status", "assigned_to",
             "created_at", "updated_at", "resolved_at",
-            "first_response_at", "due_at",
+            "first_response_at", "due_at", "csat_score",
         ]
 
 

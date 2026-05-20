@@ -591,6 +591,10 @@ class FreelancerTicketListView(generics.ListAPIView):
         status_filter = self.request.query_params.get("status")
         if status_filter:
             qs = qs.filter(status=status_filter)
+        search = self.request.query_params.get("search")
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(Q(title__icontains=search) | Q(ticket_number__icontains=search))
         return qs
 
 

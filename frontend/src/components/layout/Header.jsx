@@ -26,6 +26,13 @@ export default function Header() {
                 >
                   Admin
                 </Link>
+              ) : user?.role === "freelancer" ? (
+                <Link
+                  to="/freelancer"
+                  className="text-sm text-gray-600 hover:text-gray-900"
+                >
+                  My Tickets
+                </Link>
               ) : (
                 <Link
                   to="/dashboard"
@@ -35,7 +42,7 @@ export default function Header() {
                 </Link>
               )}
 
-              {!user?.is_staff && (
+              {!user?.is_staff && user?.role !== "freelancer" && (
                 <Link
                   to="/tickets/new"
                   className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700"
