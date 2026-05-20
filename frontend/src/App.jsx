@@ -21,16 +21,26 @@ import TicketDetailPage from "./pages/TicketDetailPage";
 import { ToastProvider } from "./context/ToastContext";
 import { useAuthStore } from "./store/authStore";
 
-// A wrapper that redirects unauthenticated users to /login
+// Redirects unauthenticated users to /login
 function PrivateRoute({ children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 }
 
-// A wrapper that redirects non-admin users to /dashboard
+// Redirects non-admin users back to /dashboard
 function AdminRoute({ children }) {
   const user = useAuthStore((s) => s.user);
   return user?.is_staff ? children : <Navigate to="/dashboard" replace />;
+}
+
+// Redirects already-authenticated users away from /login and /register.
+// Admins go to /admin; everyone else goes to /dashboard.
+// Without this, a logged-in user could open /login and see the auth form again.
+function PublicOnlyRoute({ children }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
+  if (!isAuthenticated) return children;
+  return <Navigate to={user?.is_staff ? "/admin" : "/dashboard"} replace />;
 }
 
 export default function App() {
@@ -61,8 +71,8 @@ export default function App() {
       <Routes>
         {/* Public pages */}
         <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login"    element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
+        <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
 
         {/* Customer pages — require login */}
         <Route

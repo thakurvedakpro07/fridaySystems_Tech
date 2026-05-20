@@ -17,7 +17,8 @@ export default function Login() {
     setError("");
     const result = await loginUser(form.email, form.password);
     if (result.success) {
-      navigate("/dashboard");
+      // Admins go to /admin; customers and freelancers go to /dashboard.
+      navigate(result.is_staff ? "/admin" : "/dashboard");
     } else {
       setError(result.message);
     }

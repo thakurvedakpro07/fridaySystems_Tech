@@ -1,12 +1,30 @@
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import MainLayout from "../components/layouts/MainLayout";
 import TicketCard from "../components/tickets/TicketCard";
 import { useAuthStore } from "../store/authStore";
 import { useTickets } from "../hooks/useTickets";
 
+/**
+ * Dashboard — the post-login landing page.
+ *
+ * This component acts as a role router:
+ *   - Admin    → redirect to /admin (they have no customer profile)
+ *   - Freelancer → placeholder page (freelancer portal not yet built)
+ *   - Customer  → renders CustomerDashboard with the ticket list
+ *
+ * WHY the split into two components?
+ * React's Rules of Hooks say you cannot call a hook after a conditional
+ * return statement. useTickets() calls GET /api/tickets/ which requires
+ * IsCustomer permission — calling it for admins/freelancers would generate
+ * 403 errors. Moving it into <CustomerDashboard> (only rendered for real
+ * customers) keeps the hook call safe and avoids unnecessary HTTP requests.
+ */
 export default function Dashboard() {
   const user = useAuthStore((s) => s.user);
-  const { tickets, loading, error } = useTickets();
+
+  if (user?.is_staff) {
+    return <Navigate to="/admin" replace />;
+  }
 
   if (user?.role === "freelancer") {
     return (
@@ -24,6 +42,17 @@ export default function Dashboard() {
       </MainLayout>
     );
   }
+
+  return <CustomerDashboard />;
+}
+
+/**
+ * CustomerDashboard — the ticket list view for customers.
+ * Only rendered after Dashboard confirms the user is a customer,
+ * so useTickets() (which calls the IsCustomer-protected endpoint) is safe here.
+ */
+function CustomerDashboard() {
+  const { tickets, loading, error } = useTickets();
 
   return (
     <MainLayout maxWidth="max-w-4xl">

@@ -26,7 +26,9 @@ export function useAuth() {
       setTokens(data.access, data.refresh);
       setUser(data.user);
       toast(`Welcome back, ${data.user.email}!`, "success");
-      return { success: true };
+      // Return role so the login page can redirect to the right place:
+      // admins → /admin, everyone else → /dashboard
+      return { success: true, role: data.user.role, is_staff: data.user.is_staff };
     } catch (err) {
       const message =
         err.response?.data?.detail ||
