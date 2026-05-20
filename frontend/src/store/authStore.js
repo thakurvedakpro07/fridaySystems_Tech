@@ -92,12 +92,13 @@ export const useAuthStore = create((set) => ({
    *      the next real API request — if it fails the response interceptor
    *      in client.js handles the refresh/redirect automatically.
    *   3. If token exists but no stored user (e.g. localStorage cleared) →
-   *      try the customer profile endpoint as fallback.
+   *      call /auth/me/ which works for ALL roles (customer, freelancer, admin).
    *
-   * WHY we don't call /api/customers/me/ for everyone:
-   *   Admins and freelancers don't have a customer_profile, so that
-   *   endpoint returns 403 for them. Calling it would log them out on
-   *   every page refresh — a critical bug in the original code.
+   * WHY we use /auth/me/ and not /customers/me/:
+   *   /customers/me/ returns 403 for admins and freelancers because they
+   *   have no customer_profile. Using it would log out every admin on page
+   *   refresh — a critical bug fixed by the /auth/me/ endpoint added in
+   *   Phase 9 (2026-05-20).
    */
   initializeAuth: async () => {
     const token = localStorage.getItem("access_token");
@@ -113,16 +114,16 @@ export const useAuthStore = create((set) => ({
       return;
     }
 
-    // Fallback: no stored user object — try customer profile endpoint.
-    // If it fails, clear tokens (token is expired/invalid).
+    // Fallback: no stored user — call /auth/me/ which works for all roles.
+    // If this fails the token is expired/invalid → clear and redirect to login.
     try {
-      const { getMyProfile } = await import("../api/auth");
-      const { data } = await getMyProfile();
+      const { getMe } = await import("../api/auth");
+      const { data } = await getMe();
       const user = {
         id: data.id,
         email: data.email,
         is_staff: data.is_staff,
-        role: "customer",
+        role: data.role,
       };
       localStorage.setItem("user", JSON.stringify(user));
       set({ user, isAuthenticated: true, initializing: false });

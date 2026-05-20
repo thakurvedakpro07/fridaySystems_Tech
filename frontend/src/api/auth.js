@@ -15,6 +15,13 @@ export const refreshToken = (refresh) =>
 export const logout = (refresh) =>
   apiClient.post("/auth/logout/", { refresh });
 
+// Universal current-user endpoint — works for ALL roles.
+// Use this in initializeAuth() so admins and freelancers are not
+// accidentally logged out on page refresh (unlike /customers/me/).
+export const getMe = () =>
+  apiClient.get("/auth/me/");
+
+// Customer-profile-specific endpoints (company, phone, address, plan)
 export const getMyProfile = () =>
   apiClient.get("/customers/me/");
 

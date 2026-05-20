@@ -34,7 +34,14 @@ urlpatterns = [
     path("auth/register/", views.RegisterView.as_view(), name="auth-register"),
     path("auth/login/", views.CustomTokenObtainPairView.as_view(), name="auth-login"),
     path("auth/logout/", views.logout_view, name="auth-logout"),
+    # Two URLs for token refresh — keep /token/refresh/ because the Axios
+    # interceptor in client.js uses it; /refresh/ is the cleaner public alias.
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="auth-token-refresh"),
+    path("auth/refresh/", TokenRefreshView.as_view(), name="auth-refresh"),
+    # Current user endpoint — works for all roles (customer, freelancer, admin).
+    # Use this instead of /customers/me/ in initializeAuth() so admins/freelancers
+    # don't get logged out on page refresh.
+    path("auth/me/", views.me_view, name="auth-me"),
 
     # ── Customer Profile ─────────────────────────────────────────
     path("customers/me/", views.CustomerMeView.as_view(), name="customer-me"),

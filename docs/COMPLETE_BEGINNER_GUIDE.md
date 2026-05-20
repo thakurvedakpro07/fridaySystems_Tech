@@ -54,7 +54,7 @@ Think of it like Swiggy — but instead of delivering food, it delivers IT suppo
 6. Freelancer gets paid via bank transfer or UPI
 
 **Current project status (Phase 8 complete):**
-The core MVP is built and tested. All three user roles work end-to-end. 73 automated tests pass. Stability score: **8.15 / 10 — Ready for Controlled Beta Launch.** See [Section 20](#20-project-status--roadmap) for the full roadmap.
+The core MVP is built and tested. All three user roles work end-to-end. 86 automated tests pass. Stability score: **8.15 / 10 — Ready for Controlled Beta Launch.** See [Section 20](#20-project-status--roadmap) for the full roadmap.
 
 ---
 
@@ -2608,9 +2608,60 @@ Freelancers log in and land on `/dashboard`. That page calls `GET /api/tickets/`
      catch { return null; }
    }
    ```
-3. **`initializeAuth()`** — called once on app startup. Reads the token from localStorage, calls `GET /api/customers/me/` (or `/api/freelancers/me/`) to get the user object, and rebuilds the Zustand store state.
+3. **`initializeAuth()`** — called once on app startup. Reads the token from localStorage, calls `GET /api/auth/me/` to get the user object, and rebuilds the Zustand store state.
 
 Without `initializeAuth()`, after every page refresh the user would appear logged out even though their token is still valid.
+
+---
+
+### The `/api/auth/me/` Endpoint — Universal Role Detection
+
+**The original bug (fixed in Phase 9):**
+
+The original `initializeAuth()` called `GET /api/customers/me/` as a fallback. That endpoint has `permission_classes = [IsAuthenticated, IsCustomer]`. So:
+
+- Customer refreshes page → 200 OK → stays logged in ✓
+- Admin refreshes page → 403 Forbidden → initializeAuth clears tokens → admin gets logged out ✗
+- Freelancer refreshes page → 403 Forbidden → same problem ✗
+
+**The fix:**
+
+A new `GET /api/auth/me/` endpoint was added that works for **every role**:
+
+```
+GET /api/auth/me/
+Authorization: Bearer eyJ...
+
+Response (customer):
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "role": "customer",
+  "is_staff": false,
+  "profile": { "company": "Acme", "phone": "", "plan": "free" }
+}
+
+Response (admin):
+{
+  "id": "uuid",
+  "email": "admin@supportmitra.in",
+  "role": "admin",
+  "is_staff": true
+  // no "profile" key — admins have no customer/freelancer profile
+}
+```
+
+`initializeAuth()` now calls `/auth/me/` instead of `/customers/me/`. All three roles survive a page refresh correctly.
+
+---
+
+### Auth Rate Throttling
+
+Login and register endpoints now have their own throttle class (`AuthRateThrottle`) with a separate `"auth": "10/minute"` bucket. This means:
+
+- A brute-force attacker trying 1,000 passwords/minute gets a 429 Too Many Requests after 10 attempts
+- This does NOT consume the global 20/minute anonymous quota, which protects other public endpoints
+- In production, lower this to `"5/minute"` or add IP-based blocking via a WAF
 
 ---
 
@@ -2777,7 +2828,7 @@ Now only users logged into the Django admin (is_staff=True) can access metrics. 
 
 ### The Test Suite
 
-SupportMitra has 73 automated tests that run in seconds and verify everything works correctly.
+SupportMitra has 86 automated tests that run in seconds and verify everything works correctly.
 
 **Run all tests:**
 ```bash
@@ -2876,7 +2927,7 @@ See `docs/FINAL_MVP_STABILITY_SCORE.md` for the full breakdown.
 | 7 | Zero-bug stabilization: transactions, indexes, N+1 fixes, Prometheus protection |
 | 8 | Manual E2E testing: 6 bugs fixed, UX audit, stability score |
 
-**73 automated tests. 0 failing. 0 regressions since Phase 6.**
+**86 automated tests. 0 failing. 0 regressions since Phase 6.**
 
 ---
 
@@ -3062,7 +3113,7 @@ git log --oneline                           # see history
 
 **Testing:**
 ```bash
-docker compose exec backend python -m pytest tests/ -v        # run all 73 tests
+docker compose exec backend python -m pytest tests/ -v        # run all 86 tests
 docker compose exec backend python -m pytest tests/ -v -k auth # run only auth tests
 docker compose exec backend python -m pytest tests/ --tb=short # compact error output
 ```

@@ -166,6 +166,10 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "20/minute",
         "user": "100/minute",
+        # Separate bucket for login and register — stricter than global anon.
+        # 10 attempts/minute per IP before a 429 is returned.
+        # In production, consider lowering to 5/minute.
+        "auth": "10/minute",
     },
 }
 

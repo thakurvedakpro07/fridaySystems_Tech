@@ -36,6 +36,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView as BaseTokenObtainPairView
@@ -70,6 +71,20 @@ from .serializers import (
 )
 
 
+# ── Auth-specific throttle ────────────────────────────────────────
+#
+# WHY a separate throttle for auth endpoints?
+# The global AnonRateThrottle is 20/minute for all anonymous traffic.
+# Login and register deserve a stricter separate bucket so an attacker
+# trying 1,000 password guesses per minute doesn't consume the entire
+# anonymous quota and affect other public endpoints.
+#
+# "auth" scope maps to DEFAULT_THROTTLE_RATES["auth"] in settings.py.
+
+class AuthRateThrottle(AnonRateThrottle):
+    scope = "auth"
+
+
 # ── Custom JWT Login ─────────────────────────────────────────────
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -91,6 +106,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class CustomTokenObtainPairView(BaseTokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+    throttle_classes = [AuthRateThrottle]
 
 
 # ── Health Check ──────────────────────────────────────────────────
@@ -112,6 +128,7 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [AuthRateThrottle]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -150,6 +167,59 @@ def logout_view(request):
     except Exception:
         pass
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ── Current User ─────────────────────────────────────────────────
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def me_view(request):
+    """
+    GET /api/auth/me/
+    Returns the authenticated user's identity and role-specific profile data.
+
+    Works for ALL roles: customer, freelancer, admin.
+    This is the correct endpoint for initializeAuth() — unlike /customers/me/,
+    it does not return 403 for admins and freelancers on page refresh.
+
+    Response shape:
+      {
+        "id": "uuid",
+        "email": "user@example.com",
+        "role": "customer" | "freelancer" | "admin",
+        "is_staff": false,
+        "first_name": "",
+        "last_name": "",
+        "profile": { ... role-specific fields ... }   // absent for plain admins
+      }
+    """
+    user = request.user
+    data = {
+        "id": str(user.id),
+        "email": user.email,
+        "role": user.role,
+        "is_staff": user.is_staff,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+    }
+
+    if hasattr(user, "customer_profile"):
+        p = user.customer_profile
+        data["profile"] = {
+            "company": p.company,
+            "phone": p.phone,
+            "plan": p.plan,
+        }
+    elif hasattr(user, "freelancer_profile"):
+        p = user.freelancer_profile
+        data["profile"] = {
+            "skills": p.skills,
+            "availability": p.availability,
+            "rating": str(p.rating),
+            "onboarding_status": p.onboarding_status,
+        }
+
+    return Response(data)
 
 
 # ── Customer Profile ──────────────────────────────────────────────
