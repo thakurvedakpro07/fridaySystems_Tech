@@ -2,6 +2,62 @@
 
 ---
 
+## 2026-05-20 — Django Admin Login Debugging + Root Cause Fix
+
+### Completed Today
+
+* Performed a 10-step systematic authentication investigation to diagnose why admin login was failing despite a successful password reset
+* Confirmed all auth code is correct: `AUTH_USER_MODEL`, `USERNAME_FIELD`, `REQUIRED_FIELDS`, `AUTHENTICATION_BACKENDS`, `CustomUserAdmin` fieldsets — all verified healthy
+* Confirmed all user DB flags are correct: `admin@supportmitra.in` has `is_staff=True`, `is_superuser=True`, `is_active=True`, valid PBKDF2 password hash, no duplicates
+* Ran live `authenticate()` in Django shell — returned the user object correctly; authentication backend pipeline is not the problem
+* Simulated a real HTTP admin login (CSRF token fetch → POST → session cookie check → dashboard GET) — received `302` + `200` + "Site administration | Django site admin" title, confirming the full web-layer flow works
+* **Root cause identified:** User ran `python manage.py changepassword` outside Docker; without `DATABASE_URL` set, Django falls back to the local `backend/db.sqlite3` file; the Docker backend uses PostgreSQL; the two are completely independent databases — password was reset in the wrong one
+* Set a verified, correctly hashed admin password for `admin@supportmitra.in` in PostgreSQL via `docker compose exec backend` — authentication confirmed end-to-end
+* Added the "Wrong database" debugging scenario to `docs/COMPLETE_BEGINNER_GUIDE.md` Section 10 with root cause, diagnosis commands, fix, and the rule: "Every `manage.py` command must be prefixed with `docker compose exec backend`"
+
+---
+
+### Files Created
+
+* None (operational fix — no new code files required)
+
+---
+
+### Files Modified
+
+* `docs/COMPLETE_BEGINNER_GUIDE.md` — added new debugging scenario: "admin login fails after password reset" with full root-cause explanation, diagnosis commands, and prevention rule
+
+---
+
+### Bugs Fixed
+
+* **Django admin login failing after password reset** — root cause: `python manage.py changepassword` was run locally (outside Docker), hitting `backend/db.sqlite3` (SQLite fallback) instead of the PostgreSQL database that the Docker backend reads from; the password was changed in the wrong database; fix: run all management commands via `docker compose exec backend python manage.py ...`
+
+---
+
+### Pending Issues
+
+* Admin password `SupportMitra@Admin2026` is a reset credential — **change it immediately** after first login via `Admin → Users → admin@supportmitra.in → Password → Change Password`
+* The stale `backend/db.sqlite3` file still exists on disk (it is gitignored so it won't be committed); it is safe to delete to prevent future confusion: `rm backend/db.sqlite3`
+* All previously documented pending issues from Phase 8 remain (SECRET_KEY, DEBUG=0, SENTRY_DSN, Razorpay payment flow, Celery stubs, frontend tests, CI pipeline)
+
+---
+
+### Architecture Decisions
+
+* **Confirmed: never run `manage.py` commands outside Docker when Docker is running** — this should be treated as a firm rule for the project; `docker compose exec backend python manage.py <command>` is the only safe invocation; local invocation silently hits SQLite instead of PostgreSQL and produces no error, making the discrepancy invisible until something stops working
+* **`backend/db.sqlite3` is a latent hazard** — it exists as the Django default fallback when `DATABASE_URL` is not in the environment; since the project always uses Docker + PostgreSQL, this file is never intentionally used; it should be deleted and its existence treated as a warning sign that a command was run outside Docker
+
+---
+
+### Next Step
+
+* **Change the admin password immediately:** open `http://127.0.0.1:8000/admin/`, log in with `admin@supportmitra.in` / `SupportMitra@Admin2026`, navigate to Users → admin@supportmitra.in → set a personal password
+* **Delete the stale SQLite file:** `rm /home/vedak/Documents/fridaySystems_Tech/backend/db.sqlite3`
+* **Phase 9:** Begin Razorpay consulting fee payment integration (highest-impact next feature — tickets currently stuck at `pending_payment` status indefinitely)
+
+---
+
 ## 2026-05-19 — Phase 7: Zero-Bug Stabilization + Phase 8: Manual E2E Testing + Docs
 
 ### Completed Today

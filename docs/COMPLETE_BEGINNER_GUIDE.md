@@ -1786,6 +1786,47 @@ curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/api/health/
 
 ---
 
+**Problem: Django admin says "Please enter the correct email and password for a staff account" even after a password reset**
+
+*Symptoms:* You ran `python manage.py changepassword` (or `createsuperuser`) locally, it completed successfully, but the admin login page still rejects the credentials.
+
+*Root cause:* **You reset the password in the wrong database.**
+
+When you run `python manage.py ...` directly in your terminal (without Docker), Django has no `DATABASE_URL` environment variable set. It falls back to the local SQLite file (`backend/db.sqlite3`). But the Docker backend is always connected to **PostgreSQL** — a completely separate database. Your password reset went into SQLite; the admin reads from PostgreSQL. They are independent — changing one never affects the other.
+
+*This is the #1 beginner mistake with Docker + Django.*
+
+*Diagnosis — confirm which database each command is hitting:*
+```bash
+# WRONG — hits local SQLite (the file on your hard drive)
+python manage.py changepassword admin@supportmitra.in
+
+# CORRECT — hits PostgreSQL running inside Docker
+docker compose exec backend python manage.py changepassword admin@supportmitra.in
+```
+
+Check if you have a stale SQLite file:
+```bash
+ls -lh backend/db.sqlite3    # if this exists and has data, it's a decoy database
+```
+
+*Fix:*
+```bash
+# Always use docker compose exec for management commands
+docker compose exec backend python manage.py changepassword admin@supportmitra.in
+
+# Verify the new password works via Django shell (inside Docker)
+docker compose exec backend python manage.py shell -c "
+from django.contrib.auth import authenticate
+u = authenticate(username='admin@supportmitra.in', password='YOUR_NEW_PASSWORD')
+print('Auth result:', u, '| is_staff:', getattr(u, 'is_staff', None))
+"
+```
+
+*Rule to memorise:* **Every `manage.py` command must be prefixed with `docker compose exec backend`** when Docker is running. The only exception is if you intentionally want to modify the local SQLite database (e.g., running tests without Docker).
+
+---
+
 ### Redis Issues
 
 ---
