@@ -29,6 +29,7 @@ API VERSIONING NOTE:
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db.models import Q as models_q
 from django.shortcuts import get_object_or_404
 
 User = get_user_model()
@@ -42,6 +43,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView as BaseTokenObtainPairView
 
 from .models import (
+    CSATSurvey,
     Customer,
     Freelancer,
     Notification,
@@ -49,6 +51,7 @@ from .models import (
     Subscription,
     Ticket,
     TicketActivityLog,
+    TicketAttachment,
     TicketComment,
 )
 from .permissions import IsAdminUser, IsCustomer, IsFreelancer, IsFreelancerOrAdmin, IsOwnerOrAdmin
@@ -64,10 +67,12 @@ from .serializers import (
     RegisterSerializer,
     SubscriptionSerializer,
     TicketActivityLogSerializer,
+    TicketAttachmentSerializer,
     TicketCommentSerializer,
     TicketCreateSerializer,
     TicketDetailSerializer,
     TicketListSerializer,
+    UserProfileUpdateSerializer,
 )
 
 
@@ -136,6 +141,11 @@ class RegisterView(generics.CreateAPIView):
         user = serializer.save()
 
         refresh = RefreshToken.for_user(user)
+        from .services.email_service import send_welcome
+        try:
+            send_welcome(user)
+        except Exception:
+            pass
         return Response(
             {
                 "access": str(refresh.access_token),
@@ -835,3 +845,286 @@ class AdminFreelancerListCreateView(generics.ListCreateAPIView):
     serializer_class = FreelancerSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminUser]
     queryset = Freelancer.objects.all()
+
+
+# ── Password Change ───────────────────────────────────────────────
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def change_password(request):
+    """
+    POST /api/auth/change-password/
+    Body: { "current_password": "...", "new_password": "..." }
+    """
+    current = request.data.get("current_password", "")
+    new_pw  = request.data.get("new_password", "")
+
+    if not current or not new_pw:
+        return Response(
+            {"detail": "Both current_password and new_password are required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if not request.user.check_password(current):
+        return Response(
+            {"detail": "Current password is incorrect."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if len(new_pw) < 10:
+        return Response(
+            {"detail": "New password must be at least 10 characters."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    request.user.set_password(new_pw)
+    request.user.save(update_fields=["password"])
+    return Response({"detail": "Password updated successfully."})
+
+
+# ── User Profile Update (all roles) ──────────────────────────────
+
+@api_view(["GET", "PATCH"])
+@permission_classes([permissions.IsAuthenticated])
+def user_profile(request):
+    """
+    GET  /api/auth/profile/   — current user profile (all roles)
+    PATCH /api/auth/profile/  — update first_name, last_name; plus role-specific fields
+    """
+    user = request.user
+    if request.method == "GET":
+        data = {
+            "id": str(user.id),
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "role": user.role,
+            "is_staff": user.is_staff,
+        }
+        if hasattr(user, "customer_profile"):
+            p = user.customer_profile
+            data["company"] = p.company
+            data["phone"] = p.phone
+            data["address"] = p.address
+            data["gstin"] = p.gstin
+            data["plan"] = p.plan
+        elif hasattr(user, "freelancer_profile"):
+            p = user.freelancer_profile
+            data["skills"] = p.skills
+            data["availability"] = p.availability
+        return Response(data)
+
+    # PATCH
+    serializer = UserProfileUpdateSerializer(data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    vd = serializer.validated_data
+
+    if "first_name" in vd:
+        user.first_name = vd["first_name"]
+    if "last_name" in vd:
+        user.last_name = vd["last_name"]
+    user.save(update_fields=["first_name", "last_name"])
+
+    if hasattr(user, "customer_profile"):
+        p = user.customer_profile
+        for field in ("company", "phone", "address", "gstin"):
+            if field in vd:
+                setattr(p, field, vd[field])
+        p.save()
+    elif hasattr(user, "freelancer_profile"):
+        p = user.freelancer_profile
+        for field in ("skills", "availability"):
+            if field in vd:
+                setattr(p, field, vd[field])
+        p.save()
+
+    return Response({"detail": "Profile updated."})
+
+
+# ── Analytics ────────────────────────────────────────────────────
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def analytics_view(request):
+    """
+    GET /api/analytics/
+    Role-aware analytics:
+      admin     → all tickets in the system
+      customer  → own tickets only
+      freelancer → assigned tickets only
+    """
+    from django.db.models import Avg, Count, F, ExpressionWrapper, DurationField
+    from django.utils import timezone
+    from datetime import timedelta
+
+    user = request.user
+    today = timezone.now()
+    thirty_days_ago = today - timedelta(days=30)
+
+    # Base queryset by role
+    if user.is_staff:
+        qs = Ticket.objects.all()
+    elif hasattr(user, "freelancer_profile"):
+        qs = Ticket.objects.filter(assigned_to=user.freelancer_profile)
+    elif hasattr(user, "customer_profile"):
+        qs = Ticket.objects.filter(customer=user.customer_profile)
+    else:
+        return Response({"detail": "Unknown role."}, status=status.HTTP_403_FORBIDDEN)
+
+    total = qs.count()
+    by_status = dict(qs.values_list("status").annotate(n=Count("id")).values_list("status", "n"))
+    open_count     = by_status.get("open", 0)
+    in_progress    = by_status.get("in_progress", 0) + by_status.get("assigned", 0)
+    resolved_count = by_status.get("resolved", 0) + by_status.get("closed", 0)
+    pending_count  = by_status.get("pending_payment", 0)
+
+    # Average resolution time in hours (tickets with resolved_at set)
+    resolved_qs = qs.filter(resolved_at__isnull=False)
+    avg_hours = None
+    if resolved_qs.exists():
+        durations = [
+            (t.resolved_at - t.created_at).total_seconds() / 3600
+            for t in resolved_qs.only("created_at", "resolved_at")
+        ]
+        avg_hours = round(sum(durations) / len(durations), 1)
+
+    # CSAT average (admin/customer only)
+    csat_avg = None
+    csat_count = 0
+    if not hasattr(user, "freelancer_profile"):
+        csat_filter = {} if user.is_staff else {"ticket__customer": user.customer_profile}
+        surveys = CSATSurvey.objects.filter(**csat_filter)
+        csat_count = surveys.count()
+        if csat_count:
+            csat_avg = round(float(surveys.aggregate(avg=Avg("score"))["avg"]), 1)
+
+    # Tickets created over last 30 days (7 data points, buckets of ~4 days)
+    recent_qs = qs.filter(created_at__gte=thirty_days_ago)
+    timeline = []
+    for i in range(6, -1, -1):
+        bucket_end   = today - timedelta(days=i * 4)
+        bucket_start = today - timedelta(days=(i + 1) * 4)
+        label = bucket_end.strftime("%d %b")
+        count = recent_qs.filter(created_at__gte=bucket_start, created_at__lt=bucket_end).count()
+        timeline.append({"label": label, "count": count})
+
+    # Tickets by service type (top 5)
+    service_breakdown = list(
+        qs.values("service_type").annotate(n=Count("id")).order_by("-n")[:5]
+    )
+
+    # Admin-only: freelancer performance
+    freelancer_stats = []
+    if user.is_staff:
+        for fl in Freelancer.objects.annotate(
+            assigned=Count("assigned_tickets"),
+            resolved=Count("assigned_tickets", filter=models_q(assigned_tickets__status__in=["resolved", "closed"])),
+        ).order_by("-assigned")[:5]:
+            freelancer_stats.append({
+                "email": fl.user.email,
+                "assigned": fl.assigned,
+                "resolved": fl.resolved,
+                "rating": str(fl.rating),
+            })
+
+    return Response({
+        "total": total,
+        "open": open_count,
+        "in_progress": in_progress,
+        "resolved": resolved_count,
+        "pending_payment": pending_count,
+        "avg_resolution_hours": avg_hours,
+        "csat_avg": csat_avg,
+        "csat_count": csat_count,
+        "timeline": timeline,
+        "service_breakdown": service_breakdown,
+        "freelancer_stats": freelancer_stats,
+    })
+
+
+# ── Attachments ───────────────────────────────────────────────────
+
+MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MB
+ALLOWED_MIME_TYPES = {
+    "image/png", "image/jpeg", "image/gif", "image/webp",
+    "application/pdf",
+    "text/plain", "text/csv",
+    "application/zip",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
+
+
+def _get_ticket_for_user(user, ticket_id):
+    """Return the ticket if the user is allowed to access it, or raise 404."""
+    if user.is_staff:
+        return get_object_or_404(Ticket, pk=ticket_id)
+    if hasattr(user, "freelancer_profile"):
+        return get_object_or_404(Ticket, pk=ticket_id, assigned_to=user.freelancer_profile)
+    if hasattr(user, "customer_profile"):
+        return get_object_or_404(Ticket, pk=ticket_id, customer=user.customer_profile)
+    raise PermissionDenied()
+
+
+@api_view(["GET", "POST"])
+@permission_classes([permissions.IsAuthenticated])
+def ticket_attachments(request, ticket_id):
+    """
+    GET  /api/tickets/{id}/attachments/  — list all attachments
+    POST /api/tickets/{id}/attachments/  — upload a new attachment (multipart)
+    """
+    ticket = _get_ticket_for_user(request.user, ticket_id)
+
+    if request.method == "GET":
+        qs = TicketAttachment.objects.filter(ticket=ticket)
+        return Response(TicketAttachmentSerializer(qs, many=True, context={"request": request}).data)
+
+    # POST — file upload
+    uploaded_file = request.FILES.get("file")
+    if not uploaded_file:
+        return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if uploaded_file.size > MAX_UPLOAD_SIZE:
+        return Response(
+            {"detail": "File exceeds maximum size of 5 MB."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    mime = uploaded_file.content_type or ""
+    if mime not in ALLOWED_MIME_TYPES:
+        return Response(
+            {"detail": f"File type '{mime}' is not allowed."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    import os
+    safe_name = os.path.basename(uploaded_file.name)
+
+    attachment = TicketAttachment.objects.create(
+        ticket=ticket,
+        file=uploaded_file,
+        file_name=safe_name,
+        file_size=uploaded_file.size,
+        mime_type=mime,
+        uploaded_by=request.user,
+    )
+    return Response(
+        TicketAttachmentSerializer(attachment, context={"request": request}).data,
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["DELETE"])
+@permission_classes([permissions.IsAuthenticated])
+def ticket_attachment_delete(request, ticket_id, attachment_id):
+    """
+    DELETE /api/tickets/{ticket_id}/attachments/{attachment_id}/
+    Only the uploader or an admin can delete an attachment.
+    """
+    ticket = _get_ticket_for_user(request.user, ticket_id)
+    attachment = get_object_or_404(TicketAttachment, pk=attachment_id, ticket=ticket)
+
+    if not request.user.is_staff and attachment.uploaded_by != request.user:
+        raise PermissionDenied("You can only delete your own attachments.")
+
+    if attachment.file:
+        attachment.file.delete(save=False)
+    attachment.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)

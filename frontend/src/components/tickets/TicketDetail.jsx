@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useAuthStore } from "../../store/authStore";
 import ActivityTimeline from "./ActivityTimeline";
+import AttachmentSection from "./AttachmentSection";
 import CommentSection from "./CommentSection";
 import AdminTicketActions from "./AdminTicketActions";
 import FreelancerTicketActions from "./FreelancerTicketActions";
@@ -15,6 +17,11 @@ const TABS = [
   { id: "comments", label: "Comments",
     icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+          </svg>
+  },
+  { id: "attachments", label: "Files",
+    icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
           </svg>
   },
   { id: "activity", label: "Activity",
@@ -35,6 +42,7 @@ function MetaItem({ label, children }) {
 
 export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
   const [activeTab, setActiveTab] = useState("comments");
+  const user = useAuthStore((s) => s.user);
   const handleUpdate = onUpdate ?? (() => {});
 
   if (!ticket) return null;
@@ -165,6 +173,13 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
         <div key={activeTab} className="p-5 animate-fade-in">
           {activeTab === "comments" && (
             <CommentSection ticketId={ticket.id} />
+          )}
+          {activeTab === "attachments" && (
+            <AttachmentSection
+              ticketId={ticket.id}
+              userEmail={user?.email}
+              isStaff={user?.is_staff}
+            />
           )}
           {activeTab === "activity" && (
             <ActivityTimeline ticketId={ticket.id} />

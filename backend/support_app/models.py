@@ -479,8 +479,9 @@ class TicketAttachment(models.Model):
     ticket  = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="attachments")
 
     file_name   = models.CharField(max_length=255)
-    storage_url = models.URLField(max_length=1024)
-    file_size   = models.PositiveIntegerField(help_text="File size in bytes")
+    file        = models.FileField(upload_to="attachments/%Y/%m/", null=True, blank=True)
+    storage_url = models.URLField(max_length=1024, blank=True)
+    file_size   = models.PositiveIntegerField(help_text="File size in bytes", default=0)
     mime_type   = models.CharField(max_length=128, blank=True)
 
     # uploaded_by: FK to user who uploaded — security audit trail.

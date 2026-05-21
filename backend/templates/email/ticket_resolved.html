@@ -1,0 +1,25 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h1>Ticket Resolved 🎉</h1>
+<p>Hi {{ email }},</p>
+<p>Great news — your support ticket has been marked as resolved by our engineer.</p>
+<div class="meta-box">
+  <div class="meta-row">
+    <span class="meta-label">Ticket</span>
+    <span class="meta-value">{{ ticket_number }}</span>
+  </div>
+  <div class="meta-row">
+    <span class="meta-label">Title</span>
+    <span class="meta-value">{{ title }}</span>
+  </div>
+  <div class="meta-row">
+    <span class="meta-label">Status</span>
+    <span class="meta-value"><span class="status-badge" style="background:#dcfce7;color:#166534;">Resolved</span></span>
+  </div>
+</div>
+<p>Please confirm the resolution or leave feedback on your experience. Your rating helps us improve.</p>
+<a href="{{ app_url }}/tickets/{{ ticket_id }}" class="cta-btn">Rate Your Experience →</a>
+<p style="margin-top:16px;font-size:13px;color:#64748b;">
+  If the issue is not resolved, you can reopen the ticket from the ticket page within 48 hours.
+</p>
+{% endblock %}

@@ -89,11 +89,21 @@ export default function Header() {
                 </Link>
               )}
 
+              {/* Analytics link */}
+              {user?.is_staff ? (
+                <NavLink to="/admin/analytics">Analytics</NavLink>
+              ) : (
+                <NavLink to="/analytics">Analytics</NavLink>
+              )}
+
               <div className="ml-1">
                 <NotificationBell />
               </div>
 
-              <UserAvatar email={user?.email} />
+              {/* Avatar → Settings */}
+              <Link to="/settings" title="Account Settings" className="ml-0.5">
+                <UserAvatar email={user?.email} />
+              </Link>
 
               <button
                 onClick={logout}
@@ -178,6 +188,14 @@ export default function Header() {
                   New Ticket
                 </Link>
               )}
+
+              {/* Analytics */}
+              <NavLink to={user?.is_staff ? "/admin/analytics" : "/analytics"} onClick={closeMenu}>
+                Analytics
+              </NavLink>
+
+              {/* Settings */}
+              <NavLink to="/settings" onClick={closeMenu}>Settings</NavLink>
 
               {/* Sign out */}
               <button

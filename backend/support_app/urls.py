@@ -82,4 +82,15 @@ urlpatterns = [
 
     # ── Admin: Freelancer Management ─────────────────────────────
     path("admin/freelancers/", views.AdminFreelancerListCreateView.as_view(), name="admin-freelancer-list"),
+
+    # ── User Profile & Password ──────────────────────────────────
+    path("auth/profile/", views.user_profile, name="user-profile"),
+    path("auth/change-password/", views.change_password, name="change-password"),
+
+    # ── Analytics ────────────────────────────────────────────────
+    path("analytics/", views.analytics_view, name="analytics"),
+
+    # ── Attachments ──────────────────────────────────────────────
+    path("tickets/<uuid:ticket_id>/attachments/", views.ticket_attachments, name="ticket-attachments"),
+    path("tickets/<uuid:ticket_id>/attachments/<uuid:attachment_id>/", views.ticket_attachment_delete, name="ticket-attachment-delete"),
 ]

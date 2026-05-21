@@ -3,6 +3,7 @@ Root URL configuration for SupportMitra.
 
 Every URL in the project is listed here (or included from an app).
 """
+from django.conf import settings
 from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import include, path
@@ -19,3 +20,8 @@ urlpatterns = [
     # Restricted to staff — exposes request counts, DB query times, etc.
     path("metrics/", staff_member_required(prometheus_exports.ExportToDjangoView), name="prometheus-metrics"),
 ]
+
+# Serve uploaded media files in development
+if settings.DEBUG:
+    from django.conf.urls.static import static
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

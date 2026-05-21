@@ -1,0 +1,30 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h1>Ticket Submitted ✅</h1>
+<p>Hi {{ email }},</p>
+<p>Your support ticket has been received. We'll assign a support engineer shortly.</p>
+<div class="meta-box">
+  <div class="meta-row">
+    <span class="meta-label">Ticket</span>
+    <span class="meta-value">{{ ticket_number }}</span>
+  </div>
+  <div class="meta-row">
+    <span class="meta-label">Title</span>
+    <span class="meta-value">{{ title }}</span>
+  </div>
+  <div class="meta-row">
+    <span class="meta-label">Service</span>
+    <span class="meta-value">{{ service_type }}</span>
+  </div>
+  <div class="meta-row">
+    <span class="meta-label">Severity</span>
+    <span class="meta-value">{{ severity }}</span>
+  </div>
+  <div class="meta-row">
+    <span class="meta-label">Status</span>
+    <span class="meta-value"><span class="status-badge">Open</span></span>
+  </div>
+</div>
+<a href="{{ app_url }}/tickets/{{ ticket_id }}" class="cta-btn">View Ticket →</a>
+<p style="margin-top:20px;font-size:12px;color:#94a3b8;">Reference: {{ ticket_number }}</p>
+{% endblock %}

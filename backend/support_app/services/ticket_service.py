@@ -39,6 +39,8 @@ def create_ticket(customer, validated_data: dict) -> Ticket:
         status="pending_payment",
         **validated_data,
     )
+    from .email_service import send_ticket_created
+    transaction.on_commit(lambda: send_ticket_created(ticket))
     return ticket
 
 
@@ -108,6 +110,9 @@ def assign_ticket(ticket: Ticket, freelancer, assigned_by) -> TicketAssignment:
             from_value=from_label,
             to_value=freelancer.user.email,
         )
+
+        from .email_service import send_ticket_assigned
+        transaction.on_commit(lambda: send_ticket_assigned(ticket))
 
     return assignment
 
@@ -196,6 +201,19 @@ def add_comment(
                 actor=author,
                 action="comment_added",
             )
+            # Notify the OTHER party (not the author):
+            # If customer commented → notify assigned freelancer + admins
+            # If freelancer/admin commented → notify customer
+            from .email_service import send_comment_notification
+            is_customer_comment = hasattr(author, "customer_profile") and author.customer_profile == ticket.customer
+            if is_customer_comment and ticket.assigned_to:
+                transaction.on_commit(
+                    lambda: send_comment_notification(ticket, comment, ticket.assigned_to.user)
+                )
+            elif not is_customer_comment:
+                transaction.on_commit(
+                    lambda: send_comment_notification(ticket, comment, ticket.customer.user)
+                )
 
     return comment
 
@@ -244,5 +262,9 @@ def update_status(ticket: Ticket, new_status: str, actor, note: str = "") -> Tic
             to_value=new_status,
             actor__isnull=True,
         ).order_by("-created_at").update(actor=actor, note=note)
+
+        if new_status == "resolved":
+            from .email_service import send_ticket_resolved
+            transaction.on_commit(lambda: send_ticket_resolved(ticket))
 
     return ticket

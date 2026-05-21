@@ -172,10 +172,19 @@ class TicketCommentSerializer(serializers.ModelSerializer):
 
 
 class TicketAttachmentSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+    uploaded_by_email = serializers.EmailField(source="uploaded_by.email", read_only=True, allow_null=True)
+
+    def get_file_url(self, obj):
+        request = self.context.get("request")
+        if obj.file and request:
+            return request.build_absolute_uri(obj.file.url)
+        return obj.storage_url or None
+
     class Meta:
         model = TicketAttachment
-        fields = ["id", "file_name", "storage_url", "file_size", "mime_type", "uploaded_at"]
-        read_only_fields = ["id", "storage_url", "uploaded_at"]
+        fields = ["id", "file_name", "file_url", "file_size", "mime_type", "uploaded_by_email", "uploaded_at"]
+        read_only_fields = ["id", "file_url", "uploaded_at", "uploaded_by_email"]
 
 
 # ── Payments ─────────────────────────────────────────────────────
@@ -276,3 +285,20 @@ class FreelancerStatusSerializer(serializers.Serializer):
     """
     new_status = serializers.ChoiceField(choices=_FREELANCER_STATUSES)
     note = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class UserProfileUpdateSerializer(serializers.Serializer):
+    """Validates PATCH /api/auth/profile/ — all roles can update name; role-specific fields optional."""
+    first_name   = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    last_name    = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    # Customer-specific
+    company      = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    phone        = serializers.CharField(required=False, allow_blank=True, max_length=32)
+    address      = serializers.CharField(required=False, allow_blank=True)
+    gstin        = serializers.CharField(required=False, allow_blank=True, max_length=15)
+    # Freelancer-specific
+    skills       = serializers.CharField(required=False, allow_blank=True)
+    availability = serializers.ChoiceField(
+        required=False,
+        choices=["full_time", "part_time", "ad_hoc", "unavailable"],
+    )

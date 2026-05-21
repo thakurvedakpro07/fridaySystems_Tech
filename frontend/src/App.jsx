@@ -14,11 +14,13 @@ import Spinner from "./components/ui/Spinner";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import FreelancerList from "./pages/admin/FreelancerList";
 import FreelancerDashboard from "./pages/freelancer/FreelancerDashboard";
+import AnalyticsPage from "./pages/AnalyticsPage";
 import Dashboard from "./pages/Dashboard";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import NewTicket from "./pages/NewTicket";
 import Register from "./pages/Register";
+import SettingsPage from "./pages/SettingsPage";
 import TicketDetailPage from "./pages/TicketDetailPage";
 import { ToastProvider } from "./context/ToastContext";
 import { useAuthStore } from "./store/authStore";
@@ -111,6 +113,20 @@ export default function App() {
         <Route
           path="/admin/freelancers"
           element={<AdminRoute><FreelancerList /></AdminRoute>}
+        />
+        <Route
+          path="/admin/analytics"
+          element={<AdminRoute><AnalyticsPage /></AdminRoute>}
+        />
+
+        {/* Shared pages — require login */}
+        <Route
+          path="/settings"
+          element={<PrivateRoute><SettingsPage /></PrivateRoute>}
+        />
+        <Route
+          path="/analytics"
+          element={<PrivateRoute><AnalyticsPage /></PrivateRoute>}
         />
 
         {/* Catch-all: redirect unknown URLs to home */}
