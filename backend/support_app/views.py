@@ -119,8 +119,16 @@ class CustomTokenObtainPairView(BaseTokenObtainPairView):
 @api_view(["GET"])
 @permission_classes([permissions.AllowAny])
 def health_check(request):
-    """GET /api/health/ — 200 OK if app is running."""
-    return Response({"status": "ok"})
+    """GET /api/health/ — 200 OK if running, 503 if DB is unreachable."""
+    from django.db import connection
+    try:
+        connection.ensure_connection()
+        db_ok = True
+    except Exception:
+        db_ok = False
+    payload = {"status": "ok" if db_ok else "degraded", "db": db_ok}
+    code = status.HTTP_200_OK if db_ok else status.HTTP_503_SERVICE_UNAVAILABLE
+    return Response(payload, status=code)
 
 
 # ── Authentication ────────────────────────────────────────────────
@@ -382,7 +390,7 @@ class TicketCommentListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         ticket = self._get_ticket()
-        qs = TicketComment.objects.filter(ticket=ticket)
+        qs = TicketComment.objects.filter(ticket=ticket).select_related("author")
         # Customers see only public comments; staff/freelancers see all
         if not self.request.user.is_staff and not hasattr(self.request.user, "freelancer_profile"):
             qs = qs.filter(is_internal=False)
@@ -438,7 +446,7 @@ class TicketActivityLogListView(generics.ListAPIView):
         else:
             raise PermissionDenied()
 
-        return TicketActivityLog.objects.filter(ticket=ticket).order_by("created_at")
+        return TicketActivityLog.objects.filter(ticket=ticket).select_related("actor").order_by("created_at")
 
 
 # ── CSAT ─────────────────────────────────────────────────────────
@@ -548,7 +556,7 @@ class NotificationListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        qs = Notification.objects.filter(recipient=self.request.user)
+        qs = Notification.objects.filter(recipient=self.request.user).select_related("ticket")
         if self.request.query_params.get("unread") == "true":
             qs = qs.filter(is_read=False)
         return qs
@@ -844,7 +852,7 @@ class AdminFreelancerListCreateView(generics.ListCreateAPIView):
     """
     serializer_class = FreelancerSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminUser]
-    queryset = Freelancer.objects.all()
+    queryset = Freelancer.objects.select_related("user").all()
 
 
 # ── Password Change ───────────────────────────────────────────────
@@ -975,15 +983,15 @@ def analytics_view(request):
     resolved_count = by_status.get("resolved", 0) + by_status.get("closed", 0)
     pending_count  = by_status.get("pending_payment", 0)
 
-    # Average resolution time in hours (tickets with resolved_at set)
+    # Average resolution time — single DB aggregation (no Python loops over rows)
     resolved_qs = qs.filter(resolved_at__isnull=False)
     avg_hours = None
     if resolved_qs.exists():
-        durations = [
-            (t.resolved_at - t.created_at).total_seconds() / 3600
-            for t in resolved_qs.only("created_at", "resolved_at")
-        ]
-        avg_hours = round(sum(durations) / len(durations), 1)
+        avg_result = resolved_qs.aggregate(
+            avg=Avg(ExpressionWrapper(F("resolved_at") - F("created_at"), output_field=DurationField()))
+        )["avg"]
+        if avg_result:
+            avg_hours = round(avg_result.total_seconds() / 3600, 1)
 
     # CSAT average (admin/customer only)
     csat_avg = None
@@ -995,15 +1003,15 @@ def analytics_view(request):
         if csat_count:
             csat_avg = round(float(surveys.aggregate(avg=Avg("score"))["avg"]), 1)
 
-    # Tickets created over last 30 days (7 data points, buckets of ~4 days)
+    # Tickets over last 30 days — single query, then Python bucketing (was 7 COUNT queries)
     recent_qs = qs.filter(created_at__gte=thirty_days_ago)
+    recent_dates = list(recent_qs.values_list("created_at", flat=True))
     timeline = []
     for i in range(6, -1, -1):
         bucket_end   = today - timedelta(days=i * 4)
         bucket_start = today - timedelta(days=(i + 1) * 4)
-        label = bucket_end.strftime("%d %b")
-        count = recent_qs.filter(created_at__gte=bucket_start, created_at__lt=bucket_end).count()
-        timeline.append({"label": label, "count": count})
+        count = sum(1 for d in recent_dates if bucket_start <= d < bucket_end)
+        timeline.append({"label": bucket_end.strftime("%d %b"), "count": count})
 
     # Tickets by service type (top 5)
     service_breakdown = list(
@@ -1073,7 +1081,7 @@ def ticket_attachments(request, ticket_id):
     ticket = _get_ticket_for_user(request.user, ticket_id)
 
     if request.method == "GET":
-        qs = TicketAttachment.objects.filter(ticket=ticket)
+        qs = TicketAttachment.objects.filter(ticket=ticket).select_related("uploaded_by")
         return Response(TicketAttachmentSerializer(qs, many=True, context={"request": request}).data)
 
     # POST — file upload
