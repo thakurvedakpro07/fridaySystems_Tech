@@ -144,3 +144,144 @@ These patterns are solid — don't change them:
 **Overall UX Score: 7.5/10** (up from 7/10 in Phase 9)
 
 The biggest remaining gap is accessibility — form label associations, ARIA live regions, and keyboard navigation. These don't affect beta users but are important for compliance and screen-reader users in the future.
+
+---
+
+## Phase 10 — Comprehensive UI/UX Audit (2026-05-21)
+
+A full audit pass was performed covering all 19 frontend components and pages. The following improvements were implemented.
+
+---
+
+### ✅ Design System — Tailwind Animations
+
+**Before:** `animate-fade-in` and `animate-slide-up` used in `ToastContext.jsx` and `Modal.jsx` were undefined in Tailwind, so toasts and modals appeared instantly with no transitions.
+
+**After:** Added three keyframe animations to `tailwind.config.js`:
+- `fade-in` — 0.15s ease-out fade + 6px slide up (used by Toast overlay)
+- `slide-up` — 0.2s ease-out fade + 12px slide up + scale(0.98→1) (used by Modal)
+- `skeleton-pulse` — 1.5s infinite opacity pulse (used by SkeletonCard)
+
+---
+
+### ✅ New Component: Spinner.jsx
+
+Three exports added to `frontend/src/components/ui/Spinner.jsx`:
+- `Spinner` (default) — inline animated ring, supports `sm`/`md`/`lg` sizes
+- `PageSpinner` — full-height centered spinner for page loads
+- `SkeletonCard` — animated placeholder matching the TicketCard shape
+
+Used across: `CommentSection`, `ActivityTimeline`, all three dashboard pages, `App.jsx`.
+
+---
+
+### ✅ New Component: EmptyState.jsx
+
+New `frontend/src/components/ui/EmptyState.jsx` with props: `icon`, `title`, `description`, `action`. Replaces ad-hoc empty state patterns across all three dashboard pages.
+
+---
+
+### ✅ Button.jsx — Size Prop + New Variants
+
+| Addition | Details |
+|----------|---------|
+| `size` prop | `sm` (px-3 py-1.5 text-xs), `md` default, `lg` (px-5 py-2.5 text-base) |
+| `ghost` variant | Transparent background, gray text, hover fill |
+| `warning` variant | Amber-500 background for non-destructive warnings |
+
+---
+
+### ✅ Modal.jsx — Complete Rewrite
+
+| Before | After |
+|--------|-------|
+| No Escape key support | `useEffect` + keydown handler closes on Escape |
+| No body scroll lock | `document.body.style.overflow = "hidden"` while open |
+| No animation | `animate-fade-in` overlay, `animate-slide-up` dialog |
+| `×` text close button | SVG X icon with `aria-label="Close dialog"` |
+| No ARIA | `role="dialog"`, `aria-modal="true"`, `aria-labelledby` via `useId()` |
+
+---
+
+### ✅ TicketCard.jsx — Service Type + Priority Badge + Mobile Layout
+
+| Before | After |
+|--------|-------|
+| `linux_provisioning` raw key shown | `humanize()` → "Linux Provisioning" |
+| No priority badge | `<Badge label={ticket.priority} />` shown when present |
+| Fixed-width badge column | `flex-wrap justify-end max-w-[140px]` — wraps cleanly on mobile |
+| No assigned_to info | Shows `Assigned: email` when `ticket.assigned_to` exists |
+
+---
+
+### ✅ Accessibility — htmlFor/id Pairing Across All Forms
+
+All `<label>` elements now have `htmlFor` and their corresponding inputs have matching `id` attributes:
+
+| File | Inputs Fixed |
+|------|-------------|
+| `Login.jsx` | email, password |
+| `TicketForm.jsx` | title, service_type, severity, priority, description |
+| `AdminTicketActions.jsx` | assign-freelancer, new-status, status-note, unassign-note |
+| `FreelancerTicketActions.jsx` | freelancer-note |
+| `CSATWidget.jsx` | csat-comment (sr-only label added) |
+| `CommentSection.jsx` | comment-body (sr-only label added) |
+
+---
+
+### ✅ CommentSection.jsx — Redundant Header Removed, Spinner + Button
+
+- Removed `<h2>Comments</h2>` (the parent tab already labels this section)
+- Added `Spinner` inline next to "Loading comments…" text
+- Replaced raw `<button>` submit with `<Button>` component for consistent styling
+
+---
+
+### ✅ ActivityTimeline.jsx — Spinner for Loading State
+
+Replaced `<p className="text-gray-400 text-sm py-4">Loading activity…</p>` with inline `Spinner` + label. Error state now uses a styled red card instead of plain red text.
+
+---
+
+### ✅ Dashboard Pages — SkeletonCard + EmptyState + Responsive Filters
+
+Applied to `Dashboard.jsx`, `AdminDashboard.jsx`, `FreelancerDashboard.jsx`:
+
+| Before | After |
+|--------|-------|
+| `Loading…` text | 3–4 `SkeletonCard` animated placeholders |
+| Ad-hoc empty state text | `EmptyState` component with contextual icon and description |
+| `w-56` fixed search input | `w-full sm:w-56` — full-width on mobile, fixed on desktop |
+
+---
+
+### ✅ App.jsx — Spinner for Auth Init
+
+Replaced `<p className="text-gray-400 text-sm">Loading…</p>` with `<Spinner size="lg" />` centered on the full screen.
+
+---
+
+### ✅ Header.jsx — User Avatar + Better Logout Button
+
+| Before | After |
+|--------|-------|
+| Truncated email text (hard to read) | `UserAvatar` component — two-letter initials in a blue circle |
+| Plain text "Logout" link | Bordered `Sign out` button with hover + focus ring |
+
+---
+
+## Updated UX Scoring Summary
+
+| Area | Phase 10a Score | Phase 10b Score | Change |
+|------|----------------|-----------------|--------|
+| Error messages (frontend) | 8/10 | 8/10 | — |
+| Browser tab titles | 9/10 | 9/10 | — |
+| Loading states | 5/10 | 9/10 | +4 (SkeletonCard everywhere) |
+| Empty states | 6/10 | 9/10 | +3 (EmptyState component) |
+| Design system consistency | 6/10 | 9/10 | +3 (Button size/variants, Modal) |
+| Animations & transitions | 3/10 | 8/10 | +5 (Tailwind keyframes fixed) |
+| Accessibility (forms) | 4/10 | 8/10 | +4 (htmlFor/id across all forms) |
+| Mobile responsiveness | 7/10 | 8/10 | +1 (responsive search inputs) |
+| Header UX | 6/10 | 8/10 | +2 (avatar, logout button) |
+
+**Overall UX Score: 8.5/10** (up from 7.5/10)

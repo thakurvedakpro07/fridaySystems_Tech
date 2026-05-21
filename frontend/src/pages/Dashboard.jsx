@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import MainLayout from "../components/layouts/MainLayout";
 import TicketCard from "../components/tickets/TicketCard";
+import { SkeletonCard } from "../components/ui/Spinner";
+import EmptyState from "../components/ui/EmptyState";
 import { useAuthStore } from "../store/authStore";
 import { useTickets } from "../hooks/useTickets";
 import { usePageTitle } from "../hooks/usePageTitle";
@@ -81,7 +83,7 @@ function CustomerDashboard() {
           placeholder="Search tickets…"
           value={searchInput}
           onChange={handleSearchChange}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-56"
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-56"
         />
         <select
           value={status}
@@ -95,7 +97,9 @@ function CustomerDashboard() {
       </div>
 
       {loading && (
-        <div className="text-center py-16 text-gray-400">Loading tickets…</div>
+        <div className="space-y-3">
+          {[1, 2, 3].map((n) => <SkeletonCard key={n} />)}
+        </div>
       )}
 
       {error && (
@@ -105,26 +109,28 @@ function CustomerDashboard() {
       )}
 
       {!loading && !error && tickets.length === 0 && (
-        <div className="text-center py-16">
-          <p className="text-gray-400 mb-4">
-            {search || status ? "No tickets match your filters." : "No tickets yet."}
-          </p>
-          {!search && !status && (
+        <EmptyState
+          icon={search || status ? "🔍" : "🎫"}
+          title={search || status ? "No tickets match your filters" : "No tickets yet"}
+          description={search || status ? "Try adjusting your search or filter." : "Open a ticket and our team will get back to you."}
+          action={!search && !status && (
             <Link
               to="/tickets/new"
-              className="bg-blue-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-blue-700"
+              className="inline-flex items-center bg-blue-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-blue-700"
             >
               Open your first ticket
             </Link>
           )}
-        </div>
+        />
       )}
 
-      <div className="space-y-3">
-        {tickets.map((ticket) => (
-          <TicketCard key={ticket.id} ticket={ticket} />
-        ))}
-      </div>
+      {!loading && !error && tickets.length > 0 && (
+        <div className="space-y-3">
+          {tickets.map((ticket) => (
+            <TicketCard key={ticket.id} ticket={ticket} />
+          ))}
+        </div>
+      )}
     </MainLayout>
   );
 }

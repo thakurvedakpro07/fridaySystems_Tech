@@ -1,15 +1,10 @@
-/**
- * CommentSection — the comment thread for a ticket.
- *
- * Shows existing comments and a form to add new ones.
- * Internal comments (is_internal=true) are hidden from customers
- * by the backend; this component just displays what the API returns.
- */
 import { useState } from "react";
 import { addComment } from "../../api/tickets";
 import { useToast } from "../../context/ToastContext";
 import { useComments } from "../../hooks/useComments";
 import { useAuthStore } from "../../store/authStore";
+import Button from "../ui/Button";
+import Spinner from "../ui/Spinner";
 
 function CommentBubble({ comment }) {
   const user = useAuthStore((s) => s.user);
@@ -21,7 +16,6 @@ function CommentBubble({ comment }) {
 
   return (
     <div className={`flex flex-col ${isOwn ? "items-end" : "items-start"}`}>
-      {/* Author + timestamp */}
       <div className="flex items-center gap-2 mb-1">
         <span className="text-xs text-gray-400">
           {comment.author_email ?? "Deleted User"}
@@ -31,7 +25,6 @@ function CommentBubble({ comment }) {
         <span className="text-xs text-gray-400">{timeLabel}</span>
       </div>
 
-      {/* Bubble */}
       <div
         className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap
           ${isOwn
@@ -68,7 +61,6 @@ export default function CommentSection({ ticketId }) {
     }
   };
 
-  // Allow Ctrl+Enter / Cmd+Enter to submit the form
   const handleKeyDown = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
       handleSubmit(e);
@@ -77,11 +69,14 @@ export default function CommentSection({ ticketId }) {
 
   return (
     <div className="mt-6">
-      <h2 className="text-base font-semibold text-gray-900 mb-4">Comments</h2>
-
       {/* Comment list */}
       <div className="space-y-4 min-h-[60px]">
-        {loading && <p className="text-gray-400 text-sm">Loading comments…</p>}
+        {loading && (
+          <div className="flex items-center gap-2 py-4">
+            <Spinner size="sm" />
+            <span className="text-sm text-gray-400">Loading comments…</span>
+          </div>
+        )}
 
         {error && (
           <p className="text-red-500 text-sm">Could not load comments.</p>
@@ -100,7 +95,9 @@ export default function CommentSection({ ticketId }) {
 
       {/* New comment form */}
       <form onSubmit={handleSubmit} className="mt-5">
+        <label htmlFor="comment-body" className="sr-only">Write a comment</label>
         <textarea
+          id="comment-body"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -110,14 +107,12 @@ export default function CommentSection({ ticketId }) {
                      focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
         />
         <div className="flex justify-end mt-2">
-          <button
+          <Button
             type="submit"
             disabled={submitting || !body.trim()}
-            className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg
-                       hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? "Posting…" : "Post comment"}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

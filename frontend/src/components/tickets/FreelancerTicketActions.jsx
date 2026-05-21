@@ -83,8 +83,9 @@ export default function FreelancerTicketActions({ ticket, onUpdate }) {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Note (optional)</label>
+            <label htmlFor="freelancer-note" className="block text-sm font-medium text-gray-700 mb-1">Note (optional)</label>
             <textarea
+              id="freelancer-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={3}

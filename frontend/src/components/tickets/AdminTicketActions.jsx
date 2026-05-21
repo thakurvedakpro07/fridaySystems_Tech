@@ -127,8 +127,9 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
       <Modal isOpen={showAssign} onClose={() => setShowAssign(false)} title="Assign Freelancer">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Select Freelancer</label>
+            <label htmlFor="assign-freelancer" className="block text-sm font-medium text-gray-700 mb-1">Select Freelancer</label>
             <select
+              id="assign-freelancer"
               value={selectedFreelancer}
               onChange={(e) => setSelectedFreelancer(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -155,8 +156,9 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
       <Modal isOpen={showStatus} onClose={() => setShowStatus(false)} title="Change Status">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">New Status</label>
+            <label htmlFor="new-status" className="block text-sm font-medium text-gray-700 mb-1">New Status</label>
             <select
+              id="new-status"
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -168,8 +170,9 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Note (optional)</label>
+            <label htmlFor="status-note" className="block text-sm font-medium text-gray-700 mb-1">Note (optional)</label>
             <textarea
+              id="status-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={2}
@@ -193,8 +196,9 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
             This will remove <strong>{ticket.assigned_to?.email}</strong> from the ticket and move it back to <em>open</em>.
           </p>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Note (optional)</label>
+            <label htmlFor="unassign-note" className="block text-sm font-medium text-gray-700 mb-1">Note (optional)</label>
             <textarea
+              id="unassign-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={2}

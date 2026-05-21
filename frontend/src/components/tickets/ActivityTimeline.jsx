@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from "react";
 import { listActivityLog } from "../../api/tickets";
+import Spinner from "../ui/Spinner";
 
 const ACTION_ICONS = {
   created:          { icon: "🎫", colour: "bg-blue-100 text-blue-700" },
@@ -104,8 +105,17 @@ export default function ActivityTimeline({ ticketId }) {
     return () => { cancelled = true; };
   }, [ticketId]);
 
-  if (loading) return <p className="text-gray-400 text-sm py-4">Loading activity…</p>;
-  if (error)   return <p className="text-red-500 text-sm py-4">{error}</p>;
+  if (loading) return (
+    <div className="flex items-center gap-2 py-4">
+      <Spinner size="sm" />
+      <span className="text-sm text-gray-400">Loading activity…</span>
+    </div>
+  );
+  if (error) return (
+    <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-4 py-3 mt-1">
+      {error}
+    </p>
+  );
 
   return (
     <div className="mt-1">

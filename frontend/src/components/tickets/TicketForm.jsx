@@ -48,10 +48,11 @@ export default function TicketForm({ onSubmit, loading }) {
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* Title */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="ticket-title" className="block text-sm font-medium text-gray-700 mb-1">
           Summary *
         </label>
         <input
+          id="ticket-title"
           name="title"
           value={form.title}
           onChange={handleChange}
@@ -63,7 +64,7 @@ export default function TicketForm({ onSubmit, loading }) {
 
       {/* Service type */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="ticket-service" className="block text-sm font-medium text-gray-700 mb-1">
           Service Category *
         </label>
         {serviceError ? (
@@ -72,6 +73,7 @@ export default function TicketForm({ onSubmit, loading }) {
           </div>
         ) : (
           <select
+            id="ticket-service"
             name="service_type"
             value={form.service_type}
             onChange={handleChange}
@@ -90,10 +92,11 @@ export default function TicketForm({ onSubmit, loading }) {
 
       {/* Severity */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="ticket-severity" className="block text-sm font-medium text-gray-700 mb-1">
           Severity *
         </label>
         <select
+          id="ticket-severity"
           name="severity"
           value={form.severity}
           onChange={handleChange}
@@ -107,10 +110,11 @@ export default function TicketForm({ onSubmit, loading }) {
 
       {/* Priority */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="ticket-priority" className="block text-sm font-medium text-gray-700 mb-1">
           Business Priority *
         </label>
         <select
+          id="ticket-priority"
           name="priority"
           value={form.priority}
           onChange={handleChange}
@@ -124,10 +128,11 @@ export default function TicketForm({ onSubmit, loading }) {
 
       {/* Description */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="ticket-description" className="block text-sm font-medium text-gray-700 mb-1">
           Description
         </label>
         <textarea
+          id="ticket-description"
           name="description"
           value={form.description}
           onChange={handleChange}

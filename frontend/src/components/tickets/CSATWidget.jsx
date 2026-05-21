@@ -78,7 +78,9 @@ export default function CSATWidget({ ticket, onUpdate }) {
         ))}
       </div>
 
+      <label htmlFor="csat-comment" className="sr-only">Additional feedback (optional)</label>
       <textarea
+        id="csat-comment"
         value={comment}
         onChange={(e) => setComment(e.target.value)}
         rows={2}

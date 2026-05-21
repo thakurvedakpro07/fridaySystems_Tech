@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import apiClient from "../../api/client";
 import MainLayout from "../../components/layouts/MainLayout";
 import TicketCard from "../../components/tickets/TicketCard";
+import { SkeletonCard } from "../../components/ui/Spinner";
+import EmptyState from "../../components/ui/EmptyState";
 import { usePageTitle } from "../../hooks/usePageTitle";
 
 const STATUS_OPTIONS = ["", "open", "assigned", "in_progress", "waiting_customer", "resolved", "closed", "pending_payment"];
@@ -66,7 +68,7 @@ export default function AdminDashboard() {
           placeholder="Search tickets…"
           value={searchInput}
           onChange={handleSearchChange}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-56"
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-56"
         />
         <select
           value={status}
@@ -80,19 +82,24 @@ export default function AdminDashboard() {
       </div>
 
       {loading ? (
-        <p className="text-gray-400 py-8 text-center">Loading…</p>
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map((n) => <SkeletonCard key={n} />)}
+        </div>
       ) : error ? (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
           {error}
         </div>
+      ) : tickets.length === 0 ? (
+        <EmptyState
+          icon="🔍"
+          title="No tickets match the current filters"
+          description="Try clearing your search or selecting a different status."
+        />
       ) : (
         <div className="space-y-3">
           {tickets.map((ticket) => (
             <TicketCard key={ticket.id} ticket={ticket} />
           ))}
-          {tickets.length === 0 && (
-            <p className="text-gray-400 text-center py-12">No tickets match the current filters.</p>
-          )}
         </div>
       )}
     </MainLayout>

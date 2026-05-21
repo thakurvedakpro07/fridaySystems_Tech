@@ -9,6 +9,7 @@
  */
 import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import Spinner from "./components/ui/Spinner";
 
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import FreelancerList from "./pages/admin/FreelancerList";
@@ -68,7 +69,7 @@ export default function App() {
   if (initializing) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400 text-sm">Loading…</p>
+        <Spinner size="lg" />
       </div>
     );
   }
