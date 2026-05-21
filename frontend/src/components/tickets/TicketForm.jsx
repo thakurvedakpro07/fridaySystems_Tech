@@ -1,6 +1,3 @@
-/**
- * TicketForm — the form customers fill in to open a new support ticket.
- */
 import { useEffect, useState } from "react";
 import { listServices } from "../../api/tickets";
 import Button from "../ui/Button";
@@ -46,9 +43,8 @@ export default function TicketForm({ onSubmit, loading }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Title */}
       <div>
-        <label htmlFor="ticket-title" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="ticket-title" className="block text-sm font-medium text-slate-700 mb-1.5">
           Summary *
         </label>
         <input
@@ -58,18 +54,20 @@ export default function TicketForm({ onSubmit, loading }) {
           onChange={handleChange}
           required
           placeholder="e.g. Cannot SSH into production server after reboot"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="input-base"
         />
       </div>
 
-      {/* Service type */}
       <div>
-        <label htmlFor="ticket-service" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="ticket-service" className="block text-sm font-medium text-slate-700 mb-1.5">
           Service Category *
         </label>
         {serviceError ? (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">
-            Could not load service categories. Please refresh the page.
+          <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl px-4 py-3">
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+            Could not load service categories. Please refresh.
           </div>
         ) : (
           <select
@@ -78,7 +76,7 @@ export default function TicketForm({ onSubmit, loading }) {
             value={form.service_type}
             onChange={handleChange}
             required
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input-base"
           >
             <option value="">Select a category…</option>
             {services.map((s) => (
@@ -90,45 +88,44 @@ export default function TicketForm({ onSubmit, loading }) {
         )}
       </div>
 
-      {/* Severity */}
-      <div>
-        <label htmlFor="ticket-severity" className="block text-sm font-medium text-gray-700 mb-1">
-          Severity *
-        </label>
-        <select
-          id="ticket-severity"
-          name="severity"
-          value={form.severity}
-          onChange={handleChange}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          {SEVERITIES.map((s) => (
-            <option key={s.value} value={s.value}>{s.label}</option>
-          ))}
-        </select>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="ticket-severity" className="block text-sm font-medium text-slate-700 mb-1.5">
+            Severity *
+          </label>
+          <select
+            id="ticket-severity"
+            name="severity"
+            value={form.severity}
+            onChange={handleChange}
+            className="input-base"
+          >
+            {SEVERITIES.map((s) => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="ticket-priority" className="block text-sm font-medium text-slate-700 mb-1.5">
+            Priority *
+          </label>
+          <select
+            id="ticket-priority"
+            name="priority"
+            value={form.priority}
+            onChange={handleChange}
+            className="input-base"
+          >
+            {PRIORITIES.map((p) => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* Priority */}
       <div>
-        <label htmlFor="ticket-priority" className="block text-sm font-medium text-gray-700 mb-1">
-          Business Priority *
-        </label>
-        <select
-          id="ticket-priority"
-          name="priority"
-          value={form.priority}
-          onChange={handleChange}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          {PRIORITIES.map((p) => (
-            <option key={p.value} value={p.value}>{p.label}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Description */}
-      <div>
-        <label htmlFor="ticket-description" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="ticket-description" className="block text-sm font-medium text-slate-700 mb-1.5">
           Description
         </label>
         <textarea
@@ -138,18 +135,23 @@ export default function TicketForm({ onSubmit, loading }) {
           onChange={handleChange}
           rows={4}
           placeholder="Describe the issue in detail — what happened, when, and what you've already tried."
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          className="input-base resize-none"
         />
       </div>
 
       {/* Consulting fee notice */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-        A <strong>₹299 consulting fee</strong> is charged at ticket creation to cover
-        initial diagnosis. You will be redirected to complete payment.
+      <div className="flex items-start gap-3 bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-sm text-indigo-800">
+        <svg className="w-4 h-4 mt-0.5 shrink-0 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+        </svg>
+        <span>
+          A <strong>₹299 consulting fee</strong> is charged at ticket creation to cover initial diagnosis.
+          Refunded if no engineer is assigned within 2 hours.
+        </span>
       </div>
 
-      <Button type="submit" disabled={loading || serviceError} className="w-full">
-        {loading ? "Creating…" : "Open Ticket & Pay ₹299"}
+      <Button type="submit" disabled={loading || serviceError} className="w-full" size="lg">
+        {loading ? "Creating ticket…" : "Open Ticket & Pay ₹299"}
       </Button>
     </form>
   );

@@ -118,7 +118,7 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
           )}
 
           {nextStatuses.length === 0 && ticket.status === "closed" && (
-            <p className="text-sm text-gray-400 italic">This ticket is closed.</p>
+            <p className="text-sm text-slate-400 italic">This ticket is closed.</p>
           )}
         </div>
       </div>
@@ -127,12 +127,12 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
       <Modal isOpen={showAssign} onClose={() => setShowAssign(false)} title="Assign Freelancer">
         <div className="space-y-4">
           <div>
-            <label htmlFor="assign-freelancer" className="block text-sm font-medium text-gray-700 mb-1">Select Freelancer</label>
+            <label htmlFor="assign-freelancer" className="block text-sm font-medium text-slate-700 mb-1.5">Select Freelancer</label>
             <select
               id="assign-freelancer"
               value={selectedFreelancer}
               onChange={(e) => setSelectedFreelancer(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-base"
             >
               <option value="">— choose a freelancer —</option>
               {freelancers.map((f) => (
@@ -156,12 +156,12 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
       <Modal isOpen={showStatus} onClose={() => setShowStatus(false)} title="Change Status">
         <div className="space-y-4">
           <div>
-            <label htmlFor="new-status" className="block text-sm font-medium text-gray-700 mb-1">New Status</label>
+            <label htmlFor="new-status" className="block text-sm font-medium text-slate-700 mb-1.5">New Status</label>
             <select
               id="new-status"
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-base"
             >
               <option value="">— choose a status —</option>
               {nextStatuses.map((s) => (
@@ -170,14 +170,14 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
             </select>
           </div>
           <div>
-            <label htmlFor="status-note" className="block text-sm font-medium text-gray-700 mb-1">Note (optional)</label>
+            <label htmlFor="status-note" className="block text-sm font-medium text-slate-700 mb-1.5">Note (optional)</label>
             <textarea
               id="status-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={2}
               placeholder="Reason for status change…"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="input-base resize-none"
             />
           </div>
           <div className="flex justify-end gap-2">
@@ -192,18 +192,18 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
       {/* ── Unassign modal ────────────────────────────────────── */}
       <Modal isOpen={showUnassign} onClose={() => setShowUnassign(false)} title="Unassign Freelancer">
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-slate-600">
             This will remove <strong>{ticket.assigned_to?.email}</strong> from the ticket and move it back to <em>open</em>.
           </p>
           <div>
-            <label htmlFor="unassign-note" className="block text-sm font-medium text-gray-700 mb-1">Note (optional)</label>
+            <label htmlFor="unassign-note" className="block text-sm font-medium text-slate-700 mb-1.5">Note (optional)</label>
             <textarea
               id="unassign-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={2}
               placeholder="Reason for unassigning…"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="input-base resize-none"
             />
           </div>
           <div className="flex justify-end gap-2">

@@ -9,25 +9,57 @@ import { usePageTitle } from "../../hooks/usePageTitle";
 
 const STATUS_OPTIONS = ["", "open", "assigned", "in_progress", "waiting_customer", "resolved", "closed", "pending_payment"];
 
+function StatCard({ label, value, color = "indigo", icon, loading }) {
+  const colors = {
+    indigo:  "bg-indigo-50 text-indigo-600",
+    emerald: "bg-emerald-50 text-emerald-600",
+    amber:   "bg-amber-50 text-amber-600",
+    rose:    "bg-rose-50 text-rose-600",
+    violet:  "bg-violet-50 text-violet-600",
+  };
+  const textColor = colors[color]?.split(" ")[1] ?? "text-slate-900";
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl px-5 py-4 flex items-start justify-between gap-3"
+         style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
+      <div>
+        <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
+        {loading ? (
+          <div className="h-7 w-10 bg-slate-100 rounded-md animate-skeleton-pulse" />
+        ) : (
+          <p className={`text-2xl font-bold ${textColor}`}>{value}</p>
+        )}
+      </div>
+      <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0 ${colors[color]}`}>
+        {icon}
+      </span>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   usePageTitle("Admin Dashboard");
-  const [tickets, setTickets]     = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
+  const [tickets, setTickets]       = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(null);
   const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch]       = useState("");
-  const [status, setStatus]       = useState("");
-  const [count, setCount]         = useState(0);
-  const debounceRef               = useRef(null);
+  const [search, setSearch]         = useState("");
+  const [status, setStatus]         = useState("");
+  const [count, setCount]           = useState(0);
+  const [allTickets, setAllTickets] = useState([]);
+  const debounceRef                 = useRef(null);
 
-  // Debounce: only update the actual search param 400ms after the user stops typing.
-  // Without this, every keystroke fires a new API call.
   const handleSearchChange = (e) => {
     const val = e.target.value;
     setSearchInput(val);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => setSearch(val), 400);
   };
+
+  useEffect(() => {
+    apiClient.get("/admin/tickets/")
+      .then(({ data }) => setAllTickets(data.results ?? data))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -40,40 +72,67 @@ export default function AdminDashboard() {
         setTickets(data.results ?? data);
         setCount(data.count ?? (data.results ?? data).length);
       })
-      .catch(() => setError("Could not load tickets. Please refresh the page."))
+      .catch(() => setError("Could not load tickets. Please refresh."))
       .finally(() => setLoading(false));
   }, [search, status]);
 
+  const stats = {
+    total:      allTickets.length,
+    open:       allTickets.filter((t) => t.status === "open").length,
+    inProgress: allTickets.filter((t) => t.status === "in_progress").length,
+    resolved:   allTickets.filter((t) => t.status === "resolved").length,
+  };
+
   return (
     <MainLayout maxWidth="max-w-5xl">
+      {/* Page header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-          {!loading && (
-            <p className="text-sm text-gray-400 mt-0.5">{count} ticket{count !== 1 ? "s" : ""}</p>
-          )}
+          <h1 className="text-xl font-bold text-slate-900">Admin Dashboard</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {!loading ? `${count} total ticket${count !== 1 ? "s" : ""}` : "Loading…"}
+          </p>
         </div>
         <Link
           to="/admin/freelancers"
-          className="text-sm text-blue-600 hover:text-blue-800"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600
+                     border border-slate-200 hover:border-slate-300 hover:bg-slate-50 px-3.5 py-2
+                     rounded-lg transition-all shadow-sm"
         >
-          Manage Freelancers →
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+          </svg>
+          Manage Freelancers
         </Link>
       </div>
 
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <StatCard label="Total Tickets" value={stats.total} color="indigo" icon="🎫" loading={allTickets.length === 0 && loading} />
+        <StatCard label="Open" value={stats.open} color="amber" icon="📬" loading={allTickets.length === 0 && loading} />
+        <StatCard label="In Progress" value={stats.inProgress} color="violet" icon="⚡" loading={allTickets.length === 0 && loading} />
+        <StatCard label="Resolved" value={stats.resolved} color="emerald" icon="✅" loading={allTickets.length === 0 && loading} />
+      </div>
+
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-5">
-        <input
-          type="text"
-          placeholder="Search tickets…"
-          value={searchInput}
-          onChange={handleSearchChange}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-56"
-        />
+      <div className="flex flex-wrap gap-2.5 mb-5">
+        <div className="relative flex-1 min-w-[160px]">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+               fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search tickets…"
+            value={searchInput}
+            onChange={handleSearchChange}
+            className="input-base pl-9"
+          />
+        </div>
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="input-base w-auto"
         >
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>{s ? s.replaceAll("_", " ") : "All statuses"}</option>
@@ -81,12 +140,16 @@ export default function AdminDashboard() {
         </select>
       </div>
 
+      {/* Content */}
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {[1, 2, 3, 4].map((n) => <SkeletonCard key={n} />)}
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="flex items-center gap-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl px-4 py-3">
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
           {error}
         </div>
       ) : tickets.length === 0 ? (
@@ -96,7 +159,7 @@ export default function AdminDashboard() {
           description="Try clearing your search or selecting a different status."
         />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {tickets.map((ticket) => (
             <TicketCard key={ticket.id} ticket={ticket} />
           ))}

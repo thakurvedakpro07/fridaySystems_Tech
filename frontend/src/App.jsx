@@ -68,7 +68,7 @@ export default function App() {
   // fetch returns and incorrectly redirects admins to /dashboard.
   if (initializing) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <Spinner size="lg" />
       </div>
     );

@@ -1,10 +1,3 @@
-/**
- * Reusable Button component.
- *
- * Props:
- *   variant — "primary" (default) | "secondary" | "danger" | "ghost" | "warning"
- *   size    — "sm" | "md" (default) | "lg"
- */
 export default function Button({
   children,
   variant = "primary",
@@ -15,21 +8,32 @@ export default function Button({
   className = "",
 }) {
   const base =
-    "inline-flex items-center justify-center gap-1.5 font-medium rounded-lg transition-colors " +
-    "focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
+    "inline-flex items-center justify-center gap-1.5 font-medium rounded-lg " +
+    "transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 " +
+    "disabled:opacity-50 disabled:cursor-not-allowed select-none";
 
   const variants = {
-    primary:   "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
-    secondary: "bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-gray-400",
-    danger:    "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
-    ghost:     "bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-400",
-    warning:   "bg-amber-500 text-white hover:bg-amber-600 focus:ring-amber-400",
+    primary:
+      "bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800 " +
+      "focus:ring-indigo-500/50 shadow-sm hover:shadow",
+    secondary:
+      "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 " +
+      "active:bg-slate-100 focus:ring-slate-300 shadow-sm",
+    danger:
+      "bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 " +
+      "focus:ring-rose-500/50 shadow-sm hover:shadow",
+    ghost:
+      "bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 " +
+      "active:bg-slate-200 focus:ring-slate-300",
+    warning:
+      "bg-amber-500 text-white hover:bg-amber-600 active:bg-amber-700 " +
+      "focus:ring-amber-400/50 shadow-sm",
   };
 
   const sizes = {
     sm: "px-3 py-1.5 text-xs",
     md: "px-4 py-2 text-sm",
-    lg: "px-5 py-2.5 text-base",
+    lg: "px-5 py-2.5 text-[0.9375rem]",
   };
 
   return (

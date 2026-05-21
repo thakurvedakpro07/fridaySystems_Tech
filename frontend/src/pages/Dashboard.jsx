@@ -10,40 +10,34 @@ import { usePageTitle } from "../hooks/usePageTitle";
 
 const STATUS_OPTIONS = ["", "open", "assigned", "in_progress", "waiting_customer", "resolved", "closed"];
 
-/**
- * Dashboard — the post-login landing page.
- *
- * This component acts as a role router:
- *   - Admin    → redirect to /admin (they have no customer profile)
- *   - Freelancer → redirect to /freelancer (FreelancerDashboard)
- *   - Customer  → renders CustomerDashboard with the ticket list
- *
- * WHY the split into two components?
- * React's Rules of Hooks say you cannot call a hook after a conditional
- * return statement. useTickets() calls GET /api/tickets/ which requires
- * IsCustomer permission — calling it for admins/freelancers would generate
- * 403 errors. Moving it into <CustomerDashboard> (only rendered for real
- * customers) keeps the hook call safe and avoids unnecessary HTTP requests.
- */
+function StatCard({ label, value, color = "indigo", loading }) {
+  const colorMap = {
+    indigo: "text-indigo-600 bg-indigo-50",
+    blue:   "text-blue-600 bg-blue-50",
+    amber:  "text-amber-600 bg-amber-50",
+    emerald:"text-emerald-600 bg-emerald-50",
+    slate:  "text-slate-600 bg-slate-100",
+  };
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl px-5 py-4"
+         style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
+      <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
+      {loading ? (
+        <div className="h-7 w-10 bg-slate-100 rounded-md animate-skeleton-pulse" />
+      ) : (
+        <p className={`text-2xl font-bold ${colorMap[color]?.split(" ")[0] ?? "text-slate-900"}`}>{value}</p>
+      )}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const user = useAuthStore((s) => s.user);
-
-  if (user?.is_staff) {
-    return <Navigate to="/admin" replace />;
-  }
-
-  if (user?.role === "freelancer") {
-    return <Navigate to="/freelancer" replace />;
-  }
-
+  if (user?.is_staff) return <Navigate to="/admin" replace />;
+  if (user?.role === "freelancer") return <Navigate to="/freelancer" replace />;
   return <CustomerDashboard />;
 }
 
-/**
- * CustomerDashboard — the ticket list view for customers.
- * Only rendered after Dashboard confirms the user is a customer,
- * so useTickets() (which calls the IsCustomer-protected endpoint) is safe here.
- */
 function CustomerDashboard() {
   usePageTitle("My Tickets");
   const [searchInput, setSearchInput] = useState("");
@@ -63,32 +57,62 @@ function CustomerDashboard() {
   if (status) filters.status = status;
 
   const { tickets, loading, error } = useTickets(filters);
+  const allTickets = useTickets({});
+
+  const stats = {
+    total:      allTickets.tickets.length,
+    open:       allTickets.tickets.filter((t) => t.status === "open").length,
+    inProgress: allTickets.tickets.filter((t) => ["assigned", "in_progress", "waiting_customer"].includes(t.status)).length,
+    resolved:   allTickets.tickets.filter((t) => ["resolved", "closed"].includes(t.status)).length,
+  };
 
   return (
     <MainLayout maxWidth="max-w-4xl">
+      {/* Page header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">My Tickets</h1>
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">My Tickets</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Track and manage your support requests</p>
+        </div>
         <Link
           to="/tickets/new"
-          className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700"
+          className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-medium
+                     px-4 py-2 rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm"
         >
-          + New Ticket
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          New Ticket
         </Link>
       </div>
 
-      {/* Search and filter */}
-      <div className="flex flex-wrap gap-3 mb-5">
-        <input
-          type="text"
-          placeholder="Search tickets…"
-          value={searchInput}
-          onChange={handleSearchChange}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-56"
-        />
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <StatCard label="Total" value={stats.total} color="indigo" loading={allTickets.loading} />
+        <StatCard label="Open" value={stats.open} color="blue" loading={allTickets.loading} />
+        <StatCard label="In Progress" value={stats.inProgress} color="amber" loading={allTickets.loading} />
+        <StatCard label="Resolved" value={stats.resolved} color="emerald" loading={allTickets.loading} />
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2.5 mb-5">
+        <div className="relative flex-1 min-w-[160px]">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+               fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search tickets…"
+            value={searchInput}
+            onChange={handleSearchChange}
+            className="input-base pl-9"
+          />
+        </div>
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="input-base w-auto"
         >
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>{s ? s.replaceAll("_", " ") : "All statuses"}</option>
@@ -96,6 +120,7 @@ function CustomerDashboard() {
         </select>
       </div>
 
+      {/* Content */}
       {loading && (
         <div className="space-y-3">
           {[1, 2, 3].map((n) => <SkeletonCard key={n} />)}
@@ -103,8 +128,11 @@ function CustomerDashboard() {
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
-          Failed to load tickets: {error}
+        <div className="flex items-center gap-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl px-4 py-3">
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          Failed to load tickets. Please refresh.
         </div>
       )}
 
@@ -112,11 +140,14 @@ function CustomerDashboard() {
         <EmptyState
           icon={search || status ? "🔍" : "🎫"}
           title={search || status ? "No tickets match your filters" : "No tickets yet"}
-          description={search || status ? "Try adjusting your search or filter." : "Open a ticket and our team will get back to you."}
+          description={search || status
+            ? "Try adjusting your search or selecting a different status."
+            : "Describe your issue and a vetted engineer will be assigned within the SLA window."}
           action={!search && !status && (
             <Link
               to="/tickets/new"
-              className="inline-flex items-center bg-blue-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-blue-700"
+              className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-medium
+                         px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
             >
               Open your first ticket
             </Link>
@@ -125,7 +156,7 @@ function CustomerDashboard() {
       )}
 
       {!loading && !error && tickets.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {tickets.map((ticket) => (
             <TicketCard key={ticket.id} ticket={ticket} />
           ))}

@@ -1,64 +1,40 @@
-/**
- * Toast notification system.
- *
- * A "toast" is a small pop-up message that appears briefly then disappears.
- * Examples: "Ticket created successfully", "Failed to load comments".
- *
- * HOW IT WORKS:
- *   1. Wrap your app in <ToastProvider> (done in App.jsx)
- *   2. In any component: const toast = useToast()
- *   3. Call: toast("Ticket saved!", "success")
- *      or:   toast("Network error", "error")
- *   4. The message appears in the bottom-right corner for 4 seconds
- *
- * WHY React Context?
- *   Toasts can be triggered from anywhere — a form deep in the tree,
- *   a hook, a page. Context lets any component access addToast without
- *   passing it down through every parent as a prop.
- */
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 const ToastCtx = createContext(null);
 
-const TYPE_STYLES = {
-  success: "bg-green-600 text-white",
-  error:   "bg-red-600 text-white",
-  info:    "bg-gray-800 text-white",
-  warning: "bg-yellow-500 text-white",
-};
-
-const TYPE_ICONS = {
-  success: "✓",
-  error:   "✕",
-  info:    "ℹ",
-  warning: "⚠",
+const STYLES = {
+  success: { bar: "bg-emerald-500", icon: "✓", bg: "bg-white", text: "text-emerald-700", border: "border-emerald-200" },
+  error:   { bar: "bg-rose-500",    icon: "✕", bg: "bg-white", text: "text-rose-700",    border: "border-rose-200" },
+  info:    { bar: "bg-indigo-500",  icon: "ℹ", bg: "bg-white", text: "text-indigo-700",  border: "border-indigo-200" },
+  warning: { bar: "bg-amber-500",   icon: "⚠", bg: "bg-white", text: "text-amber-700",   border: "border-amber-200" },
 };
 
 function Toast({ toast, onClose }) {
-  // Auto-dismiss after 4 seconds. useEffect cleanup cancels the timer
-  // if the toast is manually closed before 4s expire.
   useEffect(() => {
     const timer = setTimeout(onClose, 4000);
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  const styles = TYPE_STYLES[toast.type] ?? TYPE_STYLES.info;
-  const icon   = TYPE_ICONS[toast.type]  ?? TYPE_ICONS.info;
+  const s = STYLES[toast.type] ?? STYLES.info;
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-sm
-                  min-w-[260px] max-w-sm animate-fade-in ${styles}`}
+      className={`flex items-start gap-3 px-4 py-3 rounded-xl border shadow-dropdown
+                  min-w-[280px] max-w-sm animate-slide-in-right ${s.bg} ${s.border}`}
       role="alert"
     >
-      <span className="text-base font-bold opacity-90">{icon}</span>
-      <span className="flex-1">{toast.message}</span>
+      <span className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white mt-0.5 ${s.bar}`}>
+        {s.icon}
+      </span>
+      <span className="flex-1 text-sm text-slate-800 leading-snug">{toast.message}</span>
       <button
         onClick={onClose}
-        className="opacity-70 hover:opacity-100 text-lg leading-none ml-1"
+        className="shrink-0 text-slate-400 hover:text-slate-700 mt-0.5 transition-colors"
         aria-label="Dismiss"
       >
-        ×
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
       </button>
     </div>
   );
@@ -80,9 +56,8 @@ export function ToastProvider({ children }) {
   return (
     <ToastCtx.Provider value={addToast}>
       {children}
-      {/* Fixed overlay container — toasts stack from the bottom */}
       <div
-        className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"
+        className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"
         aria-live="polite"
       >
         {toasts.map((t) => (
@@ -95,15 +70,6 @@ export function ToastProvider({ children }) {
   );
 }
 
-/**
- * useToast — returns a function to trigger a toast from any component.
- *
- * Usage:
- *   const toast = useToast();
- *   toast("Saved!", "success");
- *   toast("Network error", "error");
- *   toast("Loading data…");          // defaults to "info"
- */
 export function useToast() {
   const ctx = useContext(ToastCtx);
   if (!ctx) throw new Error("useToast must be used inside <ToastProvider>");

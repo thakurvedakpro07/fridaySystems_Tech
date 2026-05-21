@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-
 import { adminGetTicket, freelancerGetTicket, getTicket } from "../api/tickets";
 import { useAuthStore } from "../store/authStore";
 import TicketDetail from "../components/tickets/TicketDetail";
 import MainLayout from "../components/layouts/MainLayout";
+import Spinner from "../components/ui/Spinner";
 import { usePageTitle } from "../hooks/usePageTitle";
 
-// Choose the right fetch function and role label based on who's logged in.
 function useRoleTicketFetcher(id) {
   const user = useAuthStore((s) => s.user);
   if (user?.is_staff) return { fetchFn: () => adminGetTicket(id), role: "admin" };
@@ -37,7 +36,6 @@ export default function TicketDetailPage() {
         }
       })
       .finally(() => setLoading(false));
-  // fetchFn is derived from user object — stable for the lifetime of the page
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -45,17 +43,30 @@ export default function TicketDetailPage() {
 
   return (
     <MainLayout maxWidth="max-w-3xl">
+      {/* Back button */}
       <button
         onClick={() => navigate(-1)}
-        className="text-sm text-gray-500 hover:text-gray-800 mb-6 inline-flex items-center gap-1"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900
+                   mb-5 transition-colors group"
       >
-        ← Back
+        <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform"
+             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+        </svg>
+        Back
       </button>
 
-      {loading && <p className="text-gray-400">Loading ticket…</p>}
+      {loading && (
+        <div className="flex items-center gap-3 py-12 justify-center">
+          <Spinner size="lg" />
+        </div>
+      )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="flex items-center gap-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl px-4 py-3">
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
           {error}
         </div>
       )}

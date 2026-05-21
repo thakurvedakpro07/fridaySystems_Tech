@@ -61,8 +61,8 @@ export default function FreelancerTicketActions({ ticket, onUpdate }) {
 
   return (
     <>
-      <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-        <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-3">Update Status</p>
+      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+        <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-3">Update Status</p>
         <div className="flex flex-wrap gap-2">
           {nextStatuses.map((status) => (
             <Button
@@ -83,14 +83,14 @@ export default function FreelancerTicketActions({ ticket, onUpdate }) {
       >
         <div className="space-y-4">
           <div>
-            <label htmlFor="freelancer-note" className="block text-sm font-medium text-gray-700 mb-1">Note (optional)</label>
+            <label htmlFor="freelancer-note" className="block text-sm font-medium text-slate-700 mb-1.5">Note (optional)</label>
             <textarea
               id="freelancer-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={3}
               placeholder="Add a note for the customer or admin…"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="input-base resize-none"
             />
           </div>
           <div className="flex justify-end gap-2">

@@ -63,7 +63,7 @@ export default function NotificationBell() {
       {/* Bell button */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="relative p-2 text-gray-500 hover:text-gray-800 rounded-lg hover:bg-gray-100 transition-colors"
+        className="relative p-2 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors"
         aria-label="Notifications"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,15 +83,15 @@ export default function NotificationBell() {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl border border-gray-200
-                        shadow-xl z-50 overflow-hidden">
+        <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl border border-slate-200
+                        shadow-dropdown z-50 overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <span className="font-semibold text-gray-900 text-sm">Notifications</span>
+            <span className="font-semibold text-slate-900 text-sm">Notifications</span>
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAll}
-                className="text-xs text-blue-600 hover:text-blue-800"
+                className="text-xs text-indigo-600 hover:text-indigo-800"
               >
                 Mark all as read
               </button>
@@ -99,32 +99,32 @@ export default function NotificationBell() {
           </div>
 
           {/* List */}
-          <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+          <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
             {loading && (
-              <p className="text-gray-400 text-sm text-center py-6">Loading…</p>
+              <p className="text-slate-400 text-sm text-center py-6">Loading…</p>
             )}
 
             {!loading && recent.length === 0 && (
-              <p className="text-gray-400 text-sm text-center py-6">No notifications</p>
+              <p className="text-slate-400 text-sm text-center py-6">No notifications</p>
             )}
 
             {recent.map((n) => (
               <div
                 key={n.id}
-                className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors
-                            ${n.is_read ? "opacity-60" : "bg-blue-50/30"}`}
+                className={`flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors
+                            ${n.is_read ? "opacity-60" : "bg-indigo-50/40"}`}
               >
                 <span className="text-lg mt-0.5 shrink-0">
                   {CATEGORY_ICONS[n.category] ?? "🔔"}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm leading-snug ${n.is_read ? "text-gray-600" : "text-gray-900 font-medium"}`}>
+                  <p className={`text-sm leading-snug ${n.is_read ? "text-slate-600" : "text-slate-900 font-medium"}`}>
                     {n.title}
                   </p>
                   {n.body && (
-                    <p className="text-xs text-gray-400 mt-0.5 truncate">{n.body}</p>
+                    <p className="text-xs text-slate-400 mt-0.5 truncate">{n.body}</p>
                   )}
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-slate-400 mt-0.5">
                     {new Date(n.created_at).toLocaleString("en-IN", {
                       day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
                     })}
@@ -133,7 +133,7 @@ export default function NotificationBell() {
                 {!n.is_read && (
                   <button
                     onClick={(e) => handleMarkOne(e, n.id)}
-                    className="shrink-0 text-[10px] text-blue-600 hover:text-blue-800 mt-0.5"
+                    className="shrink-0 text-[10px] text-indigo-600 hover:text-indigo-800 mt-0.5"
                     title="Mark as read"
                   >
                     ✓
@@ -145,7 +145,7 @@ export default function NotificationBell() {
 
           {notifications.length > 8 && (
             <div className="px-4 py-2 border-t border-gray-100 text-center">
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-slate-400">
                 Showing 8 of {notifications.length}
               </span>
             </div>

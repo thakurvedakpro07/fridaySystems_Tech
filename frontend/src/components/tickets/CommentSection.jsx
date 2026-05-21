@@ -103,8 +103,7 @@ export default function CommentSection({ ticketId }) {
           onKeyDown={handleKeyDown}
           rows={3}
           placeholder="Write a comment… (Ctrl+Enter to submit)"
-          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm
-                     focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          className="input-base resize-none py-2.5"
         />
         <div className="flex justify-end mt-2">
           <Button

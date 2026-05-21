@@ -39,24 +39,31 @@ export default function NewTicket() {
 
   return (
     <MainLayout maxWidth="max-w-xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Open a Support Ticket</h1>
-      <p className="text-gray-500 text-sm mb-6">
-        Describe your issue and a vetted engineer will be assigned within the SLA window.
-      </p>
+      {/* Page header */}
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-slate-900 mb-1">Open a Support Ticket</h1>
+        <p className="text-sm text-slate-500">
+          Describe your issue and a vetted engineer will be assigned within the SLA window.
+        </p>
+      </div>
 
       {errors.length > 0 && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
-          {errors.length === 1 ? (
-            errors[0]
-          ) : (
-            <ul className="list-disc list-inside space-y-0.5">
-              {errors.map((e, i) => <li key={i}>{e}</li>)}
-            </ul>
-          )}
+        <div className="flex items-start gap-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl px-4 py-3 mb-5">
+          <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          <div>
+            {errors.length === 1 ? errors[0] : (
+              <ul className="list-disc list-inside space-y-0.5">
+                {errors.map((e, i) => <li key={i}>{e}</li>)}
+              </ul>
+            )}
+          </div>
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6"
+           style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
         <TicketForm onSubmit={handleSubmit} loading={loading} />
       </div>
     </MainLayout>
