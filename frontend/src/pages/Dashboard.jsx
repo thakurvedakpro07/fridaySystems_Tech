@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { getAnalytics } from "../api/analytics";
 import MainLayout from "../components/layouts/MainLayout";
 import TicketCard from "../components/tickets/TicketCard";
 import { SkeletonCard } from "../components/ui/Spinner";
@@ -67,14 +68,23 @@ function CustomerDashboard() {
   if (status) filters.status = status;
 
   const { tickets, loading, error } = useTickets(filters);
-  const allTickets = useTickets({});
 
-  const stats = {
-    total:      allTickets.tickets.length,
-    open:       allTickets.tickets.filter((t) => t.status === "open").length,
-    inProgress: allTickets.tickets.filter((t) => ["assigned", "in_progress", "waiting_customer"].includes(t.status)).length,
-    resolved:   allTickets.tickets.filter((t) => ["resolved", "closed"].includes(t.status)).length,
-  };
+  // Stats come from the analytics endpoint — one lightweight call, always accurate.
+  // This replaces the previous second useTickets({}) call that fetched all tickets
+  // just to compute counts on the frontend.
+  const [stats, setStats]           = useState({ total: 0, open: 0, inProgress: 0, resolved: 0 });
+  const [statsLoading, setStatsLoading] = useState(true);
+  useEffect(() => {
+    getAnalytics()
+      .then(({ data }) => setStats({
+        total:      data.total,
+        open:       data.open,
+        inProgress: data.in_progress,
+        resolved:   data.resolved,
+      }))
+      .catch(() => {})
+      .finally(() => setStatsLoading(false));
+  }, []);
 
   return (
     <MainLayout maxWidth="max-w-4xl">
@@ -98,10 +108,10 @@ function CustomerDashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <StatCard label="Total"       value={stats.total}      color="indigo"  loading={allTickets.loading} />
-        <StatCard label="Open"        value={stats.open}       color="blue"    loading={allTickets.loading} />
-        <StatCard label="In Progress" value={stats.inProgress} color="amber"   loading={allTickets.loading} />
-        <StatCard label="Resolved"    value={stats.resolved}   color="emerald" loading={allTickets.loading} />
+        <StatCard label="Total"       value={stats.total}      color="indigo"  loading={statsLoading} />
+        <StatCard label="Open"        value={stats.open}       color="blue"    loading={statsLoading} />
+        <StatCard label="In Progress" value={stats.inProgress} color="amber"   loading={statsLoading} />
+        <StatCard label="Resolved"    value={stats.resolved}   color="emerald" loading={statsLoading} />
       </div>
 
       {/* Filters */}

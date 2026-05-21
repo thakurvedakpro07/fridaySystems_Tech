@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import apiClient from "../../api/client";
+import { getAnalytics } from "../../api/analytics";
 import MainLayout from "../../components/layouts/MainLayout";
 import TicketCard from "../../components/tickets/TicketCard";
 import { SkeletonCard } from "../../components/ui/Spinner";
@@ -49,7 +50,8 @@ export default function AdminDashboard() {
   const [search, setSearch]           = useState("");
   const [status, setStatus]           = useState("");
   const [count, setCount]             = useState(0);
-  const [allTickets, setAllTickets]   = useState([]);
+  const [stats, setStats]             = useState({ total: 0, open: 0, inProgress: 0, resolved: 0 });
+  const [statsLoading, setStatsLoading] = useState(true);
   const debounceRef                   = useRef(null);
 
   const handleSearchChange = (e) => {
@@ -64,10 +66,17 @@ export default function AdminDashboard() {
     setSearch("");
   };
 
+  // Stats: single analytics call instead of a full ticket list fetch
   useEffect(() => {
-    apiClient.get("/admin/tickets/")
-      .then(({ data }) => setAllTickets(data.results ?? data))
-      .catch(() => {});
+    getAnalytics()
+      .then(({ data }) => setStats({
+        total:      data.total,
+        open:       data.open,
+        inProgress: data.in_progress,
+        resolved:   data.resolved,
+      }))
+      .catch(() => {})
+      .finally(() => setStatsLoading(false));
   }, []);
 
   useEffect(() => {
@@ -84,15 +93,6 @@ export default function AdminDashboard() {
       .catch(() => setError("Could not load tickets. Please refresh."))
       .finally(() => setLoading(false));
   }, [search, status]);
-
-  const stats = {
-    total:      allTickets.length,
-    open:       allTickets.filter((t) => t.status === "open").length,
-    inProgress: allTickets.filter((t) => t.status === "in_progress").length,
-    resolved:   allTickets.filter((t) => t.status === "resolved").length,
-  };
-
-  const statsLoading = allTickets.length === 0 && loading;
 
   return (
     <MainLayout maxWidth="max-w-5xl">

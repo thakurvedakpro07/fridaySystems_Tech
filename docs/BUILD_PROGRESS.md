@@ -2,6 +2,43 @@
 
 ---
 
+## 2026-05-21 — Phase 15: Frontend Performance Optimization
+
+### Completed Today
+
+* **Route-level code splitting** — converted 5 heavy/role-specific pages to `React.lazy()` + `<Suspense>` in `App.jsx`: `Landing`, `AnalyticsPage`, `SettingsPage`, `FreelancerDashboard`, `FreelancerList`; each is now a separate JS chunk downloaded only when first visited
+* **Eliminated duplicate API call on Customer Dashboard** — removed the second `useTickets({})` call that fetched all tickets just to count them; replaced with lightweight `getAnalytics()` call; stats are now accurate regardless of active filters or pagination
+* **Eliminated duplicate API call on Admin Dashboard** — removed the `allTickets` useEffect that fetched `/admin/tickets/` for stat card counts; replaced with `getAnalytics()`; stats are now correct even when total tickets exceed `PAGE_SIZE=20`
+* **Eliminated duplicate API call on Freelancer Dashboard** — same pattern fixed; `freelancerListTickets({})` stats fetch replaced with `getAnalytics()`
+* **Notification polling paused on hidden tabs** — updated `useNotifications` hook to use the Page Visibility API (`visibilitychange` event); polling stops when the tab is hidden, resumes immediately when the user switches back; prevents up to 10 wasted requests/minute when multiple tabs are open
+* **Created `docs/FRONTEND_PERFORMANCE_REPORT.md`** — documents all 5 optimizations with before/after analysis
+
+### Build Output
+
+```
+dist/index.js (main)             295.6 KB │ gzip:  91.4 KB
+dist/Landing                      27.4 KB │ gzip:   7.8 KB
+dist/SettingsPage                  8.7 KB │ gzip:   3.1 KB
+dist/AnalyticsPage                 7.4 KB │ gzip:   2.6 KB
+dist/FreelancerDashboard           4.4 KB │ gzip:   1.9 KB
+dist/FreelancerList                2.9 KB │ gzip:   1.2 KB
+✓ 144 modules, 0 errors
+```
+
+### Files Modified
+
+* `frontend/src/App.jsx` — `React.lazy` + `Suspense` wrapper; 5 lazy imports; `PageLoader` fallback component
+* `frontend/src/pages/Dashboard.jsx` — removed `useTickets({})` stats call; added `getAnalytics()` + `useEffect`
+* `frontend/src/pages/admin/AdminDashboard.jsx` — removed `allTickets` state and its useEffect; added `getAnalytics()` hook; stats now accurate past page 1
+* `frontend/src/pages/freelancer/FreelancerDashboard.jsx` — same stats pattern fixed; removed `allTickets` fetch
+* `frontend/src/hooks/useNotifications.js` — Page Visibility API integration; polling pauses on hidden tab; resumes with immediate fetch on tab focus
+
+### Files Created
+
+* `docs/FRONTEND_PERFORMANCE_REPORT.md` — full optimization analysis with before/after network request counts and bundle size table
+
+---
+
 ## 2026-05-20 — Phase 10: UX Polish + Security Hardening + Production Readiness
 
 ### Completed Today

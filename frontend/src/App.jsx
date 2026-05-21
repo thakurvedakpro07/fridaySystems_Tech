@@ -1,29 +1,32 @@
-/**
- * Root application component.
- * Defines all routes (URL → page component mappings).
- *
- * How React Router works:
- *   <BrowserRouter> — enables URL-based routing
- *   <Routes>        — container for all route definitions
- *   <Route>         — maps a URL path to a component
- */
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Spinner from "./components/ui/Spinner";
 
+// Eagerly loaded — smallest possible critical path for authenticated users
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import FreelancerList from "./pages/admin/FreelancerList";
-import FreelancerDashboard from "./pages/freelancer/FreelancerDashboard";
-import AnalyticsPage from "./pages/AnalyticsPage";
 import Dashboard from "./pages/Dashboard";
-import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import NewTicket from "./pages/NewTicket";
 import Register from "./pages/Register";
-import SettingsPage from "./pages/SettingsPage";
 import TicketDetailPage from "./pages/TicketDetailPage";
+
+// Lazily loaded — split into separate chunks, downloaded only when first visited
+const Landing          = lazy(() => import("./pages/Landing"));
+const AnalyticsPage    = lazy(() => import("./pages/AnalyticsPage"));
+const SettingsPage     = lazy(() => import("./pages/SettingsPage"));
+const FreelancerDashboard = lazy(() => import("./pages/freelancer/FreelancerDashboard"));
+const FreelancerList   = lazy(() => import("./pages/admin/FreelancerList"));
+
 import { ToastProvider } from "./context/ToastContext";
 import { useAuthStore } from "./store/authStore";
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <Spinner size="lg" />
+    </div>
+  );
+}
 
 // Redirects unauthenticated users to /login
 function PrivateRoute({ children }) {
@@ -79,59 +82,61 @@ export default function App() {
   return (
     <ToastProvider>
     <BrowserRouter>
-      <Routes>
-        {/* Public pages */}
-        <Route path="/" element={<Landing />} />
-        <Route path="/login"    element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
-        <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Public pages */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/login"    element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
+          <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
 
-        {/* Customer pages — require login */}
-        <Route
-          path="/dashboard"
-          element={<PrivateRoute><Dashboard /></PrivateRoute>}
-        />
-        <Route
-          path="/tickets/new"
-          element={<PrivateRoute><NewTicket /></PrivateRoute>}
-        />
-        <Route
-          path="/tickets/:id"
-          element={<PrivateRoute><TicketDetailPage /></PrivateRoute>}
-        />
+          {/* Customer pages — require login */}
+          <Route
+            path="/dashboard"
+            element={<PrivateRoute><Dashboard /></PrivateRoute>}
+          />
+          <Route
+            path="/tickets/new"
+            element={<PrivateRoute><NewTicket /></PrivateRoute>}
+          />
+          <Route
+            path="/tickets/:id"
+            element={<PrivateRoute><TicketDetailPage /></PrivateRoute>}
+          />
 
-        {/* Freelancer pages — require login + role=freelancer */}
-        <Route
-          path="/freelancer"
-          element={<PrivateRoute><FreelancerRoute><FreelancerDashboard /></FreelancerRoute></PrivateRoute>}
-        />
+          {/* Freelancer pages — require login + role=freelancer */}
+          <Route
+            path="/freelancer"
+            element={<PrivateRoute><FreelancerRoute><FreelancerDashboard /></FreelancerRoute></PrivateRoute>}
+          />
 
-        {/* Admin pages — require login + is_staff */}
-        <Route
-          path="/admin"
-          element={<AdminRoute><AdminDashboard /></AdminRoute>}
-        />
-        <Route
-          path="/admin/freelancers"
-          element={<AdminRoute><FreelancerList /></AdminRoute>}
-        />
-        <Route
-          path="/admin/analytics"
-          element={<AdminRoute><AnalyticsPage /></AdminRoute>}
-        />
+          {/* Admin pages — require login + is_staff */}
+          <Route
+            path="/admin"
+            element={<AdminRoute><AdminDashboard /></AdminRoute>}
+          />
+          <Route
+            path="/admin/freelancers"
+            element={<AdminRoute><FreelancerList /></AdminRoute>}
+          />
+          <Route
+            path="/admin/analytics"
+            element={<AdminRoute><AnalyticsPage /></AdminRoute>}
+          />
 
-        {/* Shared pages — require login */}
-        <Route
-          path="/settings"
-          element={<PrivateRoute><SettingsPage /></PrivateRoute>}
-        />
-        <Route
-          path="/analytics"
-          element={<PrivateRoute><AnalyticsPage /></PrivateRoute>}
-        />
+          {/* Shared pages — require login */}
+          <Route
+            path="/settings"
+            element={<PrivateRoute><SettingsPage /></PrivateRoute>}
+          />
+          <Route
+            path="/analytics"
+            element={<PrivateRoute><AnalyticsPage /></PrivateRoute>}
+          />
 
-        {/* Catch-all: redirect unknown URLs to home */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* Catch-all: redirect unknown URLs to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
     </ToastProvider>
   );

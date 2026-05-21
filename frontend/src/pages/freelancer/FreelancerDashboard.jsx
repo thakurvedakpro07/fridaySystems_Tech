@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { freelancerListTickets } from "../../api/tickets";
+import { getAnalytics } from "../../api/analytics";
 import MainLayout from "../../components/layouts/MainLayout";
 import TicketCard from "../../components/tickets/TicketCard";
 import { SkeletonCard } from "../../components/ui/Spinner";
@@ -43,7 +44,8 @@ export default function FreelancerDashboard() {
   const [search, setSearch]           = useState("");
   const [status, setStatus]           = useState("");
   const debounceRef                   = useRef(null);
-  const [allTickets, setAllTickets]   = useState([]);
+  const [stats, setStats]             = useState({ total: 0, active: 0, waiting: 0, resolved: 0 });
+  const [statsLoading, setStatsLoading] = useState(true);
 
   const handleSearchChange = (e) => {
     const val = e.target.value;
@@ -57,10 +59,17 @@ export default function FreelancerDashboard() {
     setSearch("");
   };
 
+  // Stats via analytics endpoint — one call instead of fetching all tickets twice
   useEffect(() => {
-    freelancerListTickets({})
-      .then(({ data }) => setAllTickets(data.results ?? data))
-      .catch(() => {});
+    getAnalytics()
+      .then(({ data }) => setStats({
+        total:    data.total,
+        active:   data.in_progress,
+        waiting:  data.open,
+        resolved: data.resolved,
+      }))
+      .catch(() => {})
+      .finally(() => setStatsLoading(false));
   }, []);
 
   useEffect(() => {
@@ -77,15 +86,6 @@ export default function FreelancerDashboard() {
       .catch(() => setError("Could not load tickets. Please refresh."))
       .finally(() => setLoading(false));
   }, [search, status]);
-
-  const stats = {
-    total:    allTickets.length,
-    active:   allTickets.filter((t) => t.status === "in_progress").length,
-    waiting:  allTickets.filter((t) => t.status === "waiting_customer").length,
-    resolved: allTickets.filter((t) => ["resolved", "closed"].includes(t.status)).length,
-  };
-
-  const statsLoading = allTickets.length === 0 && loading;
 
   return (
     <MainLayout maxWidth="max-w-4xl">
