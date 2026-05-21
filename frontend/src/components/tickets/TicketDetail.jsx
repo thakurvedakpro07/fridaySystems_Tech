@@ -162,7 +162,7 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
           ))}
         </div>
 
-        <div className="p-5">
+        <div key={activeTab} className="p-5 animate-fade-in">
           {activeTab === "comments" && (
             <CommentSection ticketId={ticket.id} />
           )}

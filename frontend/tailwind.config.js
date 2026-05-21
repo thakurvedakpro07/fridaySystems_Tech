@@ -52,12 +52,27 @@ export default {
           "0%":   { transform: "rotate(0deg)" },
           "100%": { transform: "rotate(360deg)" },
         },
+        shimmer: {
+          "0%":   { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition:  "200% 0" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%":      { transform: "translateY(-6px)" },
+        },
+        "scale-in": {
+          "0%":   { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
       },
       animation: {
-        "fade-in":        "fade-in 0.18s ease-out",
+        "fade-in":        "fade-in 0.18s ease-out both",
         "slide-up":       "slide-up 0.22s cubic-bezier(0.16, 1, 0.3, 1)",
         "slide-in-right": "slide-in-right 0.2s ease-out",
         "skeleton-pulse": "skeleton-pulse 1.6s ease-in-out infinite",
+        shimmer:          "shimmer 1.4s ease-in-out infinite",
+        float:            "float 3s ease-in-out infinite",
+        "scale-in":       "scale-in 0.15s ease-out both",
       },
       backgroundImage: {
         "brand-gradient": "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",

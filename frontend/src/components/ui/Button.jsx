@@ -1,8 +1,11 @@
+import Spinner from "./Spinner";
+
 export default function Button({
   children,
   variant = "primary",
   size = "md",
   disabled = false,
+  loading = false,
   type = "button",
   onClick,
   className = "",
@@ -39,10 +42,11 @@ export default function Button({
   return (
     <button
       type={type}
-      disabled={disabled}
+      disabled={disabled || loading}
       onClick={onClick}
       className={`${base} ${variants[variant] ?? variants.primary} ${sizes[size] ?? sizes.md} ${className}`}
     >
+      {loading && <Spinner size="sm" />}
       {children}
     </button>
   );

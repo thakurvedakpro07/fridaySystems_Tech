@@ -5,6 +5,7 @@ import { useAuthStore } from "../store/authStore";
 import TicketDetail from "../components/tickets/TicketDetail";
 import MainLayout from "../components/layouts/MainLayout";
 import Spinner from "../components/ui/Spinner";
+import { SkeletonDetailCard } from "../components/ui/Spinner";
 import { usePageTitle } from "../hooks/usePageTitle";
 
 function useRoleTicketFetcher(id) {
@@ -57,8 +58,17 @@ export default function TicketDetailPage() {
       </button>
 
       {loading && (
-        <div className="flex items-center gap-3 py-12 justify-center">
-          <Spinner size="lg" />
+        <div className="space-y-4">
+          <SkeletonDetailCard />
+          <div className="bg-white border border-slate-200 rounded-2xl p-6"
+               style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
+            <div className="h-4 w-32 shimmer rounded-full mb-4" />
+            <div className="space-y-2.5">
+              <div className="h-3 shimmer rounded-full" />
+              <div className="h-3 w-4/5 shimmer rounded-full" />
+              <div className="h-3 w-3/5 shimmer rounded-full" />
+            </div>
+          </div>
         </div>
       )}
 
@@ -72,7 +82,9 @@ export default function TicketDetailPage() {
       )}
 
       {!loading && !error && ticket && (
-        <TicketDetail ticket={ticket} role={role} onUpdate={loadTicket} />
+        <div className="animate-fade-in">
+          <TicketDetail ticket={ticket} role={role} onUpdate={loadTicket} />
+        </div>
       )}
     </MainLayout>
   );

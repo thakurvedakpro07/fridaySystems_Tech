@@ -8,16 +8,26 @@ import { usePageTitle } from "../../hooks/usePageTitle";
 
 const STATUS_OPTIONS = ["", "assigned", "in_progress", "waiting_customer", "resolved", "closed"];
 
+const STAT_COLORS = {
+  indigo:  { text: "text-indigo-600" },
+  emerald: { text: "text-emerald-600" },
+  amber:   { text: "text-amber-600" },
+  violet:  { text: "text-violet-600" },
+};
+
 function StatCard({ label, value, color = "indigo", loading }) {
-  const textColors = { indigo: "text-indigo-600", emerald: "text-emerald-600", amber: "text-amber-600", violet: "text-violet-600" };
+  const { text } = STAT_COLORS[color] ?? STAT_COLORS.indigo;
   return (
-    <div className="bg-white border border-slate-200 rounded-xl px-5 py-4"
-         style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
+    <div
+      className="bg-white border border-slate-200 rounded-xl px-5 py-4
+                 hover:border-indigo-200 hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+      style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}
+    >
       <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
       {loading ? (
-        <div className="h-7 w-10 bg-slate-100 rounded-md animate-skeleton-pulse" />
+        <div className="h-7 w-10 shimmer rounded-md" />
       ) : (
-        <p className={`text-2xl font-bold ${textColors[color] ?? "text-slate-900"}`}>{value}</p>
+        <p className={`text-2xl font-bold animate-fade-in ${text}`}>{value}</p>
       )}
     </div>
   );
@@ -25,21 +35,26 @@ function StatCard({ label, value, color = "indigo", loading }) {
 
 export default function FreelancerDashboard() {
   usePageTitle("My Assigned Tickets");
-  const [tickets, setTickets]       = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState(null);
-  const [count, setCount]           = useState(0);
+  const [tickets, setTickets]         = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState(null);
+  const [count, setCount]             = useState(0);
   const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch]         = useState("");
-  const [status, setStatus]         = useState("");
-  const debounceRef                 = useRef(null);
-  const [allTickets, setAllTickets] = useState([]);
+  const [search, setSearch]           = useState("");
+  const [status, setStatus]           = useState("");
+  const debounceRef                   = useRef(null);
+  const [allTickets, setAllTickets]   = useState([]);
 
   const handleSearchChange = (e) => {
     const val = e.target.value;
     setSearchInput(val);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => setSearch(val), 400);
+  };
+
+  const clearSearch = () => {
+    setSearchInput("");
+    setSearch("");
   };
 
   useEffect(() => {
@@ -64,11 +79,13 @@ export default function FreelancerDashboard() {
   }, [search, status]);
 
   const stats = {
-    total:      allTickets.length,
-    active:     allTickets.filter((t) => t.status === "in_progress").length,
-    waiting:    allTickets.filter((t) => t.status === "waiting_customer").length,
-    resolved:   allTickets.filter((t) => ["resolved", "closed"].includes(t.status)).length,
+    total:    allTickets.length,
+    active:   allTickets.filter((t) => t.status === "in_progress").length,
+    waiting:  allTickets.filter((t) => t.status === "waiting_customer").length,
+    resolved: allTickets.filter((t) => ["resolved", "closed"].includes(t.status)).length,
   };
+
+  const statsLoading = allTickets.length === 0 && loading;
 
   return (
     <MainLayout maxWidth="max-w-4xl">
@@ -82,10 +99,10 @@ export default function FreelancerDashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <StatCard label="Total Assigned" value={stats.total}    color="indigo"  loading={allTickets.length === 0 && loading} />
-        <StatCard label="In Progress"    value={stats.active}   color="violet"  loading={allTickets.length === 0 && loading} />
-        <StatCard label="Waiting"        value={stats.waiting}  color="amber"   loading={allTickets.length === 0 && loading} />
-        <StatCard label="Resolved"       value={stats.resolved} color="emerald" loading={allTickets.length === 0 && loading} />
+        <StatCard label="Total Assigned" value={stats.total}    color="indigo"  loading={statsLoading} />
+        <StatCard label="In Progress"    value={stats.active}   color="violet"  loading={statsLoading} />
+        <StatCard label="Waiting"        value={stats.waiting}  color="amber"   loading={statsLoading} />
+        <StatCard label="Resolved"       value={stats.resolved} color="emerald" loading={statsLoading} />
       </div>
 
       {/* Filters */}
@@ -100,8 +117,20 @@ export default function FreelancerDashboard() {
             placeholder="Search tickets…"
             value={searchInput}
             onChange={handleSearchChange}
-            className="input-base pl-9"
+            className={`input-base pl-9 ${searchInput ? "pr-8" : ""}`}
           />
+          {searchInput && (
+            <button
+              onClick={clearSearch}
+              aria-label="Clear search"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400
+                         hover:text-slate-600 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
         <select
           value={status}
@@ -136,8 +165,14 @@ export default function FreelancerDashboard() {
         />
       ) : (
         <div className="space-y-2.5">
-          {tickets.map((ticket) => (
-            <TicketCard key={ticket.id} ticket={ticket} />
+          {tickets.map((ticket, i) => (
+            <div
+              key={ticket.id}
+              className="animate-fade-in animate-stagger"
+              style={{ animationDelay: `${i * 35}ms` }}
+            >
+              <TicketCard ticket={ticket} />
+            </div>
           ))}
         </div>
       )}

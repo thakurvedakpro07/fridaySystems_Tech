@@ -9,27 +9,31 @@ import { usePageTitle } from "../../hooks/usePageTitle";
 
 const STATUS_OPTIONS = ["", "open", "assigned", "in_progress", "waiting_customer", "resolved", "closed", "pending_payment"];
 
+const STAT_COLORS = {
+  indigo:  { text: "text-indigo-600",  bg: "bg-indigo-50" },
+  emerald: { text: "text-emerald-600", bg: "bg-emerald-50" },
+  amber:   { text: "text-amber-600",   bg: "bg-amber-50" },
+  rose:    { text: "text-rose-600",    bg: "bg-rose-50" },
+  violet:  { text: "text-violet-600",  bg: "bg-violet-50" },
+};
+
 function StatCard({ label, value, color = "indigo", icon, loading }) {
-  const colors = {
-    indigo:  "bg-indigo-50 text-indigo-600",
-    emerald: "bg-emerald-50 text-emerald-600",
-    amber:   "bg-amber-50 text-amber-600",
-    rose:    "bg-rose-50 text-rose-600",
-    violet:  "bg-violet-50 text-violet-600",
-  };
-  const textColor = colors[color]?.split(" ")[1] ?? "text-slate-900";
+  const { text, bg } = STAT_COLORS[color] ?? STAT_COLORS.indigo;
   return (
-    <div className="bg-white border border-slate-200 rounded-xl px-5 py-4 flex items-start justify-between gap-3"
-         style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
+    <div
+      className="bg-white border border-slate-200 rounded-xl px-5 py-4 flex items-start justify-between gap-3
+                 hover:border-indigo-200 hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+      style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}
+    >
       <div>
         <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
         {loading ? (
-          <div className="h-7 w-10 bg-slate-100 rounded-md animate-skeleton-pulse" />
+          <div className="h-7 w-10 shimmer rounded-md" />
         ) : (
-          <p className={`text-2xl font-bold ${textColor}`}>{value}</p>
+          <p className={`text-2xl font-bold animate-fade-in ${text}`}>{value}</p>
         )}
       </div>
-      <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0 ${colors[color]}`}>
+      <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0 ${bg} ${text}`}>
         {icon}
       </span>
     </div>
@@ -38,21 +42,26 @@ function StatCard({ label, value, color = "indigo", icon, loading }) {
 
 export default function AdminDashboard() {
   usePageTitle("Admin Dashboard");
-  const [tickets, setTickets]       = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState(null);
+  const [tickets, setTickets]         = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState(null);
   const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch]         = useState("");
-  const [status, setStatus]         = useState("");
-  const [count, setCount]           = useState(0);
-  const [allTickets, setAllTickets] = useState([]);
-  const debounceRef                 = useRef(null);
+  const [search, setSearch]           = useState("");
+  const [status, setStatus]           = useState("");
+  const [count, setCount]             = useState(0);
+  const [allTickets, setAllTickets]   = useState([]);
+  const debounceRef                   = useRef(null);
 
   const handleSearchChange = (e) => {
     const val = e.target.value;
     setSearchInput(val);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => setSearch(val), 400);
+  };
+
+  const clearSearch = () => {
+    setSearchInput("");
+    setSearch("");
   };
 
   useEffect(() => {
@@ -83,6 +92,8 @@ export default function AdminDashboard() {
     resolved:   allTickets.filter((t) => t.status === "resolved").length,
   };
 
+  const statsLoading = allTickets.length === 0 && loading;
+
   return (
     <MainLayout maxWidth="max-w-5xl">
       {/* Page header */}
@@ -108,10 +119,10 @@ export default function AdminDashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <StatCard label="Total Tickets" value={stats.total} color="indigo" icon="🎫" loading={allTickets.length === 0 && loading} />
-        <StatCard label="Open" value={stats.open} color="amber" icon="📬" loading={allTickets.length === 0 && loading} />
-        <StatCard label="In Progress" value={stats.inProgress} color="violet" icon="⚡" loading={allTickets.length === 0 && loading} />
-        <StatCard label="Resolved" value={stats.resolved} color="emerald" icon="✅" loading={allTickets.length === 0 && loading} />
+        <StatCard label="Total Tickets" value={stats.total}      color="indigo"  icon="🎫" loading={statsLoading} />
+        <StatCard label="Open"          value={stats.open}       color="amber"   icon="📬" loading={statsLoading} />
+        <StatCard label="In Progress"   value={stats.inProgress} color="violet"  icon="⚡" loading={statsLoading} />
+        <StatCard label="Resolved"      value={stats.resolved}   color="emerald" icon="✅" loading={statsLoading} />
       </div>
 
       {/* Filters */}
@@ -126,8 +137,20 @@ export default function AdminDashboard() {
             placeholder="Search tickets…"
             value={searchInput}
             onChange={handleSearchChange}
-            className="input-base pl-9"
+            className={`input-base pl-9 ${searchInput ? "pr-8" : ""}`}
           />
+          {searchInput && (
+            <button
+              onClick={clearSearch}
+              aria-label="Clear search"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400
+                         hover:text-slate-600 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
         <select
           value={status}
@@ -160,8 +183,14 @@ export default function AdminDashboard() {
         />
       ) : (
         <div className="space-y-2.5">
-          {tickets.map((ticket) => (
-            <TicketCard key={ticket.id} ticket={ticket} />
+          {tickets.map((ticket, i) => (
+            <div
+              key={ticket.id}
+              className="animate-fade-in animate-stagger"
+              style={{ animationDelay: `${i * 35}ms` }}
+            >
+              <TicketCard ticket={ticket} />
+            </div>
           ))}
         </div>
       )}

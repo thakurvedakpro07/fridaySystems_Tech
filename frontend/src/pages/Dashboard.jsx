@@ -10,22 +10,27 @@ import { usePageTitle } from "../hooks/usePageTitle";
 
 const STATUS_OPTIONS = ["", "open", "assigned", "in_progress", "waiting_customer", "resolved", "closed"];
 
+const STAT_COLORS = {
+  indigo:  { text: "text-indigo-600", bg: "bg-indigo-50" },
+  blue:    { text: "text-blue-600",   bg: "bg-blue-50" },
+  amber:   { text: "text-amber-600",  bg: "bg-amber-50" },
+  emerald: { text: "text-emerald-600",bg: "bg-emerald-50" },
+  slate:   { text: "text-slate-600",  bg: "bg-slate-100" },
+};
+
 function StatCard({ label, value, color = "indigo", loading }) {
-  const colorMap = {
-    indigo: "text-indigo-600 bg-indigo-50",
-    blue:   "text-blue-600 bg-blue-50",
-    amber:  "text-amber-600 bg-amber-50",
-    emerald:"text-emerald-600 bg-emerald-50",
-    slate:  "text-slate-600 bg-slate-100",
-  };
+  const { text, bg } = STAT_COLORS[color] ?? STAT_COLORS.indigo;
   return (
-    <div className="bg-white border border-slate-200 rounded-xl px-5 py-4"
-         style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
+    <div
+      className="bg-white border border-slate-200 rounded-xl px-5 py-4
+                 hover:border-indigo-200 hover:-translate-y-0.5 transition-all duration-200 cursor-default"
+      style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}
+    >
       <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
       {loading ? (
-        <div className="h-7 w-10 bg-slate-100 rounded-md animate-skeleton-pulse" />
+        <div className="h-7 w-10 shimmer rounded-md" />
       ) : (
-        <p className={`text-2xl font-bold ${colorMap[color]?.split(" ")[0] ?? "text-slate-900"}`}>{value}</p>
+        <p className={`text-2xl font-bold animate-fade-in ${text}`}>{value}</p>
       )}
     </div>
   );
@@ -50,6 +55,11 @@ function CustomerDashboard() {
     setSearchInput(val);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => setSearch(val), 400);
+  };
+
+  const clearSearch = () => {
+    setSearchInput("");
+    setSearch("");
   };
 
   const filters = {};
@@ -88,10 +98,10 @@ function CustomerDashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <StatCard label="Total" value={stats.total} color="indigo" loading={allTickets.loading} />
-        <StatCard label="Open" value={stats.open} color="blue" loading={allTickets.loading} />
-        <StatCard label="In Progress" value={stats.inProgress} color="amber" loading={allTickets.loading} />
-        <StatCard label="Resolved" value={stats.resolved} color="emerald" loading={allTickets.loading} />
+        <StatCard label="Total"       value={stats.total}      color="indigo"  loading={allTickets.loading} />
+        <StatCard label="Open"        value={stats.open}       color="blue"    loading={allTickets.loading} />
+        <StatCard label="In Progress" value={stats.inProgress} color="amber"   loading={allTickets.loading} />
+        <StatCard label="Resolved"    value={stats.resolved}   color="emerald" loading={allTickets.loading} />
       </div>
 
       {/* Filters */}
@@ -106,8 +116,20 @@ function CustomerDashboard() {
             placeholder="Search tickets…"
             value={searchInput}
             onChange={handleSearchChange}
-            className="input-base pl-9"
+            className={`input-base pl-9 ${searchInput ? "pr-8" : ""}`}
           />
+          {searchInput && (
+            <button
+              onClick={clearSearch}
+              aria-label="Clear search"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400
+                         hover:text-slate-600 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
         <select
           value={status}
@@ -157,8 +179,14 @@ function CustomerDashboard() {
 
       {!loading && !error && tickets.length > 0 && (
         <div className="space-y-2.5">
-          {tickets.map((ticket) => (
-            <TicketCard key={ticket.id} ticket={ticket} />
+          {tickets.map((ticket, i) => (
+            <div
+              key={ticket.id}
+              className="animate-fade-in animate-stagger"
+              style={{ animationDelay: `${i * 35}ms` }}
+            >
+              <TicketCard ticket={ticket} />
+            </div>
           ))}
         </div>
       )}
