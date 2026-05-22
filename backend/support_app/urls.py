@@ -61,6 +61,8 @@ urlpatterns = [
     # NOTE: mark-all-read MUST come before <uuid:pk>/read/ to avoid
     # Django trying to parse "mark-all-read" as a UUID.
     path("notifications/", views.NotificationListView.as_view(), name="notification-list"),
+    # NOTE: all string-path routes must precede the <uuid:pk> route
+    path("notifications/unread-count/", views.notification_unread_count, name="notification-unread-count"),
     path("notifications/mark-all-read/", views.notification_mark_all_read, name="notification-mark-all-read"),
     path("notifications/<uuid:pk>/read/", views.notification_mark_read, name="notification-mark-read"),
 

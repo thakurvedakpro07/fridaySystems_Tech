@@ -590,6 +590,18 @@ def notification_mark_all_read(request):
     return Response({"marked_read": updated})
 
 
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def notification_unread_count(request):
+    """
+    GET /api/notifications/unread-count/
+    Lightweight count-only endpoint used by the frontend badge poller.
+    Returns a single integer — far cheaper than fetching all notifications.
+    """
+    count = Notification.objects.filter(recipient=request.user, is_read=False).count()
+    return Response({"count": count})
+
+
 # ── Freelancer APIs ───────────────────────────────────────────────
 
 class FreelancerTicketListView(generics.ListAPIView):

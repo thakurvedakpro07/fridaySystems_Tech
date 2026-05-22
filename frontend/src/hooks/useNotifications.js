@@ -1,63 +1,56 @@
 /**
- * useNotifications — fetches the user's in-app notification inbox.
+ * useNotifications — split-polling notification hook.
  *
- * Returns:
- *   notifications  — all notifications for the logged-in user
- *   unreadCount    — number of unread notifications (for the badge)
- *   loading        — true while fetching
- *   refetch        — call after marking notifications as read
+ * Badge polling strategy (30s interval):
+ *   - Hits GET /notifications/unread-count/ — a single SQL COUNT, not a full list.
+ *   - Tab-visibility aware: pauses when tab is hidden.
  *
- * Polling pauses automatically when the browser tab is hidden (Page Visibility API)
- * so background tabs don't generate wasted network traffic.
+ * List loading strategy:
+ *   - Full list is fetched lazily (call fetchList()) — not on every poll tick.
+ *   - Avoids shipping 100+ notification rows when the badge number is all we need.
+ *
+ * Optimistic updates:
+ *   - markOne / markAll update local state immediately before the server round-trip.
+ *   - Badge count decrements instantly with no refetch wait.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { listNotifications } from "../api/notifications";
+import { getUnreadCount, listNotifications, markAllNotificationsRead, markNotificationRead } from "../api/notifications";
 
-const POLL_INTERVAL_MS = 30_000; // refresh every 30 seconds
+const POLL_INTERVAL_MS = 30_000;
 
 export function useNotifications() {
+  const [unreadCount,   setUnreadCount]   = useState(0);
   const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading]             = useState(true);
-  const [refreshKey, setRefreshKey]       = useState(0);
-  const intervalRef                       = useRef(null);
-  const cancelledRef                      = useRef(false);
+  const [listLoading,   setListLoading]   = useState(false);
+  const [listFetched,   setListFetched]   = useState(false);
 
-  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
+  const intervalRef   = useRef(null);
+  const cancelledRef  = useRef(false);
+
+  // ── Count poller ────────────────────────────────────────────────
+  const pollCount = useCallback(() => {
+    if (document.hidden) return;
+    getUnreadCount()
+      .then(({ data }) => {
+        if (!cancelledRef.current) setUnreadCount(data.count ?? 0);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     cancelledRef.current = false;
 
-    const doFetch = () => {
-      // Skip the fetch if the tab is hidden — no point updating a badge the user can't see
-      if (document.hidden) return;
-      listNotifications()
-        .then(({ data }) => {
-          if (!cancelledRef.current) setNotifications(data.results ?? data);
-        })
-        .catch(() => {
-          if (!cancelledRef.current) setNotifications([]);
-        })
-        .finally(() => {
-          if (!cancelledRef.current) setLoading(false);
-        });
-    };
-
     const startInterval = () => {
       clearInterval(intervalRef.current);
-      intervalRef.current = setInterval(doFetch, POLL_INTERVAL_MS);
+      intervalRef.current = setInterval(pollCount, POLL_INTERVAL_MS);
     };
 
-    // Resume polling (and immediately fetch) when the tab becomes visible again
     const handleVisibility = () => {
-      if (!document.hidden) {
-        doFetch();
-        startInterval();
-      } else {
-        clearInterval(intervalRef.current);
-      }
+      if (!document.hidden) { pollCount(); startInterval(); }
+      else                  { clearInterval(intervalRef.current); }
     };
 
-    doFetch();
+    pollCount();
     startInterval();
     document.addEventListener("visibilitychange", handleVisibility);
 
@@ -66,9 +59,60 @@ export function useNotifications() {
       clearInterval(intervalRef.current);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [refreshKey]);
+  }, [pollCount]);
 
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
+  // ── Lazy list fetch (called when dropdown opens) ─────────────────
+  const fetchList = useCallback(() => {
+    setListLoading(true);
+    listNotifications()
+      .then(({ data }) => {
+        if (!cancelledRef.current) {
+          setNotifications(data.results ?? data);
+          setListFetched(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelledRef.current) setNotifications([]);
+      })
+      .finally(() => {
+        if (!cancelledRef.current) setListLoading(false);
+      });
+  }, []);
 
-  return { notifications, unreadCount, loading, refetch };
+  // ── Optimistic mark-one-read ─────────────────────────────────────
+  const markOne = useCallback(async (id) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+    );
+    setUnreadCount((c) => Math.max(0, c - 1));
+    try {
+      await markNotificationRead(id);
+    } catch {
+      // revert on failure by re-fetching
+      fetchList();
+      pollCount();
+    }
+  }, [fetchList, pollCount]);
+
+  // ── Optimistic mark-all-read ─────────────────────────────────────
+  const markAll = useCallback(async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+    try {
+      await markAllNotificationsRead();
+    } catch {
+      fetchList();
+      pollCount();
+    }
+  }, [fetchList, pollCount]);
+
+  return {
+    unreadCount,
+    notifications,
+    listLoading,
+    listFetched,
+    fetchList,
+    markOne,
+    markAll,
+  };
 }

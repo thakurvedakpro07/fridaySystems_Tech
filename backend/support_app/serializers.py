@@ -287,10 +287,26 @@ class TicketActivityLogSerializer(serializers.ModelSerializer):
 # ── Notifications ─────────────────────────────────────────────────
 
 class NotificationSerializer(serializers.ModelSerializer):
+    ticket_number = serializers.SerializerMethodField()
+    ticket_title  = serializers.SerializerMethodField()
+
     class Meta:
         model = Notification
-        fields = ["id", "category", "title", "body", "ticket", "is_read", "created_at"]
-        read_only_fields = ["id", "category", "title", "body", "ticket", "created_at"]
+        fields = [
+            "id", "category", "title", "body",
+            "ticket", "ticket_number", "ticket_title",
+            "is_read", "created_at",
+        ]
+        read_only_fields = [
+            "id", "category", "title", "body",
+            "ticket", "ticket_number", "ticket_title", "created_at",
+        ]
+
+    def get_ticket_number(self, obj):
+        return obj.ticket.ticket_number if obj.ticket_id else None
+
+    def get_ticket_title(self, obj):
+        return obj.ticket.title if obj.ticket_id else None
 
 
 # ── Admin action serializers ──────────────────────────────────────
