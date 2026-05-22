@@ -257,3 +257,96 @@ All animations are ≤220ms and use `ease-out` or spring easing — fast enough 
 | `frontend/src/pages/TicketDetailPage.jsx` | Structured skeleton + content fade-in |
 
 **Total:** 10 files · 0 business logic changed · 0 backend changes
+
+---
+
+## Phase 16 — Auth Page Premium Overhaul
+**Date:** 2026-05-22
+**Build status:** ✅ Clean (144 modules, 0 errors)
+
+### Scope
+
+Complete visual redesign of the Login and Register pages to match the standard of modern SaaS authentication experiences (Linear, Stripe, Vercel). Auth logic, JWT flow, and backend integration were untouched.
+
+---
+
+### 1. Left Brand Panel — Login & Register
+
+**Problem:** Background gradient blobs at `opacity-10` were nearly invisible. Flat text hierarchy. Weak social proof. No depth or visual interest.
+
+**Changes:**
+
+| Element | Before | After |
+|---|---|---|
+| Gradient | 2-stop `#4f46e5 → #7c3aed` | 4-stop `#312e81 → #4338ca → #5b21b6 → #7c3aed` (richer depth) |
+| Glow orbs | 2 orbs at `opacity-10` | 3 layered orbs at `opacity-15–25`, larger blur radii |
+| Texture | None | Dot-grid CSS pattern at `opacity-[0.055]` |
+| Badge | None | Status badge with animated green pulse dot + "Live support · avg 2hr response" |
+| Headline | `text-3xl` | `text-[2.6rem]` with `tracking-tight`, `leading-[1.12]` |
+| Trust items | Emoji in opaque containers | SVG check icons (emerald tint) in `bg-white/10 border-white/15` glass containers |
+| Footer | Plain text "Trusted by 500+ SMBs" | Avatar group (3 colored initials) + social proof copy |
+| Logo | Static div | `<Link to="/">` with hover state |
+
+---
+
+### 2. Right Form Panel — Login & Register
+
+**Problem:** Form floated unstyled in `bg-slate-50` with no elevation. Inputs were slightly undersized. No entry animation. No security reinforcement cue.
+
+**Changes:**
+
+| Element | Before | After |
+|---|---|---|
+| Background | Flat `bg-slate-50` | `bg-gradient-to-br from-slate-50 via-white to-indigo-50/30` |
+| Form container | Bare `max-w-sm` div | `bg-white rounded-2xl p-8` card with 3-layer box-shadow |
+| Entry animation | None | `animate-fade-in` on card mount |
+| Input class | `input-base` (rounded-lg, py-2.5) | `input-auth` (rounded-xl, py-3, px-4, hover state) |
+| Form width | `max-w-sm` (384px) | `max-w-[400px]` (slightly wider for comfortable form) |
+| Security note | None | Lock icon + "256-bit SSL encryption · SOC 2 compliant" below card |
+| Mobile logo | Left-aligned | Centered, above card |
+| Link typography | `font-medium` | `font-semibold` for better affordance |
+
+---
+
+### 3. New CSS Utility: `.input-auth`
+
+Added to `index.css` — used exclusively on auth form inputs:
+
+```css
+.input-auth {
+  @apply w-full border border-slate-200 rounded-xl px-4 py-3 text-sm
+         bg-white text-slate-900 placeholder-slate-400
+         hover:border-slate-300
+         focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500
+         transition-all duration-200;
+}
+```
+
+Improvements over `input-base`:
+- `rounded-xl` vs `rounded-lg` — more modern feel
+- `py-3` vs `py-2.5` — more comfortable touch target
+- `px-4` vs `px-3` — slightly more breathing room
+- `hover:border-slate-300` — visible hover state
+- `transition-all` vs `transition-colors` — smoother focus animation
+- Slightly subtler focus ring (`ring-indigo-500/20` vs `/30`)
+
+---
+
+### 4. Register Page Specific
+
+- PERKS icons replaced with inline SVG (money, lightning, receipt icons) in glass-tinted containers — more polished than emoji
+- Required-field asterisks in `text-rose-500` instead of appended text
+- Password hint reformatted as inline label annotation
+- Terms/Privacy links upgraded with `underline underline-offset-2` affordance
+
+---
+
+### Files Changed
+
+| File | Change |
+|---|---|
+| `frontend/src/pages/Login.jsx` | Full visual overhaul |
+| `frontend/src/pages/Register.jsx` | Full visual overhaul |
+| `frontend/src/index.css` | Added `.input-auth` utility |
+| `docs/BUILD_PROGRESS.md` | Phase 16 entry |
+| `docs/PREMIUM_UX_POLISH_REPORT.md` | This section |

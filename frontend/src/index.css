@@ -65,6 +65,15 @@
     animation: shimmer 1.4s ease-in-out infinite;
   }
 
+  /* Auth-page inputs — taller, rounder, hover state */
+  .input-auth {
+    @apply w-full border border-slate-200 rounded-xl px-4 py-3 text-sm
+           bg-white text-slate-900 placeholder-slate-400
+           hover:border-slate-300
+           focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500
+           transition-all duration-200;
+  }
+
   /* Focus-visible ring for keyboard navigation */
   :focus-visible {
     @apply outline-none ring-2 ring-indigo-500/50 ring-offset-1;
