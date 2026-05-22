@@ -240,3 +240,60 @@ export default function Badge({ label }) {
 | BUG-L1: Badge crashes on null label | Low | Badge.jsx | ✅ |
 
 **All 7 bugs fixed. 86 backend tests pass. Frontend builds clean.**
+
+---
+
+## BUG-P16-1: Freelancer dashboard "Could not load tickets" on every load
+
+**Severity:** Critical (production-blocking)
+**Component:** `backend/support_app/views.py` → `AdminFreelancerListCreateView`
+**Discovered:** 2026-05-22
+**Fixed:** 2026-05-22 — commit (see below)
+
+### What happened
+
+Every freelancer login showed "Could not load tickets. Please refresh." on the dashboard. The freelancer dashboard JS and the `/api/freelancer/tickets/` endpoint URL were both correct. The actual HTTP response from the server was **403 Forbidden**.
+
+### Root cause
+
+The `IsFreelancer` permission class requires:
+```python
+request.user.freelancer_profile.onboarding_status == "approved"
+```
+
+But the `Freelancer` model defaults to:
+```python
+onboarding_status = models.CharField(..., default="pending")
+```
+
+`AdminFreelancerListCreateView` used the model default when creating freelancers, so every admin-created freelancer was stored with `onboarding_status="pending"`. On the next API call, the permission check returned `False` → 403 → frontend error message.
+
+### Why tests didn't catch it
+
+Every test fixture explicitly sets `onboarding_status="approved"` when creating test freelancers:
+```python
+Freelancer.objects.create(user=user, ..., onboarding_status="approved")
+```
+This masked the production default. The code worked in tests but failed with real data.
+
+### Fix
+
+**File 1: `backend/support_app/views.py`** — override `perform_create` in `AdminFreelancerListCreateView` to force `onboarding_status="approved"`. Admin-created freelancers are pre-approved by definition; the `pending` state is reserved for a future self-registration flow.
+
+```python
+def perform_create(self, serializer):
+    serializer.save(onboarding_status="approved")
+```
+
+**File 2: `backend/support_app/migrations/0006_approve_pending_freelancers.py`** — data migration that bulk-updates any existing freelancers stuck in `pending` to `approved`. Run `python manage.py migrate` to apply.
+
+### Impact
+
+- All existing freelancers with `onboarding_status="pending"` → fixed by migration
+- All future admin-created freelancers → fixed by `perform_create` override
+- No effect on customer dashboard, admin dashboard, analytics, or notifications
+- `suspended` freelancers remain correctly blocked (permission still checks `!= "suspended"` via the `"approved"` equality check)
+
+### No frontend changes required
+
+The frontend request (`GET /api/freelancer/tickets/`) was always correct. The bug was entirely backend.

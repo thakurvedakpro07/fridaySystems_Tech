@@ -854,6 +854,11 @@ class AdminFreelancerListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated, IsAdminUser]
     queryset = Freelancer.objects.select_related("user").all()
 
+    def perform_create(self, serializer):
+        # Admin-created freelancers are pre-approved — the 'pending' model default
+        # is reserved for a future self-registration flow where admins vet applicants.
+        serializer.save(onboarding_status="approved")
+
 
 # ── Password Change ───────────────────────────────────────────────
 
