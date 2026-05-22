@@ -294,6 +294,48 @@ def perform_create(self, serializer):
 - No effect on customer dashboard, admin dashboard, analytics, or notifications
 - `suspended` freelancers remain correctly blocked (permission still checks `!= "suspended"` via the `"approved"` equality check)
 
-### No frontend changes required
+### No frontend changes required (Part 1)
 
 The frontend request (`GET /api/freelancer/tickets/`) was always correct. The bug was entirely backend.
+
+---
+
+## BUG-P16-1 (Part 2): POST /api/admin/freelancers/ broken — no Freelancer profile ever created via UI
+
+**Severity:** Critical (silent data corruption — freelancers could not be created via API)
+**Component:** `backend/support_app/serializers.py` → `FreelancerSerializer` + `FreelancerCreateSerializer`; `frontend/src/pages/admin/FreelancerList.jsx`
+**Discovered:** 2026-05-22
+**Fixed:** 2026-05-22
+
+### What happened
+
+After the Part 1 fix (migration + `perform_create`), the freelancer dashboard still returned 403. The migration updated 0 rows — not because it was wrong, but because there were **no `Freelancer` profile rows in the database at all**. The `POST /api/admin/freelancers/` endpoint had always been silently broken, so no freelancers were ever created via the API.
+
+### Root cause
+
+`AdminFreelancerListCreateView` used `FreelancerSerializer` for both reads and writes. `FreelancerSerializer` exposes `email` as a read-only derived field:
+```python
+email = serializers.EmailField(source="user.email", read_only=True)
+```
+The `user` FK itself is **not** in `fields`, so DRF had no way to set it on create. Any `POST` would trigger an `IntegrityError` on the `user_id NOT NULL` column → 500, and no `Freelancer` row was ever inserted.
+
+Meanwhile, the admin UI at `/admin/freelancers` had no form for creating freelancers, so the only path was Django admin. If the admin created a `CustomUser` (role=freelancer) without also creating the matching `Freelancer` profile row, `hasattr(user, "freelancer_profile")` returns `False` → `IsFreelancer` returns `False` → 403.
+
+### Why Part 1 appeared to succeed
+
+Migration `0006` ran with exit 0 because `UPDATE WHERE onboarding_status='pending'` matched 0 rows — that's a valid result. No error was raised. The root cause (missing profile rows) remained invisible.
+
+### Fix
+
+**File 1: `backend/support_app/serializers.py`** — Added `FreelancerCreateSerializer` (a plain `Serializer`, not `ModelSerializer`) that accepts `email + password + skills`, validates email uniqueness, and atomically creates both a `CustomUser` (role=freelancer) and a `Freelancer` profile (onboarding_status="approved") in one transaction.
+
+**File 2: `backend/support_app/views.py`** — Replaced single `serializer_class` on `AdminFreelancerListCreateView` with `get_serializer_class()` returning `FreelancerCreateSerializer` on POST and `FreelancerSerializer` on GET. Added explicit `create()` override to serialize the response with `FreelancerSerializer` after save.
+
+**File 3: `frontend/src/pages/admin/FreelancerList.jsx`** — Added `AddFreelancerForm` inline component with email, password, and skills fields. POSTs to `/api/admin/freelancers/`. Error display handles field-level DRF validation messages. "Add Freelancer" / "Cancel" toggle in page header; list auto-refreshes on success.
+
+### Impact
+
+- All future freelancers created via admin UI will have both User + Freelancer profile rows → `hasattr` check passes → 403 eliminated
+- Existing broken freelancers (User row with no Freelancer profile) still need manual repair via Django shell or admin
+- No regression to customer, admin, or analytics flows
+- Frontend build: 0 errors, all chunks built cleanly

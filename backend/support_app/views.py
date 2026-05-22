@@ -60,6 +60,7 @@ from .serializers import (
     AdminStatusSerializer,
     CSATSurveySerializer,
     CustomerSerializer,
+    FreelancerCreateSerializer,
     FreelancerSerializer,
     FreelancerStatusSerializer,
     NotificationSerializer,
@@ -848,16 +849,23 @@ def admin_unassign_ticket(request, ticket_id):
 class AdminFreelancerListCreateView(generics.ListCreateAPIView):
     """
     GET  /api/admin/freelancers/  — list all freelancers
-    POST /api/admin/freelancers/  — register a new freelancer
+    POST /api/admin/freelancers/  — create a new freelancer (user + profile atomically)
+
+    Body for POST: { email, password, skills?, availability? }
     """
-    serializer_class = FreelancerSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminUser]
     queryset = Freelancer.objects.select_related("user").all()
 
-    def perform_create(self, serializer):
-        # Admin-created freelancers are pre-approved — the 'pending' model default
-        # is reserved for a future self-registration flow where admins vet applicants.
-        serializer.save(onboarding_status="approved")
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return FreelancerCreateSerializer
+        return FreelancerSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = FreelancerCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        freelancer = serializer.save()
+        return Response(FreelancerSerializer(freelancer).data, status=status.HTTP_201_CREATED)
 
 
 # ── Password Change ───────────────────────────────────────────────

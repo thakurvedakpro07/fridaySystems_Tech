@@ -92,7 +92,7 @@ class FreelancerPublicSerializer(serializers.ModelSerializer):
 
 
 class FreelancerSerializer(serializers.ModelSerializer):
-    """Full serializer for admin-only views (FreelancerListView)."""
+    """Full serializer for admin-only list/read responses."""
     email = serializers.EmailField(source="user.email", read_only=True)
 
     class Meta:
@@ -102,6 +102,45 @@ class FreelancerSerializer(serializers.ModelSerializer):
             "active", "onboarding_status", "contract_signed", "created_at",
         ]
         read_only_fields = ["id", "rating", "created_at"]
+
+
+class FreelancerCreateSerializer(serializers.Serializer):
+    """
+    Used exclusively for POST /api/admin/freelancers/.
+
+    Creates both a User (role=freelancer) and a Freelancer profile atomically.
+    The original FreelancerSerializer had no writable user field, making POST
+    fail with a database IntegrityError — this replaces it for creation only.
+    """
+    email    = serializers.EmailField()
+    password = serializers.CharField(write_only=True, min_length=10)
+    skills   = serializers.CharField(required=False, allow_blank=True, default="")
+    availability = serializers.ChoiceField(
+        choices=["full_time", "part_time", "ad_hoc"],
+        default="ad_hoc",
+        required=False,
+    )
+
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("An account with this email already exists.")
+        return value
+
+    def create(self, validated_data):
+        from django.db import transaction
+        with transaction.atomic():
+            user = User.objects.create_user(
+                email=validated_data["email"],
+                password=validated_data["password"],
+                role="freelancer",
+            )
+            freelancer = Freelancer.objects.create(
+                user=user,
+                skills=validated_data.get("skills", ""),
+                availability=validated_data.get("availability", "ad_hoc"),
+                onboarding_status="approved",
+            )
+        return freelancer
 
 
 # ── Tickets ───────────────────────────────────────────────────────

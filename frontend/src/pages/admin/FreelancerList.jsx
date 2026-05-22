@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import apiClient from "../../api/client";
 import MainLayout from "../../components/layouts/MainLayout";
 import Badge from "../../components/ui/Badge";
+import Button from "../../components/ui/Button";
 import { SkeletonCard } from "../../components/ui/Spinner";
 import EmptyState from "../../components/ui/EmptyState";
 import { usePageTitle } from "../../hooks/usePageTitle";
@@ -18,16 +19,119 @@ function RatingStars({ rating }) {
   );
 }
 
+const EMPTY_FORM = { email: "", password: "", skills: "" };
+
+function AddFreelancerForm({ onSuccess }) {
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleChange = (e) =>
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSaving(true);
+    try {
+      await apiClient.post("/admin/freelancers/", form);
+      setForm(EMPTY_FORM);
+      onSuccess();
+    } catch (err) {
+      const data = err.response?.data ?? {};
+      const msg =
+        data.email?.[0] ||
+        data.password?.[0] ||
+        data.detail ||
+        "Could not create freelancer. Please check the form.";
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="bg-white border border-slate-200 rounded-2xl p-6 mb-6"
+      style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}
+    >
+      <h2 className="text-sm font-semibold text-slate-900 mb-4">Add new freelancer</h2>
+
+      {error && (
+        <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl px-4 py-3 mb-4">
+          <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+        <div>
+          <label className="block text-xs font-medium text-slate-600 mb-1">
+            Work email <span className="text-rose-500">*</span>
+          </label>
+          <input
+            name="email"
+            type="email"
+            required
+            value={form.email}
+            onChange={handleChange}
+            placeholder="engineer@company.com"
+            className="input-base"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-600 mb-1">
+            Initial password <span className="text-rose-500">*</span>
+            <span className="ml-1 text-slate-400 font-normal">(min 10 chars)</span>
+          </label>
+          <input
+            name="password"
+            type="password"
+            required
+            minLength={10}
+            value={form.password}
+            onChange={handleChange}
+            placeholder="Share with the engineer"
+            className="input-base"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-600 mb-1">Skills</label>
+          <div className="flex gap-2">
+            <input
+              name="skills"
+              type="text"
+              value={form.skills}
+              onChange={handleChange}
+              placeholder="linux, sap, vmware"
+              className="input-base"
+            />
+            <Button type="submit" disabled={saving} size="md">
+              {saving ? "Adding…" : "Add"}
+            </Button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export default function FreelancerList() {
   usePageTitle("Freelancers");
   const [freelancers, setFreelancers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
     apiClient.get("/admin/freelancers/")
       .then(({ data }) => setFreelancers(data.results ?? data))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
 
   return (
     <MainLayout maxWidth="max-w-4xl">
@@ -39,18 +143,40 @@ export default function FreelancerList() {
             {!loading ? `${freelancers.length} registered engineer${freelancers.length !== 1 ? "s" : ""}` : "Loading…"}
           </p>
         </div>
-        <Link
-          to="/admin"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600
-                     hover:text-slate-900 border border-slate-200 hover:border-slate-300 hover:bg-slate-50
-                     px-3.5 py-2 rounded-lg transition-all shadow-sm"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-          </svg>
-          Dashboard
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-medium
+                       px-3.5 py-2 rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d={showForm ? "M6 18L18 6M6 6l12 12" : "M12 4.5v15m7.5-7.5h-15"} />
+            </svg>
+            {showForm ? "Cancel" : "Add Freelancer"}
+          </button>
+          <Link
+            to="/admin"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600
+                       hover:text-slate-900 border border-slate-200 hover:border-slate-300 hover:bg-slate-50
+                       px-3.5 py-2 rounded-lg transition-all shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+            </svg>
+            Dashboard
+          </Link>
+        </div>
       </div>
+
+      {/* Create form */}
+      {showForm && (
+        <AddFreelancerForm
+          onSuccess={() => {
+            setShowForm(false);
+            load();
+          }}
+        />
+      )}
 
       {loading ? (
         <div className="space-y-2.5">
@@ -60,7 +186,7 @@ export default function FreelancerList() {
         <EmptyState
           icon="👷"
           title="No freelancers yet"
-          description="Freelancers will appear here once they register and complete onboarding."
+          description='Click "Add Freelancer" above to register the first engineer.'
         />
       ) : (
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
