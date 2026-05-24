@@ -14,6 +14,8 @@ const apiClient = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  // Fail fast rather than hanging indefinitely on network issues
+  timeout: 10000,
 });
 
 // ── Request interceptor ───────────────────────────────────────────
@@ -51,11 +53,14 @@ apiClient.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${data.access}`;
         return apiClient(originalRequest); // retry the original request
       } catch {
-        // Refresh failed — clear tokens and redirect to login
+        // Refresh failed — clear tokens and let the app redirect to login cleanly.
+        // We import authStore lazily to avoid circular deps with this module.
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
         localStorage.removeItem("user");
-        window.location.href = "/login";
+        // Use replace so the user lands back on the login page without a back-button
+        // loop where re-visiting the previous page triggers another 401 cycle.
+        window.location.replace("/login?session_expired=1");
       }
     }
 

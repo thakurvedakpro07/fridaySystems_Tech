@@ -9,11 +9,19 @@ const STYLES = {
   warning: { bar: "bg-amber-500",   icon: "⚠", bg: "bg-white", text: "text-amber-700",   border: "border-amber-200" },
 };
 
+const DURATIONS = {
+  success: 3000,
+  info:    4000,
+  warning: 5000,
+  error:   6000,
+};
+
 function Toast({ toast, onClose }) {
   useEffect(() => {
-    const timer = setTimeout(onClose, 4000);
+    const ms = DURATIONS[toast.type] ?? 4000;
+    const timer = setTimeout(onClose, ms);
     return () => clearTimeout(timer);
-  }, [onClose]);
+  }, [onClose, toast.type]);
 
   const s = STYLES[toast.type] ?? STYLES.info;
 

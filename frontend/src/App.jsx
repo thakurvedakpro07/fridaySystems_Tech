@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Spinner from "./components/ui/Spinner";
+import ErrorBoundary from "./components/ui/ErrorBoundary";
+import OfflineBanner from "./components/ui/OfflineBanner";
 
 // Eagerly loaded — smallest possible critical path for authenticated users
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -9,6 +11,8 @@ import Login from "./pages/Login";
 import NewTicket from "./pages/NewTicket";
 import Register from "./pages/Register";
 import TicketDetailPage from "./pages/TicketDetailPage";
+import NotFoundPage from "./pages/NotFoundPage";
+import ForbiddenPage from "./pages/ForbiddenPage";
 
 // Lazily loaded — split into separate chunks, downloaded only when first visited
 const Landing              = lazy(() => import("./pages/Landing"));
@@ -83,7 +87,9 @@ export default function App() {
 
   return (
     <ToastProvider>
+    <ErrorBoundary>
     <BrowserRouter>
+      <OfflineBanner />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public pages */}
@@ -143,11 +149,15 @@ export default function App() {
             element={<PrivateRoute><BillingPage /></PrivateRoute>}
           />
 
-          {/* Catch-all: redirect unknown URLs to home */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Named error pages */}
+          <Route path="/403" element={<ForbiddenPage />} />
+
+          {/* Catch-all: show proper 404 page instead of silently redirecting */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
+    </ErrorBoundary>
     </ToastProvider>
   );
 }
