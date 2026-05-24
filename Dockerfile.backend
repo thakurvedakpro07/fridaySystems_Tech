@@ -33,9 +33,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the backend source code
 COPY backend/ .
 
+# Run as a non-root user — reduces blast radius if a dependency is compromised.
+RUN groupadd -r django && useradd -r -g django -d /app -s /sbin/nologin django \
+    && chown -R django:django /app
+USER django
+
 # Expose the port Gunicorn will listen on
 EXPOSE 8000
 
-# Default command: start Gunicorn (production WSGI server)
-# --reload means it restarts when code changes (useful in dev via docker compose)
-CMD ["gunicorn", "supportmitra.wsgi:application", "--bind", "0.0.0.0:8000", "--reload"]
+# Default command: Gunicorn without --reload (production-safe).
+# docker-compose.yml overrides this command with --reload for local development.
+CMD ["gunicorn", "supportmitra.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2"]

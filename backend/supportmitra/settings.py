@@ -43,6 +43,11 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True                 # block MIME-type sniffing
     X_FRAME_OPTIONS = "DENY"                           # prevent clickjacking (no iframes)
 
+# ── Additional Security Headers ───────────────────────────────────
+# These apply in all environments; Django's SecurityMiddleware sends them.
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+
 # ── Installed Apps ────────────────────────────────────────────────
 INSTALLED_APPS = [
     # Django built-ins
@@ -129,6 +134,28 @@ DATABASES = {
     )
 }
 
+# ── Production environment guard ──────────────────────────────────
+# Raise early if required secrets are missing in production.
+# In development (DEBUG=True) these can be absent — tests and local dev
+# use SQLite / console email anyway. In production, missing values are bugs.
+if not DEBUG:
+    import sys
+    from django.core.exceptions import ImproperlyConfigured
+
+    _REQUIRED_PROD_VARS = [
+        "DATABASE_URL",
+        "SECRET_KEY",
+        "RAZORPAY_KEY_ID",
+        "RAZORPAY_KEY_SECRET",
+        "RAZORPAY_WEBHOOK_SECRET",
+    ]
+    _missing = [v for v in _REQUIRED_PROD_VARS if not os.environ.get(v)]
+    if _missing:
+        raise ImproperlyConfigured(
+            f"Missing required production environment variables: {', '.join(_missing)}. "
+            "Set them in backend/.env before starting the server."
+        )
+
 # ── Password Validation ───────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -136,6 +163,7 @@ AUTH_PASSWORD_VALIDATORS = [
      "OPTIONS": {"min_length": 10}},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {"NAME": "support_app.validators.StrongPasswordValidator"},
 ]
 
 # ── Internationalisation ──────────────────────────────────────────
@@ -184,6 +212,8 @@ REST_FRAMEWORK = {
         # 10 attempts/minute per IP before a 429 is returned.
         # In production, consider lowering to 5/minute.
         "auth": "10/minute",
+        # Analytics runs expensive DB aggregations; limit to 30/hour per user.
+        "analytics": "30/hour",
     },
     # Centralizes all DRF exception responses into a consistent JSON shape
     # and logs server errors with full context.

@@ -31,10 +31,21 @@ function safeLocalStorage(key) {
 function loadStoredUser() {
   try {
     const raw = safeLocalStorage("user");
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const user = JSON.parse(raw);
+    // Validate the stored object has the required shape.
+    // If any key is missing the state is corrupt — clear it on next init.
+    if (!user?.id || !user?.email || !user?.role) return null;
+    return user;
   } catch {
     return null;
   }
+}
+
+function clearAuthStorage() {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  localStorage.removeItem("user");
 }
 
 export const useAuthStore = create((set) => ({
@@ -73,9 +84,7 @@ export const useAuthStore = create((set) => ({
         // Intentionally swallowed — local logout always proceeds.
       }
     }
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("user");
+    clearAuthStorage();
     set({ isAuthenticated: false, user: null });
   },
 
@@ -103,7 +112,9 @@ export const useAuthStore = create((set) => ({
   initializeAuth: async () => {
     const token = localStorage.getItem("access_token");
     if (!token) {
-      set({ initializing: false });
+      // Ensure any orphaned user/refresh entries are also cleared.
+      clearAuthStorage();
+      set({ isAuthenticated: false, user: null, initializing: false });
       return;
     }
 
@@ -128,9 +139,7 @@ export const useAuthStore = create((set) => ({
       localStorage.setItem("user", JSON.stringify(user));
       set({ user, isAuthenticated: true, initializing: false });
     } catch {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      localStorage.removeItem("user");
+      clearAuthStorage();
       set({ isAuthenticated: false, user: null, initializing: false });
     }
   },

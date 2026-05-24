@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Button from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
 import { usePageTitle } from "../hooks/usePageTitle";
@@ -22,6 +22,8 @@ export default function Login() {
   const { loginUser, loading } = useAuth();
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
+  const [searchParams] = useSearchParams();
+  const sessionExpired = searchParams.get("session_expired") === "1";
 
   const handleChange = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
@@ -145,6 +147,15 @@ export default function Login() {
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-1">Welcome back</h1>
               <p className="text-sm text-slate-500">Sign in to your SupportMitra account</p>
             </div>
+
+            {sessionExpired && !error && (
+              <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3 mb-5">
+                <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                </svg>
+                Your session expired. Please sign in again.
+              </div>
+            )}
 
             {error && (
               <div className="flex items-start gap-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl px-4 py-3 mb-5">

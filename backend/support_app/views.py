@@ -34,10 +34,10 @@ from django.shortcuts import get_object_or_404
 
 User = get_user_model()
 from rest_framework import generics, permissions, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes as throttle_classes_dec
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView as BaseTokenObtainPairView
@@ -91,6 +91,10 @@ from .serializers import (
 
 class AuthRateThrottle(AnonRateThrottle):
     scope = "auth"
+
+
+class AnalyticsRateThrottle(UserRateThrottle):
+    scope = "analytics"
 
 
 # ── Custom JWT Login ─────────────────────────────────────────────
@@ -1112,6 +1116,7 @@ def user_profile(request):
 
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
+@throttle_classes_dec([AnalyticsRateThrottle])
 def analytics_view(request):
     """
     GET /api/analytics/
@@ -1212,6 +1217,7 @@ def analytics_view(request):
 # ── Attachments ───────────────────────────────────────────────────
 
 MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MB
+
 ALLOWED_MIME_TYPES = {
     "image/png", "image/jpeg", "image/gif", "image/webp",
     "application/pdf",
@@ -1219,6 +1225,36 @@ ALLOWED_MIME_TYPES = {
     "application/zip",
     "application/vnd.ms-excel",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
+
+# Map of allowed MIME types → expected file extensions.
+# Used to catch mismatches (e.g. an .exe renamed to .pdf).
+_MIME_EXTENSION_MAP = {
+    "image/png":     {".png"},
+    "image/jpeg":    {".jpg", ".jpeg"},
+    "image/gif":     {".gif"},
+    "image/webp":    {".webp"},
+    "application/pdf": {".pdf"},
+    "text/plain":    {".txt", ".log"},
+    "text/csv":      {".csv"},
+    "application/zip": {".zip"},
+    "application/vnd.ms-excel": {".xls"},
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {".xlsx"},
+}
+
+# Extensions that are always blocked regardless of reported MIME type.
+_BLOCKED_EXTENSIONS = {
+    ".exe", ".dll", ".so", ".bat", ".cmd", ".com", ".msi",
+    ".sh", ".bash", ".zsh", ".fish",
+    ".ps1", ".psm1", ".psd1",
+    ".php", ".php3", ".php4", ".php5", ".phtml",
+    ".py", ".rb", ".pl", ".lua",
+    ".js", ".jsx", ".ts", ".tsx",   # scripts, not data files
+    ".jsp", ".jspx", ".asp", ".aspx",
+    ".jar", ".class", ".war", ".ear",
+    ".vbs", ".vbe", ".wsf", ".wsh",
+    ".htaccess", ".env", ".config",
+    ".svg",   # can embed inline JS/CSS
 }
 
 
@@ -1257,15 +1293,33 @@ def ticket_attachments(request, ticket_id):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    mime = uploaded_file.content_type or ""
-    if mime not in ALLOWED_MIME_TYPES:
+    import os
+    safe_name = os.path.basename(uploaded_file.name or "")
+    _, ext = os.path.splitext(safe_name.lower())
+
+    # 1. Block dangerous extensions unconditionally — before checking MIME type.
+    if ext in _BLOCKED_EXTENSIONS:
         return Response(
-            {"detail": f"File type '{mime}' is not allowed."},
+            {"detail": "File type not permitted for security reasons."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    import os
-    safe_name = os.path.basename(uploaded_file.name)
+    # 2. Check the client-supplied MIME type is in the allow-list.
+    mime = uploaded_file.content_type or ""
+    if mime not in ALLOWED_MIME_TYPES:
+        return Response(
+            {"detail": "File type not permitted. Allowed: images, PDF, CSV, Excel, ZIP, plain text."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # 3. Verify the file extension matches the declared MIME type.
+    #    This catches renames like "malware.exe" → "invoice.pdf" if the client
+    #    also forges the Content-Type to "application/pdf".
+    if ext and mime in _MIME_EXTENSION_MAP and ext not in _MIME_EXTENSION_MAP[mime]:
+        return Response(
+            {"detail": "File extension does not match the declared file type."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     attachment = TicketAttachment.objects.create(
         ticket=ticket,
