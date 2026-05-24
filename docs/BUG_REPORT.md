@@ -339,3 +339,39 @@ Migration `0006` ran with exit 0 because `UPDATE WHERE onboarding_status='pendin
 - Existing broken freelancers (User row with no Freelancer profile) still need manual repair via Django shell or admin
 - No regression to customer, admin, or analytics flows
 - Frontend build: 0 errors, all chunks built cleanly
+
+---
+
+## Auth Environment Reset — 2026-05-24
+
+**Type:** Operational / credential fix — not a code bug  
+**Committed:** this session  
+
+**Root cause:**
+Test user passwords were last set to `Admin@12345` / `Customer@12345` / `Freelancer@12345` during an earlier session. The desired test credentials use a different pattern (`Admin123!` etc.), causing all frontend and Django admin logins to fail.
+
+**Action taken:**
+1. Deleted all existing users and all dependent data (tickets, payments, notifications, activity logs) via Django shell through Docker.
+2. Recreated all three users from scratch using `create_superuser()` / `create_user()` so Django's PBKDF2-SHA256 hashing is applied correctly.
+3. Recreated `Freelancer` profile (onboarding_status=approved) and `Customer` profile explicitly.
+
+**Verified clean state:**
+
+| Role | Email | Password | is_staff | is_superuser | Profile |
+|---|---|---|---|---|---|
+| Admin | admin@test.com | Admin123! | True | True | — |
+| Customer | customer@test.com | Customer123! | False | False | Customer ✓ |
+| Freelancer | freelancer@test.com | Freelancer123! | False | False | Freelancer approved ✓ |
+
+**Login destinations:**
+- `admin@test.com` → `/admin` (admin dashboard)
+- `customer@test.com` → `/dashboard` (customer dashboard)
+- `freelancer@test.com` → `/freelancer` (freelancer dashboard)
+- Django admin panel (`/admin/`) → only `admin@test.com` has access
+
+**All permission checks verified:**
+- Admin → `/api/admin/tickets/` → 200 ✓
+- Freelancer → `/api/admin/tickets/` → 403 ✓
+- Customer → `/api/admin/tickets/` → 403 ✓
+- Customer → `/api/tickets/` → 200 ✓
+- Freelancer → `/api/freelancer/tickets/` → 200 ✓
