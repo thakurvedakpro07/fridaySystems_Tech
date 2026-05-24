@@ -56,6 +56,9 @@ urlpatterns = [
     path("tickets/<uuid:ticket_id>/comments/", views.TicketCommentListCreateView.as_view(), name="ticket-comments"),
     path("tickets/<uuid:ticket_id>/activity/", views.TicketActivityLogListView.as_view(), name="ticket-activity"),
     path("tickets/<uuid:ticket_id>/csat/", views.submit_csat, name="ticket-csat"),
+    # Payment flow — per-ticket endpoints
+    path("tickets/<uuid:ticket_id>/initiate-payment/", views.ticket_initiate_payment, name="ticket-initiate-payment"),
+    path("tickets/<uuid:ticket_id>/verify-payment/", views.ticket_verify_payment, name="ticket-verify-payment"),
 
     # ── Notifications ────────────────────────────────────────────
     # NOTE: mark-all-read MUST come before <uuid:pk>/read/ to avoid
@@ -72,15 +75,21 @@ urlpatterns = [
     path("freelancer/tickets/<uuid:ticket_id>/status/", views.freelancer_update_status, name="freelancer-ticket-status"),
 
     # ── Payments ─────────────────────────────────────────────────
+    # NOTE: webhook/ MUST precede <uuid:pk>/ so the literal path matches first.
+    path("payments/webhook/", views.payment_webhook, name="payment-webhook"),
     path("payments/<uuid:pk>/", views.PaymentDetailView.as_view(), name="payment-detail"),
     path("payments/<uuid:pk>/invoice/", views.payment_invoice, name="payment-invoice"),
-    path("payments/webhook/", views.payment_webhook, name="payment-webhook"),
 
     # ── Admin: Ticket Management ─────────────────────────────────
     path("admin/tickets/", views.AdminTicketListView.as_view(), name="admin-ticket-list"),
     path("admin/tickets/<uuid:ticket_id>/assign/", views.admin_assign_ticket, name="admin-assign-ticket"),
     path("admin/tickets/<uuid:ticket_id>/status/", views.admin_status_update, name="admin-ticket-status"),
     path("admin/tickets/<uuid:ticket_id>/unassign/", views.admin_unassign_ticket, name="admin-unassign-ticket"),
+
+    # ── Admin: Payment Controls ──────────────────────────────────
+    # NOTE: confirm/ MUST precede <uuid:pk>/ to avoid UUID parsing "confirm"
+    path("admin/payments/", views.AdminPaymentListView.as_view(), name="admin-payment-list"),
+    path("admin/payments/<uuid:pk>/confirm/", views.admin_payment_confirm, name="admin-payment-confirm"),
 
     # ── Admin: Freelancer Management ─────────────────────────────
     path("admin/freelancers/", views.AdminFreelancerListCreateView.as_view(), name="admin-freelancer-list"),

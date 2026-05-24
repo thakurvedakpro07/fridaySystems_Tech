@@ -96,6 +96,13 @@ export default function Header() {
                 <NavLink to="/analytics">Analytics</NavLink>
               )}
 
+              {/* Billing (customer) / Payments (admin) */}
+              {user?.is_staff ? (
+                <NavLink to="/admin/payments">Payments</NavLink>
+              ) : user?.role !== "freelancer" ? (
+                <NavLink to="/billing">Billing</NavLink>
+              ) : null}
+
               <div className="ml-1">
                 <NotificationBell />
               </div>
@@ -193,6 +200,13 @@ export default function Header() {
               <NavLink to={user?.is_staff ? "/admin/analytics" : "/analytics"} onClick={closeMenu}>
                 Analytics
               </NavLink>
+
+              {/* Billing / Payments */}
+              {user?.is_staff ? (
+                <NavLink to="/admin/payments" onClick={closeMenu}>Payments</NavLink>
+              ) : user?.role !== "freelancer" ? (
+                <NavLink to="/billing" onClick={closeMenu}>Billing</NavLink>
+              ) : null}
 
               {/* Settings */}
               <NavLink to="/settings" onClick={closeMenu}>Settings</NavLink>

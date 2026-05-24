@@ -57,6 +57,7 @@ from .models import (
 from .permissions import IsAdminUser, IsCustomer, IsFreelancer, IsFreelancerOrAdmin, IsOwnerOrAdmin
 from .serializers import (
     AdminAssignSerializer,
+    AdminPaymentSerializer,
     AdminStatusSerializer,
     CSATSurveySerializer,
     CustomerSerializer,
@@ -65,6 +66,7 @@ from .serializers import (
     FreelancerStatusSerializer,
     NotificationSerializer,
     PaymentSerializer,
+    PaymentVerifySerializer,
     RegisterSerializer,
     SubscriptionSerializer,
     TicketActivityLogSerializer,
@@ -480,7 +482,7 @@ def submit_csat(request, ticket_id):
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-# ── Payments ─────────────────────────────────────────────────────
+# ── Payments (customer) ───────────────────────────────────────────
 
 class PaymentListView(generics.ListAPIView):
     """GET /api/customers/me/payments/ — list own payments."""
@@ -488,7 +490,9 @@ class PaymentListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated, IsCustomer]
 
     def get_queryset(self):
-        return Payment.objects.filter(customer=self.request.user.customer_profile)
+        return Payment.objects.filter(
+            customer=self.request.user.customer_profile
+        ).select_related("ticket")
 
 
 class PaymentDetailView(generics.RetrieveAPIView):
@@ -497,7 +501,76 @@ class PaymentDetailView(generics.RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticated, IsCustomer]
 
     def get_queryset(self):
-        return Payment.objects.filter(customer=self.request.user.customer_profile)
+        return Payment.objects.filter(
+            customer=self.request.user.customer_profile
+        ).select_related("ticket")
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsCustomer])
+def ticket_initiate_payment(request, ticket_id):
+    """
+    POST /api/tickets/{id}/initiate-payment/
+    Creates (or retrieves) the pending Payment for this ticket and returns a
+    Razorpay order dict — or a sandbox mock dict when keys are not configured.
+    """
+    from .services.payment_service import create_order_for_ticket
+
+    ticket = get_object_or_404(
+        Ticket, pk=ticket_id, customer=request.user.customer_profile
+    )
+    if ticket.status != "pending_payment":
+        return Response(
+            {"detail": "This ticket does not require payment."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        order = create_order_for_ticket(ticket)
+    except Exception:
+        return Response(
+            {"detail": "Could not initiate payment. Please try again."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    return Response(order)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsCustomer])
+def ticket_verify_payment(request, ticket_id):
+    """
+    POST /api/tickets/{id}/verify-payment/
+    Body: {payment_db_id, razorpay_payment_id, razorpay_order_id, razorpay_signature}
+
+    Verifies the Razorpay signature (skipped in sandbox mode), marks the
+    Payment completed, and moves the ticket from pending_payment → open.
+    Returns the updated ticket detail.
+    """
+    from .services.payment_service import verify_and_complete_payment
+
+    ticket = get_object_or_404(
+        Ticket, pk=ticket_id, customer=request.user.customer_profile
+    )
+
+    serializer = PaymentVerifySerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    vd = serializer.validated_data
+
+    try:
+        verify_and_complete_payment(
+            payment_db_id=str(vd["payment_db_id"]),
+            razorpay_payment_id=vd["razorpay_payment_id"],
+            razorpay_order_id=vd["razorpay_order_id"],
+            razorpay_signature=vd["razorpay_signature"],
+        )
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    except Payment.DoesNotExist:
+        return Response({"detail": "Payment record not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    ticket.refresh_from_db()
+    return Response(TicketDetailSerializer(ticket).data)
 
 
 @api_view(["GET"])
@@ -516,31 +589,95 @@ def payment_webhook(request):
     """
     POST /api/payments/webhook/ — Razorpay webhook receiver.
 
-    SECURITY NOTE: Before adding any real payment logic here you MUST:
-      1. Verify the X-Razorpay-Signature header using HMAC-SHA256
-         with RAZORPAY_WEBHOOK_SECRET from settings.
-      2. Check the payment_id was not already processed (idempotency).
-      3. Only then update ticket/payment state.
-
-    Current stub — safely returns 200 with no side effects.
+    Verifies the X-Razorpay-Signature header, then delegates to
+    process_payment_webhook() to handle payment.captured events.
     """
-    import hashlib
-    import hmac
+    from .services.payment_service import verify_webhook_signature, process_payment_webhook
 
-    webhook_secret = getattr(settings, "RAZORPAY_WEBHOOK_SECRET", "")
-    if webhook_secret:
-        signature = request.headers.get("X-Razorpay-Signature", "")
-        body      = request.body
-        expected  = hmac.new(
-            webhook_secret.encode(), body, hashlib.sha256
-        ).hexdigest()  # type: ignore[attr-defined]
-        if not hmac.compare_digest(expected, signature):
-            return Response(
-                {"detail": "Invalid signature."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+    signature = request.headers.get("X-Razorpay-Signature", "")
+    if not verify_webhook_signature(request.body, signature):
+        return Response({"detail": "Invalid signature."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        event = request.data
+        process_payment_webhook(event)
+    except Exception:
+        pass  # never return non-200 to Razorpay on processing errors
 
     return Response({"received": True})
+
+
+# ── Payments (admin) ──────────────────────────────────────────────
+
+class AdminPaymentListView(generics.ListAPIView):
+    """
+    GET /api/admin/payments/
+    All payments across all customers.
+
+    Query params:
+      ?status=pending|completed|failed|refunded
+      ?payment_type=consulting_fee|resolution_fee
+    """
+    serializer_class = AdminPaymentSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+
+    def get_queryset(self):
+        qs = Payment.objects.select_related("customer__user", "ticket").order_by("-created_at")
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        type_filter = self.request.query_params.get("payment_type")
+        if type_filter:
+            qs = qs.filter(payment_type=type_filter)
+        return qs
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsAdminUser])
+def admin_payment_confirm(request, pk):
+    """
+    POST /api/admin/payments/{id}/confirm/
+    Manually confirm a pending payment — useful when webhook delivery fails.
+    Marks payment completed and moves the associated ticket to open.
+    """
+    from .services.notification_service import create_notification
+
+    payment = get_object_or_404(
+        Payment.objects.select_related("ticket", "customer__user"), pk=pk
+    )
+
+    if payment.status != "pending":
+        return Response(
+            {"detail": f"Payment is already {payment.status}."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    payment.gateway_payment_id = f"manual_{payment.invoice_number}"
+    payment.status = "completed"
+    payment.save(update_fields=["gateway_payment_id", "status"])
+
+    ticket = payment.ticket
+    if ticket and ticket.status == "pending_payment":
+        old_status = ticket.status
+        ticket.status = "open"
+        ticket.save(update_fields=["status"])
+        TicketActivityLog.objects.create(
+            ticket=ticket,
+            actor=request.user,
+            action="status_changed",
+            from_value=old_status,
+            to_value="open",
+            note=f"Payment {payment.invoice_number} manually confirmed by admin",
+        )
+        create_notification(
+            recipient=payment.customer.user,
+            category="payment_confirmed",
+            title=f"Payment confirmed — #{ticket.ticket_number}",
+            body=f"₹{int(payment.amount + payment.gst_amount)} received. Your ticket is now open.",
+            ticket=ticket,
+        )
+
+    return Response(AdminPaymentSerializer(payment).data)
 
 
 # ── Notifications ─────────────────────────────────────────────────

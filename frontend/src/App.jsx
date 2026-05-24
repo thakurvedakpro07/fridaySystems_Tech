@@ -11,11 +11,13 @@ import Register from "./pages/Register";
 import TicketDetailPage from "./pages/TicketDetailPage";
 
 // Lazily loaded — split into separate chunks, downloaded only when first visited
-const Landing          = lazy(() => import("./pages/Landing"));
-const AnalyticsPage    = lazy(() => import("./pages/AnalyticsPage"));
-const SettingsPage     = lazy(() => import("./pages/SettingsPage"));
-const FreelancerDashboard = lazy(() => import("./pages/freelancer/FreelancerDashboard"));
-const FreelancerList   = lazy(() => import("./pages/admin/FreelancerList"));
+const Landing              = lazy(() => import("./pages/Landing"));
+const AnalyticsPage        = lazy(() => import("./pages/AnalyticsPage"));
+const SettingsPage         = lazy(() => import("./pages/SettingsPage"));
+const FreelancerDashboard  = lazy(() => import("./pages/freelancer/FreelancerDashboard"));
+const FreelancerList       = lazy(() => import("./pages/admin/FreelancerList"));
+const BillingPage          = lazy(() => import("./pages/BillingPage"));
+const PaymentsDashboard    = lazy(() => import("./pages/admin/PaymentsDashboard"));
 
 import { ToastProvider } from "./context/ToastContext";
 import { useAuthStore } from "./store/authStore";
@@ -122,6 +124,10 @@ export default function App() {
             path="/admin/analytics"
             element={<AdminRoute><AnalyticsPage /></AdminRoute>}
           />
+          <Route
+            path="/admin/payments"
+            element={<AdminRoute><PaymentsDashboard /></AdminRoute>}
+          />
 
           {/* Shared pages — require login */}
           <Route
@@ -131,6 +137,10 @@ export default function App() {
           <Route
             path="/analytics"
             element={<PrivateRoute><AnalyticsPage /></PrivateRoute>}
+          />
+          <Route
+            path="/billing"
+            element={<PrivateRoute><BillingPage /></PrivateRoute>}
           />
 
           {/* Catch-all: redirect unknown URLs to home */}

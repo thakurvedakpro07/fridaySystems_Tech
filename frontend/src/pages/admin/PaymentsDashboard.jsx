@@ -1,0 +1,255 @@
+/**
+ * PaymentsDashboard — admin payment controls.
+ *
+ * Features:
+ *  - Revenue summary: total collected, pending, failed
+ *  - Filterable payment list (by status)
+ *  - "Confirm" button for pending payments (manual override)
+ */
+import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { adminConfirmPayment, listAdminPayments } from "../../api/payments";
+import MainLayout from "../../components/layouts/MainLayout";
+import { useToast } from "../../context/ToastContext";
+import { usePageTitle } from "../../hooks/usePageTitle";
+
+// ── Status badge ──────────────────────────────────────────────────
+const STATUS_STYLES = {
+  completed: "bg-emerald-100 text-emerald-700",
+  pending:   "bg-amber-100 text-amber-700",
+  failed:    "bg-rose-100 text-rose-700",
+  refunded:  "bg-violet-100 text-violet-700",
+};
+
+function StatusBadge({ status }) {
+  const cls = STATUS_STYLES[status] ?? "bg-slate-100 text-slate-600";
+  return (
+    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold capitalize ${cls}`}>
+      {status.replace("_", " ")}
+    </span>
+  );
+}
+
+// ── Stat card ─────────────────────────────────────────────────────
+function StatCard({ icon, label, value, sub, colour }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5"
+         style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
+      <div className="flex items-center gap-3 mb-2">
+        <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${colour}`}>{icon}</span>
+        <span className="text-xs font-medium text-slate-500">{label}</span>
+      </div>
+      <p className="text-2xl font-bold text-slate-900">{value}</p>
+      {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+// ── Filter tab ────────────────────────────────────────────────────
+const FILTER_TABS = [
+  { label: "All",       value: "" },
+  { label: "Pending",   value: "pending" },
+  { label: "Completed", value: "completed" },
+  { label: "Failed",    value: "failed" },
+];
+
+// ── Payment row ───────────────────────────────────────────────────
+function PaymentRow({ payment, onConfirm, confirming }) {
+  const date = new Date(payment.created_at).toLocaleDateString("en-IN", {
+    day: "numeric", month: "short", year: "numeric",
+  });
+
+  return (
+    <div className="grid grid-cols-[1fr_auto] sm:grid-cols-[2fr_1fr_1fr_auto] items-center
+                    gap-x-4 gap-y-1 px-5 py-4 hover:bg-slate-50/60 transition-colors">
+      {/* Customer + invoice */}
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-slate-800 truncate">{payment.customer_email}</p>
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          {payment.invoice_number && (
+            <span className="text-[11px] font-mono text-slate-400">{payment.invoice_number}</span>
+          )}
+          {payment.ticket_number && (
+            <Link
+              to={`/tickets/${payment.ticket}`}
+              className="text-[11px] text-indigo-500 hover:text-indigo-700 hover:underline"
+            >
+              {payment.ticket_number}
+            </Link>
+          )}
+          <span className="text-[11px] text-slate-400">{date}</span>
+        </div>
+      </div>
+
+      {/* Amount — hidden on xs */}
+      <p className="hidden sm:block text-sm font-semibold text-slate-900 text-right">
+        ₹{payment.total_amount}
+      </p>
+
+      {/* Status — hidden on xs */}
+      <div className="hidden sm:flex justify-end">
+        <StatusBadge status={payment.status} />
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 justify-end">
+        {/* Mobile: show status + amount inline */}
+        <div className="sm:hidden text-right">
+          <p className="text-sm font-semibold text-slate-900">₹{payment.total_amount}</p>
+          <StatusBadge status={payment.status} />
+        </div>
+        {payment.status === "pending" && (
+          <button
+            onClick={() => onConfirm(payment.id)}
+            disabled={confirming === payment.id}
+            className="text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700
+                       disabled:opacity-50 px-2.5 py-1 rounded-lg transition-colors shrink-0"
+          >
+            {confirming === payment.id ? "Confirming…" : "Confirm"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Skeleton row ──────────────────────────────────────────────────
+function SkeletonRow() {
+  return (
+    <div className="flex items-center gap-4 px-5 py-4 animate-pulse">
+      <div className="flex-1 space-y-2">
+        <div className="h-3 bg-slate-200 rounded w-1/3" />
+        <div className="h-2.5 bg-slate-100 rounded w-1/4" />
+      </div>
+      <div className="h-3 bg-slate-200 rounded w-12" />
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────
+export default function PaymentsDashboard() {
+  usePageTitle("Payments");
+
+  const toast = useToast();
+  const [payments,   setPayments]   = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState(null);
+  const [statusTab,  setStatusTab]  = useState("");
+  const [confirming, setConfirming] = useState(null);
+
+  const fetchPayments = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    const params = statusTab ? { status: statusTab } : {};
+    listAdminPayments(params)
+      .then(({ data }) => setPayments(data.results ?? data))
+      .catch(() => setError("Could not load payments."))
+      .finally(() => setLoading(false));
+  }, [statusTab]);
+
+  useEffect(() => { fetchPayments(); }, [fetchPayments]);
+
+  const handleConfirm = async (paymentId) => {
+    setConfirming(paymentId);
+    try {
+      const { data: updated } = await adminConfirmPayment(paymentId);
+      setPayments((prev) => prev.map((p) => (p.id === paymentId ? updated : p)));
+      toast("Payment confirmed and ticket opened.", "success");
+    } catch (err) {
+      toast(err.response?.data?.detail ?? "Could not confirm payment.", "error");
+    } finally {
+      setConfirming(null);
+    }
+  };
+
+  // ── Derived stats from full list ─────────────────────────────────
+  const allPayments = payments;
+  const totalCollected = allPayments.filter((p) => p.status === "completed")
+    .reduce((s, p) => s + p.total_amount, 0);
+  const pendingCount = allPayments.filter((p) => p.status === "pending").length;
+  const failedCount  = allPayments.filter((p) => p.status === "failed").length;
+
+  return (
+    <MainLayout maxWidth="max-w-4xl">
+      {/* Page header */}
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-slate-900">Payments</h1>
+        <p className="text-sm text-slate-500 mt-0.5">All customer payments and manual controls.</p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <StatCard icon="💰" label="Total collected" value={`₹${totalCollected}`}  colour="bg-emerald-50" />
+        <StatCard icon="⏳" label="Pending"          value={pendingCount}           colour="bg-amber-50"   />
+        <StatCard icon="❌" label="Failed"           value={failedCount}            colour="bg-rose-50"    />
+      </div>
+
+      {/* Payment list */}
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
+           style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
+
+        {/* Header + filter tabs */}
+        <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-slate-900">All payments</h2>
+          <div className="flex gap-1">
+            {FILTER_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setStatusTab(tab.value)}
+                className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors
+                  ${statusTab === tab.value
+                    ? "bg-indigo-50 text-indigo-700"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                  }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {loading && (
+          <div className="divide-y divide-slate-50">
+            <SkeletonRow /><SkeletonRow /><SkeletonRow /><SkeletonRow />
+          </div>
+        )}
+
+        {!loading && error && (
+          <div className="flex items-center gap-2 px-5 py-4 text-sm text-rose-600">
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && payments.length === 0 && (
+          <div className="flex flex-col items-center gap-2 py-12 px-5">
+            <span className="text-3xl select-none" aria-hidden="true">🧾</span>
+            <p className="text-sm text-slate-500 font-medium">No payments found</p>
+            <p className="text-xs text-slate-400 text-center">
+              {statusTab ? `No ${statusTab} payments at this time.` : "Payments will appear here once customers submit tickets."}
+            </p>
+          </div>
+        )}
+
+        {!loading && !error && payments.length > 0 && (
+          <div className="divide-y divide-slate-50">
+            {payments.map((p) => (
+              <PaymentRow
+                key={p.id}
+                payment={p}
+                onConfirm={handleConfirm}
+                confirming={confirming}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <p className="text-xs text-slate-400 mt-3 text-center">
+        Use "Confirm" to manually open a ticket when Razorpay webhook delivery fails.
+      </p>
+    </MainLayout>
+  );
+}

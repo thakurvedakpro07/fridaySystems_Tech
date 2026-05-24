@@ -229,13 +229,53 @@ class TicketAttachmentSerializer(serializers.ModelSerializer):
 # ── Payments ─────────────────────────────────────────────────────
 
 class PaymentSerializer(serializers.ModelSerializer):
+    total_amount   = serializers.SerializerMethodField()
+    ticket_number  = serializers.SerializerMethodField()
+
     class Meta:
         model = Payment
         fields = [
-            "id", "amount", "gst_amount", "currency", "invoice_number",
-            "payment_type", "gateway", "status", "created_at",
+            "id", "amount", "gst_amount", "total_amount", "currency",
+            "invoice_number", "payment_type", "gateway", "status",
+            "ticket", "ticket_number", "created_at",
         ]
         read_only_fields = fields
+
+    def get_total_amount(self, obj):
+        return int(obj.amount + obj.gst_amount)
+
+    def get_ticket_number(self, obj):
+        return obj.ticket.ticket_number if obj.ticket_id else None
+
+
+class AdminPaymentSerializer(serializers.ModelSerializer):
+    """Full payment view for admin — includes customer email and gateway IDs."""
+    total_amount   = serializers.SerializerMethodField()
+    ticket_number  = serializers.SerializerMethodField()
+    customer_email = serializers.EmailField(source="customer.user.email", read_only=True)
+
+    class Meta:
+        model = Payment
+        fields = [
+            "id", "customer_email", "amount", "gst_amount", "total_amount",
+            "currency", "invoice_number", "payment_type", "gateway",
+            "gateway_payment_id", "gateway_order_id", "status",
+            "ticket", "ticket_number", "created_at",
+        ]
+
+    def get_total_amount(self, obj):
+        return int(obj.amount + obj.gst_amount)
+
+    def get_ticket_number(self, obj):
+        return obj.ticket.ticket_number if obj.ticket_id else None
+
+
+class PaymentVerifySerializer(serializers.Serializer):
+    """Validates the body of POST /api/tickets/{id}/verify-payment/."""
+    payment_db_id        = serializers.UUIDField()
+    razorpay_payment_id  = serializers.CharField(max_length=255)
+    razorpay_order_id    = serializers.CharField(max_length=255)
+    razorpay_signature   = serializers.CharField(max_length=512)
 
 
 # ── Subscriptions ─────────────────────────────────────────────────

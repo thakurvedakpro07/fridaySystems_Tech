@@ -5,6 +5,7 @@ import AttachmentSection from "./AttachmentSection";
 import CommentSection from "./CommentSection";
 import AdminTicketActions from "./AdminTicketActions";
 import FreelancerTicketActions from "./FreelancerTicketActions";
+import PaymentGateway from "./PaymentGateway";
 import CSATWidget from "./CSATWidget";
 import Badge from "../ui/Badge";
 
@@ -137,6 +138,11 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
           )}
         </div>
       </div>
+
+      {/* ── Payment gateway (customer, pending_payment only) ─ */}
+      {role === "customer" && ticket.status === "pending_payment" && (
+        <PaymentGateway ticket={ticket} onPaymentSuccess={handleUpdate} />
+      )}
 
       {/* ── Role-specific action panels ──────────────────── */}
       {role === "admin" && (
