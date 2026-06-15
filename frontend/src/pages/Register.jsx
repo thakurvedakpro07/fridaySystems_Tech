@@ -44,7 +44,7 @@ export default function Register() {
   usePageTitle("Create Account");
   const navigate = useNavigate();
   const { registerUser, loading } = useAuth();
-  const [form, setForm] = useState({ email: "", password: "", company: "", phone: "" });
+  const [form, setForm] = useState({ email: "", password: "", password2: "", company: "", phone: "" });
   const [errors, setErrors] = useState([]);
 
   const handleChange = (e) =>
@@ -53,7 +53,11 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrors([]);
-    const result = await registerUser(form.email, form.password, form.company, form.phone);
+    if (form.password !== form.password2) {
+      setErrors(["Passwords do not match."]);
+      return;
+    }
+    const result = await registerUser(form.email, form.password, form.password2, form.company, form.phone);
     if (result.success) {
       navigate("/dashboard");
     } else {
@@ -212,6 +216,21 @@ export default function Register() {
                   name="password"
                   type="password"
                   value={form.password}
+                  onChange={handleChange}
+                  required
+                  minLength={10}
+                  className="input-auth"
+                />
+              </div>
+              <div>
+                <label htmlFor="reg-password2" className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Confirm password <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  id="reg-password2"
+                  name="password2"
+                  type="password"
+                  value={form.password2}
                   onChange={handleChange}
                   required
                   minLength={10}

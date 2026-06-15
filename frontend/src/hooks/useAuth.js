@@ -42,11 +42,11 @@ export function useAuth() {
     }
   };
 
-  const registerUser = async (email, password, company, phone) => {
+  const registerUser = async (email, password, password2, company, phone) => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await registerApi(email, password, company, phone);
+      const { data } = await registerApi(email, password, password2, company, phone);
       setTokens(data.access, data.refresh);
       setUser(data.user);
       toast("Account created! Welcome to SupportMitra.", "success");

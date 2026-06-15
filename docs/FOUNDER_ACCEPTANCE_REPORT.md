@@ -9,11 +9,11 @@
 
 ## Launch Readiness Score
 
-### 78 / 100
+### 82 / 100  *(was 78 — P1-01 fixed)*
 
 | Category | Weight | Score | Notes |
 |----------|--------|-------|-------|
-| Core auth & security | 20% | 19/20 | Password2 mismatch not validated (P1) |
+| Core auth & security | 20% | 20/20 | ✅ P1-01 fixed — password2 mismatch now rejected |
 | Ticket lifecycle | 25% | 25/25 | Create → pay → assign → resolve → CSAT — all pass |
 | Payments & billing | 20% | 17/20 | Invoice is JSON not PDF (P1); no revenue in analytics (P2) |
 | Role permissions | 15% | 15/15 | Every cross-role 403 test passed |
@@ -34,7 +34,7 @@
 | C-04 | Registration (new email) | ✅ PASS | User created, `is_verified=False`, email queued |
 | C-05 | Registration (duplicate email) | ✅ PASS | 400 with "already exists" message |
 | C-06 | Registration (weak password) | ✅ PASS | 400 with Django password validation error |
-| C-07 | Registration (password ≠ password2) | ❌ **BUG** | `password2` field silently ignored — account created |
+| C-07 | Registration (password ≠ password2) | ✅ PASS | Fixed in Phase 23 — 400 `{"password2": "Passwords do not match."}` |
 | C-08 | Email verification (valid token) | ✅ PASS | `is_verified=True` set, 200 returned |
 | C-09 | Email verification (invalid token) | ✅ PASS | 400 error |
 | C-10 | Password reset request | ✅ PASS | Reset email sent (rate-limited correctly after rapid calls) |
@@ -112,26 +112,20 @@
 
 ---
 
-#### P1-01: Registration accepts mismatched passwords
+#### ~~P1-01: Registration accepts mismatched passwords~~ — ✅ FIXED (Phase 23)
 
-**Impact:** Any API client (including the frontend during a bug) can register a user ignoring the `password2` confirmation field. The `RegisterSerializer` has no `password2` field and no `validate()` cross-field check — `password2` is silently ignored.
+**Fixed in commit:** see Phase 23 commit  
+**What changed:**
+- `RegisterSerializer` now declares `password2 = serializers.CharField(write_only=True)` and validates via `validate()` that both match
+- Frontend `Register.jsx` adds a "Confirm password" field and client-side pre-check
+- `auth.js` and `useAuth.js` updated to thread `password2` through the call chain
+- 2 new automated tests added (`test_register_mismatched_passwords_returns_400`, `test_register_missing_password2_returns_400`) — 21/21 pass
 
 **Verified:**
-```bash
-POST /api/auth/register/
-{"email":"bad@test.com","password":"StrongPass@123","password2":"DIFFERENT@456","role":"customer"}
-# Returns 201 + JWT tokens — BUG
 ```
-
-**Fix:** Add `password2` to `RegisterSerializer.Meta.fields` and add a `validate()` method:
-```python
-# backend/support_app/serializers.py — RegisterSerializer
-password2 = serializers.CharField(write_only=True)
-
-def validate(self, data):
-    if data["password"] != data.pop("password2"):
-        raise serializers.ValidationError({"password2": "Passwords do not match."})
-    return data
+POST /register/ {"password":"A","password2":"B"} → 400 {"password2":["Passwords do not match."]}
+POST /register/ {no password2}                  → 400 {"password2":["This field is required."]}
+POST /register/ {"password":"A","password2":"A"} → 201 + JWT tokens
 ```
 
 ---
@@ -256,7 +250,7 @@ Frontend code already uses the correct URLs; the gap is only in docs.
 
 | ID | Priority | Description | Status |
 |----|----------|-------------|--------|
-| P1-01 | **P1** | Registration ignores `password2` — mismatched passwords succeed | Open |
+| P1-01 | **P1** | Registration ignores `password2` — mismatched passwords succeed | ✅ Fixed |
 | P1-02 | **P1** | Invoice endpoint returns JSON, not PDF | Open (Phase 5 deferred) |
 | P1-03 | **P1** | `service_type` field name undocumented | Open |
 | P2-01 | P2 | Analytics has no revenue metrics | Open |

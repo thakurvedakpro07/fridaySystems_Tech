@@ -35,12 +35,13 @@ from .models import (
 class RegisterSerializer(serializers.ModelSerializer):
     """Validates and creates a new customer user account."""
     password = serializers.CharField(write_only=True, min_length=10)
+    password2 = serializers.CharField(write_only=True)
     company = serializers.CharField(required=False, allow_blank=True)
     phone = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ["email", "password", "company", "phone"]
+        fields = ["email", "password", "password2", "company", "phone"]
 
     def validate_email(self, value):
         # Check case-insensitively: "User@Example.com" blocks when "user@example.com" exists.
@@ -57,6 +58,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         except DjangoValidationError as exc:
             raise serializers.ValidationError(list(exc.messages))
         return value
+
+    def validate(self, data):
+        if data["password"] != data.pop("password2"):
+            raise serializers.ValidationError({"password2": "Passwords do not match."})
+        return data
 
     def create(self, validated_data):
         company = validated_data.pop("company", "")

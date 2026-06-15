@@ -3,8 +3,8 @@
  */
 import apiClient from "./client";
 
-export const register = (email, password, company, phone) =>
-  apiClient.post("/auth/register/", { email, password, company, phone });
+export const register = (email, password, password2, company, phone) =>
+  apiClient.post("/auth/register/", { email, password, password2, company, phone });
 
 export const login = (email, password) =>
   apiClient.post("/auth/login/", { email, password });

@@ -39,6 +39,7 @@ def test_register_creates_user_and_customer(client):
     payload = {
         "email": "new@example.com",
         "password": "StrongPass123!",
+        "password2": "StrongPass123!",
         "company": "Acme Pvt Ltd",
         "phone": "+91 98765 43210",
     }
@@ -81,6 +82,7 @@ def test_register_duplicate_email_returns_400(client):
     payload = {
         "email": "dup@example.com",
         "password": "StrongPass123!",
+        "password2": "StrongPass123!",
         "company": "Acme",
     }
     # First registration succeeds
@@ -90,7 +92,9 @@ def test_register_duplicate_email_returns_400(client):
     # Second registration with the exact same email must fail gracefully
     r2 = client.post("/api/auth/register/", payload, format="json")
     assert r2.status_code == 400
-    assert "email" in r2.data
+    # Error is nested under "errors" key by the custom exception handler
+    errors = r2.data.get("errors", r2.data)
+    assert "email" in errors
 
 
 @pytest.mark.django_db
@@ -119,14 +123,17 @@ def test_register_duplicate_email_case_insensitive_returns_400(client):
     client.post("/api/auth/register/", {
         "email": "case@example.com",
         "password": "StrongPass123!",
+        "password2": "StrongPass123!",
     }, format="json")
 
     response = client.post("/api/auth/register/", {
         "email": "CASE@EXAMPLE.COM",
         "password": "StrongPass123!",
+        "password2": "StrongPass123!",
     }, format="json")
     assert response.status_code == 400
-    assert "email" in response.data
+    errors = response.data.get("errors", response.data)
+    assert "email" in errors
 
 
 # ── /api/auth/me/ tests ───────────────────────────────────────────
@@ -322,6 +329,7 @@ def test_register_returns_tokens_and_user(client):
     response = client.post("/api/auth/register/", {
         "email": "newuser@example.com",
         "password": "StrongPass123!",
+        "password2": "StrongPass123!",
         "company": "Test Company",
     }, format="json")
 
@@ -329,3 +337,36 @@ def test_register_returns_tokens_and_user(client):
     assert "access" in response.data
     assert "refresh" in response.data
     assert response.data["user"]["role"] == "customer"
+
+
+@pytest.mark.django_db
+def test_register_mismatched_passwords_returns_400(db):
+    """Registering with password != password2 must return 400 and not create a user."""
+    # Use a dedicated client with unique IP to avoid AuthRateThrottle bleed from
+    # other tests (all tests share 127.0.0.1 by default, but throttle is per-IP).
+    c = APIClient()
+    c.defaults["REMOTE_ADDR"] = "10.0.0.91"
+    response = c.post("/api/auth/register/", {
+        "email": "mismatch@example.com",
+        "password": "StrongPass123!",
+        "password2": "DifferentPass456!",
+    }, format="json")
+
+    assert response.status_code == 400
+    errors = response.data.get("errors", response.data)
+    assert "password2" in errors or "non_field_errors" in errors
+    assert not User.objects.filter(email="mismatch@example.com").exists()
+
+
+@pytest.mark.django_db
+def test_register_missing_password2_returns_400(db):
+    """Omitting password2 entirely must return 400 — it is a required field."""
+    c = APIClient()
+    c.defaults["REMOTE_ADDR"] = "10.0.0.92"
+    response = c.post("/api/auth/register/", {
+        "email": "nopw2@example.com",
+        "password": "StrongPass123!",
+    }, format="json")
+
+    assert response.status_code == 400
+    assert not User.objects.filter(email="nopw2@example.com").exists()
