@@ -1,46 +1,69 @@
-# ─────────────────────────────────────────────────────────────────
-# Dockerfile.backend
+# ─────────────────────────────────────────────────────────────────────────────
+# Dockerfile.backend — Multi-stage build for the Django/Gunicorn backend
 #
-# Builds the Django application image.
-# Uses Python 3.11 on a slim Debian base (small download size).
-# ─────────────────────────────────────────────────────────────────
+# Stage 1 (builder): installs all Python dependencies into /install
+# Stage 2 (runtime): copies /install into a clean slim image — no gcc or
+#   build tools in the final image, which shrinks the layer by ~200 MB.
+# ─────────────────────────────────────────────────────────────────────────────
 
-FROM python:3.11-slim
+# ── Stage 1: dependency builder ───────────────────────────────────────────────
+FROM python:3.11-slim AS builder
 
-# Prevents Python from writing .pyc bytecode files to disk
 ENV PYTHONDONTWRITEBYTECODE=1
-# Ensures print() and logging output appear in Docker logs immediately
 ENV PYTHONUNBUFFERED=1
-# Tells Django which settings module to use — needed by gunicorn, celery,
-# and management commands so they all find the same config without any
-# extra flags
+
+WORKDIR /build
+
+# Build-time system libs needed to compile psycopg2 and cryptography
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    gcc \
+    libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/requirements.txt .
+# Install into /install so we can COPY just the packages (not the whole OS) to stage 2
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# ── Stage 2: production runtime ───────────────────────────────────────────────
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+# Default to dev settings; production compose sets this to settings_prod
 ENV DJANGO_SETTINGS_MODULE=supportmitra.settings
 
 WORKDIR /app
 
-# Install system packages needed by psycopg2 (PostgreSQL driver)
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    gcc \
+# Runtime-only system libs (psycopg2 links against libpq at runtime)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy and install Python dependencies first.
-# Docker caches this layer — if requirements.txt hasn't changed,
-# pip install is skipped on the next build (faster rebuilds).
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy installed Python packages from builder — no compiler in this image
+COPY --from=builder /install /usr/local
 
-# Copy the rest of the backend source code
+# Copy Django source code
 COPY backend/ .
 
-# Run as a non-root user — reduces blast radius if a dependency is compromised.
+# Create directories for static/media files and pre-assign ownership.
+# mediafiles is mounted as a Docker volume in production so uploads survive restarts.
+RUN mkdir -p /app/staticfiles /app/mediafiles
+
+# Run as non-root — reduces blast radius if a package dependency is compromised
 RUN groupadd -r django && useradd -r -g django -d /app -s /sbin/nologin django \
     && chown -R django:django /app
+
 USER django
 
-# Expose the port Gunicorn will listen on
 EXPOSE 8000
 
-# Default command: Gunicorn without --reload (production-safe).
-# docker-compose.yml overrides this command with --reload for local development.
-CMD ["gunicorn", "supportmitra.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2"]
+# Health check: hit the /api/health/ endpoint which also verifies the DB connection.
+# start_period gives Gunicorn and Django time to complete startup before checks begin.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/api/health/ || exit 1
+
+# Production entry point — uses gunicorn.conf.py for all worker/timeout settings.
+# docker-compose.yml dev override adds --reload and drops workers to 2.
+CMD ["gunicorn", "supportmitra.wsgi:application", "--config", "gunicorn.conf.py"]

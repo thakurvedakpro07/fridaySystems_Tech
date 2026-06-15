@@ -1,39 +1,120 @@
-# ─────────────────────────────────────────────────────────────────
-# docker-compose.prod.yml  —  PRODUCTION OVERRIDES
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.prod.yml — Production overrides
 #
-# Use together with the base file:
+# Run together with the base file:
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
-# Differences from dev:
-#   • No code volume mounts (runs the built image as-is)
-#   • Gunicorn runs with more workers
-#   • Frontend is NOT started (static files served by Nginx on the host)
-#   • No port exposure for db/redis (Nginx is the only public entry point)
-# ─────────────────────────────────────────────────────────────────
+# What this file changes from docker-compose.yml (dev):
+#   • restart: unless-stopped on all services (auto-recover after VPS reboots)
+#   • DJANGO_SETTINGS_MODULE → settings_prod (proxy SSL, tighter security)
+#   • Gunicorn uses gunicorn.conf.py (auto worker count, recycling, timeouts)
+#   • No code volume mounts — runs the built image as-is
+#   • db/redis ports not exposed to the host (only reachable inside Docker network)
+#   • Named volumes for media files and static files (survive container restarts)
+#   • Frontend dev server excluded (static files served by host Nginx)
+#   • Structured logging labels for log aggregation tools
+# ─────────────────────────────────────────────────────────────────────────────
 
 services:
 
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
   db:
-    ports: []     # remove the host-exposed port in production
+    restart: unless-stopped
+    ports: []         # not exposed to the host; only backend/celery containers need it
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supportmitra"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
+  # ── Redis ───────────────────────────────────────────────────────────────────
   redis:
-    ports: []
+    restart: unless-stopped
+    ports: []         # not exposed to the host
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
+  # ── Django Backend ──────────────────────────────────────────────────────────
   backend:
-    volumes: []   # do NOT mount source code in production
+    restart: unless-stopped
+    volumes:
+      # Named volume for user-uploaded media files (attachments, etc.)
+      # survives container replacement and image updates.
+      - media_files:/app/mediafiles
+      # Named volume for collected static files.
+      # Nginx on the host can bind-mount this directory, or collectstatic
+      # writes here and Nginx reads from /opt/supportmitra/backend/staticfiles.
+      - static_files:/app/staticfiles
+    environment:
+      # Switch to production settings (proxy SSL, IsAuthenticated, etc.)
+      DJANGO_SETTINGS_MODULE: supportmitra.settings_prod
+    # Override the dev command: no --reload, uses gunicorn.conf.py for worker count.
+    # Migrations are run explicitly by the deploy script, not on every startup,
+    # to prevent race conditions when scaling or doing rolling deploys.
     command: >
-      gunicorn supportmitra.wsgi:application
-        --bind 0.0.0.0:8000
-        --workers 4
-        --timeout 60
+      sh -c "python manage.py collectstatic --noinput &&
+             gunicorn supportmitra.wsgi:application --config gunicorn.conf.py"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
 
+  # ── Celery Worker ───────────────────────────────────────────────────────────
   celery:
-    volumes: []
+    restart: unless-stopped
+    volumes: []       # no source code mount in production
+    environment:
+      DJANGO_SETTINGS_MODULE: supportmitra.settings_prod
+    command: celery -A supportmitra worker --loglevel=info --concurrency=4
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
 
+  # ── Celery Beat (Scheduler) ─────────────────────────────────────────────────
   celerybeat:
+    restart: unless-stopped
     volumes: []
+    environment:
+      DJANGO_SETTINGS_MODULE: supportmitra.settings_prod
+    command: celery -A supportmitra beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # In production the frontend is compiled static files — no dev server.
-  # Nginx (running on the host) serves them directly.
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+  # In production, the React app is compiled static files served by Nginx on the host.
+  # There is no Node.js/Vite process running. The frontend service only runs in dev.
   frontend:
-    profiles: ["dev-only"]   # this service is excluded in production
+    profiles: ["dev-only"]
+
+# ── Additional named volumes (new in prod) ──────────────────────────────────
+# postgres_data and redis_data are already defined in docker-compose.yml.
+volumes:
+  media_files:
+  static_files:

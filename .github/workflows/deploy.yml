@@ -1,64 +1,105 @@
-# Deploy — runs automatically when code is merged to main
+# Deploy to Production — triggered when CI passes on master
+#
+# Pre-requisites (GitHub Actions secrets to configure):
+#   VPS_HOST         — IP or hostname of the DigitalOcean VPS
+#   VPS_USER         — SSH username (e.g. "deploy")
+#   VPS_SSH_KEY      — Private SSH key (the public key must be in ~/.ssh/authorized_keys on VPS)
+#   SLACK_WEBHOOK_URL — (optional) Slack incoming webhook for deploy notifications
 
 name: Deploy to Production
 
 on:
-  push:
-    branches: [main]
+  # Trigger after CI passes on master (ensures tests pass before deploy)
+  workflow_run:
+    workflows: ["CI"]
+    branches: [master]
+    types: [completed]
 
 jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
+    # Only deploy when CI succeeded — not on failure or cancellation
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - uses: actions/checkout@v4
 
-      # ── Build frontend ────────────────────────────────────────────
-      - name: Set up Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Build frontend
+      # ── Validate compose files before touching the VPS ─────────────────────
+      - name: Validate compose configuration
         run: |
-          cd frontend
-          npm ci
-          npm run build
-        # dist/ folder is created here
+          echo "SECRET_KEY=ci" > /tmp/test.env
+          echo "DATABASE_URL=postgres://x:x@db/x" >> /tmp/test.env
+          echo "REDIS_URL=redis://redis:6379/0" >> /tmp/test.env
+          mkdir -p backend && cp /tmp/test.env backend/.env
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
+          echo "Compose validation passed"
 
-      # ── Run backend migrations + restart ──────────────────────────
+      # ── Deploy to VPS via SSH ──────────────────────────────────────────────
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          timeout: 300s
           script: |
+            set -e
             cd /opt/supportmitra
-            git pull origin main
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps backend celery celerybeat
-            docker compose exec -T backend python manage.py migrate --noinput
-            docker compose exec -T backend python manage.py collectstatic --noinput
 
-      # ── Health check ──────────────────────────────────────────────
+            echo "=== Pulling latest code ==="
+            git fetch origin
+            git pull origin master
+
+            echo "=== Building frontend ==="
+            cd frontend
+            npm ci --prefer-offline
+            npm run build
+            cd ..
+
+            echo "=== Rebuilding backend image ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml build backend
+
+            echo "=== Running database migrations ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+              run --rm --no-deps backend python manage.py migrate --noinput
+
+            echo "=== Collecting static files ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+              run --rm --no-deps backend python manage.py collectstatic --noinput --clear
+
+            echo "=== Restarting services ==="
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+              up -d --no-deps --remove-orphans backend celery celerybeat
+
+            echo "=== Deploy complete: $(git rev-parse --short HEAD) ==="
+
+      # ── Health check — wait up to 60s for the API to respond ──────────────
       - name: Health check
         run: |
-          sleep 10
-          curl --fail https://supportmitra.in/api/health/ || exit 1
+          echo "Waiting for backend to start..."
+          for i in $(seq 1 12); do
+            if curl -sf https://supportmitra.in/api/health/ > /dev/null 2>&1; then
+              echo "Health check passed on attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i/12 — retrying in 5s..."
+            sleep 5
+          done
+          echo "Health check failed after 60s"
+          exit 1
 
-      # ── Notify ────────────────────────────────────────────────────
-      - name: Notify Slack on success
-        if: success()
+      # ── Slack notifications ────────────────────────────────────────────────
+      - name: Notify Slack — success
+        if: success() && secrets.SLACK_WEBHOOK_URL != ''
         run: |
-          curl -s -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          curl -s -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
             -H 'Content-type: application/json' \
-            --data '{"text":"✅ SupportMitra deployed successfully to production."}'
+            --data "{\"text\":\"✅ SupportMitra deployed successfully. Commit: \`$(echo ${{ github.sha }} | cut -c1-7)\`\"}"
 
-      - name: Notify Slack on failure
-        if: failure()
+      - name: Notify Slack — failure
+        if: failure() && secrets.SLACK_WEBHOOK_URL != ''
         run: |
-          curl -s -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          curl -s -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
             -H 'Content-type: application/json' \
-            --data '{"text":"❌ SupportMitra deployment FAILED. Check GitHub Actions."}'
+            --data "{\"text\":\"❌ SupportMitra deployment FAILED. <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View logs>\"}"

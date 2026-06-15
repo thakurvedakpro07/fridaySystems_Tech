@@ -1,26 +1,50 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
 
+  // ── Dev server ─────────────────────────────────────────────────────────────
   server: {
     port: 5173,
-    // Proxy API requests to the Django backend so you don't have to
-    // type the full backend URL in your frontend code.
-    // Example: fetch("/api/tickets/") works in both dev and prod.
+    // Proxy /api/* to the Django backend so the browser can call it on the same
+    // origin during development — avoids CORS and matches production behaviour.
     proxy: {
       "/api": {
         // Outside Docker: VITE_API_TARGET is unset → falls back to localhost:8000
         // Inside Docker:  VITE_API_TARGET=http://backend:8000 (set in docker-compose.yml)
-        //   "backend" is the Docker service name — Docker's internal DNS resolves
-        //   it to the backend container's IP on the private Docker network.
-        //   Using "localhost" here would point to the frontend container itself,
-        //   where no Django process is running.
         target: process.env.VITE_API_TARGET ?? "http://localhost:8000",
         changeOrigin: true,
       },
     },
   },
-});
+
+  // ── Production build ────────────────────────────────────────────────────────
+  build: {
+    outDir: "dist",
+    // Sourcemaps in production expose your source tree — keep off unless debugging
+    sourcemap: mode !== "production",
+    // Warn about chunks larger than 500 kB before they noticeably slow load times
+    chunkSizeWarningLimit: 500,
+    rollupOptions: {
+      output: {
+        // Split vendor libraries into separate chunks:
+        //   vendor.js — React, React DOM, React Router (rarely changes → long-lived cache)
+        //   state.js  — Zustand
+        //   http.js   — Axios
+        // The app chunk contains only your own code — it changes most often, so keeping
+        // it separate lets browsers cache vendor chunks across deployments.
+        manualChunks: {
+          vendor: ["react", "react-dom", "react-router-dom"],
+          state: ["zustand"],
+          http: ["axios"],
+        },
+        // Vite adds a content hash to filenames by default (e.g. vendor-Bq3d9xKm.js)
+        // which allows Nginx to cache them with "Cache-Control: immutable".
+        chunkFileNames: "assets/[name]-[hash].js",
+        entryFileNames: "assets/[name]-[hash].js",
+        assetFileNames: "assets/[name]-[hash][extname]",
+      },
+    },
+  },
+}));

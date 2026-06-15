@@ -1,0 +1,79 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Dockerfile.frontend.prod — Multi-stage production build for the React app
+#
+# Stage 1 (builder): installs Node deps and runs `npm run build` → produces dist/
+# Stage 2 (production): copies dist/ into an nginx:alpine image for serving
+#
+# Usage (fully containerised deploy):
+#   docker build -f Dockerfile.frontend.prod -t supportmitra-frontend .
+#   docker run -p 80:80 supportmitra-frontend
+#
+# Usage (host-nginx deploy — build only):
+#   docker build --target builder -f Dockerfile.frontend.prod -o dist-out .
+#   # dist-out/dist/ contains the compiled assets — copy to VPS
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Stage 1: Node build ───────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy manifests first — layer is cached if neither file changes
+COPY frontend/package*.json ./
+
+# Install all deps (including devDependencies — Vite is a devDep)
+RUN npm ci
+
+# Copy source
+COPY frontend/ .
+
+# VITE_API_BASE_URL — override at build time if the API is on a separate domain.
+# Leave empty (default) when Nginx reverse-proxies /api/* from the same origin.
+ARG VITE_API_BASE_URL=""
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
+RUN npm run build
+# dist/ is now at /app/dist
+
+# ── Stage 2: nginx static server ──────────────────────────────────────────────
+# Used when deploying the frontend as its own container (e.g. docker-compose.nginx.yml).
+# The host-nginx approach (default) uses the dist/ output from Stage 1 directly.
+FROM nginx:1.25-alpine AS production
+
+# Remove nginx's default welcome page
+RUN rm -f /usr/share/nginx/html/index.html
+
+# Copy built React app
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# SPA routing: serve index.html for any path not found on disk
+# (React Router handles the rest)
+RUN printf 'server {\n\
+    listen 80;\n\
+    root /usr/share/nginx/html;\n\
+    index index.html;\n\
+\n\
+    # Forward all API calls to the Django backend container\n\
+    location /api/ {\n\
+        proxy_pass http://backend:8000;\n\
+        proxy_set_header Host              $host;\n\
+        proxy_set_header X-Real-IP         $remote_addr;\n\
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;\n\
+        proxy_set_header X-Forwarded-Proto $scheme;\n\
+    }\n\
+\n\
+    # SPA fallback — every unmatched path serves index.html\n\
+    location / {\n\
+        try_files $uri $uri/ /index.html;\n\
+    }\n\
+\n\
+    # Long-lived cache for hashed asset filenames\n\
+    location ~* \\.(js|css|woff2|woff|ttf|eot)$ {\n\
+        expires 1y;\n\
+        add_header Cache-Control "public, immutable";\n\
+    }\n\
+}\n' > /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

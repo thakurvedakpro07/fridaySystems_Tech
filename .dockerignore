@@ -1,49 +1,65 @@
-# ─────────────────────────────────────────────────────────────────
-# .dockerignore
+# ─────────────────────────────────────────────────────────────────────────────
+# .dockerignore — files excluded from the Docker build context
 #
-# Tells Docker which files NOT to send to the build daemon when
-# building an image. Keeps the build context small and fast, and
-# prevents local platform-specific binaries from leaking in.
-# ─────────────────────────────────────────────────────────────────
+# Docker sends the entire build context (this directory) to the Docker daemon
+# before processing the Dockerfile. Large or irrelevant files slow every build.
+# This file keeps the context small and prevents secrets from leaking into layers.
+# ─────────────────────────────────────────────────────────────────────────────
 
-# Python virtual environments — pip install runs inside the container
-backend/.venv
-backend/venv
-
-# Python bytecode
-backend/__pycache__
-backend/**/__pycache__
-backend/**/*.pyc
-backend/**/*.pyo
-
-# Local SQLite database (containers use PostgreSQL)
-backend/db.sqlite3
-
-# Django collected static files (generated inside the container)
-backend/staticfiles/
-backend/mediafiles/
-
-# Node modules — npm install runs inside the container
-# Without this, your local node_modules (compiled for macOS/Windows)
-# overwrites the container's Linux node_modules → crashes at runtime
-frontend/node_modules/
-
-# Vite production build output (not needed in the dev image)
-frontend/dist/
-
-# Git history — not needed inside images
+# ── Version control ───────────────────────────────────────────────────────────
 .git
 .gitignore
+.gitattributes
 
-# Docker files themselves (no need to copy them in)
-.dockerignore
-Dockerfile.backend
-Dockerfile.frontend
-docker-compose.yml
-docker-compose.prod.yml
+# ── CI/CD ─────────────────────────────────────────────────────────────────────
+.github
 
-# Editor files
-.vscode/
-.idea/
+# ── Documentation ─────────────────────────────────────────────────────────────
+docs
+*.md
+README*
+screenshots
+prompts
+temp
+
+# ── Environment & secrets — NEVER bake these into images ─────────────────────
+backend/.env
+backend/.env.*
+.env
+.env.*
+*.pem
+*.key
+
+# ── Python caches ─────────────────────────────────────────────────────────────
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.egg-info
+.Python
+backend/venv
+backend/.venv
+
+# ── Django local artefacts ────────────────────────────────────────────────────
+backend/db.sqlite3
+backend/db_temp.sqlite3
+backend/staticfiles
+backend/mediafiles
+
+# ── Frontend — platform-specific binaries and build output ────────────────────
+frontend/node_modules
+frontend/dist
+frontend/.env
+frontend/.env.*
+
+# ── Editor / OS ───────────────────────────────────────────────────────────────
+.DS_Store
+.idea
+.vscode
 *.swp
 *.swo
+Thumbs.db
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+*.log

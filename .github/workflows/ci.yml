@@ -1,17 +1,18 @@
-# Continuous Integration — runs on every Pull Request
-# Checks: lint, security scan, tests, frontend build
+# Continuous Integration — runs on every push and pull request to master
+# Checks: lint, security scan, unit tests, frontend build, docker compose validation
 
 name: CI
 
 on:
-  pull_request:
-    branches: [main, develop]
   push:
-    branches: [develop]
+    branches: [master]
+  pull_request:
+    branches: [master]
 
 jobs:
+  # ── Backend: lint + security + tests ────────────────────────────────────────
   backend:
-    name: Backend (lint + test)
+    name: Backend (lint + security + tests)
     runs-on: ubuntu-latest
 
     services:
@@ -35,32 +36,40 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements*.txt
 
       - name: Install dependencies
         run: |
           cd backend
           pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Lint (flake8 + black)
+      - name: Lint — flake8
         run: |
           cd backend
-          flake8 . --max-line-length 100
-          black --check .
+          flake8 . --max-line-length 100 --exclude=migrations,__pycache__
 
-      - name: Security scan (bandit)
+      - name: Lint — black (format check)
         run: |
           cd backend
-          bandit -r support_app/ -ll
+          black --check --diff .
+
+      - name: Security scan — bandit
+        run: |
+          cd backend
+          bandit -r support_app/ -ll -x tests/
 
       - name: Run tests
         env:
-          SECRET_KEY: ci-test-secret-key-not-real
+          SECRET_KEY: ci-test-secret-key-not-for-production-use
           DATABASE_URL: postgres://supportmitra:supportmitra@localhost:5432/supportmitra_test
           DEBUG: "1"
+          REDIS_URL: ""
         run: |
           cd backend
-          pytest tests/ -v --cov=support_app --cov-report=term-missing
+          pytest tests/ -v --cov=support_app --cov-report=term-missing --cov-fail-under=50
 
+  # ── Frontend: lint + production build ───────────────────────────────────────
   frontend:
     name: Frontend (lint + build)
     runs-on: ubuntu-latest
@@ -85,7 +94,42 @@ jobs:
           cd frontend
           npm run lint
 
-      - name: Build check
+      - name: Production build
         run: |
           cd frontend
           npm run build
+
+      - name: Verify build output
+        run: |
+          test -f frontend/dist/index.html || (echo "Build failed — no index.html" && exit 1)
+          echo "Build size:"
+          du -sh frontend/dist/
+
+  # ── Docker Compose validation ────────────────────────────────────────────────
+  docker:
+    name: Docker Compose validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate dev compose
+        run: |
+          # Create a minimal backend/.env so compose config doesn't fail on env_file
+          mkdir -p backend
+          echo "SECRET_KEY=ci-test-key" > backend/.env
+          echo "DATABASE_URL=postgres://supportmitra:supportmitra@db:5432/supportmitra" >> backend/.env
+          echo "REDIS_URL=redis://redis:6379/0" >> backend/.env
+          docker compose config --quiet
+
+      - name: Validate prod compose
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
+
+      - name: Verify Dockerfile.backend builds
+        run: |
+          docker build -f Dockerfile.backend -t supportmitra-backend-ci --target runtime .
+
+      - name: Verify Dockerfile.frontend.prod builds
+        run: |
+          docker build -f Dockerfile.frontend.prod -t supportmitra-frontend-ci --target builder .
