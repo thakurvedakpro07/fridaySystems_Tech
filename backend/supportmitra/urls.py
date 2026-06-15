@@ -11,7 +11,9 @@ from django_prometheus import exports as prometheus_exports
 
 urlpatterns = [
     # ── Django admin UI ───────────────────────────────────────────
-    path("admin/", admin.site.urls),
+    # Served at /django-admin/ to avoid conflict with React SPA's catch-all.
+    # nginx has a dedicated location /django-admin/ block that proxies here.
+    path("django-admin/", admin.site.urls),
 
     # ── All app API routes live under /api/ ───────────────────────
     path("api/", include("support_app.urls")),

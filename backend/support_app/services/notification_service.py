@@ -2,8 +2,17 @@
 Notification dispatch — in-app, email, and WhatsApp.
 
 create_notification() is the single function all other services call
-to create an in-app Notification row. Email and WhatsApp are Phase 6.
+to create an in-app Notification row.
+
+send_email() delegates to email_service, which handles template rendering
+and SMTP/SendGrid delivery.
+
+send_whatsapp() is a placeholder for Phase 6 (Gupshup integration).
 """
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def create_notification(recipient, category: str, title: str, body: str = "", ticket=None):
@@ -35,17 +44,32 @@ def create_notification(recipient, category: str, title: str, body: str = "", ti
 
 def send_email(to: str, template_name: str, context: dict) -> None:
     """
-    Render an HTML email template with the given context and
-    send it via SendGrid.
-    TODO: implement in Phase 6.
+    Render an HTML email template and send it.
+
+    Delegates to email_service._send() which handles template rendering,
+    SendGrid SMTP delivery in production, and console output in development.
+
+    Args:
+        to:            Recipient email address
+        template_name: Template path relative to templates/ (e.g. "email/welcome.html")
+        context:       Template context dict
     """
-    raise NotImplementedError
+    from .email_service import _send
+    subject = context.get("subject", "Notification from SupportMitra")
+    _send(to=to, subject=subject, template=template_name, context=context)
 
 
 def send_whatsapp(to_phone: str, template_name: str, params: list) -> None:
     """
     Send a WhatsApp template message via Gupshup API.
     Only fires if ENABLE_WHATSAPP_NOTIFICATIONS=true in settings.
-    TODO: implement in Phase 6.
+    Full implementation in Phase 6.
     """
-    raise NotImplementedError
+    from django.conf import settings
+    if not getattr(settings, "ENABLE_WHATSAPP_NOTIFICATIONS", False):
+        return
+    logger.info(
+        "WhatsApp notification queued for %s (template=%s) — Gupshup integration pending (Phase 6).",
+        to_phone,
+        template_name,
+    )

@@ -580,11 +580,83 @@ def ticket_verify_payment(request, ticket_id):
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated, IsCustomer])
 def payment_invoice(request, pk):
-    """GET /api/payments/{id}/invoice/ — TODO: PDF generation in Phase 5."""
-    return Response(
-        {"detail": "Invoice generation is not yet available."},
-        status=status.HTTP_501_NOT_IMPLEMENTED,
+    """
+    GET /api/payments/{id}/invoice/
+
+    Returns a structured JSON invoice for the given payment.
+    The customer who made the payment (or admin) can download it.
+    PDF generation is planned for Phase 5 — this endpoint returns JSON
+    in the interim so billing records are always accessible.
+    """
+    payment = get_object_or_404(
+        Payment.objects.select_related("customer__user", "ticket"),
+        pk=pk,
     )
+
+    # Only the payment's customer or admin may download the invoice
+    if not request.user.is_staff:
+        if not hasattr(request.user, "customer_profile") or payment.customer != request.user.customer_profile:
+            raise PermissionDenied("You do not have permission to view this invoice.")
+
+    customer = payment.customer
+    ticket = payment.ticket
+
+    from django.conf import settings as django_settings
+    total_amount = float(payment.amount) + float(payment.gst_amount)
+
+    invoice_data = {
+        "invoice": {
+            "number": payment.invoice_number or f"INV-{str(payment.id)[:8].upper()}",
+            "date": payment.created_at.strftime("%d %B %Y"),
+            "status": payment.status,
+            "currency": payment.currency,
+        },
+        "seller": {
+            "name": getattr(django_settings, "BUSINESS_NAME", "SupportMitra Technologies"),
+            "gstin": getattr(django_settings, "BUSINESS_GSTIN", ""),
+            "email": getattr(django_settings, "DEFAULT_FROM_EMAIL", "support@supportmitra.in"),
+            "address": "India",
+        },
+        "buyer": {
+            "name": f"{customer.user.first_name} {customer.user.last_name}".strip() or customer.user.email,
+            "email": customer.user.email,
+            "company": customer.company,
+            "gstin": customer.gstin,
+            "phone": customer.phone,
+            "address": customer.address,
+        },
+        "ticket": {
+            "number": ticket.ticket_number if ticket else None,
+            "title": ticket.title if ticket else None,
+            "service_type": ticket.get_service_type_display() if ticket else None,
+        } if ticket else None,
+        "line_items": [
+            {
+                "description": payment.get_payment_type_display(),
+                "base_amount": float(payment.amount),
+                "gst_rate": getattr(django_settings, "GST_RATE", 0.18),
+                "gst_amount": float(payment.gst_amount),
+                "total": total_amount,
+            }
+        ],
+        "totals": {
+            "subtotal": float(payment.amount),
+            "gst": float(payment.gst_amount),
+            "grand_total": total_amount,
+            "currency": payment.currency,
+        },
+        "payment": {
+            "gateway": payment.gateway,
+            "gateway_payment_id": payment.gateway_payment_id,
+            "gateway_order_id": payment.gateway_order_id,
+        },
+        "note": "PDF invoice generation is coming in Phase 5. JSON invoice is valid for internal records.",
+    }
+
+    response = Response(invoice_data)
+    filename = f"invoice_{payment.invoice_number or payment.id}.json"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 @api_view(["POST"])
