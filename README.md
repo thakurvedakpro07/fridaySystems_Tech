@@ -28,7 +28,7 @@ docker compose exec backend python manage.py createsuperuser
 |---|---|
 | React frontend | http://localhost:5173 |
 | Django API | http://localhost:8000/api/ |
-| Django Admin | http://localhost:8000/admin/ |
+| Django Admin | http://localhost:8000/django-admin/ |
 
 ---
 

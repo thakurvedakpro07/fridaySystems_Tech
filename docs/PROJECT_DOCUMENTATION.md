@@ -1228,7 +1228,7 @@ docker compose exec backend python manage.py loaddata fixtures/seed.json
 
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:8000/api/
-- Django Admin: http://localhost:8000/admin/
+- Django Admin: http://localhost:8000/django-admin/
 - PostgreSQL: localhost:5432
 
 ### Frontend Development (without Docker)
@@ -1342,8 +1342,8 @@ server {
         proxy_set_header X-Forwarded-Proto https;
     }
 
-    # Django Admin
-    location /admin/ {
+    # Django Admin (note: /django-admin/ not /admin/ — see docs/ADMIN_URL_CHANGE_NOTE.md)
+    location /django-admin/ {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
     }

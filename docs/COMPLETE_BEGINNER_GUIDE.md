@@ -328,7 +328,7 @@ CELERY_*          # all Celery configuration
 
 ```python
 urlpatterns = [
-    path("admin/", admin.site.urls),      # → Django admin panel
+    path("django-admin/", admin.site.urls),  # → Django admin panel (changed from "admin/" — see docs/ADMIN_URL_CHANGE_NOTE.md)
     path("api/", include("support_app.urls")),  # → All your API endpoints
     path("metrics/", prometheus_exports...),    # → Monitoring data
 ]
@@ -449,7 +449,7 @@ Serializer:   validates all fields exist and have correct types
 
 **`backend/support_app/admin.py`**
 
-*Simple:* Configures the Django admin panel. Controls what you see at `http://127.0.0.1:8000/admin/`.
+*Simple:* Configures the Django admin panel. Controls what you see at `http://127.0.0.1:8000/django-admin/`.
 
 *Technical:* Registers models with `admin.site.register()`. Defines `list_display`, `search_fields`, `list_filter` to make the admin useful.
 
@@ -1050,7 +1050,9 @@ When you write `customer = models.ForeignKey(...)` in Python, how does PostgreSQ
 ### Django Admin Panel
 
 **Simple explanation:**
-A free, auto-generated internal dashboard at `http://127.0.0.1:8000/admin/`. You can view, search, add, edit, and delete any data without writing any code.
+A free, auto-generated internal dashboard at `http://127.0.0.1:8000/django-admin/`. You can view, search, add, edit, and delete any data without writing any code.
+
+> **Note:** SupportMitra uses `/django-admin/` instead of Django's default `/admin/` route. This is because the nginx reverse proxy serves the React SPA at `/admin/` (the admin frontend dashboard). See `docs/ADMIN_URL_CHANGE_NOTE.md` for full details.
 
 **How to create your admin account:**
 ```bash
@@ -1487,7 +1489,7 @@ docker compose exec backend python -m pytest tests/ -v
 **Backend (Python) changes:**
 1. Edit the `.py` file in `backend/`
 2. Gunicorn detects the change automatically and restarts
-3. Test at `http://127.0.0.1:8000/admin/` or via curl
+3. Test at `http://127.0.0.1:8000/django-admin/` or via curl
 
 **Frontend (React) changes:**
 1. Edit the `.jsx` or `.css` file in `frontend/src/`
@@ -3132,7 +3134,7 @@ docker compose down -v                      # stop + DELETE database (irreversib
 |------|---------|-----|
 | 5173 | React Frontend (Vite) | http://localhost:5173 |
 | 8000 | Django Backend (Gunicorn) | http://127.0.0.1:8000 |
-| 8000 | Django Admin Panel | http://127.0.0.1:8000/admin/ |
+| 8000 | Django Admin Panel | http://127.0.0.1:8000/django-admin/ |
 | 5432 | PostgreSQL | (connect via DB tool) |
 | 6379 | Redis | (internal use only) |
 

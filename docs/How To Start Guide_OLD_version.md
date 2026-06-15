@@ -25,7 +25,7 @@ STEP 4 — Open Website
 Open in browser:
 http://localhost:5173
 Django Admin PanelAdmin URL:
-http://127.0.0.1:8000/admin/
+http://127.0.0.1:8000/django-admin/
 Important Notes
 ThingWhat to do
 Backend terminalKeep it running while working

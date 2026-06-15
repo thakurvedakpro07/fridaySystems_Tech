@@ -111,7 +111,7 @@ celerybeat-1         Up
 | URL                              | What it is          |
 |----------------------------------|---------------------|
 | `http://localhost:5173`          | React frontend      |
-| `http://127.0.0.1:8000/admin/`  | Django admin panel  |
+| `http://127.0.0.1:8000/django-admin/`  | Django admin panel  |
 
 ---
 
@@ -310,7 +310,7 @@ Expected: `Listening at: http://0.0.0.0:8000`
 
 ---
 
-### Problem: Backend shows `Up` but `/admin/` still doesn't load
+### Problem: Backend shows `Up` but `/django-admin/` still doesn't load
 
 **Cause:** Startup sequence still running (`collectstatic` + `migrate` take ~20-30s).
 
@@ -408,7 +408,7 @@ docker compose logs -f backend
 
 # 5. Verify everything
 docker compose ps
-curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/admin/login/
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/django-admin/login/
 # Expected: 200
 
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5173
@@ -439,7 +439,7 @@ curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5173
 [ ] docker compose up -d
 [ ] docker compose ps  →  all containers Up / healthy
 [ ] http://localhost:5173  →  frontend loads
-[ ] http://127.0.0.1:8000/admin/  →  admin styled and working
+[ ] http://127.0.0.1:8000/django-admin/  →  admin styled and working
 [ ] Start coding
 ```
 

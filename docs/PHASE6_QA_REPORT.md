@@ -219,7 +219,7 @@ A freelancer hitting `GET /api/tickets/{id}/` would get a 404 even for their own
 | Frontend HMR works (edit → auto-reload) | ✅ PASS | Volume mount + Vite |
 | Postgres data persists after restart | ✅ PASS | Named volume |
 | Redis data persists after restart | ✅ PASS (Fixed) | Added AOF volume |
-| Backend healthcheck passes | ✅ PASS | HTTP check on /admin/login/ |
+| Backend healthcheck passes | ✅ PASS | HTTP check on /api/health/ (changed from /admin/login/ — see SECURITY_HARDENING_REPORT.md) |
 | Celery worker picks up tasks | ✅ PASS | Depends on healthy Redis |
 
 ### 6. Security
@@ -279,7 +279,7 @@ DRF throttling is global (100/min per user, 20/min anon). The login endpoint spe
 The scheduler runs but has no jobs. SLA breach checking should be a periodic task (every 5 minutes: find tickets past `due_at`, create `sla_breach` activity log, notify admin).
 
 **8. Admin panel exposes user data without extra protection**
-Django's `/admin/` is reachable at the standard path. In production, consider changing the URL, adding IP allowlisting, or requiring 2FA for admin accounts.
+Django admin is accessible at `/django-admin/` (changed from `/admin/` in Phase 22 — nginx serves the React SPA at `/admin/`). Consider adding IP allowlisting or requiring 2FA for admin accounts in production.
 
 **9. No structured logging**
 Currently using Django's default logging. Production needs JSON-formatted logs sent to a log aggregator (Papertrail, Datadog, or CloudWatch) so you can search and alert.
@@ -519,7 +519,7 @@ Once a row is saved, the old values are gone from the database. `pre_save` fires
 - [ ] Set `DEFAULT_PERMISSION_CLASSES` to `IsAuthenticated` (already conditional on DEBUG)
 - [ ] Add rate limiting to the login endpoint (5/min per IP)
 - [ ] Add email verification to registration flow
-- [ ] Change Django admin URL from `/admin/` to something non-obvious
+- [x] Change Django admin URL from `/admin/` to `/django-admin/` — ✅ DONE in Phase 22
 - [ ] Add Sentry or similar for error tracking
 - [ ] Add structured logging (JSON logs to stdout, collected by your cloud provider)
 

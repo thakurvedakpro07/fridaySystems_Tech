@@ -367,7 +367,7 @@ Test user passwords were last set to `Admin@12345` / `Customer@12345` / `Freelan
 - `admin@test.com` → `/admin` (admin dashboard)
 - `customer@test.com` → `/dashboard` (customer dashboard)
 - `freelancer@test.com` → `/freelancer` (freelancer dashboard)
-- Django admin panel (`/admin/`) → only `admin@test.com` has access
+- Django admin panel (`/django-admin/`) → only `admin@test.com` has access
 
 **All permission checks verified:**
 - Admin → `/api/admin/tickets/` → 200 ✓

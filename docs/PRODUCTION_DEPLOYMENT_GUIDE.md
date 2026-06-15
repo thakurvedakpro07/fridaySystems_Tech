@@ -183,7 +183,7 @@ cp -r backend/staticfiles /home/deploy/supportmitra/backend/staticfiles
 docker compose ps
 
 # Check Django is healthy
-curl -I http://localhost:8000/admin/login/
+curl -I http://localhost:8000/django-admin/login/
 
 # Check nginx is serving HTTPS
 curl -I https://supportmitra.in/

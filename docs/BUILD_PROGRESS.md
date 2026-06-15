@@ -303,7 +303,7 @@ dist/FreelancerList                2.9 KB │ gzip:   1.2 KB
 
 ### Next Step
 
-* **Change the admin password immediately:** open `http://127.0.0.1:8000/admin/`, log in with `admin@supportmitra.in` / `SupportMitra@Admin2026`, navigate to Users → admin@supportmitra.in → set a personal password
+* **Change the admin password immediately:** open `http://127.0.0.1:8000/django-admin/`, log in with `admin@supportmitra.in` / `SupportMitra@Admin2026`, navigate to Users → admin@supportmitra.in → set a personal password
 * **Delete the stale SQLite file:** `rm /home/vedak/Documents/fridaySystems_Tech/backend/db.sqlite3`
 * **Phase 9:** Begin Razorpay consulting fee payment integration (highest-impact next feature — tickets currently stuck at `pending_payment` status indefinitely)
 
