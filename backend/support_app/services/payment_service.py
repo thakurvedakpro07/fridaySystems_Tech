@@ -178,9 +178,15 @@ def verify_and_complete_payment(
 
 def verify_webhook_signature(payload: bytes, signature: str) -> bool:
     """Verify HMAC-SHA256 on an incoming Razorpay webhook payload."""
+    import logging as _logging
+    _logger = _logging.getLogger(__name__)
     secret = getattr(settings, "RAZORPAY_WEBHOOK_SECRET", "")
     if not secret:
-        return True
+        _logger.warning(
+            "verify_webhook_signature: RAZORPAY_WEBHOOK_SECRET is not configured. "
+            "Rejecting webhook — set the secret to process Razorpay webhooks."
+        )
+        return False
     expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
 

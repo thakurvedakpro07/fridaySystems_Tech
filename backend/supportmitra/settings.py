@@ -145,6 +145,7 @@ if not DEBUG:
     _REQUIRED_PROD_VARS = [
         "DATABASE_URL",
         "SECRET_KEY",
+        "APP_URL",
         "RAZORPAY_KEY_ID",
         "RAZORPAY_KEY_SECRET",
         "RAZORPAY_WEBHOOK_SECRET",
@@ -288,6 +289,7 @@ ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 GST_RATE = float(os.getenv("GST_RATE", "0.18"))
 BUSINESS_GSTIN = os.getenv("BUSINESS_GSTIN", "")
 BUSINESS_NAME = os.getenv("BUSINESS_NAME", "SupportMitra Technologies")
+APP_URL = os.getenv("APP_URL", "http://localhost:5173")
 
 # ── Razorpay ─────────────────────────────────────────────────────
 RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "")

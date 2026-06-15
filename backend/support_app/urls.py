@@ -98,6 +98,14 @@ urlpatterns = [
     path("auth/profile/", views.user_profile, name="user-profile"),
     path("auth/change-password/", views.change_password, name="change-password"),
 
+    # ── Email Verification ────────────────────────────────────────
+    path("auth/verify-email/", views.verify_email, name="verify-email"),
+    path("auth/verify-email/resend/", views.resend_verification_email, name="verify-email-resend"),
+
+    # ── Password Reset ────────────────────────────────────────────
+    path("auth/password/reset/", views.password_reset_request, name="password-reset-request"),
+    path("auth/password/reset/confirm/", views.password_reset_confirm, name="password-reset-confirm"),
+
     # ── Analytics ────────────────────────────────────────────────
     path("analytics/", views.analytics_view, name="analytics"),
 

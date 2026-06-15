@@ -156,9 +156,13 @@ class RegisterView(generics.CreateAPIView):
         user = serializer.save()
 
         refresh = RefreshToken.for_user(user)
-        from .services.email_service import send_welcome
+        from .services.email_service import send_welcome, send_verification_email
         try:
             send_welcome(user)
+        except Exception:
+            pass
+        try:
+            send_verification_email(user)
         except Exception:
             pass
         return Response(
@@ -170,6 +174,7 @@ class RegisterView(generics.CreateAPIView):
                     "email": user.email,
                     "is_staff": user.is_staff,
                     "role": user.role,
+                    "is_verified": user.is_verified,
                 },
             },
             status=status.HTTP_201_CREATED,
@@ -224,6 +229,7 @@ def me_view(request):
         "email": user.email,
         "role": user.role,
         "is_staff": user.is_staff,
+        "is_verified": user.is_verified,
         "first_name": user.first_name,
         "last_name": user.last_name,
     }
@@ -1115,9 +1121,13 @@ def change_password(request):
             {"detail": "Current password is incorrect."},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    if len(new_pw) < 10:
+    from django.contrib.auth.password_validation import validate_password
+    from django.core.exceptions import ValidationError as DjangoValidationError
+    try:
+        validate_password(new_pw, request.user)
+    except DjangoValidationError as exc:
         return Response(
-            {"detail": "New password must be at least 10 characters."},
+            {"detail": list(exc.messages)},
             status=status.HTTP_400_BAD_REQUEST,
         )
     request.user.set_password(new_pw)
@@ -1424,3 +1434,161 @@ def ticket_attachment_delete(request, ticket_id, attachment_id):
         attachment.file.delete(save=False)
     attachment.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ── Email Verification ────────────────────────────────────────────
+
+@api_view(["POST"])
+@permission_classes([permissions.AllowAny])
+def verify_email(request):
+    """
+    POST /api/auth/verify-email/
+    Body: { "uid": "...", "token": "..." }
+
+    Marks the user's email as verified. The uid/token pair is sent in the
+    verification link emailed after registration.
+    """
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_decode
+
+    uid_b64 = request.data.get("uid", "")
+    token = request.data.get("token", "")
+
+    if not uid_b64 or not token:
+        return Response(
+            {"detail": "uid and token are required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        uid = urlsafe_base64_decode(uid_b64).decode()
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, User.DoesNotExist):
+        return Response(
+            {"detail": "Invalid or expired verification link."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not default_token_generator.check_token(user, token):
+        return Response(
+            {"detail": "Invalid or expired verification link."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if user.is_verified:
+        return Response({"detail": "Email already verified."})
+
+    user.is_verified = True
+    user.save(update_fields=["is_verified"])
+    return Response({"detail": "Email verified successfully."})
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def resend_verification_email(request):
+    """
+    POST /api/auth/verify-email/resend/
+    Re-sends the verification email to the current user.
+    """
+    user = request.user
+    if user.is_verified:
+        return Response({"detail": "Email is already verified."})
+
+    from .services.email_service import send_verification_email
+    try:
+        send_verification_email(user)
+    except Exception:
+        pass
+    return Response({"detail": "Verification email sent."})
+
+
+# ── Password Reset ────────────────────────────────────────────────
+
+@api_view(["POST"])
+@permission_classes([permissions.AllowAny])
+@throttle_classes_dec([AuthRateThrottle])
+def password_reset_request(request):
+    """
+    POST /api/auth/password/reset/
+    Body: { "email": "..." }
+
+    Sends a password reset link. Always returns 200 to prevent user enumeration.
+    """
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_encode
+    from django.utils.encoding import force_bytes
+    from .services.email_service import send_password_reset_email
+
+    email = request.data.get("email", "").strip().lower()
+    if not email:
+        return Response(
+            {"detail": "email is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        user = User.objects.get(email__iexact=email, is_active=True)
+        uid = urlsafe_base64_encode(force_bytes(str(user.pk)))
+        token = default_token_generator.make_token(user)
+        try:
+            send_password_reset_email(user, uid, token)
+        except Exception:
+            pass
+    except User.DoesNotExist:
+        pass  # always return 200 — never reveal whether email exists
+
+    return Response(
+        {"detail": "If an account with that email exists, a reset link has been sent."}
+    )
+
+
+@api_view(["POST"])
+@permission_classes([permissions.AllowAny])
+def password_reset_confirm(request):
+    """
+    POST /api/auth/password/reset/confirm/
+    Body: { "uid": "...", "token": "...", "new_password": "..." }
+
+    Validates the token and sets the new password.
+    """
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_decode
+    from django.contrib.auth.password_validation import validate_password
+    from django.core.exceptions import ValidationError as DjangoValidationError
+
+    uid_b64 = request.data.get("uid", "")
+    token = request.data.get("token", "")
+    new_password = request.data.get("new_password", "")
+
+    if not uid_b64 or not token or not new_password:
+        return Response(
+            {"detail": "uid, token, and new_password are required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        uid = urlsafe_base64_decode(uid_b64).decode()
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, User.DoesNotExist):
+        return Response(
+            {"detail": "Invalid or expired reset link."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not default_token_generator.check_token(user, token):
+        return Response(
+            {"detail": "Invalid or expired reset link."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        validate_password(new_password, user)
+    except DjangoValidationError as exc:
+        return Response(
+            {"detail": list(exc.messages)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user.set_password(new_password)
+    user.save(update_fields=["password"])
+    return Response({"detail": "Password reset successfully. You can now log in."})

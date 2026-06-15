@@ -22,6 +22,9 @@ const FreelancerDashboard  = lazy(() => import("./pages/freelancer/FreelancerDas
 const FreelancerList       = lazy(() => import("./pages/admin/FreelancerList"));
 const BillingPage          = lazy(() => import("./pages/BillingPage"));
 const PaymentsDashboard    = lazy(() => import("./pages/admin/PaymentsDashboard"));
+const ForgotPassword       = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword        = lazy(() => import("./pages/ResetPassword"));
+const VerifyEmail          = lazy(() => import("./pages/VerifyEmail"));
 
 import { ToastProvider } from "./context/ToastContext";
 import { useAuthStore } from "./store/authStore";
@@ -40,10 +43,15 @@ function PrivateRoute({ children }) {
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 }
 
-// Redirects non-admin users back to /dashboard
+// Redirects unauthenticated users to /login; non-admins to /dashboard.
+// Requires BOTH is_staff=true AND role="admin" to prevent privilege escalation
+// if is_staff is granted to a non-admin role by mistake.
 function AdminRoute({ children }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
-  return user?.is_staff ? children : <Navigate to="/dashboard" replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!user?.is_staff || user?.role !== "admin") return <Navigate to="/dashboard" replace />;
+  return children;
 }
 
 // Redirects non-freelancer users to their appropriate home
@@ -96,6 +104,9 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login"    element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
           <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
+          <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPassword /></PublicOnlyRoute>} />
+          <Route path="/reset-password"  element={<ResetPassword />} />
+          <Route path="/verify-email"    element={<VerifyEmail />} />
 
           {/* Customer pages — require login */}
           <Route

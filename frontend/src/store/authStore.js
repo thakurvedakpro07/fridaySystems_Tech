@@ -10,12 +10,14 @@
  *   const user = useAuthStore((s) => s.user);
  *   const logout = useAuthStore((s) => s.logout);
  *
- * WHY localStorage for user data?
- *   When a user refreshes the page, React state is wiped.
- *   We need to know the user's role (customer/admin/freelancer) to render
- *   the correct navigation and protect admin routes — BEFORE making any
- *   API calls. Storing the user object in localStorage lets us rehydrate
- *   instantly without a round-trip to the server.
+ * Token storage (H-09 — 2026-06-15):
+ *   access_token  → sessionStorage  (cleared on tab close; XSS cannot persist it across sessions)
+ *   refresh_token → localStorage    (persistent; used to re-issue access_token on page load)
+ *   user          → localStorage    (needed for role-based rendering before any API call)
+ *
+ * Trade-off: XSS can still read sessionStorage within the active tab. Full
+ * protection requires httpOnly cookies (Phase 5 roadmap item). This change
+ * reduces the window of token theft by clearing access_token when tabs close.
  */
 import { create } from "zustand";
 
@@ -24,6 +26,14 @@ function safeLocalStorage(key) {
     return localStorage.getItem(key);
   } catch {
     // SecurityError in private-browsing modes that block localStorage entirely
+    return null;
+  }
+}
+
+function safeSessionStorage(key) {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
     return null;
   }
 }
@@ -43,15 +53,18 @@ function loadStoredUser() {
 }
 
 function clearAuthStorage() {
-  localStorage.removeItem("access_token");
+  try { sessionStorage.removeItem("access_token"); } catch {}
   localStorage.removeItem("refresh_token");
   localStorage.removeItem("user");
 }
 
 export const useAuthStore = create((set) => ({
   // ── State ─────────────────────────────────────────────────────
-  isAuthenticated: !!safeLocalStorage("access_token"),
-  user: loadStoredUser(),   // { id, email, is_staff, role }
+  // Optimistic initial value: if either sessionStorage has an access_token
+  // (same-tab refresh) or localStorage has a refresh_token (returning user),
+  // the user may be authenticated. initializeAuth() always validates server-side.
+  isAuthenticated: !!(safeSessionStorage("access_token") || safeLocalStorage("refresh_token")),
+  user: loadStoredUser(),   // { id, email, is_staff, role, is_verified }
   loading: false,
   error: null,
   initializing: true,       // true until the startup auth check finishes
@@ -59,7 +72,8 @@ export const useAuthStore = create((set) => ({
   // ── Actions ───────────────────────────────────────────────────
 
   setTokens: (accessToken, refreshToken) => {
-    localStorage.setItem("access_token", accessToken);
+    // access_token goes to sessionStorage (tab-scoped, clears on close)
+    try { sessionStorage.setItem("access_token", accessToken); } catch {}
     localStorage.setItem("refresh_token", refreshToken);
     set({ isAuthenticated: true, error: null });
   },
@@ -94,40 +108,30 @@ export const useAuthStore = create((set) => ({
   /**
    * Called once on app mount (App.jsx).
    *
-   * Strategy:
-   *   1. If no token → not authenticated, done.
-   *   2. If we have a stored user object (from a previous login) → use it
-   *      immediately. No API call needed. The token will be validated on
-   *      the next real API request — if it fails the response interceptor
-   *      in client.js handles the refresh/redirect automatically.
-   *   3. If token exists but no stored user (e.g. localStorage cleared) →
-   *      call /auth/me/ which works for ALL roles (customer, freelancer, admin).
+   * Always validates the stored token against /auth/me/ on startup.
+   * This catches deactivated accounts, admin-revoked sessions, and
+   * rotated secrets without waiting for the next API call to fail.
    *
-   * WHY we use /auth/me/ and not /customers/me/:
-   *   /customers/me/ returns 403 for admins and freelancers because they
-   *   have no customer_profile. Using it would log out every admin on page
-   *   refresh — a critical bug fixed by the /auth/me/ endpoint added in
-   *   Phase 9 (2026-05-20).
+   * If access_token is missing from sessionStorage (e.g. new tab or browser
+   * restart), client.js interceptor automatically refreshes it using
+   * localStorage.refresh_token before /auth/me/ is retried.
+   *
+   * On network error (offline / server down): falls back to the cached
+   * user so the app stays usable without forcing a logout.
    */
   initializeAuth: async () => {
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      // Ensure any orphaned user/refresh entries are also cleared.
+    const hasSession = !!(safeSessionStorage("access_token") || safeLocalStorage("refresh_token"));
+    if (!hasSession) {
+      // No tokens at all — user has never logged in or fully logged out.
       clearAuthStorage();
       set({ isAuthenticated: false, user: null, initializing: false });
       return;
     }
 
-    const storedUser = loadStoredUser();
-    if (storedUser) {
-      // User is already in localStorage — rehydrate instantly.
-      set({ user: storedUser, isAuthenticated: true, initializing: false });
-      return;
-    }
-
-    // Fallback: no stored user — call /auth/me/ which works for all roles.
-    // If this fails the token is expired/invalid → clear and redirect to login.
     try {
+      // Always validate against server — catches revoked/deactivated tokens.
+      // If access_token is absent from sessionStorage, client.js will
+      // refresh automatically and retry, so this call is safe either way.
       const { getMe } = await import("../api/auth");
       const { data } = await getMe();
       const user = {
@@ -135,12 +139,25 @@ export const useAuthStore = create((set) => ({
         email: data.email,
         is_staff: data.is_staff,
         role: data.role,
+        is_verified: data.is_verified ?? true,
       };
       localStorage.setItem("user", JSON.stringify(user));
       set({ user, isAuthenticated: true, initializing: false });
-    } catch {
-      clearAuthStorage();
-      set({ isAuthenticated: false, user: null, initializing: false });
+    } catch (err) {
+      // 401 means token is expired or revoked — clear and redirect to login.
+      if (err?.response?.status === 401) {
+        clearAuthStorage();
+        set({ isAuthenticated: false, user: null, initializing: false });
+        return;
+      }
+      // Network error or server down — fall back to cached user (offline tolerance).
+      const storedUser = loadStoredUser();
+      if (storedUser) {
+        set({ user: storedUser, isAuthenticated: true, initializing: false });
+      } else {
+        clearAuthStorage();
+        set({ isAuthenticated: false, user: null, initializing: false });
+      }
     }
   },
 }));

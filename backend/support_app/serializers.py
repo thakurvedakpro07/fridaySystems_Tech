@@ -64,10 +64,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         # CustomUser.objects.create_user() runs CustomUserManager.create_user().
         # No username= kwarg — CustomUser has no username field.
         # role="customer" is explicit: every self-registered user is a customer.
+        # is_verified=False: self-registered users must confirm their email.
         user = User.objects.create_user(
             email=validated_data["email"],
             password=validated_data["password"],
             role="customer",
+            is_verified=False,
         )
         Customer.objects.create(user=user, company=company, phone=phone)
         return user

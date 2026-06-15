@@ -19,9 +19,10 @@ const apiClient = axios.create({
 });
 
 // ── Request interceptor ───────────────────────────────────────────
-// Runs before every request — attaches the JWT access token if one exists
+// access_token lives in sessionStorage (H-09): cleared on tab close so
+// XSS cannot harvest it across browser sessions via localStorage.
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access_token");
+  const token = sessionStorage.getItem("access_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -44,7 +45,8 @@ apiClient.interceptors.response.use(
         const { data } = await axios.post("/api/auth/token/refresh/", {
           refresh: refreshToken,
         });
-        localStorage.setItem("access_token", data.access);
+        // Store refreshed access_token in sessionStorage (not localStorage).
+        try { sessionStorage.setItem("access_token", data.access); } catch {}
         // Django rotates refresh tokens (ROTATE_REFRESH_TOKENS=True) — save the new one
         // or the next refresh attempt will fail with 401 (old token is blacklisted).
         if (data.refresh) {
@@ -54,8 +56,7 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest); // retry the original request
       } catch {
         // Refresh failed — clear tokens and let the app redirect to login cleanly.
-        // We import authStore lazily to avoid circular deps with this module.
-        localStorage.removeItem("access_token");
+        try { sessionStorage.removeItem("access_token"); } catch {}
         localStorage.removeItem("refresh_token");
         localStorage.removeItem("user");
         // Use replace so the user lands back on the login page without a back-button

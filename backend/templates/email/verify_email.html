@@ -1,0 +1,13 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h1>Verify your email address</h1>
+<p>Hi {{ email }},</p>
+<p>Thank you for registering with SupportMitra. Please verify your email address by clicking the button below.</p>
+<a href="{{ verify_url }}" class="cta-btn">Verify Email Address →</a>
+<p style="margin-top:20px; font-size:12px; color:#94a3b8;">
+  This link expires in 24 hours. If you did not create a SupportMitra account, you can safely ignore this email.
+</p>
+<p style="font-size:12px; color:#94a3b8; word-break:break-all;">
+  Or copy this link: {{ verify_url }}
+</p>
+{% endblock %}

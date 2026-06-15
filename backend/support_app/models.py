@@ -127,6 +127,12 @@ class CustomUser(AbstractUser):
     # on every authenticated request, before any profile is loaded.
     role = models.CharField(max_length=16, choices=ROLE_CHOICES, default="customer")
 
+    # ── Email verification ────────────────────────────────────────
+    # True for all existing users (default) and for superusers.
+    # Set to False on self-registration; set back to True after the
+    # user clicks the verification link emailed to them.
+    is_verified = models.BooleanField(default=True)
+
     # ── Auth configuration ───────────────────────────────────────
     # USERNAME_FIELD: tells Django, SimpleJWT, and allauth: "use email to log in"
     USERNAME_FIELD = "email"
@@ -214,7 +220,10 @@ class Freelancer(models.Model):
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.0)
     active = models.BooleanField(default=True)
     payout_mode = models.CharField(max_length=32, choices=PAYOUT_MODE_CHOICES, blank=True)
-    payout_details = models.JSONField(default=dict, help_text="Encrypted bank/UPI details")
+    # H-05: payout_details is intentionally excluded from all API serializers.
+    # Stored as plaintext JSON — at-rest encryption is a Phase 5 deliverable
+    # (django-encrypted-fields or Vault transit). Never expose this field via API.
+    payout_details = models.JSONField(default=dict, help_text="Bank/UPI payout details — exclude from all serializers until encrypted at rest")
     contract_signed = models.BooleanField(default=False)
     onboarding_status = models.CharField(
         max_length=32, choices=ONBOARDING_STATUS_CHOICES, default="pending"

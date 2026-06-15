@@ -80,7 +80,15 @@ class FreelancerAdmin(admin.ModelAdmin):
     list_display   = ["user", "onboarding_status", "availability", "rating", "active"]
     search_fields  = ["user__email", "skills"]
     list_filter    = ["onboarding_status", "active"]
-    readonly_fields = ["created_at", "updated_at", "rating"]
+    readonly_fields = ["created_at", "updated_at", "rating", "payout_summary"]
+    exclude        = ["payout_details"]
+
+    def payout_summary(self, obj):
+        if not obj.payout_details:
+            return "(not set)"
+        keys = sorted(obj.payout_details.keys())
+        return f"[MASKED] fields present: {', '.join(keys)}"
+    payout_summary.short_description = "Payout Details (masked)"
 
 
 # ── Ticket Admin — with inline activity log ───────────────────────
