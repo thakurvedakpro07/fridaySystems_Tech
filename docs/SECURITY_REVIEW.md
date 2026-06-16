@@ -95,11 +95,19 @@ confirmed present before this change via git stash, untouched by this work)
 - Razorpay payment flow — created a `pending_payment` test ticket, clicked "Pay", and confirmed the real Razorpay TEST-mode checkout modal opens and renders fully (branding, payment methods, contact-details step) under the new `script-src` with no `'unsafe-inline'` — zero CSP violations.
 - Django admin — logged in, opened the Users changelist (search, filters, sidebar nav) and a user detail/change form (fieldsets, checkboxes, select widgets) — zero CSP violations.
 
-### P2-03: Alternate frontend Dockerfile lacks security headers
+### ~~P2-03: Alternate frontend Dockerfile lacks security headers~~ — ✅ FIXED
 
-**Impact:** A secondary/alternate frontend `Dockerfile` does not configure the same nginx security headers (CSP, X-Frame-Options, etc.) as the primary one. If ever used for a deployment, it would ship without that hardening.
+**Original impact:** The standalone-container frontend deploy (`Dockerfile.frontend.prod`'s `production` stage, used for `docker run -p 80:80` / `docker-compose.nginx.yml`-style deploys) generated its nginx config inline via a `printf` heredoc with zero security headers — no CSP, no HSTS, no X-Frame-Options, nothing. If this path were ever used for a real deployment, it would ship without any of the hardening the primary host-nginx deploy (`nginx/nginx.conf`) has.
 
-**Status:** Open — not in scope for this fix.
+**Fix:**
+- Extracted the inline `printf` heredoc into a real, version-controlled file, `nginx/frontend-standalone.conf`, and changed `Dockerfile.frontend.prod` to `COPY` it in. The heredoc approach also made it impractical to embed the CSP's `'self'`/`'unsafe-inline'`-style single-quoted tokens (the surrounding `printf '...'` is itself a single-quoted shell string, so embedded literal `'` characters would have prematurely closed it) — a real file sidesteps that entirely and is directly testable with `nginx -t`.
+- Added the same seven headers as `nginx/nginx.conf`'s HTTPS server block: `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-XSS-Protection`, `Cross-Origin-Opener-Policy`, plus the identical `Content-Security-Policy` string (same script-src/style-src reasoning as P2-02 above).
+- Fixed a related nginx gotcha while doing this: `add_header` directives are only inherited from a parent block if the current block defines none of its own. The JS/CSS/font cache-control `location` block sets its own `Cache-Control` header, which would otherwise silently drop all the security headers above for every asset response. Repeated the full header set inside that location block so it isn't lost.
+- `Strict-Transport-Security` is included for parity with the primary config even though this container listens on plain port 80 with no TLS of its own (it's meant to run behind a TLS-terminating proxy/LB) — browsers ignore HSTS received over plain HTTP, so it's a no-op unless something downstream forwards it over HTTPS, but there's no harm in sending it.
+
+**Verified:**
+- `docker build -f Dockerfile.frontend.prod -t supportmitra-frontend-standalone .` — builds successfully (Vite build + nginx stage).
+- Ran the resulting image on the project's Docker network and confirmed: `GET /` and a deep SPA link (`/tickets/some-fake-id`) both return 200 with all 8 headers (7 fixed headers + CSP) present; `GET /api/auth/me/` correctly proxies to the `backend` container (401, as expected unauthenticated — proving the proxy_pass routing works); a hashed JS asset returns 200 with both `Cache-Control: public, immutable` and the full security-header set.
 
 ---
 

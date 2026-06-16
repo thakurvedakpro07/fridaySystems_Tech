@@ -135,6 +135,23 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
+### Alternative: fully-containerized frontend (no host nginx)
+
+If you'd rather not install nginx on the host at all, `Dockerfile.frontend.prod` builds the
+React app and serves it from its own `nginx:1.25-alpine` container instead:
+
+```bash
+docker build -f Dockerfile.frontend.prod -t supportmitra-frontend .
+docker run -d --name supportmitra-frontend -p 80:80 --network <your-compose-network> supportmitra-frontend
+```
+
+Its nginx config (`nginx/frontend-standalone.conf`) carries the exact same security headers
+and Content-Security-Policy as the host-nginx config above (`nginx/nginx.conf`) — HSTS,
+X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, and CSP are
+all kept in sync between the two. This container has no TLS of its own (it listens on plain
+port 80), so it's meant to sit behind a TLS-terminating proxy or load balancer — terminate
+TLS there, not in this container.
+
 ---
 
 ## Step 6: Get an SSL Certificate
