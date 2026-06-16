@@ -19,8 +19,8 @@
 | P0-01 | P0 | Payment signature replay — unlimited free tickets after one real payment | Open |
 | P0-02 | P0 | Unauthenticated direct access to customer ticket attachments via nginx `/media/` | Open |
 | P0-03 | P0 | `DEBUG=1` active in `.env` | Open (pre-deploy checklist item) |
-| ~~P2-01~~ | P2 | `change_password` has no dedicated rate limit, relies on global 100/min throttle | ✅ Fixed (this phase) |
-| P2-02 | P2 | CSP allows `'unsafe-inline'` script-src | Open |
+| ~~P2-01~~ | P2 | `change_password` has no dedicated rate limit, relies on global 100/min throttle | ✅ Fixed |
+| ~~P2-02~~ | P2 | CSP allows `'unsafe-inline'` script-src | ✅ Fixed (this phase) — `style-src 'unsafe-inline'` intentionally retained, see below |
 | P2-03 | P2 | Alternate frontend Dockerfile lacks security headers | Open |
 
 No real findings in: JWT signing/expiry/refresh handling, permission classes / IDOR, privilege escalation, file-upload content-type/size validation, secrets management (`.env` gitignored, no hardcoded credentials found), Docker image hardening (non-root user, no unnecessary capabilities).
@@ -77,11 +77,23 @@ source-inspection test from before the Phase 23 PDF-invoice refactor;
 confirmed present before this change via git stash, untouched by this work)
 ```
 
-### P2-02: CSP allows `'unsafe-inline'` script-src
+### ~~P2-02: CSP allows `'unsafe-inline'` script-src~~ — ✅ FIXED
 
-**Impact:** The Content-Security-Policy header permits `'unsafe-inline'` for `script-src`, which weakens XSS mitigation — an injected `<script>` tag would still execute.
+**Original impact:** The Content-Security-Policy header permitted `'unsafe-inline'` for `script-src`, which weakened XSS mitigation — an injected `<script>` tag would still execute.
 
-**Status:** Open — not in scope for this fix.
+**Investigation:** Checked every source of script content under this CSP for inline `<script>` blocks, inline event-handler attributes (`onclick=`, etc.), and `javascript:` URIs:
+- **Razorpay checkout.js** (`https://checkout.razorpay.com/v1/checkout.js`) — downloaded and inspected the live production bundle directly. Zero inline-script indicators. It does load a secondary script (`https://cdn.razorpay.com/static/cx/razorpay-risk-detection/bundle.js`) via `document.createElement("script")` + `src=`, which is governed by the `script-src` host allowlist, not `'unsafe-inline'` — `cdn.razorpay.com` was missing from the allowlist and has been added.
+- **React/Vite production build** (`frontend/dist/`) — `vite.config.js` confirms all JS/CSS output is external, hashed files; nothing is inlined into `index.html` at build time. `frontend/index.html` itself contains no inline `<script>` content.
+- **Django admin** (Django 4.2) — built-in admin templates pass dynamic values via `data-*` attributes on external `<script src>` tags (a deliberate upstream Django 3.1+ change for strict-CSP compatibility), not inline script bodies.
+
+**Fix:** Removed `'unsafe-inline'` from `script-src` in `nginx/nginx.conf`; added `https://cdn.razorpay.com` (newly discovered requirement, previously silently broken/unused). `style-src 'unsafe-inline'` is intentionally **retained** — see justification below — along with adding `https://fonts.googleapis.com` (`style-src`) and `https://fonts.gstatic.com` (`font-src`) for the Google Fonts `<link>` in `index.html`, which was already in use but not previously allowlisted.
+
+**Why `style-src 'unsafe-inline'` could not be removed:** Direct inspection of Razorpay's checkout.js bundle found at least one `element.setAttribute("style", <dynamically computed string>)` call used for widget positioning/theming. This is third-party code we don't control, the value isn't static (so a hash-based CSP source can't cover it), and the script has no concept of CSP nonces (zero `nonce` references anywhere in the bundle) — so neither a nonce-based nor hash-based replacement is possible for this directive. React's own inline `style={{...}}` usage throughout the app does **not** require `'unsafe-inline'`: React sets style properties individually via the element's CSSOM (`element.style.propertyName = value`), not via the `style` attribute string, which is the mechanism CSP's `style-src` restriction actually governs.
+
+**Verified** (manual, browser-driven, against a CSP-hardened nginx test proxy fronting the real dev backend):
+- Login (customer + admin), Dashboard, Billing pages — rendered correctly, zero console CSP violations.
+- Razorpay payment flow — created a `pending_payment` test ticket, clicked "Pay", and confirmed the real Razorpay TEST-mode checkout modal opens and renders fully (branding, payment methods, contact-details step) under the new `script-src` with no `'unsafe-inline'` — zero CSP violations.
+- Django admin — logged in, opened the Users changelist (search, filters, sidebar nav) and a user detail/change form (fieldsets, checkboxes, select widgets) — zero CSP violations.
 
 ### P2-03: Alternate frontend Dockerfile lacks security headers
 
