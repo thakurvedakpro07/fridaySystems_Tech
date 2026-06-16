@@ -215,6 +215,12 @@ REST_FRAMEWORK = {
         "auth": "10/minute",
         # Analytics runs expensive DB aggregations; limit to 30/hour per user.
         "analytics": "30/hour",
+        # Password change — 5 attempts per 15-minute window per authenticated
+        # user, enforced via a fixed-duration override in
+        # PasswordChangeRateThrottle (DRF's rate-string parser has no native
+        # 15-minute period). This value is unused at runtime but documents
+        # the intended rate.
+        "password_change": "5/15min",
     },
     # Centralizes all DRF exception responses into a consistent JSON shape
     # and logs server errors with full context.

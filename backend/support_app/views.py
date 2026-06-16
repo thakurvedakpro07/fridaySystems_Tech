@@ -97,6 +97,22 @@ class AnalyticsRateThrottle(UserRateThrottle):
     scope = "analytics"
 
 
+# Dedicated bucket for password-change attempts — stricter than the global
+# 100/minute user throttle, so a stolen/leaked session token can't be used
+# to brute-force a customer's current password via change-password.
+# Keyed per authenticated user (falls back to per-IP for anonymous callers).
+#
+# DRF's SimpleRateThrottle.parse_rate() only understands whole second/
+# minute/hour/day periods, so "5 per 15 minutes" can't be expressed as a
+# plain rate string — parse_rate is overridden below to enforce the exact
+# 900-second window instead of approximating with "/hour".
+class PasswordChangeRateThrottle(UserRateThrottle):
+    scope = "password_change"
+
+    def parse_rate(self, rate):
+        return (5, 15 * 60)
+
+
 # ── Custom JWT Login ─────────────────────────────────────────────
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -1050,6 +1066,7 @@ class AdminFreelancerListCreateView(generics.ListCreateAPIView):
 
 @api_view(["POST"])
 @permission_classes([permissions.IsAuthenticated])
+@throttle_classes_dec([PasswordChangeRateThrottle])
 def change_password(request):
     """
     POST /api/auth/change-password/

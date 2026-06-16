@@ -370,3 +370,98 @@ def test_register_missing_password2_returns_400(db):
 
     assert response.status_code == 400
     assert not User.objects.filter(email="nopw2@example.com").exists()
+
+
+# ── Password-change rate limiting (PasswordChangeRateThrottle) ─────
+#
+# change-password is keyed per authenticated user (UserRateThrottle falls
+# back to per-user.pk, not per-IP), so each test below uses a distinct user
+# to avoid sharing a throttle bucket with other tests.
+
+def _make_authed_client(email):
+    """Create a user + Customer profile and return an authenticated APIClient."""
+    from support_app.models import Customer
+    from rest_framework_simplejwt.tokens import RefreshToken as RT
+
+    user = User.objects.create_user(email=email, password="StrongPass123!", role="customer")
+    Customer.objects.create(user=user, company="Test Co")
+    access = str(RT.for_user(user).access_token)
+    c = APIClient()
+    c.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+    return c, user
+
+
+@pytest.mark.django_db
+def test_change_password_success(db):
+    """A valid current_password + new_password change must return 200."""
+    c, user = _make_authed_client("pwchange_a@example.com")
+
+    response = c.post("/api/auth/change-password/", {
+        "current_password": "StrongPass123!",
+        "new_password": "BrandNewPass456!",
+    }, format="json")
+
+    assert response.status_code == 200
+    user.refresh_from_db()
+    assert user.check_password("BrandNewPass456!")
+
+
+@pytest.mark.django_db
+def test_change_password_rate_limit_reached(db):
+    """
+    PasswordChangeRateThrottle allows 5 requests per window; the 6th must
+    return 429. Wrong current_password still counts against the bucket —
+    DRF throttling runs before the view body, so failed attempts count too.
+    """
+    c, _user = _make_authed_client("pwchange_b@example.com")
+
+    for _ in range(5):
+        response = c.post("/api/auth/change-password/", {
+            "current_password": "WrongPassword!",
+            "new_password": "Whatever123!",
+        }, format="json")
+        assert response.status_code != 429
+
+    response = c.post("/api/auth/change-password/", {
+        "current_password": "WrongPassword!",
+        "new_password": "Whatever123!",
+    }, format="json")
+
+    assert response.status_code == 429
+    assert response.has_header("Retry-After")
+    detail = response.data.get("detail", "")
+    assert "throttled" in detail.lower()
+
+
+@pytest.mark.django_db
+def test_change_password_throttle_resets_after_window(db):
+    """
+    Once the throttle window elapses, requests must be allowed again.
+    The throttle history is stored in the cache keyed by scope + user id with
+    a TTL equal to the window, so clearing that cache entry is equivalent to
+    the window having expired.
+    """
+    from django.core.cache import cache
+
+    c, _user = _make_authed_client("pwchange_c@example.com")
+
+    for _ in range(5):
+        response = c.post("/api/auth/change-password/", {
+            "current_password": "WrongPassword!",
+            "new_password": "Whatever123!",
+        }, format="json")
+        assert response.status_code != 429
+
+    blocked = c.post("/api/auth/change-password/", {
+        "current_password": "WrongPassword!",
+        "new_password": "Whatever123!",
+    }, format="json")
+    assert blocked.status_code == 429
+
+    cache.clear()  # simulate the 15-minute window elapsing
+
+    response = c.post("/api/auth/change-password/", {
+        "current_password": "StrongPass123!",
+        "new_password": "FinallyChanged789!",
+    }, format="json")
+    assert response.status_code == 200
