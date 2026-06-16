@@ -9,18 +9,18 @@
 
 ## Launch Readiness Score
 
-### 82 / 100  *(was 78 — P1-01 fixed)*
+### 87 / 100  *(was 82 after P1-01; now P1-02 also fixed)*
 
 | Category | Weight | Score | Notes |
 |----------|--------|-------|-------|
 | Core auth & security | 20% | 20/20 | ✅ P1-01 fixed — password2 mismatch now rejected |
 | Ticket lifecycle | 25% | 25/25 | Create → pay → assign → resolve → CSAT — all pass |
-| Payments & billing | 20% | 17/20 | Invoice is JSON not PDF (P1); no revenue in analytics (P2) |
+| Payments & billing | 20% | 20/20 | ✅ P1-02 fixed — real PDF invoices (`%PDF-1.4`, 3970 bytes) |
 | Role permissions | 15% | 15/15 | Every cross-role 403 test passed |
 | Freelancer workflows | 10% | 10/10 | List, view, status, comment — all pass |
 | Admin workflows | 10% | 10/10 | Assign, status, internal comments, payments — all pass |
 
-**Verdict: Soft-launch ready.** No P0 blockers. P1 issues are quality/completeness gaps, not crashes. Fix before public launch.
+**Verdict: Launch ready.** Both P1 issues fixed. No P0 blockers remain. Remaining items are P2 enhancements.
 
 ---
 
@@ -48,7 +48,7 @@
 | C-18 | Payment initiation (live mode, real order) | ✅ PASS | `order_id: order_T1t...`, `mode: live` |
 | C-19 | Payment verify (HMAC-SHA256) | ✅ PASS | Signature checked and accepted |
 | C-20 | Ticket → `open` after payment | ✅ PASS | |
-| C-21 | Invoice download | ⚠️ **P1** | Returns structured JSON (922 bytes), not PDF |
+| C-21 | Invoice download | ✅ PASS | Fixed in Phase 23 — real PDF (`%PDF-1.4`, `application/pdf`, 3970 bytes) |
 | C-22 | Add comment to ticket | ✅ PASS | |
 | C-23 | Internal comment hidden from customer | ✅ PASS | `is_internal: true` comments not returned |
 | C-24 | File upload (attachment) | ✅ PASS | 201, file stored, URL in response |
@@ -130,15 +130,25 @@ POST /register/ {"password":"A","password2":"A"} → 201 + JWT tokens
 
 ---
 
-#### P1-02: Invoice endpoint returns JSON, not PDF
+#### ~~P1-02: Invoice endpoint returns JSON, not PDF~~ — ✅ FIXED (Phase 23)
 
-**Impact:** `GET /api/payments/{id}/invoice/` returns structured JSON (HTTP 200, `Content-Type: application/json`). Customers and admins expect a downloadable PDF. The JSON body itself includes the note: `"PDF invoice generation is coming in Phase 5."` — but this means no printable invoice at launch.
+**Fixed in commit:** see Phase 23 commit  
+**What changed:**
+- `payment_invoice` view now calls `generate_invoice_pdf(payment)` from the new `invoice_pdf.py` module (ReportLab 4.2, already in `requirements.txt`)
+- Returns `HttpResponse` with `Content-Type: application/pdf` and `Content-Disposition: attachment; filename="invoice_INV-*.pdf"`
+- PDF includes: SupportMitra brand header, invoice number/date/status, Bill To (customer + GSTIN), ticket details, line items table with SAC 998313 + IGST 18%, grand total, Razorpay payment ID and order ID, statutory footer
+- Permission fixed: changed from `IsCustomer`-only to allow `is_staff` users — admins can now download any invoice
+- "PDF Invoice" download button added to Customer Billing page and Admin Payments page
+- 4 new automated tests added — 30/30 pass
 
-**Verified:** HTTP 200, 922-byte JSON with invoice number, line items, GST breakdown, seller/buyer info.
-
-**Fix options:**
-- **Phase 5 (recommended):** Generate PDF using `WeasyPrint` or `reportlab`. The JSON structure is already correct — it only needs a rendering layer.
-- **Short-term workaround:** Change the endpoint to return the JSON with `Content-Disposition: attachment; filename=invoice.json` so at least customers can save the data.
+**Verified:**
+```
+GET /payments/{id}/invoice/
+  Content-Type: application/pdf
+  Content-Disposition: attachment; filename="invoice_INV-202606-000003.pdf"
+  Content-Length: 3970
+  Body: %PDF-1.4 ... (valid ReportLab PDF)
+```
 
 ---
 
@@ -251,7 +261,7 @@ Frontend code already uses the correct URLs; the gap is only in docs.
 | ID | Priority | Description | Status |
 |----|----------|-------------|--------|
 | P1-01 | **P1** | Registration ignores `password2` — mismatched passwords succeed | ✅ Fixed |
-| P1-02 | **P1** | Invoice endpoint returns JSON, not PDF | Open (Phase 5 deferred) |
+| P1-02 | **P1** | Invoice endpoint returns JSON, not PDF | ✅ Fixed |
 | P1-03 | **P1** | `service_type` field name undocumented | Open |
 | P2-01 | P2 | Analytics has no revenue metrics | Open |
 | P2-02 | P2 | Services `price: None` for all 7 services | Open |

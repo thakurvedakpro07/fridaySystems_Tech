@@ -8,7 +8,7 @@
  */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { listMyPayments } from "../api/payments";
+import { downloadInvoice, listMyPayments } from "../api/payments";
 import MainLayout from "../components/layouts/MainLayout";
 import { usePageTitle } from "../hooks/usePageTitle";
 
@@ -44,12 +44,35 @@ function StatCard({ icon, label, value, sub, colour }) {
   );
 }
 
+// ── Invoice download helper ────────────────────────────────────────
+async function triggerInvoiceDownload(paymentId, invoiceNumber) {
+  const { data } = await downloadInvoice(paymentId);
+  const url = window.URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `invoice_${invoiceNumber || paymentId}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 // ── Payment row ───────────────────────────────────────────────────
 function PaymentRow({ payment }) {
+  const [downloading, setDownloading] = useState(false);
   const date = new Date(payment.created_at).toLocaleDateString("en-IN", {
     day: "numeric", month: "short", year: "numeric",
   });
   const typeLabel = payment.payment_type.replace("_", " ");
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      await triggerInvoiceDownload(payment.id, payment.invoice_number);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="flex items-center gap-3 px-5 py-4 hover:bg-slate-50/60 transition-colors">
@@ -77,10 +100,24 @@ function PaymentRow({ payment }) {
         </div>
       </div>
 
-      {/* Amount + status */}
+      {/* Amount + status + download */}
       <div className="text-right shrink-0 space-y-1">
         <p className="text-sm font-semibold text-slate-900">₹{payment.total_amount}</p>
         <StatusBadge status={payment.status} />
+        {payment.status === "completed" && (
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="flex items-center gap-1 text-[11px] font-medium text-indigo-600
+                       hover:text-indigo-800 disabled:opacity-50 transition-colors mt-1"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            {downloading ? "Downloading…" : "PDF Invoice"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -188,7 +225,7 @@ export default function BillingPage() {
           <a href="mailto:billing@supportmitra.in" className="text-indigo-500 hover:underline">
             billing@supportmitra.in
           </a>{" "}
-          for invoice queries.
+          for invoice queries. All completed payments include a downloadable PDF tax invoice.
         </p>
       )}
     </MainLayout>

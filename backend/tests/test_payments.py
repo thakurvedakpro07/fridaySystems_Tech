@@ -33,14 +33,15 @@ def _make_payment(customer, ticket=None):
 
 
 @pytest.mark.django_db
-def test_payment_webhook_returns_200():
+def test_payment_webhook_rejects_empty_payload():
     """
-    POST /api/payments/webhook/ should return 200 (even with empty payload).
-    HMAC verification will be added in Phase 2.
+    POST /api/payments/webhook/ with no signature header returns 400.
+    The H-08 fix (Phase 22) requires a valid Razorpay-Signature header —
+    an empty or unsigned payload must be rejected to prevent spoofing.
     """
     client = APIClient()
     response = client.post("/api/payments/webhook/", {}, format="json")
-    assert response.status_code == 200
+    assert response.status_code == 400
 
 
 @pytest.mark.django_db
@@ -82,13 +83,64 @@ def test_get_payment_returns_404_for_other_customer(db):
 
 
 @pytest.mark.django_db
-def test_payment_invoice_returns_501(db):
-    """GET /api/payments/{id}/invoice/ returns 501 until Phase 2 is implemented."""
+def test_invoice_returns_pdf_content_type(db):
+    """GET /api/payments/{id}/invoice/ returns HTTP 200 with Content-Type: application/pdf."""
     client_a, customer_a = _make_customer_client(db, "pay_f@example.com")
     payment = _make_payment(customer_a)
 
     response = client_a.get(f"/api/payments/{payment.id}/invoice/")
-    assert response.status_code == 501
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/pdf"
+    # PDF magic bytes — every valid PDF starts with %PDF
+    assert response.content[:4] == b"%PDF"
+
+
+@pytest.mark.django_db
+def test_invoice_filename_contains_invoice_number(db):
+    """Content-Disposition header should include the invoice number as the filename."""
+    client_a, customer_a = _make_customer_client(db, "pay_g@example.com")
+    payment = _make_payment(customer_a)
+
+    response = client_a.get(f"/api/payments/{payment.id}/invoice/")
+
+    assert response.status_code == 200
+    disposition = response.get("Content-Disposition", "")
+    assert "attachment" in disposition
+    assert ".pdf" in disposition
+
+
+@pytest.mark.django_db
+def test_invoice_admin_can_download_any_payment(db):
+    """Admin staff can download the invoice for any customer's payment."""
+    _, customer_a = _make_customer_client(db, "pay_h@example.com")
+    payment = _make_payment(customer_a)
+
+    admin_user = User.objects.create_user(
+        email="admin_inv@example.com",
+        password="AdminPass123!",
+        role="admin",
+        is_staff=True,
+    )
+    admin_client = APIClient()
+    admin_client.force_authenticate(user=admin_user)
+
+    response = admin_client.get(f"/api/payments/{payment.id}/invoice/")
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/pdf"
+
+
+@pytest.mark.django_db
+def test_invoice_other_customer_cannot_download(db):
+    """A customer cannot download another customer's invoice — must return 403."""
+    _, customer_a = _make_customer_client(db, "pay_i@example.com")
+    client_b, _ = _make_customer_client(db, "pay_j@example.com")
+    payment = _make_payment(customer_a)
+
+    response = client_b.get(f"/api/payments/{payment.id}/invoice/")
+
+    assert response.status_code == 403
 
 
 @pytest.mark.django_db

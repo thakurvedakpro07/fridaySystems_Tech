@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { adminConfirmPayment, listAdminPayments } from "../../api/payments";
+import { adminConfirmPayment, downloadInvoice, listAdminPayments } from "../../api/payments";
 import MainLayout from "../../components/layouts/MainLayout";
 import { useToast } from "../../context/ToastContext";
 import { usePageTitle } from "../../hooks/usePageTitle";
@@ -53,8 +53,22 @@ const FILTER_TABS = [
   { label: "Failed",    value: "failed" },
 ];
 
+// ── Invoice download helper ────────────────────────────────────────
+async function triggerInvoiceDownload(paymentId, invoiceNumber) {
+  const { data } = await downloadInvoice(paymentId);
+  const url = window.URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `invoice_${invoiceNumber || paymentId}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 // ── Payment row ───────────────────────────────────────────────────
 function PaymentRow({ payment, onConfirm, confirming }) {
+  const [downloading, setDownloading] = useState(false);
   const date = new Date(payment.created_at).toLocaleDateString("en-IN", {
     day: "numeric", month: "short", year: "numeric",
   });
@@ -98,6 +112,26 @@ function PaymentRow({ payment, onConfirm, confirming }) {
           <p className="text-sm font-semibold text-slate-900">₹{payment.total_amount}</p>
           <StatusBadge status={payment.status} />
         </div>
+        {payment.status === "completed" && (
+          <button
+            onClick={async () => {
+              setDownloading(true);
+              try { await triggerInvoiceDownload(payment.id, payment.invoice_number); }
+              finally { setDownloading(false); }
+            }}
+            disabled={downloading}
+            title="Download PDF Invoice"
+            className="text-xs font-medium text-indigo-600 border border-indigo-200
+                       hover:bg-indigo-50 disabled:opacity-50 px-2.5 py-1 rounded-lg
+                       transition-colors shrink-0 flex items-center gap-1"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            {downloading ? "…" : "PDF"}
+          </button>
+        )}
         {payment.status === "pending" && (
           <button
             onClick={() => onConfirm(payment.id)}
