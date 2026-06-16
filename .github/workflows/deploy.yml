@@ -95,11 +95,11 @@ jobs:
         run: |
           curl -s -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
             -H 'Content-type: application/json' \
-            --data "{\"text\":\"✅ SupportMitra deployed successfully. Commit: \`$(echo ${{ github.sha }} | cut -c1-7)\`\"}"
+            --data "{\"text\":\"✅ ResolveHQ deployed successfully. Commit: \`$(echo ${{ github.sha }} | cut -c1-7)\`\"}"
 
       - name: Notify Slack — failure
         if: failure() && secrets.SLACK_WEBHOOK_URL != ''
         run: |
           curl -s -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
             -H 'Content-type: application/json' \
-            --data "{\"text\":\"❌ SupportMitra deployment FAILED. <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View logs>\"}"
+            --data "{\"text\":\"❌ ResolveHQ deployment FAILED. <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View logs>\"}"

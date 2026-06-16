@@ -1,7 +1,7 @@
-You are continuing my SupportMitra project.
+You are continuing my ResolveHQ project.
 
 PROJECT:
-SupportMitra = IT infrastructure support platform for Indian SMBs.
+ResolveHQ = IT infrastructure support platform for Indian SMBs.
 
 CORE FLOW:
 

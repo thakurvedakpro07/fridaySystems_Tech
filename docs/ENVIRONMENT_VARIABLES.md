@@ -1,4 +1,4 @@
-# SupportMitra — Environment Variables Reference
+# ResolveHQ — Environment Variables Reference
 
 All environment variables are read from `backend/.env`.
 Copy `.env.example` to `backend/.env` and fill in the values.
@@ -68,7 +68,7 @@ Optional. Set `ENABLE_WHATSAPP_NOTIFICATIONS=true` to activate.
 | Variable | Example | Description |
 |----------|---------|-------------|
 | `GUPSHUP_API_KEY` | `xxxxxxxx` | Gupshup API key from the dashboard. |
-| `GUPSHUP_APP_NAME` | `SupportMitra` | The Gupshup app name as configured in their dashboard. |
+| `GUPSHUP_APP_NAME` | `ResolveHQ` | The Gupshup app name as configured in their dashboard. |
 | `GUPSHUP_PHONE_NUMBER` | `+918XXXXXXXXX` | Your Gupshup sender phone number. |
 | `ENABLE_WHATSAPP_NOTIFICATIONS` | `false` | Set to `true` to enable WhatsApp notifications via Gupshup. |
 
@@ -88,7 +88,7 @@ Optional. Set `ENABLE_WHATSAPP_NOTIFICATIONS=true` to activate.
 |----------|---------|-------------|
 | `GST_RATE` | `0.18` | GST rate applied to invoices (18% = 0.18). |
 | `BUSINESS_GSTIN` | `` | Your 15-digit GSTIN for GST invoices. Required for compliant invoicing. |
-| `BUSINESS_NAME` | `SupportMitra Technologies` | Business name printed on invoices. |
+| `BUSINESS_NAME` | `Friday Tech Systems` | Business name printed on invoices. |
 
 ---
 

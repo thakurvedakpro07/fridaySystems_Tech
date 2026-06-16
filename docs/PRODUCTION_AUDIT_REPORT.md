@@ -1,4 +1,4 @@
-# SupportMitra — Production Readiness Audit Report
+# ResolveHQ — Production Readiness Audit Report
 
 **Date:** 2026-06-15  
 **Auditor:** Claude Sonnet 4.6 (automated code review)  
@@ -31,7 +31,7 @@
 
 ## Executive Summary
 
-SupportMitra is structurally sound and architecturally well-designed. The Docker/Nginx/Gunicorn production stack (Phase 21) is production-ready. However, **5 critical blockers** must be resolved before any paying customer touches the system. An additional **9 high-severity** issues should be fixed in the same sprint. Medium and low issues can be deferred to the first post-launch patch.
+ResolveHQ is structurally sound and architecturally well-designed. The Docker/Nginx/Gunicorn production stack (Phase 21) is production-ready. However, **5 critical blockers** must be resolved before any paying customer touches the system. An additional **9 high-severity** issues should be fixed in the same sprint. Medium and low issues can be deferred to the first post-launch patch.
 
 **Critical blockers (launch-blocking):** 5  
 **High severity:** 9  
@@ -559,7 +559,7 @@ with transaction.atomic():
 **Area:** Legal, UX  
 **File:** `frontend/src/pages/Login.jsx:216`
 
-**Problem:** The security badge reads "256-bit SSL encryption · SOC 2 compliant". SupportMitra has not undergone a SOC 2 audit. This is a false claim that could create legal liability.
+**Problem:** The security badge reads "256-bit SSL encryption · SOC 2 compliant". ResolveHQ has not undergone a SOC 2 audit. This is a false claim that could create legal liability.
 
 **Fix:** Change to "256-bit SSL encryption · Data stays in India" or remove the second claim entirely.
 

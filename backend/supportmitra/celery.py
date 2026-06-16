@@ -1,5 +1,5 @@
 """
-Celery application configuration for SupportMitra.
+Celery application configuration for ResolveHQ.
 
 Celery handles background tasks like:
 - Sending emails and WhatsApp messages

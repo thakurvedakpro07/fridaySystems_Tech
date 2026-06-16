@@ -1,4 +1,4 @@
-# SupportMitra — Security Audit
+# ResolveHQ — Security Audit
 **Phase 10: Production Readiness**
 **Date:** 2026-05-20
 **Auditor:** Claude Sonnet 4.6

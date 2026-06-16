@@ -1,4 +1,4 @@
-# SupportMitra — SaaS Visual Redesign Report
+# ResolveHQ — SaaS Visual Redesign Report
 **Date:** 2026-05-21  
 **Scope:** Full frontend visual redesign — design system, all pages, all components  
 **Build status:** ✅ Clean (137 modules, 0 errors)
@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-SupportMitra's frontend has been transformed from a developer-oriented MVP into a visually modern, premium SaaS application. The redesign follows design conventions established by Linear, Stripe Dashboard, and Notion — clean surfaces, consistent typography, subtle depth, and meaningful micro-interactions.
+ResolveHQ's frontend has been transformed from a developer-oriented MVP into a visually modern, premium SaaS application. The redesign follows design conventions established by Linear, Stripe Dashboard, and Notion — clean surfaces, consistent typography, subtle depth, and meaningful micro-interactions.
 
 **Overall UI Quality: Before → After**
 | Dimension | Before | After |
@@ -175,7 +175,7 @@ Added `dot` prop for status indicators (colored dot prefix).
 | Before | After |
 |--------|-------|
 | `bg-white border-b border-gray-200` | `bg-white/80 backdrop-blur-md border-slate-200/80` |
-| Plain `SupportMitra` text logo | Logo with shield icon + inter font bold |
+| Plain `ResolveHQ` text logo | Logo with shield icon + inter font bold |
 | Plain gray text links | `NavLink` with active state (`bg-indigo-50 text-indigo-600`) |
 | `h-16` (64px) | `h-14` (56px) — tighter, more modern |
 | "+ New Ticket" plain link | Indigo button with `+` SVG icon |

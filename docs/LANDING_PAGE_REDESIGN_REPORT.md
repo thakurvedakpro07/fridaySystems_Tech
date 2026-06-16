@@ -1,4 +1,4 @@
-# SupportMitra — Landing Page Redesign Report
+# ResolveHQ — Landing Page Redesign Report
 **Date:** 2026-05-21  
 **Scope:** Full marketing landing page — 8 sections, new LandingFooter component  
 **Build status:** ✅ Clean (138 modules, 0 errors)
@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-SupportMitra's landing page has been rebuilt from a 3-section skeleton into a complete, investor-demo-ready marketing page. It now covers the full conversion funnel: awareness → understanding → trust → action. The design follows conventions from Linear, Stripe, and Notion while remaining beginner-friendly and using the existing design system.
+ResolveHQ's landing page has been rebuilt from a 3-section skeleton into a complete, investor-demo-ready marketing page. It now covers the full conversion funnel: awareness → understanding → trust → action. The design follows conventions from Linear, Stripe, and Notion while remaining beginner-friendly and using the existing design system.
 
 **Before → After**
 | Dimension | Before | After |
@@ -26,7 +26,7 @@ SupportMitra's landing page has been rebuilt from a 3-section skeleton into a co
 ## 1. Section Architecture
 
 ### Section 1 — Hero
-**Goal:** Immediate clarity on what SupportMitra does and why to trust it.
+**Goal:** Immediate clarity on what ResolveHQ does and why to trust it.
 
 - Indigo trust badge with animated pulse dot ("Trusted by 500+ Indian SMBs")
 - Large headline with gradient text span on the value proposition ("only on resolution")
@@ -83,7 +83,7 @@ Consulting fee disclaimer: "+ ₹299 consulting fee per ticket · Fully refunded
 
 Ends with a secondary CTA: "Get Started — Free to Join".
 
-**Why:** Transparent pricing is SupportMitra's key differentiator. Showing all prices upfront removes the #1 objection ("how much will this cost?") before the visitor reaches the sign-up form.
+**Why:** Transparent pricing is ResolveHQ's key differentiator. Showing all prices upfront removes the #1 objection ("how much will this cost?") before the visitor reaches the sign-up form.
 
 ### Section 6 — Testimonials
 **Goal:** Social proof from identifiable Indian SMB stakeholders.
@@ -134,7 +134,7 @@ Created `frontend/src/components/layout/LandingFooter.jsx` — separate from the
 │ support@email     5 links    4 links    4 links    4 links      │
 │ [Social icons]                                                  │
 ├────────────────────────────────────────────────────────────────┤
-│ © 2026 SupportMitra · All rights reserved  [GST] [Made in 🇮🇳] │
+│ © 2026 ResolveHQ · All rights reserved  [GST] [Made in 🇮🇳] │
 └────────────────────────────────────────────────────────────────┘
 ```
 

@@ -1,11 +1,11 @@
-# SupportMitra — Error Handling & Resilience Report
+# ResolveHQ — Error Handling & Resilience Report
 _Implemented: 2026-05-24_
 
 ---
 
 ## Overview
 
-This phase added a complete, production-grade error handling and resilience layer to SupportMitra. All API errors now produce consistent JSON shapes from the backend. The frontend extracts clean messages from any error type, shows type-differentiated toast durations, catches React crashes with an error boundary, detects offline/reconnect state globally, and provides proper 404/403 pages instead of silent redirects.
+This phase added a complete, production-grade error handling and resilience layer to ResolveHQ. All API errors now produce consistent JSON shapes from the backend. The frontend extracts clean messages from any error type, shows type-differentiated toast durations, catches React crashes with an error boundary, detects offline/reconnect state globally, and provides proper 404/403 pages instead of silent redirects.
 
 ---
 

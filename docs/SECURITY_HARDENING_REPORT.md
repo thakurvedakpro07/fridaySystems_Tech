@@ -1,11 +1,11 @@
-# SupportMitra — Security Hardening Report
+# ResolveHQ — Security Hardening Report
 _Implemented: 2026-05-24_
 
 ---
 
 ## Overview
 
-This phase performed a full security audit and implemented production-grade hardening across all layers of SupportMitra. No existing functionality was changed; all fixes are additive or replace unsafe defaults.
+This phase performed a full security audit and implemented production-grade hardening across all layers of ResolveHQ. No existing functionality was changed; all fixes are additive or replace unsafe defaults.
 
 ---
 

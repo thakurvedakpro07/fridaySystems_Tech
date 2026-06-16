@@ -1,5 +1,5 @@
 """
-Zammad integration — push SupportMitra tickets to a Zammad instance.
+Zammad integration — push ResolveHQ tickets to a Zammad instance.
 TODO: implement in Phase 4.
 """
 

@@ -1,5 +1,5 @@
 """
-osTicket integration — push SupportMitra tickets to an osTicket instance.
+osTicket integration — push ResolveHQ tickets to an osTicket instance.
 TODO: implement in Phase 4.
 """
 

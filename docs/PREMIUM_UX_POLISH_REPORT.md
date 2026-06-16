@@ -1,4 +1,4 @@
-# SupportMitra — Premium UX Polish Report
+# ResolveHQ — Premium UX Polish Report
 **Date:** 2026-05-21  
 **Scope:** Motion design, microinteractions, responsiveness, loading states, dashboard usability  
 **Build status:** ✅ Clean (138 modules, 0 errors)

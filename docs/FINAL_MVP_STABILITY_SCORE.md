@@ -1,4 +1,4 @@
-# SupportMitra — Final MVP Stability Score
+# ResolveHQ — Final MVP Stability Score
 **Phase 9: Production Readiness Assessment**
 **Date:** 2026-05-20
 **Auditor:** Claude Sonnet 4.6
@@ -43,7 +43,7 @@ Each area is scored out of 10.
 
 **8.2/10 = Production-Ready for Beta Launch with Known Limitations**
 
-SupportMitra is ready to onboard real users under controlled conditions (beta / limited access). All core workflows — customer ticket creation, freelancer resolution, and admin oversight — are fully functional and verified.
+ResolveHQ is ready to onboard real users under controlled conditions (beta / limited access). All core workflows — customer ticket creation, freelancer resolution, and admin oversight — are fully functional and verified.
 
 The 1.8 points deducted reflect:
 - **Missing features** (file uploads, payment flow, analytics) that were explicitly scoped as MVP gaps
@@ -137,7 +137,7 @@ Before deploying to a real production environment:
 
 ## Conclusion
 
-SupportMitra has a solid, production-grade foundation:
+ResolveHQ has a solid, production-grade foundation:
 
 - Clean separation of concerns (models → serializers → services → views)
 - Role-based permission system correctly enforced at every layer

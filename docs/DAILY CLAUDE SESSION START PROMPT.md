@@ -1,4 +1,4 @@
-You are continuing the SupportMitra project.
+You are continuing the ResolveHQ project.
 
 Before writing any code:
 

@@ -1,4 +1,4 @@
-# SupportMitra — Pre-Deployment Security Review
+# ResolveHQ — Pre-Deployment Security Review
 
 **Reviewed:** 2026-06-16
 **Reviewer:** Claude (security audit — code review, no penetration testing)

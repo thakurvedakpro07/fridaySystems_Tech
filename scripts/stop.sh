@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# scripts/stop.sh — Stop all SupportMitra services
+# scripts/stop.sh — Stop all ResolveHQ services
 #
 # Usage:
 #   bash scripts/stop.sh            # stop containers, keep volumes

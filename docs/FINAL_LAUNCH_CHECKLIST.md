@@ -1,4 +1,4 @@
-# SupportMitra — Final Launch Checklist
+# ResolveHQ — Final Launch Checklist
 **Phase 10: Production Readiness**
 **Date:** 2026-05-20
 **Status:** Ready for Beta Launch

@@ -1,11 +1,11 @@
-# SupportMitra — Payment & Billing System Report
+# ResolveHQ — Payment & Billing System Report
 _Implemented: 2026-05-24_
 
 ---
 
 ## Overview
 
-This phase built the production-grade payment and billing foundation for SupportMitra.
+This phase built the production-grade payment and billing foundation for ResolveHQ.
 The architecture is fully Razorpay-ready: switch live keys on in `.env` and the entire
 checkout flow activates with no code changes.  Without keys, every flow works in
 **sandbox mode** — a simulated checkout that exercises the full order→verify→open

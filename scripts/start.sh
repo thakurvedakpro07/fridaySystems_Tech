@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# scripts/start.sh — Start all SupportMitra services
+# scripts/start.sh — Start all ResolveHQ services
 #
 # Usage:
 #   bash scripts/start.sh           # development (default)

@@ -90,7 +90,7 @@ function ProfileTab({ profile, setProfile, role }) {
 
   return (
     <form onSubmit={handleSave} className="space-y-5">
-      <SectionCard title="Personal Information" description="Your name as it appears across SupportMitra.">
+      <SectionCard title="Personal Information" description="Your name as it appears across ResolveHQ.">
         <FieldRow label="First name">
           <input className="input-base w-full" value={form.first_name} onChange={set("first_name")} placeholder="Rahul" />
         </FieldRow>
@@ -255,7 +255,7 @@ function SecurityTab() {
         <ul className="space-y-2">
           {[
             "Use a password manager to generate and store passwords securely.",
-            "Never share your password with anyone — SupportMitra staff will never ask for it.",
+            "Never share your password with anyone — ResolveHQ staff will never ask for it.",
             "Enable two-factor authentication when available.",
             "Sign out of shared or public computers after use.",
           ].map((tip) => (

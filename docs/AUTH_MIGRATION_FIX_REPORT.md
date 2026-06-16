@@ -1,4 +1,4 @@
-# SupportMitra — Auth Migration Fix Report
+# ResolveHQ — Auth Migration Fix Report
 
 **Date:** 2026-06-15  
 **Error:** `django.db.utils.ProgrammingError: column support_app_customuser.is_verified does not exist`  

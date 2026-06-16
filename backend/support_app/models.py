@@ -1,5 +1,5 @@
 """
-Database models for SupportMitra.
+Database models for ResolveHQ.
 
 Every table in the database is defined here as a Python class.
 Django's ORM turns these classes into SQL tables automatically
@@ -240,7 +240,7 @@ class Freelancer(models.Model):
 
 # ── Ticket System ────────────────────────────────────────────────
 #
-# The ticket is the central object in SupportMitra. Everything else
+# The ticket is the central object in ResolveHQ. Everything else
 # (comments, attachments, activity logs, assignments) hangs off it.
 #
 # Design principles applied here:

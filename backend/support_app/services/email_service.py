@@ -1,5 +1,5 @@
 """
-Email service for SupportMitra.
+Email service for ResolveHQ.
 
 Uses Django's built-in email framework:
   - Development: console backend (prints to terminal) — set by DEBUG=1 in settings
@@ -49,7 +49,7 @@ def send_welcome(user) -> None:
     """Send a welcome email after successful registration."""
     _send(
         to=user.email,
-        subject="Welcome to SupportMitra 🎉",
+        subject="Welcome to ResolveHQ 🎉",
         template="email/welcome.html",
         context={"email": user.email},
     )
@@ -59,7 +59,7 @@ def send_ticket_created(ticket) -> None:
     """Notify the customer that their ticket was successfully submitted."""
     _send(
         to=ticket.customer.user.email,
-        subject=f"[{ticket.ticket_number}] Ticket received — SupportMitra",
+        subject=f"[{ticket.ticket_number}] Ticket received — ResolveHQ",
         template="email/ticket_created.html",
         context={
             "email": ticket.customer.user.email,
@@ -78,7 +78,7 @@ def send_ticket_assigned(ticket) -> None:
         return
     _send(
         to=ticket.customer.user.email,
-        subject=f"[{ticket.ticket_number}] Engineer assigned — SupportMitra",
+        subject=f"[{ticket.ticket_number}] Engineer assigned — ResolveHQ",
         template="email/ticket_assigned.html",
         context={
             "email": ticket.customer.user.email,
@@ -93,7 +93,7 @@ def send_ticket_resolved(ticket) -> None:
     """Notify the customer that their ticket has been resolved."""
     _send(
         to=ticket.customer.user.email,
-        subject=f"[{ticket.ticket_number}] Your ticket has been resolved — SupportMitra",
+        subject=f"[{ticket.ticket_number}] Your ticket has been resolved — ResolveHQ",
         template="email/ticket_resolved.html",
         context={
             "email": ticket.customer.user.email,
@@ -111,7 +111,7 @@ def send_comment_notification(ticket, comment, recipient_user) -> None:
     preview = comment.body[:200] + ("…" if len(comment.body) > 200 else "")
     _send(
         to=recipient_user.email,
-        subject=f"[{ticket.ticket_number}] New reply — SupportMitra",
+        subject=f"[{ticket.ticket_number}] New reply — ResolveHQ",
         template="email/comment_added.html",
         context={
             "email": recipient_user.email,
@@ -133,7 +133,7 @@ def send_verification_email(user) -> None:
     verify_url = f"{APP_URL}/verify-email?uid={uid}&token={token}"
     _send(
         to=user.email,
-        subject="Verify your SupportMitra email address",
+        subject="Verify your ResolveHQ email address",
         template="email/verify_email.html",
         context={"email": user.email, "verify_url": verify_url},
     )
@@ -144,7 +144,7 @@ def send_password_reset_email(user, uid: str, token: str) -> None:
     reset_url = f"{APP_URL}/reset-password?uid={uid}&token={token}"
     _send(
         to=user.email,
-        subject="Reset your SupportMitra password",
+        subject="Reset your ResolveHQ password",
         template="email/password_reset.html",
         context={"email": user.email, "reset_url": reset_url},
     )

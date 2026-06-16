@@ -1,4 +1,4 @@
-# SupportMitra
+# ResolveHQ
 
 IT Infrastructure Support Portal for Indian SMBs and SAP Shops.
 
@@ -73,7 +73,7 @@ npm run lint
 ## Project Layout
 
 ```
-SupportMitra/
+ResolveHQ/
 ├── backend/          Django REST API
 ├── frontend/         React + Vite + Tailwind
 ├── .env.example      Template — copy to .env and fill in secrets

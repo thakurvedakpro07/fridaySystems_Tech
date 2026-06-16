@@ -49,7 +49,7 @@ export function useAuth() {
       const { data } = await registerApi(email, password, password2, company, phone);
       setTokens(data.access, data.refresh);
       setUser(data.user);
-      toast("Account created! Welcome to SupportMitra.", "success");
+      toast("Account created! Welcome to ResolveHQ.", "success");
       return { success: true };
     } catch (err) {
       const responseData = err.response?.data || {};

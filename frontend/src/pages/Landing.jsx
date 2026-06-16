@@ -107,7 +107,7 @@ const TESTIMONIALS = [
     name: "Rajesh Mehta",
     title: "IT Manager",
     company: "Mehta Textiles Pvt. Ltd., Surat",
-    body: "We had AD sync failures every other week. SupportMitra assigned an engineer who fixed the Windows Server issue in under 3 hours. Worth every rupee — and the GST invoice made reimbursement easy.",
+    body: "We had AD sync failures every other week. ResolveHQ assigned an engineer who fixed the Windows Server issue in under 3 hours. Worth every rupee — and the GST invoice made reimbursement easy.",
     rating: 5,
     initials: "RM",
     avatarBg: "bg-indigo-600",
@@ -155,7 +155,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Is my company data safe?",
-    a: "SupportMitra uses strict role-based access. Only the assigned engineer can view your ticket details. Customer data is never shared across accounts and is stored securely on Indian servers.",
+    a: "ResolveHQ uses strict role-based access. Only the assigned engineer can view your ticket details. Customer data is never shared across accounts and is stored securely on Indian servers.",
   },
 ];
 
@@ -488,7 +488,7 @@ export default function Landing() {
               <SectionLabel>Customer Stories</SectionLabel>
               <h2 className="text-3xl font-bold text-slate-900 mb-3">Trusted by real businesses</h2>
               <p className="text-slate-500 text-base max-w-xl mx-auto">
-                IT teams and founders across India rely on SupportMitra to keep operations running.
+                IT teams and founders across India rely on ResolveHQ to keep operations running.
               </p>
             </div>
 

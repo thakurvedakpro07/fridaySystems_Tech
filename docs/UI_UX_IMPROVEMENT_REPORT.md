@@ -1,4 +1,4 @@
-# SupportMitra — UI/UX Improvement Report
+# ResolveHQ — UI/UX Improvement Report
 **Phase 10: Production Hardening + UX Polish**
 **Date:** 2026-05-20
 **Auditor:** Claude Sonnet 4.6
@@ -46,20 +46,20 @@ This report documents every UX improvement implemented in Phase 10, plus the com
 
 ### ✅ UX-005: Dynamic browser tab titles on every page
 
-**Before:** Every page showed "SupportMitra" as the browser tab title regardless of which page the user was on. If a user had 3 tabs open, they couldn't tell which was which.
+**Before:** Every page showed "ResolveHQ" as the browser tab title regardless of which page the user was on. If a user had 3 tabs open, they couldn't tell which was which.
 
 **After:** Each page sets a descriptive title:
 
 | Page | Tab Title |
 |------|-----------|
-| Login | Sign In — SupportMitra |
-| Register | Create Account — SupportMitra |
-| Customer Dashboard | My Tickets — SupportMitra |
-| New Ticket | Open a Ticket — SupportMitra |
-| Ticket Detail | TKT-ABC123 — SupportMitra |
-| Admin Dashboard | Admin Dashboard — SupportMitra |
-| Freelancer Dashboard | My Assigned Tickets — SupportMitra |
-| Freelancer List | Freelancers — SupportMitra |
+| Login | Sign In — ResolveHQ |
+| Register | Create Account — ResolveHQ |
+| Customer Dashboard | My Tickets — ResolveHQ |
+| New Ticket | Open a Ticket — ResolveHQ |
+| Ticket Detail | TKT-ABC123 — ResolveHQ |
+| Admin Dashboard | Admin Dashboard — ResolveHQ |
+| Freelancer Dashboard | My Assigned Tickets — ResolveHQ |
+| Freelancer List | Freelancers — ResolveHQ |
 
 **Files changed:**
 - `frontend/src/hooks/usePageTitle.js` — new 8-line custom hook

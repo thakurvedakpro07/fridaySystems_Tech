@@ -1,5 +1,5 @@
 """
-Root URL configuration for SupportMitra.
+Root URL configuration for ResolveHQ.
 
 Every URL in the project is listed here (or included from an app).
 """
@@ -8,6 +8,10 @@ from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import include, path
 from django_prometheus import exports as prometheus_exports
+
+admin.site.site_header = "ResolveHQ Control Center"
+admin.site.site_title = "ResolveHQ Admin"
+admin.site.index_title = "Operations Dashboard"
 
 urlpatterns = [
     # ── Django admin UI ───────────────────────────────────────────

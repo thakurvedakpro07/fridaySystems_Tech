@@ -1,4 +1,4 @@
-# SupportMitra — Frontend Performance Report
+# ResolveHQ — Frontend Performance Report
 **Phase 15 — Frontend Optimization**
 **Date:** 2026-05-21
 **Build status:** ✅ Clean (0 errors, 144 modules)

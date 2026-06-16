@@ -1,4 +1,4 @@
-# SupportMitra — Django Admin URL Change Note
+# ResolveHQ — Django Admin URL Change Note
 
 **Changed in:** Phase 22 (2026-06-15)  
 **Commit:** `6bf6e96`  
@@ -13,7 +13,7 @@ http://127.0.0.1:8000/django-admin/        ← development (direct to gunicorn)
 https://supportmitra.in/django-admin/       ← production (via nginx)
 ```
 
-**SupportMitra uses `/django-admin/` instead of Django's default `/admin/` route.**
+**ResolveHQ uses `/django-admin/` instead of Django's default `/admin/` route.**
 
 ---
 
@@ -21,7 +21,7 @@ https://supportmitra.in/django-admin/       ← production (via nginx)
 
 Django's default admin URL is `path("admin/", admin.site.urls)`, making it available at `/admin/`.
 
-SupportMitra's production setup puts nginx in front of gunicorn. The nginx config uses a `try_files $uri $uri/ /index.html` catch-all to serve the React SPA for all unmatched routes. This meant:
+ResolveHQ's production setup puts nginx in front of gunicorn. The nginx config uses a `try_files $uri $uri/ /index.html` catch-all to serve the React SPA for all unmatched routes. This meant:
 
 1. Browser requests `/admin/`
 2. nginx catches it with the `location /` `try_files` catch-all

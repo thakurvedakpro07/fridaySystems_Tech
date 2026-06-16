@@ -1,5 +1,5 @@
 """
-Gunicorn production configuration for SupportMitra.
+Gunicorn production configuration for ResolveHQ.
 
 Gunicorn is the WSGI server that runs Django in production.
 In development, Django's built-in runserver is used instead.

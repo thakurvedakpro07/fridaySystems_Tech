@@ -1,5 +1,5 @@
-<!-- SupportMitra Local Development Startup Guide
-This guide explains how to start your SupportMitra project every time. Your project has:
+<!-- ResolveHQ Local Development Startup Guide
+This guide explains how to start your ResolveHQ project every time. Your project has:
 • Backend → Django server
 • Frontend → React + Vite server
 Project Structure

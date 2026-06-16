@@ -1,4 +1,4 @@
-# SupportMitra — High Priority Fix Report (Phase 23)
+# ResolveHQ — High Priority Fix Report (Phase 23)
 
 **Date:** 2026-06-15  
 **Fixes:** All 8 HIGH priority issues from `docs/PRODUCTION_AUDIT_REPORT.md`  

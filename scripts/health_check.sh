@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# scripts/health_check.sh — Verify all SupportMitra services are healthy
+# scripts/health_check.sh — Verify all ResolveHQ services are healthy
 #
 # Usage:
 #   bash scripts/health_check.sh              # check localhost (dev)
@@ -39,7 +39,7 @@ check() {
 }
 
 echo ""
-echo "SupportMitra Health Check — $MODE ($BASE_URL)"
+echo "ResolveHQ Health Check — $MODE ($BASE_URL)"
 echo "─────────────────────────────────────────────"
 
 # ── API health endpoint ───────────────────────────────────────────────────────

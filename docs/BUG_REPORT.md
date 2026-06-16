@@ -1,4 +1,4 @@
-# SupportMitra — Bug Report
+# ResolveHQ — Bug Report
 **Phase 9 QA: Manual End-to-End Audit**
 **Date:** 2026-05-20
 **Status:** All critical and high bugs FIXED and committed

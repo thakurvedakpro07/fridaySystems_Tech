@@ -1,4 +1,4 @@
-# SupportMitra — Founder Acceptance Test Report
+# ResolveHQ — Founder Acceptance Test Report
 
 **Tested:** 2026-06-15  
 **Tester:** Claude (acting as Customer, Freelancer, and Admin)  
@@ -136,7 +136,7 @@ POST /register/ {"password":"A","password2":"A"} → 201 + JWT tokens
 **What changed:**
 - `payment_invoice` view now calls `generate_invoice_pdf(payment)` from the new `invoice_pdf.py` module (ReportLab 4.2, already in `requirements.txt`)
 - Returns `HttpResponse` with `Content-Type: application/pdf` and `Content-Disposition: attachment; filename="invoice_INV-*.pdf"`
-- PDF includes: SupportMitra brand header, invoice number/date/status, Bill To (customer + GSTIN), ticket details, line items table with SAC 998313 + IGST 18%, grand total, Razorpay payment ID and order ID, statutory footer
+- PDF includes: ResolveHQ brand header, invoice number/date/status, Bill To (customer + GSTIN), ticket details, line items table with SAC 998313 + IGST 18%, grand total, Razorpay payment ID and order ID, statutory footer
 - Permission fixed: changed from `IsCustomer`-only to allow `is_staff` users — admins can now download any invoice
 - "PDF Invoice" download button added to Customer Billing page and Admin Payments page
 - 4 new automated tests added — 30/30 pass
@@ -305,6 +305,6 @@ Frontend code already uses the correct URLs; the gap is only in docs.
 
 ## Summary
 
-SupportMitra's core engine is solid. Every critical workflow — ticket creation, payment processing, HMAC verification, role permissions, JWT lifecycle, and file uploads — passed without errors. The two most important fixes before launch are the password confirmation bug (P1-01, ~15 minutes of work) and PDF invoice generation (P1-02, 1–2 days). Everything else is polish.
+ResolveHQ's core engine is solid. Every critical workflow — ticket creation, payment processing, HMAC verification, role permissions, JWT lifecycle, and file uploads — passed without errors. The two most important fixes before launch are the password confirmation bug (P1-01, ~15 minutes of work) and PDF invoice generation (P1-02, 1–2 days). Everything else is polish.
 
 **Score: 78/100 — Soft-launch ready after P1 fixes.**

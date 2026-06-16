@@ -1,4 +1,4 @@
-# SupportMitra — UX Improvement Report
+# ResolveHQ — UX Improvement Report
 **Phase 9: UX Audit (updated)**
 **Date:** 2026-05-20
 
@@ -13,7 +13,7 @@ A feature can be technically correct but still feel broken if:
 - The app is silent when something goes wrong
 - Loading doesn't show feedback
 
-This report covers every UX pattern in SupportMitra, updated for Phase 9 (ticket workflow complete).
+This report covers every UX pattern in ResolveHQ, updated for Phase 9 (ticket workflow complete).
 
 ---
 
@@ -88,7 +88,7 @@ This report covers every UX pattern in SupportMitra, updated for Phase 9 (ticket
 
 ### Remaining issues
 - **UX-004:** Logged-in users can still visit `/login` — no redirect guard (PublicOnlyRoute now added in App.jsx — actually this IS fixed)
-- **UX-005:** Browser tab title is always "SupportMitra" regardless of page
+- **UX-005:** Browser tab title is always "ResolveHQ" regardless of page
 - Header doesn't show the current user's role/context (e.g., "Admin Panel" header for admins)
 
 ---

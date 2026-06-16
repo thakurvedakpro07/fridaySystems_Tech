@@ -1,4 +1,4 @@
-# SupportMitra — Real Product Features Report
+# ResolveHQ — Real Product Features Report
 **Date:** 2026-05-21  
 **Phase:** 14 — Production-Grade SaaS Features  
 **Build status:** ✅ Clean (0 errors)
@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-Phase 14 transforms SupportMitra from a polished MVP into a realistic production-grade SaaS platform. Six core capability areas were built: in-app notification system (already complete from Phase 9, now polished), dashboard analytics with charts, file attachment system with drag-and-drop, a full account settings page, production-ready email architecture with HTML templates, and avatar/trust details throughout the UI.
+Phase 14 transforms ResolveHQ from a polished MVP into a realistic production-grade SaaS platform. Six core capability areas were built: in-app notification system (already complete from Phase 9, now polished), dashboard analytics with charts, file attachment system with drag-and-drop, a full account settings page, production-ready email architecture with HTML templates, and avatar/trust details throughout the UI.
 
 ---
 
@@ -183,7 +183,7 @@ Ticket event
 ### Email Templates (HTML)
 
 All templates extend `templates/email/base.html` which provides:
-- SupportMitra logo header with brand gradient accent bar
+- ResolveHQ logo header with brand gradient accent bar
 - Consistent typography (Inter/system font stack)
 - Company footer with "Made in India 🇮🇳"
 

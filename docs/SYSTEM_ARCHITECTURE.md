@@ -1,10 +1,10 @@
-# SupportMitra — System Architecture
+# ResolveHQ — System Architecture
 
 ---
 
 ## High-level overview
 
-SupportMitra is a three-tier web application (React SPA → Django REST API → PostgreSQL).
+ResolveHQ is a three-tier web application (React SPA → Django REST API → PostgreSQL).
 Background tasks (emails, SLA checks, WhatsApp notifications) run asynchronously via Celery.
 
 ```

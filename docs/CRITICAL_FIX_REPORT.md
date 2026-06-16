@@ -1,4 +1,4 @@
-# SupportMitra — Critical Fix Report (Phase 22)
+# ResolveHQ — Critical Fix Report (Phase 22)
 
 **Date:** 2026-06-15  
 **Fixes:** All 5 CRITICAL issues from `docs/PRODUCTION_AUDIT_REPORT.md`  

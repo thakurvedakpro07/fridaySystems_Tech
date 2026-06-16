@@ -1,4 +1,4 @@
-# SupportMitra — Realtime Notification & Activity System Report
+# ResolveHQ — Realtime Notification & Activity System Report
 _Implemented: 2026-05-22_
 
 ---

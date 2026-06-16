@@ -77,7 +77,7 @@ dist/FreelancerList                2.9 KB │ gzip:   1.2 KB
 
 * Fixed **UX-001** — registration form now surfaces every field-level API error as a bullet list; `registerUser()` in `useAuth.js` iterates all keys in `err.response.data` and accumulates them into an `errors[]` array; `Register.jsx` renders a `<ul>` when `errors.length > 1` and an inline string when it is 1
 * Fixed **UX-003** — new ticket form applies the same multi-error unpacking pattern; generic "Failed to create ticket" fallback replaced by exact field names and messages from the DRF response
-* Fixed **UX-005** — created `usePageTitle(title)` hook (8 lines) that calls `document.title` inside a `useEffect`; applied to all 7 page components; tab titles now read e.g. "TKT-ABC123 — SupportMitra" on the ticket detail page, "Admin Dashboard — SupportMitra" for admins, and "My Assigned Tickets — SupportMitra" for freelancers
+* Fixed **UX-005** — created `usePageTitle(title)` hook (8 lines) that calls `document.title` inside a `useEffect`; applied to all 7 page components; tab titles now read e.g. "TKT-ABC123 — ResolveHQ" on the ticket detail page, "Admin Dashboard — ResolveHQ" for admins, and "My Assigned Tickets — ResolveHQ" for freelancers
 * Added production-grade **secure HTTP headers** to `settings.py` gated by `if not DEBUG` — `SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `SECURE_HSTS_SECONDS = 31536000`, `SECURE_HSTS_INCLUDE_SUBDOMAINS`, `SECURE_HSTS_PRELOAD`, `SECURE_BROWSER_XSS_FILTER`, `SECURE_CONTENT_TYPE_NOSNIFF`, `X_FRAME_OPTIONS = "DENY"` — none of these affect local development
 * Created `backend/.env.example` — complete environment variable reference covering SECRET_KEY, DEBUG, ALLOWED_HOSTS, DATABASE_URL, REDIS_URL, email SMTP, Razorpay, AWS S3, JWT lifetimes, feature flags, timezone; no `.env.example` existed before
 * Created `nginx/nginx.conf` — production reverse proxy configuration covering HTTP→HTTPS redirect, SSL/TLS 1.2+, Let's Encrypt certificate paths, HSTS + security headers, gzip compression, rate-limit zones for API and auth endpoints, `/api/` and `/django-admin/` proxy pass to Gunicorn, `/metrics` access restriction (localhost only), React SPA `try_files` routing, and aggressive cache headers for hashed static assets
@@ -88,7 +88,7 @@ dist/FreelancerList                2.9 KB │ gzip:   1.2 KB
 
 ### Files Created
 
-* `frontend/src/hooks/usePageTitle.js` — 8-line custom hook; calls `document.title` in `useEffect`; cleanup resets to "SupportMitra" on unmount
+* `frontend/src/hooks/usePageTitle.js` — 8-line custom hook; calls `document.title` in `useEffect`; cleanup resets to "ResolveHQ" on unmount
 * `backend/.env.example` — complete commented environment variable reference for new deployments
 * `nginx/nginx.conf` — production nginx reverse proxy (HTTP→HTTPS, SSL termination, rate limiting, static file serving, React SPA routing)
 * `docs/PRODUCTION_DEPLOYMENT_GUIDE.md` — step-by-step Ubuntu 22.04 server deployment walkthrough: Docker, certbot, nginx, migrations, backups, update process
@@ -118,7 +118,7 @@ dist/FreelancerList                2.9 KB │ gzip:   1.2 KB
 
 * **UX-001: Register form silently drops all but the first API error** — `registerUser()` used `||` chain to pick the first truthy field; fix: iterate `Object.entries(err.response.data)` and push all messages with field names as prefixes
 * **UX-003: New ticket form shows generic error on any backend failure** — only `err.response?.data?.detail` was extracted; fix: same full-error unpacking as Register
-* **UX-005: Browser tab always shows "SupportMitra" on every page** — no page set `document.title`; fix: `usePageTitle` hook applied to all 7 pages
+* **UX-005: Browser tab always shows "ResolveHQ" on every page** — no page set `document.title`; fix: `usePageTitle` hook applied to all 7 pages
 
 ---
 
@@ -288,7 +288,7 @@ dist/FreelancerList                2.9 KB │ gzip:   1.2 KB
 
 ### Pending Issues
 
-* Admin password `SupportMitra@Admin2026` is a reset credential — **change it immediately** after first login via `Admin → Users → admin@supportmitra.in → Password → Change Password`
+* Admin password `ResolveHQ@Admin2026` is a reset credential — **change it immediately** after first login via `Admin → Users → admin@supportmitra.in → Password → Change Password`
 * The stale `backend/db.sqlite3` file still exists on disk (it is gitignored so it won't be committed); it is safe to delete to prevent future confusion: `rm backend/db.sqlite3`
 * All previously documented pending issues from Phase 8 remain (SECRET_KEY, DEBUG=0, SENTRY_DSN, Razorpay payment flow, Celery stubs, frontend tests, CI pipeline)
 
@@ -303,7 +303,7 @@ dist/FreelancerList                2.9 KB │ gzip:   1.2 KB
 
 ### Next Step
 
-* **Change the admin password immediately:** open `http://127.0.0.1:8000/django-admin/`, log in with `admin@supportmitra.in` / `SupportMitra@Admin2026`, navigate to Users → admin@supportmitra.in → set a personal password
+* **Change the admin password immediately:** open `http://127.0.0.1:8000/django-admin/`, log in with `admin@supportmitra.in` / `ResolveHQ@Admin2026`, navigate to Users → admin@supportmitra.in → set a personal password
 * **Delete the stale SQLite file:** `rm /home/vedak/Documents/fridaySystems_Tech/backend/db.sqlite3`
 * **Phase 9:** Begin Razorpay consulting fee payment integration (highest-impact next feature — tickets currently stuck at `pending_payment` status indefinitely)
 
@@ -526,7 +526,7 @@ dist/FreelancerList                2.9 KB │ gzip:   1.2 KB
 * Created `backend/support_app/apps.py` — `AppConfig` subclass that registers signals in `ready()`; without this, `signals.py` was never imported and ticket numbers were not auto-generated
 * Added `/api/auth/logout/` and wired login to `CustomTokenObtainPairView` in `urls.py`
 * Substantially expanded the test suite — `test_auth.py`, `test_tickets.py` (+227 lines), `test_payments.py` all updated to cover the fixed flows end-to-end
-* Created `docs/How To Start Guide.md` and `docs/SupportMitra_Startup_Guide.pdf` — first written startup documentation for the project
+* Created `docs/How To Start Guide.md` and `docs/ResolveHQ_Startup_Guide.pdf` — first written startup documentation for the project
 * Added prompt templates to `prompts/` directory for structured Claude sessions
 
 ### Files Created
@@ -535,7 +535,7 @@ dist/FreelancerList                2.9 KB │ gzip:   1.2 KB
 * `backend/support_app/apps.py` — `SupportAppConfig` with `ready()` signal registration
 * `frontend/src/pages/TicketDetailPage.jsx` — page wrapper at `/tickets/:id` (reads `useParams`, fetches ticket, renders `TicketDetail`)
 * `docs/How To Start Guide.md` — first startup guide (later superseded by `DAILY_STARTUP_GUIDE.md`)
-* `docs/SupportMitra_Startup_Guide.pdf` — PDF version of startup guide
+* `docs/ResolveHQ_Startup_Guide.pdf` — PDF version of startup guide
 * `docs/Git commit changes guide.md` — git workflow reference
 * `prompts/MASTER_BUG_AUDIT_PROMPT step-1.md` — structured bug audit prompt template
 * `prompts/Bug fixing step-2.md` — structured bug fixing prompt template
@@ -733,7 +733,7 @@ dist/FreelancerList                2.9 KB │ gzip:   1.2 KB
 
 ### Completed Today
 
-* Set up the entire initial repository skeleton for SupportMitra — 68 files created from scratch
+* Set up the entire initial repository skeleton for ResolveHQ — 68 files created from scratch
 * Defined all 11 database models in `models.py`: Customer, Freelancer, Ticket, TicketComment, TicketAttachment, Payment, Subscription, SLAPolicy, SLALog, CSATSurvey, AuditLog
 * All models use UUID primary keys and proper `choices` enumerations
 * Written DRF serializers for all models (list, detail, create variants where needed)

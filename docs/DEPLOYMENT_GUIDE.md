@@ -1,6 +1,6 @@
-# SupportMitra — Deployment Guide
+# ResolveHQ — Deployment Guide
 
-This guide walks you through deploying SupportMitra to a DigitalOcean VPS (or any Ubuntu 22.04 server) from scratch.
+This guide walks you through deploying ResolveHQ to a DigitalOcean VPS (or any Ubuntu 22.04 server) from scratch.
 
 ---
 

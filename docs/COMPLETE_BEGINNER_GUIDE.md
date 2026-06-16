@@ -1,4 +1,4 @@
-# SupportMitra — Complete Beginner's Guide
+# ResolveHQ — Complete Beginner's Guide
 ### Your personal learning manual for understanding the entire project
 
 > **Who this is for:** Someone who is new to full-stack development, Docker, Django, and React.
@@ -33,10 +33,10 @@
 
 ## 1. Project Overview
 
-### What is SupportMitra?
+### What is ResolveHQ?
 
 **Simple explanation:**
-SupportMitra is an IT support marketplace for Indian small businesses. When a company's computer or server has a problem, they come to SupportMitra, pay a consulting fee, raise a support ticket, and a vetted IT freelancer fixes their problem remotely.
+ResolveHQ is an IT support marketplace for Indian small businesses. When a company's computer or server has a problem, they come to ResolveHQ, pay a consulting fee, raise a support ticket, and a vetted IT freelancer fixes their problem remotely.
 
 Think of it like Swiggy — but instead of delivering food, it delivers IT support. The "restaurant" is a freelance IT engineer, the "customer" is an Indian SMB (small-medium business), and the "food" is a fixed server or configured laptop.
 
@@ -1021,7 +1021,7 @@ In your project, since it's an API (not a website with HTML pages), the "Templat
 ### Django REST Framework (DRF)
 
 **Simple explanation:**
-Django by itself is great for building websites with HTML pages. But SupportMitra's backend only sends/receives JSON data (the React frontend handles the HTML). DRF is an add-on that makes it easy to build JSON APIs.
+Django by itself is great for building websites with HTML pages. But ResolveHQ's backend only sends/receives JSON data (the React frontend handles the HTML). DRF is an add-on that makes it easy to build JSON APIs.
 
 **What DRF adds:**
 - Serializers (translate Python ↔ JSON)
@@ -1052,7 +1052,7 @@ When you write `customer = models.ForeignKey(...)` in Python, how does PostgreSQ
 **Simple explanation:**
 A free, auto-generated internal dashboard at `http://127.0.0.1:8000/django-admin/`. You can view, search, add, edit, and delete any data without writing any code.
 
-> **Note:** SupportMitra uses `/django-admin/` instead of Django's default `/admin/` route. This is because the nginx reverse proxy serves the React SPA at `/admin/` (the admin frontend dashboard). See `docs/ADMIN_URL_CHANGE_NOTE.md` for full details.
+> **Note:** ResolveHQ uses `/django-admin/` instead of Django's default `/admin/` route. This is because the nginx reverse proxy serves the React SPA at `/admin/` (the admin frontend dashboard). See `docs/ADMIN_URL_CHANGE_NOTE.md` for full details.
 
 **How to create your admin account:**
 ```bash
@@ -2477,7 +2477,7 @@ This section explains every piece of the authentication system built across Phas
 
 ### Custom User Model
 
-Django comes with a built-in `User` model. SupportMitra uses it directly (`auth_user` table) but extends it with two profile tables:
+Django comes with a built-in `User` model. ResolveHQ uses it directly (`auth_user` table) but extends it with two profile tables:
 
 ```
 auth_user (Django built-in)
@@ -2830,7 +2830,7 @@ Now only users logged into the Django admin (is_staff=True) can access metrics. 
 
 ### The Test Suite
 
-SupportMitra has 86 automated tests that run in seconds and verify everything works correctly.
+ResolveHQ has 86 automated tests that run in seconds and verify everything works correctly.
 
 **Run all tests:**
 ```bash
@@ -2895,7 +2895,7 @@ When a bug is found, this is the process followed:
 
 ### MVP Stability Score
 
-After Phase 8, a structured audit gave SupportMitra a final score:
+After Phase 8, a structured audit gave ResolveHQ a final score:
 
 | Category | Score |
 |----------|-------|
@@ -3140,4 +3140,4 @@ docker compose down -v                      # stop + DELETE database (irreversib
 
 ---
 
-*This guide was last updated on 2026-05-19 to reflect the state of the SupportMitra project after Phase 8 (Manual E2E Testing + Zero-Bug Stabilization). All explanations reflect the real code — not a hypothetical example. Sections 17–20 cover all architecture additions made in Phases 5–8.*
+*This guide was last updated on 2026-05-19 to reflect the state of the ResolveHQ project after Phase 8 (Manual E2E Testing + Zero-Bug Stabilization). All explanations reflect the real code — not a hypothetical example. Sections 17–20 cover all architecture additions made in Phases 5–8.*

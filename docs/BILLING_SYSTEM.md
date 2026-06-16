@@ -1,4 +1,4 @@
-# SupportMitra — Billing System
+# ResolveHQ — Billing System
 
 **Last updated:** 2026-06-16  
 **Phase:** 23 (PDF invoice generation — P1-02 fix)
@@ -7,7 +7,7 @@
 
 ## Overview
 
-SupportMitra's billing system covers the full lifecycle from ticket payment through GST-compliant PDF invoice delivery. Payments are processed via Razorpay (TEST or LIVE mode depending on credentials in `.env`).
+ResolveHQ's billing system covers the full lifecycle from ticket payment through GST-compliant PDF invoice delivery. Payments are processed via Razorpay (TEST or LIVE mode depending on credentials in `.env`).
 
 ---
 
@@ -37,7 +37,7 @@ The generated PDF is a GST Tax Invoice compliant with Indian IT service invoice 
 
 | Section | Contents |
 |---------|----------|
-| **Header** | SupportMitra logo text, business name, GSTIN, email, SAC code (998313) |
+| **Header** | ResolveHQ logo text, business name, GSTIN, email, SAC code (998313) |
 | **Invoice meta** | Invoice number, date, payment status |
 | **Bill To** | Customer name, company, email, phone, GSTIN, address |
 | **Ticket** | Ticket number, service type, title |
@@ -141,7 +141,7 @@ Set in `backend/.env`:
 ```
 GST_RATE=0.18
 BUSINESS_GSTIN=22AAAAA0000A1Z5
-BUSINESS_NAME=SupportMitra Technologies
+BUSINESS_NAME=Friday Tech Systems
 DEFAULT_FROM_EMAIL=support@supportmitra.in
 ```
 

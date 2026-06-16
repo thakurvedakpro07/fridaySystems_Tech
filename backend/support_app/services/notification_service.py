@@ -55,7 +55,7 @@ def send_email(to: str, template_name: str, context: dict) -> None:
         context:       Template context dict
     """
     from .email_service import _send
-    subject = context.get("subject", "Notification from SupportMitra")
+    subject = context.get("subject", "Notification from ResolveHQ")
     _send(to=to, subject=subject, template=template_name, context=context)
 
 

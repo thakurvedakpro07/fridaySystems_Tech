@@ -86,7 +86,7 @@ export default function PaymentGateway({ ticket, onPaymentSuccess }) {
         amount:      data.amount_paise,
         currency:    data.currency,
         order_id:    data.order_id,
-        name:        "SupportMitra",
+        name:        "ResolveHQ",
         description: `Consulting fee — ${ticket.ticket_number}`,
         prefill:     { email: user?.email ?? "" },
         theme:       { color: "#4F46E5" },

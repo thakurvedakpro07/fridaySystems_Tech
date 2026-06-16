@@ -1,11 +1,11 @@
-You are my senior engineering project manager for SupportMitra.
+You are my senior engineering project manager for ResolveHQ.
 
 Your task:
 Update the BUILD_PROGRESS.md file based on today's development work.
 
 Project context:
 
-* SupportMitra = IT infrastructure support platform for Indian SMBs
+* ResolveHQ = IT infrastructure support platform for Indian SMBs
 * Stack:
 
   * React + Vite + Tailwind

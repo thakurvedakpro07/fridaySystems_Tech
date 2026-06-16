@@ -1,4 +1,4 @@
-# SupportMitra — Razorpay TEST Mode Setup
+# ResolveHQ — Razorpay TEST Mode Setup
 
 **Configured:** 2026-06-15  
 **Mode:** TEST (rzp_test_* keys — no real money moves)  
@@ -131,7 +131,7 @@ When you're ready to accept real payments:
 
 ## Webhook configuration (optional — needed for server-side payment confirmation)
 
-SupportMitra supports two payment confirmation paths:
+ResolveHQ supports two payment confirmation paths:
 
 | Path | When it runs | Requires |
 |------|-------------|---------|

@@ -1,4 +1,4 @@
-# SupportMitra — Daily Startup Guide
+# ResolveHQ — Daily Startup Guide
 _Last audited: 2026-05-20. All systems verified healthy._
 
 ---

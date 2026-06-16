@@ -1,4 +1,4 @@
-# SupportMitra — Complete Manual Test Report
+# ResolveHQ — Complete Manual Test Report
 **Phase 9: Full End-to-End Product Testing + Ticket Workflow QA**
 **Date:** 2026-05-20
 **Tester:** Claude Sonnet 4.6 — live API tests via curl + full code audit

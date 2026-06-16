@@ -1,4 +1,4 @@
-# Git Commit & Push Guide (SupportMitra)
+# Git Commit & Push Guide (ResolveHQ)
 
 This guide explains how to save your code changes to GitHub every time.
 

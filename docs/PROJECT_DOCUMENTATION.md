@@ -1,4 +1,4 @@
-# SupportMitra — Complete Project Documentation
+# ResolveHQ — Complete Project Documentation
 
 > IT Infrastructure Support Portal for Indian SMBs and SAP Shops
 > Version: 1.0 | Last Updated: 2026-05-03
@@ -37,9 +37,9 @@
 
 ## 1. Project Overview
 
-### What is SupportMitra?
+### What is ResolveHQ?
 
-SupportMitra is a ticket-based IT infrastructure support portal built for Indian small and medium businesses (SMBs) and small SAP shops. Customers pay a transparent flat fee to open a support case, and a vetted freelance support engineer resolves the issue remotely. The model is inspired by managed support services like Bobcares.com but optimized for the Indian market — lower price points, GST-compliant billing, and WhatsApp-native communication.
+ResolveHQ is a ticket-based IT infrastructure support portal built for Indian small and medium businesses (SMBs) and small SAP shops. Customers pay a transparent flat fee to open a support case, and a vetted freelance support engineer resolves the issue remotely. The model is inspired by managed support services like Bobcares.com but optimized for the Indian market — lower price points, GST-compliant billing, and WhatsApp-native communication.
 
 ### Vision
 
@@ -131,7 +131,7 @@ Net margin:          ₹517 (~47%)
 - **Behaviour:** Available evenings and weekends; wants clear task scope before accepting
 
 #### Persona 4: Neha — Admin (Internal)
-- **Role:** SupportMitra operations manager
+- **Role:** ResolveHQ operations manager
 - **Goal:** Assign tickets to available freelancers, monitor SLA breaches, approve payouts
 - **Behaviour:** Power user of admin dashboard; needs real-time visibility
 
@@ -259,7 +259,7 @@ Net margin:          ₹517 (~47%)
 ## 7. Project Structure
 
 ```
-SupportMitra/
+ResolveHQ/
 ├── .env.example                    # Environment variable template (committed)
 ├── .env                            # Actual secrets (never committed)
 ├── .gitignore
@@ -759,7 +759,7 @@ All `/admin/` endpoints require `is_staff=True` or admin role.
 |---|---|---|
 | `customer` | Registered portal users | Own tickets, own payments, own profile |
 | `freelancer` | Vetted support staff | Assigned tickets, own freelancer profile, comment on assigned tickets |
-| `admin` | SupportMitra operators | All tickets, all freelancers, payouts, analytics, system config |
+| `admin` | ResolveHQ operators | All tickets, all freelancers, payouts, analytics, system config |
 
 Permission enforcement is done via custom DRF permission classes in `support_app/permissions.py`.
 
@@ -864,7 +864,7 @@ Customer raises dispute within 7 days of ticket closure
 
 | Field | Value |
 |---|---|
-| Seller GSTIN | SupportMitra GSTIN (registered) |
+| Seller GSTIN | ResolveHQ GSTIN (registered) |
 | Buyer GSTIN | Customer's GSTIN (if B2B, optional) |
 | Invoice Number | INV-YYYY-NNNNNN (sequential) |
 | Taxable Amount | Payment amount ÷ 1.18 |
@@ -1169,7 +1169,7 @@ AWS_S3_REGION_NAME=blr1
 # GST
 GST_RATE=0.18
 BUSINESS_GSTIN=29XXXXXXXXX1Z5
-BUSINESS_NAME=SupportMitra Technologies
+BUSINESS_NAME=Friday Tech Systems
 
 # Sentry
 SENTRY_DSN=https://xxxx@sentry.io/xxxx
@@ -1206,8 +1206,8 @@ ENABLE_AUTO_ASSIGNMENT=false
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-org/SupportMitra.git
-cd SupportMitra
+git clone https://github.com/your-org/ResolveHQ.git
+cd ResolveHQ
 
 # 2. Copy and fill in environment variables
 cp .env.example .env
@@ -1308,7 +1308,7 @@ apt install -y nginx certbot python3-certbot-nginx
 
 # 7. Clone repository
 su - deploy
-git clone https://github.com/your-org/SupportMitra.git /opt/supportmitra
+git clone https://github.com/your-org/ResolveHQ.git /opt/supportmitra
 ```
 
 ### Nginx Configuration
@@ -1485,16 +1485,16 @@ Key metrics exposed at `/metrics/`:
 
 | Document | Audience | Owner | Review Cadence |
 |---|---|---|---|
-| Terms of Service | Customers | SupportMitra Legal | Annual |
-| Privacy Policy (DPDP 2023) | Customers | SupportMitra Legal | On law change |
+| Terms of Service | Customers | ResolveHQ Legal | Annual |
+| Privacy Policy (DPDP 2023) | Customers | ResolveHQ Legal | On law change |
 | Refund Policy | Customers | Product team | On pricing change |
 | Acceptable Use Policy | Customers | Product team | Annual |
-| Freelancer NDA | Freelancers | SupportMitra Legal | On engagement start |
-| Freelancer Service Agreement | Freelancers | SupportMitra Legal | Annual |
+| Freelancer NDA | Freelancers | ResolveHQ Legal | On engagement start |
+| Freelancer Service Agreement | Freelancers | ResolveHQ Legal | Annual |
 
 ### India DPDP Act 2023 Compliance
 
-The Digital Personal Data Protection Act 2023 governs how SupportMitra handles personal data of Indian residents.
+The Digital Personal Data Protection Act 2023 governs how ResolveHQ handles personal data of Indian residents.
 
 **Obligations:**
 - Collect only data necessary for the stated purpose (data minimisation)
@@ -1527,13 +1527,13 @@ The Digital Personal Data Protection Act 2023 governs how SupportMitra handles p
 **NDA covers:**
 - Customer identity and business information encountered during support
 - Ticket contents and system architecture details
-- Internal SupportMitra processes, pricing, and business data
+- Internal ResolveHQ processes, pricing, and business data
 - Validity: 2 years post-engagement
 
 **Service Agreement covers:**
 - Scope of permissible work (remote support only, no physical access)
 - IP assignment: all deliverables belong to the customer (not freelancer)
-- Non-solicitation: cannot approach SupportMitra customers directly for 1 year
+- Non-solicitation: cannot approach ResolveHQ customers directly for 1 year
 - Payment terms: payout within 7 business days of ticket close
 - Termination: either party with 7 days notice; immediate for policy violation
 - Governing law: Indian law; jurisdiction: Pune courts
@@ -1617,4 +1617,4 @@ The Digital Personal Data Protection Act 2023 governs how SupportMitra handles p
 
 ---
 
-*SupportMitra — Built for Indian SMBs, powered by a trusted freelancer network.*
+*ResolveHQ — Built for Indian SMBs, powered by a trusted freelancer network.*

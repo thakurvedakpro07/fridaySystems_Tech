@@ -2,7 +2,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # scripts/deploy.sh — Production deployment script
 #
-# Run this on the VPS to deploy a new version of SupportMitra.
+# Run this on the VPS to deploy a new version of ResolveHQ.
 # Safe to run repeatedly — each step is idempotent.
 #
 # Usage:

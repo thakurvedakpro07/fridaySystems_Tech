@@ -1,6 +1,6 @@
 You are acting as a senior full-stack debugging engineer.
 
-Project Name: SupportMitra
+Project Name: ResolveHQ
 
 Tech Stack:
 - Frontend: React + Vite + TailwindCSS

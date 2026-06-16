@@ -1,4 +1,4 @@
-# SupportMitra — Production Deployment Guide
+# ResolveHQ — Production Deployment Guide
 **Phase 10: Production Readiness**
 **Date:** 2026-05-20
 
@@ -6,7 +6,7 @@
 
 ## Overview
 
-This guide walks you through deploying SupportMitra to a real production Ubuntu server. By the end, your app will be live at `https://supportmitra.in` with HTTPS, auto-renewing SSL, and a reverse proxy.
+This guide walks you through deploying ResolveHQ to a real production Ubuntu server. By the end, your app will be live at `https://supportmitra.in` with HTTPS, auto-renewing SSL, and a reverse proxy.
 
 **Architecture:**
 ```
