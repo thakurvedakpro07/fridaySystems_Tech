@@ -12,15 +12,15 @@ const NAV = {
     { label: "Pricing",       href: "#services" },
     { label: "FAQ",           href: "#faq" },
   ],
-  Company: [
-    { label: "About",         href: "#" },
-    { label: "Blog",          href: "#" },
-    { label: "Careers",       href: "#" },
-    { label: "Press",         href: "#" },
+  Platform: [
+    { label: "Dashboard",     href: "/dashboard",    internal: true },
+    { label: "Analytics",     href: "/analytics",    internal: true },
+    { label: "Billing",       href: "/billing",      internal: true },
+    { label: "Help Center",   href: "/help-center",  internal: true },
   ],
   Support: [
-    { label: "Help Center",   href: "#" },
-    { label: "Open a Ticket", href: "/register", internal: true },
+    { label: "Help Center",   href: "/help-center",  internal: true },
+    { label: "Open a Ticket", href: "/register",     internal: true },
     { label: "Status",        href: "#" },
     { label: "Contact Us",    href: CONTACT.supportMailto },
   ],
