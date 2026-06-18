@@ -108,16 +108,25 @@ export default function NotificationsPage() {
       {/* Page header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Notifications</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Notifications</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {unreadCount > 0 ? (
+              <span>
+                <span className="text-indigo-600 font-semibold">{unreadCount}</span> unread
+              </span>
+            ) : "You're all caught up"}
           </p>
         </div>
         {unreadCount > 0 && (
           <button
             onClick={handleMarkAll}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600
+                       hover:text-indigo-800 transition-colors bg-indigo-50 hover:bg-indigo-100
+                       px-3 py-1.5 rounded-lg"
           >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
             Mark all read
           </button>
         )}
@@ -134,12 +143,19 @@ export default function NotificationsPage() {
         )}
 
         {!listLoading && listFetched && notifications.length === 0 && (
-          <div className="flex flex-col items-center gap-3 py-16 px-6 text-center">
-            <span className="text-4xl select-none" aria-hidden="true">🔔</span>
-            <p className="text-sm font-semibold text-slate-700">You're all caught up!</p>
-            <p className="text-xs text-slate-400">
-              Notifications appear here when tickets are updated, comments are added, or payments are confirmed.
-            </p>
+          <div className="flex flex-col items-center gap-4 py-16 px-6 text-center">
+            <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center">
+              <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-base font-bold text-slate-700">You're all caught up!</p>
+              <p className="text-sm text-slate-400 mt-1 max-w-xs leading-relaxed">
+                Notifications appear here when tickets are updated, comments are added, or payments are confirmed.
+              </p>
+            </div>
           </div>
         )}
 

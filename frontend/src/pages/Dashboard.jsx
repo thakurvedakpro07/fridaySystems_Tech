@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { getAnalytics } from "../api/analytics";
+import { getProfile } from "../api/settings";
 import AppShell from "../components/layout/AppShell";
 import TicketCard from "../components/tickets/TicketCard";
 import { SkeletonCard } from "../components/ui/Spinner";
@@ -187,6 +188,103 @@ function InfoPanel() {
   );
 }
 
+// ── Trust bar ─────────────────────────────────────────────────────
+function TrustBar() {
+  const items = [
+    { icon: (
+        <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+        </svg>
+      ), label: "Verified IT Specialists" },
+    { icon: (
+        <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+        </svg>
+      ), label: "Secure Payments via Razorpay" },
+    { icon: (
+        <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ), label: "2-Hour Response SLA" },
+    { icon: (
+        <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
+        </svg>
+      ), label: "Real-Time Ticket Tracking" },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-7 py-3 px-4
+                    bg-white border border-slate-100 rounded-2xl"
+         style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.04)" }}>
+      {items.map(({ icon, label }) => (
+        <div key={label} className="flex items-center gap-1.5">
+          {icon}
+          <span className="text-xs font-medium text-slate-600">{label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Profile completion ─────────────────────────────────────────────
+function ProfileCompletion({ profile }) {
+  if (!profile) return null;
+
+  const fields = [
+    { key: "first_name", label: "First name",    done: !!profile.first_name },
+    { key: "last_name",  label: "Last name",     done: !!profile.last_name  },
+    { key: "company",    label: "Company",       done: !!profile.company    },
+    { key: "phone",      label: "Phone number",  done: !!profile.phone      },
+    { key: "gstin",      label: "GSTIN",         done: !!profile.gstin      },
+  ];
+
+  const done = fields.filter((f) => f.done).length;
+  const pct  = Math.round((done / fields.length) * 100);
+  if (pct === 100) return null;
+
+  const missing = fields.filter((f) => !f.done);
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-5"
+         style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+          Profile Completion
+        </p>
+        <span className="text-sm font-black text-indigo-600">{pct}%</span>
+      </div>
+      <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-3">
+        <div
+          className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="text-xs text-slate-500 mb-2.5 leading-relaxed">
+        Complete your profile for accurate invoicing.
+      </p>
+      <div className="space-y-1.5">
+        {missing.slice(0, 3).map((f) => (
+          <div key={f.key} className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+            <span className="text-xs text-slate-500">{f.label} missing</span>
+          </div>
+        ))}
+      </div>
+      <Link
+        to="/settings"
+        className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold
+                   text-indigo-600 hover:text-indigo-800 transition-colors"
+      >
+        Complete profile
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+        </svg>
+      </Link>
+    </div>
+  );
+}
+
 // ── Getting Started (zero state) ─────────────────────────────────
 function GettingStarted() {
   return (
@@ -327,6 +425,7 @@ function CustomerDashboard() {
 
   const [stats, setStats]               = useState({ total: 0, open: 0, inProgress: 0, resolved: 0 });
   const [statsLoading, setStatsLoading] = useState(true);
+  const [profile, setProfile]           = useState(null);
 
   useEffect(() => {
     getAnalytics()
@@ -340,13 +439,17 @@ function CustomerDashboard() {
       .finally(() => setStatsLoading(false));
   }, []);
 
+  useEffect(() => {
+    getProfile().then(({ data }) => setProfile(data)).catch(() => {});
+  }, []);
+
   const name = getDisplayName(user);
   const hasFilters = !!(search || status);
 
   return (
     <AppShell>
       {/* ── Greeting ───────────────────────────────────────────── */}
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">
           {salutation(name)}
         </h1>
@@ -354,6 +457,9 @@ function CustomerDashboard() {
           Here&apos;s your support overview for today.
         </p>
       </div>
+
+      {/* ── Trust bar ──────────────────────────────────────────── */}
+      <TrustBar />
 
       {/* ── KPI cards ──────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -451,7 +557,8 @@ function CustomerDashboard() {
         </div>
 
         {/* ── Right: info panel ─────────────────────────────── */}
-        <div className="shrink-0">
+        <div className="shrink-0 space-y-4">
+          <ProfileCompletion profile={profile} />
           <InfoPanel />
         </div>
       </div>

@@ -305,10 +305,10 @@ export default function SettingsPage() {
     <MainLayout maxWidth="max-w-2xl">
       {/* Page header */}
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900">
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight">
           {getDisplayName(user, "full") || "Account Settings"}
         </h1>
-        <p className="text-sm text-slate-500 mt-0.5">{user?.email}</p>
+        <p className="text-sm text-slate-500 mt-1">{user?.email}</p>
       </div>
 
       {/* Tab bar */}

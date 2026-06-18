@@ -35,13 +35,13 @@ function StatusBadge({ status }) {
 function StatCard({ icon, label, value, sub, colour }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-5"
-         style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
-      <div className="flex items-center gap-3 mb-2">
-        <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${colour}`}>{icon}</span>
-        <span className="text-xs font-medium text-slate-500">{label}</span>
+         style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${colour}`}>{icon}</span>
+        <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{label}</span>
       </div>
-      <p className="text-2xl font-bold text-slate-900">{value}</p>
-      {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
+      <p className="text-3xl font-bold text-slate-900 leading-none">{value}</p>
+      {sub && <p className="text-xs text-slate-400 mt-1.5">{sub}</p>}
     </div>
   );
 }
@@ -163,15 +163,44 @@ export default function BillingPage() {
     <MainLayout maxWidth="max-w-3xl">
       {/* Page header */}
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900">Billing</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Payment history and invoices for your account.</p>
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Billing</h1>
+        <p className="text-sm text-slate-500 mt-1">Payment history and invoices for your account.</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <StatCard icon="✅" label="Total paid"      value={`₹${totalPaid}`}    colour="bg-emerald-50" />
-        <StatCard icon="⏳" label="Pending"         value={pendingCount}         colour="bg-amber-50"   />
-        <StatCard icon="❌" label="Failed"          value={failedCount}          colour="bg-rose-50"    />
+        <StatCard
+          icon={
+            <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
+          label="Total Paid"
+          value={`₹${totalPaid.toLocaleString("en-IN")}`}
+          colour="bg-emerald-50"
+        />
+        <StatCard
+          icon={
+            <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
+          label="Pending"
+          value={pendingCount}
+          sub="awaiting confirmation"
+          colour="bg-amber-50"
+        />
+        <StatCard
+          icon={
+            <svg className="w-4 h-4 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+          }
+          label="Failed"
+          value={failedCount}
+          sub="contact support"
+          colour="bg-rose-50"
+        />
       </div>
 
       {/* Payment list */}
@@ -197,18 +226,28 @@ export default function BillingPage() {
         )}
 
         {!loading && !error && payments.length === 0 && (
-          <div className="flex flex-col items-center gap-2 py-12 px-5">
-            <span className="text-3xl select-none" aria-hidden="true">🧾</span>
-            <p className="text-sm text-slate-500 font-medium">No payments yet</p>
-            <p className="text-xs text-slate-400 text-center">
-              Payments will appear here once you raise a support ticket.
-            </p>
+          <div className="flex flex-col items-center gap-4 py-14 px-6 text-center">
+            <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center">
+              <svg className="w-8 h-8 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-base font-bold text-slate-800">No payments yet</p>
+              <p className="text-sm text-slate-400 mt-1 max-w-xs leading-relaxed">
+                Payments appear here after you raise a support ticket. GST-compliant PDF invoices are generated automatically.
+              </p>
+            </div>
             <Link
               to="/tickets/new"
-              className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600
-                         hover:text-indigo-800 hover:underline"
+              className="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold
+                         px-5 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
             >
-              Open a ticket →
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Open a support ticket
             </Link>
           </div>
         )}

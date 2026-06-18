@@ -58,6 +58,12 @@ const IC = {
         d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
+  help: (
+    <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+    </svg>
+  ),
   signout: (
     <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round"
@@ -202,7 +208,8 @@ export default function Sidebar({ open, onClose }) {
               <NavItem to="/notifications" icon={IC.bell}      label="Notifications" />
             </NavSection>
             <NavSection label="Account">
-              <NavItem to="/settings" icon={IC.settings} label="Settings" />
+              <NavItem to="/settings"     icon={IC.settings} label="Settings" />
+              <NavItem to="/help-center"  icon={IC.help}     label="Help Center" />
             </NavSection>
           </>
         )}
@@ -217,7 +224,8 @@ export default function Sidebar({ open, onClose }) {
               <NavItem to="/notifications" icon={IC.bell}      label="Notifications" />
             </NavSection>
             <NavSection label="Account">
-              <NavItem to="/settings" icon={IC.settings} label="Settings" />
+              <NavItem to="/settings"     icon={IC.settings} label="Settings" />
+              <NavItem to="/help-center"  icon={IC.help}     label="Help Center" />
             </NavSection>
           </>
         )}
@@ -234,7 +242,8 @@ export default function Sidebar({ open, onClose }) {
               <NavItem to="/notifications"     icon={IC.bell}      label="Notifications" />
             </NavSection>
             <NavSection label="Account">
-              <NavItem to="/settings" icon={IC.settings} label="Settings" />
+              <NavItem to="/settings"     icon={IC.settings} label="Settings" />
+              <NavItem to="/help-center"  icon={IC.help}     label="Help Center" />
             </NavSection>
           </>
         )}

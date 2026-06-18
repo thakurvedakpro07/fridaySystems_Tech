@@ -31,6 +31,7 @@ const VerifyEmail          = lazy(() => import("./pages/VerifyEmail"));
 const CustomerOnboarding   = lazy(() => import("./pages/onboarding/CustomerOnboarding"));
 const FreelancerOnboarding = lazy(() => import("./pages/onboarding/FreelancerOnboarding"));
 const NotificationsPage    = lazy(() => import("./pages/NotificationsPage"));
+const HelpCenterPage       = lazy(() => import("./pages/HelpCenterPage"));
 
 import { ToastProvider } from "./context/ToastContext";
 import { useAuthStore } from "./store/authStore";
@@ -175,6 +176,12 @@ export default function App() {
           <Route
             path="/notifications"
             element={<PrivateRoute><NotificationsPage /></PrivateRoute>}
+          />
+
+          {/* Help Center */}
+          <Route
+            path="/help-center"
+            element={<PrivateRoute><HelpCenterPage /></PrivateRoute>}
           />
 
           {/* Onboarding — post-registration guided setup (require auth) */}

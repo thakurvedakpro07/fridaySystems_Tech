@@ -73,26 +73,26 @@ function DonutChart({ segments }) {
 
 function StatCard({ label, value, sub, color = "indigo", icon }) {
   const colors = {
-    indigo:  { text: "text-indigo-600",  bg: "bg-indigo-50" },
-    emerald: { text: "text-emerald-600", bg: "bg-emerald-50" },
-    amber:   { text: "text-amber-600",   bg: "bg-amber-50" },
-    violet:  { text: "text-violet-600",  bg: "bg-violet-50" },
-    rose:    { text: "text-rose-600",    bg: "bg-rose-50" },
+    indigo:  { text: "text-indigo-600",  bg: "bg-indigo-50",  border: "border-indigo-100"  },
+    emerald: { text: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+    amber:   { text: "text-amber-600",   bg: "bg-amber-50",   border: "border-amber-100"   },
+    violet:  { text: "text-violet-600",  bg: "bg-violet-50",  border: "border-violet-100"  },
+    rose:    { text: "text-rose-600",    bg: "bg-rose-50",    border: "border-rose-100"    },
   };
-  const { text, bg } = colors[color] ?? colors.indigo;
+  const { text, bg, border } = colors[color] ?? colors.indigo;
   return (
     <div
-      className="bg-white border border-slate-200 rounded-xl px-5 py-4 flex items-start justify-between gap-3
-                 hover:border-indigo-200 hover:-translate-y-0.5 transition-all duration-200"
-      style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}
+      className={`bg-white border ${border} rounded-2xl px-5 py-4 flex items-start justify-between gap-3
+                 hover:-translate-y-0.5 transition-all duration-200`}
+      style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}
     >
       <div>
-        <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
-        <p className={`text-2xl font-bold animate-fade-in ${text}`}>{value ?? "—"}</p>
-        {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">{label}</p>
+        <p className={`text-3xl font-bold animate-fade-in leading-none ${text}`}>{value ?? "—"}</p>
+        {sub && <p className="text-xs text-slate-400 mt-1.5">{sub}</p>}
       </div>
       {icon && (
-        <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0 ${bg} ${text}`}>
+        <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0 ${bg}`}>
           {icon}
         </span>
       )}
@@ -180,9 +180,9 @@ export default function AnalyticsPage() {
     <MainLayout maxWidth="max-w-5xl">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900">{pageTitle}</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Last updated just now · {data.total} total tickets
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight">{pageTitle}</h1>
+        <p className="text-sm text-slate-500 mt-1">
+          Last updated just now · {data.total} total ticket{data.total !== 1 ? "s" : ""}
         </p>
       </div>
 
