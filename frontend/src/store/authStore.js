@@ -140,6 +140,8 @@ export const useAuthStore = create((set) => ({
         is_staff: data.is_staff,
         role: data.role,
         is_verified: data.is_verified ?? true,
+        first_name: data.first_name ?? "",
+        last_name: data.last_name ?? "",
       };
       localStorage.setItem("user", JSON.stringify(user));
       set({ user, isAuthenticated: true, initializing: false });

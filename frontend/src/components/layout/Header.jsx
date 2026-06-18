@@ -3,15 +3,22 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useAuthStore } from "../../store/authStore";
 import NotificationBell from "../ui/NotificationBell";
+import { getDisplayName } from "../../utils/displayName";
 
-function UserAvatar({ email }) {
-  const initials = email ? email.slice(0, 2).toUpperCase() : "??";
+function UserAvatar({ user }) {
+  const first = (user?.first_name ?? "").trim();
+  const last  = (user?.last_name  ?? "").trim();
+  const initials = first && last
+    ? `${first[0]}${last[0]}`.toUpperCase()
+    : first
+    ? first.slice(0, 2).toUpperCase()
+    : (user?.email ?? "??").slice(0, 2).toUpperCase();
   return (
     <span
       className="inline-flex items-center justify-center w-7 h-7 rounded-full
                  bg-indigo-100 text-indigo-700 text-xs font-semibold select-none shrink-0"
-      title={email}
-      aria-label={`Signed in as ${email}`}
+      title={user?.email}
+      aria-label={`Signed in as ${user?.email}`}
     >
       {initials}
     </span>
@@ -109,7 +116,7 @@ export default function Header() {
 
               {/* Avatar → Settings */}
               <Link to="/settings" title="Account Settings" className="ml-0.5">
-                <UserAvatar email={user?.email} />
+                <UserAvatar user={user} />
               </Link>
 
               <button
@@ -168,8 +175,15 @@ export default function Header() {
             <div className="space-y-1">
               {/* User info chip */}
               <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 mb-3">
-                <UserAvatar email={user?.email} />
-                <span className="text-sm text-slate-600 truncate">{user?.email}</span>
+                <UserAvatar user={user} />
+                <div className="min-w-0">
+                  {getDisplayName(user, "full") && (
+                    <p className="text-sm font-semibold text-slate-800 truncate leading-tight">
+                      {getDisplayName(user, "full")}
+                    </p>
+                  )}
+                  <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                </div>
               </div>
 
               {/* Dashboard link */}

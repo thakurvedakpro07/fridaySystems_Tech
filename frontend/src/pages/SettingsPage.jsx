@@ -5,6 +5,7 @@ import Button from "../components/ui/Button";
 import { useToast } from "../context/ToastContext";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useAuthStore } from "../store/authStore";
+import { getDisplayName } from "../utils/displayName";
 
 const TABS = [
   { id: "profile",  label: "Profile",  icon: "👤" },
@@ -41,6 +42,8 @@ function FieldRow({ label, children }) {
 
 function ProfileTab({ profile, setProfile, role }) {
   const toast = useToast();
+  const setUser = useAuthStore((s) => s.setUser);
+  const storeUser = useAuthStore((s) => s.user);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     first_name: "", last_name: "",
@@ -78,8 +81,16 @@ function ProfileTab({ profile, setProfile, role }) {
       } else if (role === "freelancer") {
         Object.assign(payload, { skills: form.skills, availability: form.availability });
       }
-      const { data } = await updateProfile(payload);
-      setProfile((p) => ({ ...p, ...data }));
+      await updateProfile(payload);
+      setProfile((p) => ({ ...p, ...payload }));
+      // Keep the auth store in sync so display names update immediately
+      if (storeUser) {
+        setUser({
+          ...storeUser,
+          first_name: form.first_name,
+          last_name: form.last_name,
+        });
+      }
       toast("Profile updated successfully", "success");
     } catch {
       toast("Could not save profile. Please try again.", "error");
@@ -294,7 +305,9 @@ export default function SettingsPage() {
     <MainLayout maxWidth="max-w-2xl">
       {/* Page header */}
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900">Account Settings</h1>
+        <h1 className="text-xl font-bold text-slate-900">
+          {getDisplayName(user, "full") || "Account Settings"}
+        </h1>
         <p className="text-sm text-slate-500 mt-0.5">{user?.email}</p>
       </div>
 

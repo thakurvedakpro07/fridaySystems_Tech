@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useAuthStore } from "../../store/authStore";
+import { getDisplayName } from "../../utils/displayName";
 
 const STEPS = ["Skills", "Experience", "Availability", "Profile Check", "Welcome"];
 
@@ -319,7 +320,10 @@ export default function FreelancerOnboarding() {
                 </svg>
               </div>
               <h2 className="text-2xl font-bold text-slate-900 mb-3">
-                Application submitted!
+                {(() => {
+                  const name = getDisplayName(user);
+                  return name ? `Application submitted, ${name}!` : "Application submitted!";
+                })()}
               </h2>
               <p className="text-slate-500 text-sm leading-relaxed mb-8 max-w-sm mx-auto">
                 Your freelancer profile has been submitted for review. While you wait, explore your dashboard and get familiar with the platform.

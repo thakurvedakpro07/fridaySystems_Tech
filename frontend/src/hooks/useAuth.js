@@ -8,6 +8,7 @@
 import { login as loginApi, register as registerApi } from "../api/auth";
 import { useToast } from "../context/ToastContext";
 import { useAuthStore } from "../store/authStore";
+import { getDisplayName } from "../utils/displayName";
 
 export function useAuth() {
   const {
@@ -25,7 +26,8 @@ export function useAuth() {
       const { data } = await loginApi(email, password);
       setTokens(data.access, data.refresh);
       setUser(data.user);
-      toast(`Welcome back, ${data.user.email}!`, "success");
+      const name = getDisplayName(data.user);
+      toast(name ? `Welcome back, ${name}!` : "Welcome back!", "success");
       // Return role so the login page can redirect to the right place:
       // admins → /admin, everyone else → /dashboard
       return { success: true, role: data.user.role, is_staff: data.user.is_staff };

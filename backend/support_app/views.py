@@ -128,6 +128,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             "email": self.user.email,
             "is_staff": self.user.is_staff,
             "role": self.user.role,
+            "first_name": self.user.first_name,
+            "last_name": self.user.last_name,
         }
         return data
 
@@ -191,6 +193,8 @@ class RegisterView(generics.CreateAPIView):
                     "is_staff": user.is_staff,
                     "role": user.role,
                     "is_verified": user.is_verified,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
                 },
             },
             status=status.HTTP_201_CREATED,

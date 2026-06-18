@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useAuthStore } from "../../store/authStore";
 import apiClient from "../../api/client";
+import { getDisplayName } from "../../utils/displayName";
 
 const INDUSTRIES = [
   "Manufacturing", "Retail & E-Commerce", "Finance & CA Firm",
@@ -249,7 +250,10 @@ export default function CustomerOnboarding() {
                 </svg>
               </div>
               <h2 className="text-2xl font-bold text-slate-900 mb-3">
-                You're all set{user?.email ? `, ${user.email.split("@")[0]}` : ""}!
+                {(() => {
+                  const name = getDisplayName(user);
+                  return name ? `You're all set, ${name}!` : "You're all set!";
+                })()}
               </h2>
               <p className="text-slate-500 text-sm leading-relaxed mb-8 max-w-sm mx-auto">
                 Your customer account is ready. Create your first support ticket and a vetted engineer will be assigned within 2 hours.
