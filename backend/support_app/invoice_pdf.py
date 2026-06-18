@@ -98,7 +98,8 @@ def generate_invoice_pdf(payment) -> bytes:
     # ── Derived values ────────────────────────────────────────────
     business_name  = getattr(s, "BUSINESS_NAME",   "Friday Tech Systems")
     business_gstin = getattr(s, "BUSINESS_GSTIN",  "22AAAAA0000A1Z5")
-    business_email = getattr(s, "DEFAULT_FROM_EMAIL", "support@supportmitra.in")
+    # Temporary placeholder contact information. Replace before production launch.
+    business_email = getattr(s, "DEFAULT_FROM_EMAIL", "support@resolvehq.in")
     gst_rate       = float(getattr(s, "GST_RATE", 0.18))
     gst_pct        = f"{gst_rate * 100:.0f}%"
 
@@ -303,7 +304,7 @@ def generate_invoice_pdf(payment) -> bytes:
     story.append(_p(
         "This is a computer-generated GST Tax Invoice and does not require a physical signature. "
         f"IGST charged at {gst_pct} under SAC 998313 (IT support services). "
-        "For billing queries contact support@supportmitra.in.",
+        "For billing queries contact billing@resolvehq.in or call 1800-123-4567 (Mon–Sat, 9 AM–8 PM IST).",  # Temporary placeholder. Replace before production launch.
         _style("footer", fontSize=7.5, textColor=SLATE_500, leading=11),
     ))
     story.append(_p(

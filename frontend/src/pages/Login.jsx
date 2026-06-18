@@ -1,8 +1,10 @@
+// Temporary placeholder contact information. Replace before production launch.
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Button from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { CONTACT } from "../config/contact";
 
 const TRUST_POINTS = [
   "Bank-grade encryption on all data",
@@ -224,6 +226,18 @@ export default function Login() {
             </svg>
             <p className="text-xs text-slate-400">256-bit SSL encryption · SOC 2 compliant</p>
           </div>
+
+          {/* Help footer */}
+          <p className="text-xs text-center text-slate-400 mt-4">
+            Need help?{" "}
+            <a href={CONTACT.supportMailto} className="text-indigo-500 hover:text-indigo-700 transition-colors">
+              {CONTACT.supportEmail}
+            </a>
+            {" "}·{" "}
+            <a href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`} className="hover:text-slate-600 transition-colors">
+              {CONTACT.tollFree}
+            </a>
+          </p>
 
         </div>
       </div>

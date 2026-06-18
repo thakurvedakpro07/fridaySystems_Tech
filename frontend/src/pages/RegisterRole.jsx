@@ -1,5 +1,7 @@
+// Temporary placeholder contact information. Replace before production launch.
 import { Link } from "react-router-dom";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { CONTACT } from "../config/contact";
 
 const CUSTOMER_BENEFITS = [
   "Create support tickets in under 2 minutes",
@@ -56,7 +58,8 @@ export default function RegisterRole() {
               How would you like to use ResolveHQ?
             </h1>
             <p className="text-slate-500 text-base max-w-md mx-auto leading-relaxed">
-              Choose the experience that best matches your needs. You can always contact us if you're unsure.
+              Choose the experience that best matches your needs.{" "}
+              <a href={CONTACT.supportMailto} className="text-indigo-600 hover:underline">Contact us</a> if you're unsure.
             </p>
           </div>
 
@@ -177,7 +180,8 @@ export default function RegisterRole() {
             <div className="flex-1">
               <p className="text-xs font-semibold text-slate-700 mb-1">Can I change later?</p>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Your account type is permanent, but you can contact support if you need to change roles.
+                Your account type is permanent. To change roles, email{" "}
+                <a href={CONTACT.supportMailto} className="text-indigo-600 hover:underline">{CONTACT.supportEmail}</a>.
               </p>
             </div>
           </div>
@@ -190,6 +194,18 @@ export default function RegisterRole() {
             </svg>
             <p className="text-xs text-slate-400">256-bit SSL encryption · Your data is always secure</p>
           </div>
+
+          {/* Help footer */}
+          <p className="text-xs text-center text-slate-400 mt-3">
+            Questions?{" "}
+            <a href={CONTACT.supportMailto} className="text-indigo-500 hover:text-indigo-700 transition-colors">
+              {CONTACT.supportEmail}
+            </a>
+            {" "}·{" "}
+            <a href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`} className="hover:text-slate-600 transition-colors">
+              {CONTACT.tollFree}
+            </a>
+          </p>
 
         </div>
       </main>

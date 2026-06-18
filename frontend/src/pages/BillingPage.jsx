@@ -6,10 +6,12 @@
  *  - Paginated payment history with status badges
  *  - Invoice download button (placeholder until Phase 5)
  */
+// Temporary placeholder contact information. Replace before production launch.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { downloadInvoice, listMyPayments } from "../api/payments";
 import MainLayout from "../components/layouts/MainLayout";
+import { CONTACT } from "../config/contact";
 import { usePageTitle } from "../hooks/usePageTitle";
 
 // ── Status badge ──────────────────────────────────────────────────
@@ -222,8 +224,8 @@ export default function BillingPage() {
       {payments.length > 0 && (
         <p className="text-xs text-slate-400 mt-3 text-center">
           All amounts inclusive of 18% GST. Contact{" "}
-          <a href="mailto:billing@resolvehq.in" className="text-indigo-500 hover:underline">
-            billing@resolvehq.in
+          <a href={CONTACT.billingMailto} className="text-indigo-500 hover:underline">
+            {CONTACT.billingEmail}
           </a>{" "}
           for invoice queries. All completed payments include a downloadable PDF tax invoice.
         </p>

@@ -1,5 +1,7 @@
+// Temporary placeholder contact information. Replace before production launch.
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import { CONTACT } from "../config/contact";
 
 export default function NotFoundPage() {
   const user = useAuthStore((s) => s.user);
@@ -36,6 +38,16 @@ export default function NotFoundPage() {
             Go back
           </button>
         </div>
+        <p className="text-xs text-slate-400 mt-8">
+          Still stuck?{" "}
+          <a href={CONTACT.supportMailto} className="text-indigo-500 hover:underline">
+            {CONTACT.supportEmail}
+          </a>
+          {" "}·{" "}
+          <a href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`} className="hover:text-slate-600">
+            {CONTACT.tollFree}
+          </a>
+        </p>
       </div>
     </div>
   );

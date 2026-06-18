@@ -11,9 +11,11 @@
  *   ticket          — ticket object (renders nothing if status !== "pending_payment")
  *   onPaymentSuccess(updatedTicket) — called after the ticket moves to "open"
  */
+// Temporary placeholder contact information. Replace before production launch.
 import { useState } from "react";
 import { useAuthStore } from "../../store/authStore";
 import { initiatePayment, verifyPayment } from "../../api/payments";
+import { CONTACT } from "../../config/contact";
 
 // ── Razorpay script loader ────────────────────────────────────────
 
@@ -99,7 +101,7 @@ export default function PaymentGateway({ ticket, onPaymentSuccess }) {
               razorpay_signature:  response.razorpay_signature,
             });
           } catch {
-            setError("Payment was received but confirmation failed. Please contact support.");
+            setError(`Payment received but confirmation failed. Contact ${CONTACT.supportEmail} with your order ID.`);
             setLoading(false);
           }
         },

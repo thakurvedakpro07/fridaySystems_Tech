@@ -1,26 +1,28 @@
+// Temporary placeholder contact information. Replace before production launch.
 import { Link } from "react-router-dom";
+import { CONTACT } from "../../config/contact";
 
 const YEAR = new Date().getFullYear();
 
 const NAV = {
   Product: [
-    { label: "Features",     href: "#features" },
-    { label: "Services",     href: "#services" },
-    { label: "How It Works", href: "#how-it-works" },
-    { label: "Pricing",      href: "#services" },
-    { label: "FAQ",          href: "#faq" },
+    { label: "Features",      href: "#features" },
+    { label: "Services",      href: "#services" },
+    { label: "How It Works",  href: "#how-it-works" },
+    { label: "Pricing",       href: "#services" },
+    { label: "FAQ",           href: "#faq" },
   ],
   Company: [
-    { label: "About",        href: "#" },
-    { label: "Blog",         href: "#" },
-    { label: "Careers",      href: "#" },
-    { label: "Press",        href: "#" },
+    { label: "About",         href: "#" },
+    { label: "Blog",          href: "#" },
+    { label: "Careers",       href: "#" },
+    { label: "Press",         href: "#" },
   ],
   Support: [
-    { label: "Help Center",  href: "#" },
+    { label: "Help Center",   href: "#" },
     { label: "Open a Ticket", href: "/register", internal: true },
-    { label: "Status",       href: "#" },
-    { label: "Contact Us",   href: "mailto:support@supportmitra.in" },
+    { label: "Status",        href: "#" },
+    { label: "Contact Us",    href: CONTACT.supportMailto },
   ],
   Legal: [
     { label: "Privacy Policy", href: "#" },
@@ -54,7 +56,7 @@ export default function LandingFooter() {
 
           {/* Brand column */}
           <div className="lg:col-span-1">
-            {/* Logo */}
+            {/* Logo + beta */}
             <div className="flex items-center gap-2.5 mb-4">
               <div className="w-8 h-8 rounded-lg bg-brand-gradient flex items-center justify-center shrink-0">
                 <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -62,21 +64,35 @@ export default function LandingFooter() {
                 </svg>
               </div>
               <span className="font-bold text-white">ResolveHQ</span>
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold
+                               bg-white/10 text-indigo-200 border border-white/15">
+                Beta
+              </span>
             </div>
 
             <p className="text-sm text-slate-400 leading-relaxed mb-5">
               Expert IT support for Indian SMBs. Pay only when your problem is resolved.
             </p>
 
-            <a
-              href="mailto:support@supportmitra.in"
-              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-            >
-              support@supportmitra.in
-            </a>
+            {/* Contact info */}
+            <div className="space-y-2 mb-5">
+              <a
+                href={CONTACT.supportMailto}
+                className="block text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+              >
+                {CONTACT.supportEmail}
+              </a>
+              <a
+                href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
+                className="block text-xs text-slate-400 hover:text-slate-300 transition-colors"
+              >
+                {CONTACT.tollFree} (Toll-free)
+              </a>
+              <p className="text-xs text-slate-500">{CONTACT.businessHours}</p>
+            </div>
 
             {/* Social links */}
-            <div className="flex gap-3 mt-5">
+            <div className="flex gap-3">
               {/* Twitter/X */}
               <a href="#" aria-label="Twitter"
                  className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10
@@ -128,12 +144,15 @@ export default function LandingFooter() {
           <p className="text-xs text-slate-500">
             © {YEAR} Friday Tech Systems Pvt. Ltd. · All rights reserved
           </p>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <span className="text-xs text-slate-500 bg-white/5 border border-white/10 px-2.5 py-1 rounded-md">
               GST-compliant invoicing
             </span>
             <span className="text-xs text-slate-500 bg-white/5 border border-white/10 px-2.5 py-1 rounded-md">
               Made in India 🇮🇳
+            </span>
+            <span className="text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-md font-semibold">
+              ResolveHQ Beta
             </span>
           </div>
         </div>
