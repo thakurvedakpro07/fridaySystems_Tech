@@ -42,15 +42,15 @@ export function useAuth() {
     }
   };
 
-  const registerUser = async (email, password, password2, company, phone) => {
+  const registerUser = async ({ name = "", email, role = "customer", company = "", phone = "", password, password2, skills = "" }) => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await registerApi(email, password, password2, company, phone);
+      const { data } = await registerApi(name, email, role, company, phone, password, password2, skills);
       setTokens(data.access, data.refresh);
       setUser(data.user);
       toast("Account created! Welcome to ResolveHQ.", "success");
-      return { success: true };
+      return { success: true, role: data.user.role };
     } catch (err) {
       const responseData = err.response?.data || {};
       const errors = [];
@@ -79,5 +79,6 @@ export function useAuth() {
     toast("You have been signed out.", "info");
   };
 
-  return { loginUser, registerUser, logout, isAuthenticated, user };
+  const loading = useAuthStore((s) => s.loading);
+  return { loginUser, registerUser, logout, isAuthenticated, user, loading };
 }

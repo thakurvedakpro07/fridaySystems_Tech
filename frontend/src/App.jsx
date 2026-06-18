@@ -10,6 +10,9 @@ import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import NewTicket from "./pages/NewTicket";
 import Register from "./pages/Register";
+import RegisterRole from "./pages/RegisterRole";
+import RegisterCustomer from "./pages/RegisterCustomer";
+import RegisterFreelancer from "./pages/RegisterFreelancer";
 import TicketDetailPage from "./pages/TicketDetailPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import ForbiddenPage from "./pages/ForbiddenPage";
@@ -25,6 +28,8 @@ const PaymentsDashboard    = lazy(() => import("./pages/admin/PaymentsDashboard"
 const ForgotPassword       = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword        = lazy(() => import("./pages/ResetPassword"));
 const VerifyEmail          = lazy(() => import("./pages/VerifyEmail"));
+const CustomerOnboarding   = lazy(() => import("./pages/onboarding/CustomerOnboarding"));
+const FreelancerOnboarding = lazy(() => import("./pages/onboarding/FreelancerOnboarding"));
 
 import { ToastProvider } from "./context/ToastContext";
 import { useAuthStore } from "./store/authStore";
@@ -103,7 +108,12 @@ export default function App() {
           {/* Public pages */}
           <Route path="/" element={<Landing />} />
           <Route path="/login"    element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
-          <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
+          {/* Role selection — new entry point for registration */}
+          <Route path="/register" element={<PublicOnlyRoute><RegisterRole /></PublicOnlyRoute>} />
+          <Route path="/register/customer"   element={<PublicOnlyRoute><RegisterCustomer /></PublicOnlyRoute>} />
+          <Route path="/register/freelancer" element={<PublicOnlyRoute><RegisterFreelancer /></PublicOnlyRoute>} />
+          {/* Legacy /register/legacy redirect for any bookmarked links */}
+          <Route path="/register/legacy" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
           <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPassword /></PublicOnlyRoute>} />
           <Route path="/reset-password"  element={<ResetPassword />} />
           <Route path="/verify-email"    element={<VerifyEmail />} />
@@ -158,6 +168,16 @@ export default function App() {
           <Route
             path="/billing"
             element={<PrivateRoute><BillingPage /></PrivateRoute>}
+          />
+
+          {/* Onboarding — post-registration guided setup (require auth) */}
+          <Route
+            path="/onboarding/customer"
+            element={<PrivateRoute><CustomerOnboarding /></PrivateRoute>}
+          />
+          <Route
+            path="/onboarding/freelancer"
+            element={<PrivateRoute><FreelancerOnboarding /></PrivateRoute>}
           />
 
           {/* Named error pages */}

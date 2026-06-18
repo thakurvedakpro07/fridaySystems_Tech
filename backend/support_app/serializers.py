@@ -33,19 +33,24 @@ from .models import (
 # ── Auth ──────────────────────────────────────────────────────────
 
 class RegisterSerializer(serializers.ModelSerializer):
-    """Validates and creates a new customer user account."""
+    """Validates and creates a customer or freelancer account via self-registration."""
     password = serializers.CharField(write_only=True, min_length=10)
     password2 = serializers.CharField(write_only=True)
-    company = serializers.CharField(required=False, allow_blank=True)
-    phone = serializers.CharField(required=False, allow_blank=True)
+    name = serializers.CharField(required=False, allow_blank=True, default="")
+    company = serializers.CharField(required=False, allow_blank=True, default="")
+    phone = serializers.CharField(required=False, allow_blank=True, default="")
+    role = serializers.ChoiceField(
+        choices=["customer", "freelancer"],
+        default="customer",
+        required=False,
+    )
+    skills = serializers.CharField(required=False, allow_blank=True, default="")
 
     class Meta:
         model = User
-        fields = ["email", "password", "password2", "company", "phone"]
+        fields = ["email", "password", "password2", "name", "company", "phone", "role", "skills"]
 
     def validate_email(self, value):
-        # Check case-insensitively: "User@Example.com" blocks when "user@example.com" exists.
-        # We now check email directly (no more username field — it was removed from CustomUser).
         if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("An account with this email already exists.")
         return value
@@ -65,19 +70,37 @@ class RegisterSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        from django.db import transaction
         company = validated_data.pop("company", "")
         phone = validated_data.pop("phone", "")
-        # CustomUser.objects.create_user() runs CustomUserManager.create_user().
-        # No username= kwarg — CustomUser has no username field.
-        # role="customer" is explicit: every self-registered user is a customer.
-        # is_verified=False: self-registered users must confirm their email.
-        user = User.objects.create_user(
-            email=validated_data["email"],
-            password=validated_data["password"],
-            role="customer",
-            is_verified=False,
-        )
-        Customer.objects.create(user=user, company=company, phone=phone)
+        name = validated_data.pop("name", "")
+        role = validated_data.pop("role", "customer")
+        skills = validated_data.pop("skills", "")
+
+        # Split full name into first/last for AbstractUser fields
+        parts = name.strip().split(" ", 1) if name.strip() else []
+        first_name = parts[0] if parts else ""
+        last_name = parts[1] if len(parts) > 1 else ""
+
+        with transaction.atomic():
+            user = User.objects.create_user(
+                email=validated_data["email"],
+                password=validated_data["password"],
+                role=role,
+                is_verified=False,
+                first_name=first_name,
+                last_name=last_name,
+            )
+            if role == "freelancer":
+                Freelancer.objects.create(
+                    user=user,
+                    skills=skills,
+                    availability="ad_hoc",
+                    onboarding_status="pending",
+                )
+            else:
+                Customer.objects.create(user=user, company=company, phone=phone)
+
         return user
 
 

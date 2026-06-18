@@ -319,22 +319,22 @@ export default function Landing() {
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center mb-14">
               <Link
-                to="/register"
+                to="/register/customer"
                 className="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white
                            font-semibold px-7 py-3.5 rounded-xl hover:bg-indigo-700 active:bg-indigo-800
                            transition-colors shadow-sm text-sm"
               >
-                Open a Support Ticket
+                Get IT Support
                 <ArrowRight />
               </Link>
-              <a
-                href="#how-it-works"
+              <Link
+                to="/register/freelancer"
                 className="inline-flex items-center justify-center gap-2 bg-white text-slate-700
                            font-semibold px-7 py-3.5 rounded-xl border border-slate-200 hover:border-slate-300
                            hover:bg-slate-50 transition-colors text-sm shadow-sm"
               >
-                See how it works
-              </a>
+                Become a Freelancer
+              </Link>
             </div>
 
             {/* Trust strip */}
@@ -468,13 +468,13 @@ export default function Landing() {
               ))}
             </div>
 
-            <div className="mt-10 text-center">
+            <div className="mt-10 text-center flex flex-col sm:flex-row gap-3 justify-center">
               <Link
-                to="/register"
+                to="/register/customer"
                 className="inline-flex items-center gap-2 bg-indigo-600 text-white font-semibold
                            px-7 py-3.5 rounded-xl hover:bg-indigo-700 transition-colors shadow-sm text-sm"
               >
-                Get Started — Free to Join
+                Get IT Support — Free to Join
                 <ArrowRight />
               </Link>
             </div>
@@ -537,7 +537,59 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ── 8. FINAL CTA ────────────────────────────────────────────────────── */}
+        {/* ── 8. FOR IT PROFESSIONALS ─────────────────────────────────────────── */}
+        <section className="py-20 px-4 bg-white border-t border-slate-100">
+          <div className="max-w-5xl mx-auto">
+            <div className="rounded-2xl overflow-hidden"
+                 style={{ background: "linear-gradient(135deg, #4c1d95 0%, #5b21b6 40%, #7c3aed 100%)" }}>
+              <div className="flex flex-col lg:flex-row items-center gap-10 px-10 py-12 relative overflow-hidden">
+                {/* Background decoration */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute -bottom-8 -left-8 w-48 h-48 bg-violet-400/20 rounded-full blur-3xl pointer-events-none" />
+
+                {/* Left content */}
+                <div className="relative flex-1 text-center lg:text-left">
+                  <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20
+                                  text-violet-100 text-xs font-semibold px-3.5 py-1.5 rounded-full mb-5">
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                    For IT Professionals
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-4 leading-tight">
+                    Turn your IT expertise<br className="hidden sm:block" /> into income.
+                  </h2>
+                  <p className="text-violet-200 text-base leading-relaxed mb-6 max-w-md">
+                    Join ResolveHQ's network of trusted IT professionals and help businesses solve real-world technical challenges.
+                  </p>
+                  <Link
+                    to="/register/freelancer"
+                    className="inline-flex items-center gap-2 bg-white text-violet-700 font-semibold
+                               px-6 py-3 rounded-xl hover:bg-violet-50 transition-colors text-sm"
+                  >
+                    Become a Freelancer
+                    <ArrowRight />
+                  </Link>
+                </div>
+
+                {/* Right benefits */}
+                <div className="relative flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full lg:w-auto">
+                  {[
+                    { icon: "🏠", text: "Flexible remote work" },
+                    { icon: "⭐", text: "Build professional reputation" },
+                    { icon: "🎫", text: "Real support projects" },
+                    { icon: "💰", text: "Earnings from completed tickets" },
+                  ].map((b) => (
+                    <div key={b.text} className="flex items-center gap-3 bg-white/10 border border-white/15 rounded-xl px-4 py-3">
+                      <span className="text-lg shrink-0">{b.icon}</span>
+                      <span className="text-sm font-medium text-white">{b.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 9. FINAL CTA ────────────────────────────────────────────────────── */}
         <section className="py-24 px-4 bg-slate-900 relative overflow-hidden">
           {/* Decorative glow */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-64
@@ -557,20 +609,20 @@ export default function Landing() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
-                to="/register"
+                to="/register/customer"
                 className="inline-flex items-center justify-center gap-2 bg-indigo-500 text-white
                            font-semibold px-7 py-3.5 rounded-xl hover:bg-indigo-400 transition-colors text-sm"
               >
-                Create Free Account
+                Get IT Support
                 <ArrowRight />
               </Link>
               <Link
-                to="/login"
+                to="/register/freelancer"
                 className="inline-flex items-center justify-center gap-2 bg-white/10 text-white
                            font-semibold px-7 py-3.5 rounded-xl hover:bg-white/20 border border-white/20
                            transition-colors text-sm"
               >
-                Sign In
+                Become a Freelancer
               </Link>
             </div>
           </div>
