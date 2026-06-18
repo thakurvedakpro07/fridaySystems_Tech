@@ -6,8 +6,8 @@ import NotificationBell from "../ui/NotificationBell";
 import { getDisplayName } from "../../utils/displayName";
 
 function UserAvatar({ user }) {
-  const first = (user?.first_name ?? "").trim();
-  const last  = (user?.last_name  ?? "").trim();
+  const first    = (user?.first_name ?? "").trim();
+  const last     = (user?.last_name  ?? "").trim();
   const initials = first && last
     ? `${first[0]}${last[0]}`.toUpperCase()
     : first
@@ -15,7 +15,7 @@ function UserAvatar({ user }) {
     : (user?.email ?? "??").slice(0, 2).toUpperCase();
   return (
     <span
-      className="inline-flex items-center justify-center w-7 h-7 rounded-full
+      className="inline-flex items-center justify-center w-8 h-8 rounded-full
                  bg-indigo-100 text-indigo-700 text-xs font-semibold select-none shrink-0"
       title={user?.email}
       aria-label={`Signed in as ${user?.email}`}
@@ -32,7 +32,7 @@ function NavLink({ to, children, onClick }) {
     <Link
       to={to}
       onClick={onClick}
-      className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-colors duration-150
+      className={`text-sm font-medium px-3.5 py-2 rounded-xl transition-colors duration-150
         ${active
           ? "text-indigo-600 bg-indigo-50"
           : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
@@ -49,28 +49,32 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { pathname } = useLocation();
 
-  // Close mobile menu on route change
   useEffect(() => { setMenuOpen(false); }, [pathname]);
-
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40">
-      {/* ── Main header row ─────────────────────────────── */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+    <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40">
+      {/* ── Main header row ─────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[72px] flex items-center justify-between gap-4">
 
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 shrink-0" onClick={closeMenu}>
-          <div className="w-7 h-7 bg-brand-gradient rounded-lg flex items-center justify-center shrink-0">
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        {/* ── Brand ──────────────────────────────────────────── */}
+        <Link to="/" className="flex items-center gap-3 shrink-0 group" onClick={closeMenu}>
+          <div className="w-9 h-9 bg-brand-gradient rounded-xl flex items-center justify-center
+                          shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round"
                 d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
             </svg>
           </div>
-          <span className="text-[0.9375rem] font-bold text-slate-900 tracking-tight">ResolveHQ</span>
+          <div>
+            <p className="text-base font-bold text-slate-900 leading-tight tracking-tight">ResolveHQ</p>
+            <p className="text-[10px] text-slate-400 leading-tight font-medium tracking-wide hidden sm:block">
+              Enterprise IT Support Marketplace
+            </p>
+          </div>
         </Link>
 
-        {/* Desktop nav — hidden on mobile */}
+        {/* ── Desktop nav ────────────────────────────────────── */}
         <nav className="hidden sm:flex items-center gap-1">
           {isAuthenticated ? (
             <>
@@ -86,7 +90,7 @@ export default function Header() {
                 <Link
                   to="/tickets/new"
                   className="ml-1 inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm
-                             font-medium px-3.5 py-1.5 rounded-lg hover:bg-indigo-700 active:bg-indigo-800
+                             font-semibold px-4 py-2 rounded-xl hover:bg-indigo-700 active:bg-indigo-800
                              transition-colors shadow-sm"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -96,14 +100,12 @@ export default function Header() {
                 </Link>
               )}
 
-              {/* Analytics link */}
               {user?.is_staff ? (
                 <NavLink to="/admin/analytics">Analytics</NavLink>
               ) : (
                 <NavLink to="/analytics">Analytics</NavLink>
               )}
 
-              {/* Billing (customer) / Payments (admin) */}
               {user?.is_staff ? (
                 <NavLink to="/admin/payments">Payments</NavLink>
               ) : user?.role !== "freelancer" ? (
@@ -114,15 +116,15 @@ export default function Header() {
                 <NotificationBell />
               </div>
 
-              {/* Avatar → Settings */}
-              <Link to="/settings" title="Account Settings" className="ml-0.5">
+              <Link to="/settings" title="Account settings" className="ml-1">
                 <UserAvatar user={user} />
               </Link>
 
               <button
                 onClick={logout}
-                className="ml-1 text-xs text-slate-500 hover:text-slate-900 border border-slate-200
-                           hover:border-slate-300 px-2.5 py-1.5 rounded-lg transition-all duration-150
+                className="ml-2 text-xs font-medium text-slate-500 hover:text-slate-900
+                           border border-slate-200 hover:border-slate-300
+                           px-3 py-2 rounded-xl transition-all duration-150
                            focus:outline-none focus:ring-2 focus:ring-slate-300"
               >
                 Sign out
@@ -130,13 +132,17 @@ export default function Header() {
             </>
           ) : (
             <>
-              <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 px-3 py-1.5 transition-colors">
+              <Link
+                to="/login"
+                className="text-sm font-medium text-slate-600 hover:text-slate-900
+                           px-3.5 py-2 rounded-xl hover:bg-slate-100 transition-colors"
+              >
                 Sign in
               </Link>
               <Link
                 to="/register"
-                className="bg-indigo-600 text-white text-sm font-medium px-4 py-1.5 rounded-lg
-                           hover:bg-indigo-700 transition-colors shadow-sm"
+                className="bg-indigo-600 text-white text-sm font-semibold px-5 py-2 rounded-xl
+                           hover:bg-indigo-700 transition-colors shadow-sm ml-1"
               >
                 Get Started
               </Link>
@@ -144,14 +150,14 @@ export default function Header() {
           )}
         </nav>
 
-        {/* Mobile right side — bell (if authed) + hamburger */}
-        <div className="flex sm:hidden items-center gap-1.5">
+        {/* ── Mobile right: bell + hamburger ─────────────────── */}
+        <div className="flex sm:hidden items-center gap-2">
           {isAuthenticated && <NotificationBell />}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
-            className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 active:bg-slate-200
+            className="p-2.5 rounded-xl text-slate-600 hover:bg-slate-100 active:bg-slate-200
                        transition-colors focus:outline-none focus:ring-2 focus:ring-slate-300"
           >
             {menuOpen ? (
@@ -167,18 +173,18 @@ export default function Header() {
         </div>
       </div>
 
-      {/* ── Mobile dropdown panel ───────────────────────── */}
+      {/* ── Mobile dropdown ─────────────────────────────────── */}
       {menuOpen && (
-        <div className="sm:hidden border-t border-slate-100 bg-white/95 backdrop-blur-md
-                        px-4 pb-4 pt-3 animate-fade-in">
+        <div className="sm:hidden border-t border-slate-100 bg-white/98 backdrop-blur-md
+                        px-4 pb-5 pt-3 animate-fade-in">
           {isAuthenticated ? (
             <div className="space-y-1">
-              {/* User info chip */}
-              <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 mb-3">
+              {/* User info */}
+              <div className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-slate-50 border border-slate-100 mb-3">
                 <UserAvatar user={user} />
                 <div className="min-w-0">
                   {getDisplayName(user, "full") && (
-                    <p className="text-sm font-semibold text-slate-800 truncate leading-tight">
+                    <p className="text-sm font-semibold text-slate-800 truncate">
                       {getDisplayName(user, "full")}
                     </p>
                   )}
@@ -186,7 +192,6 @@ export default function Header() {
                 </div>
               </div>
 
-              {/* Dashboard link */}
               {user?.is_staff ? (
                 <NavLink to="/admin" onClick={closeMenu}>Dashboard</NavLink>
               ) : user?.role === "freelancer" ? (
@@ -195,13 +200,12 @@ export default function Header() {
                 <NavLink to="/dashboard" onClick={closeMenu}>Dashboard</NavLink>
               )}
 
-              {/* New Ticket (customer only) */}
               {!user?.is_staff && user?.role !== "freelancer" && (
                 <Link
                   to="/tickets/new"
                   onClick={closeMenu}
-                  className="flex items-center gap-2 text-sm font-medium text-white bg-indigo-600
-                             hover:bg-indigo-700 px-3 py-2 rounded-lg transition-colors"
+                  className="flex items-center gap-2 text-sm font-semibold text-white bg-indigo-600
+                             hover:bg-indigo-700 px-3.5 py-2.5 rounded-xl transition-colors"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -210,26 +214,23 @@ export default function Header() {
                 </Link>
               )}
 
-              {/* Analytics */}
               <NavLink to={user?.is_staff ? "/admin/analytics" : "/analytics"} onClick={closeMenu}>
                 Analytics
               </NavLink>
 
-              {/* Billing / Payments */}
               {user?.is_staff ? (
                 <NavLink to="/admin/payments" onClick={closeMenu}>Payments</NavLink>
               ) : user?.role !== "freelancer" ? (
                 <NavLink to="/billing" onClick={closeMenu}>Billing</NavLink>
               ) : null}
 
-              {/* Settings */}
+              <NavLink to="/notifications" onClick={closeMenu}>Notifications</NavLink>
               <NavLink to="/settings" onClick={closeMenu}>Settings</NavLink>
 
-              {/* Sign out */}
               <button
                 onClick={() => { logout(); closeMenu(); }}
                 className="w-full text-left text-sm font-medium text-rose-600 hover:text-rose-700
-                           hover:bg-rose-50 px-3 py-2 rounded-lg transition-colors"
+                           hover:bg-rose-50 px-3.5 py-2.5 rounded-xl transition-colors"
               >
                 Sign out
               </button>
@@ -240,15 +241,15 @@ export default function Header() {
                 to="/login"
                 onClick={closeMenu}
                 className="block text-sm font-medium text-slate-700 hover:bg-slate-100
-                           px-3 py-2.5 rounded-lg transition-colors"
+                           px-3.5 py-2.5 rounded-xl transition-colors"
               >
                 Sign in
               </Link>
               <Link
                 to="/register"
                 onClick={closeMenu}
-                className="block text-sm font-medium text-white bg-indigo-600
-                           hover:bg-indigo-700 px-3 py-2.5 rounded-lg transition-colors text-center"
+                className="block text-sm font-semibold text-white bg-indigo-600
+                           hover:bg-indigo-700 px-3.5 py-2.5 rounded-xl transition-colors text-center"
               >
                 Get Started — Free
               </Link>
