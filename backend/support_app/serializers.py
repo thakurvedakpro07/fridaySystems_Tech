@@ -123,22 +123,26 @@ class FreelancerPublicSerializer(serializers.ModelSerializer):
     Safe subset of freelancer data for customer-facing responses.
     Excludes internal fields: contract_signed, onboarding_status, active.
     """
-    email = serializers.EmailField(source="user.email", read_only=True)
+    email      = serializers.EmailField(source="user.email",       read_only=True)
+    first_name = serializers.CharField(source="user.first_name",   read_only=True)
+    last_name  = serializers.CharField(source="user.last_name",    read_only=True)
 
     class Meta:
         model = Freelancer
-        fields = ["id", "email", "skills", "availability", "rating"]
+        fields = ["id", "email", "first_name", "last_name", "skills", "availability", "rating"]
         read_only_fields = ["id", "rating"]
 
 
 class FreelancerSerializer(serializers.ModelSerializer):
     """Full serializer for admin-only list/read responses."""
-    email = serializers.EmailField(source="user.email", read_only=True)
+    email      = serializers.EmailField(source="user.email",       read_only=True)
+    first_name = serializers.CharField(source="user.first_name",   read_only=True)
+    last_name  = serializers.CharField(source="user.last_name",    read_only=True)
 
     class Meta:
         model = Freelancer
         fields = [
-            "id", "email", "skills", "availability", "rating",
+            "id", "email", "first_name", "last_name", "skills", "availability", "rating",
             "active", "onboarding_status", "contract_signed", "created_at",
         ]
         read_only_fields = ["id", "rating", "created_at"]

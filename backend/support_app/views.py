@@ -1235,18 +1235,30 @@ def analytics_view(request):
         qs.values("service_type").annotate(n=Count("id")).order_by("-n")[:5]
     )
 
-    # Admin-only: freelancer performance
+    # Admin-only: user counts and freelancer performance
+    active_customers = active_freelancers = total_revenue = None
     freelancer_stats = []
+    if user.is_staff:
+        from django.contrib.auth import get_user_model
+        _User = get_user_model()
+        active_customers   = _User.objects.filter(role="customer",   is_active=True).count()
+        active_freelancers = _User.objects.filter(role="freelancer",  is_active=True).count()
+        from django.db.models import Sum as _Sum
+        total_revenue = Payment.objects.filter(status="completed").aggregate(
+            total=_Sum("total_amount")
+        )["total"] or 0
     if user.is_staff:
         for fl in Freelancer.objects.annotate(
             assigned=Count("assigned_tickets"),
             resolved=Count("assigned_tickets", filter=models_q(assigned_tickets__status__in=["resolved", "closed"])),
         ).order_by("-assigned")[:5]:
             freelancer_stats.append({
-                "email": fl.user.email,
-                "assigned": fl.assigned,
-                "resolved": fl.resolved,
-                "rating": str(fl.rating),
+                "email":      fl.user.email,
+                "first_name": fl.user.first_name,
+                "last_name":  fl.user.last_name,
+                "assigned":   fl.assigned,
+                "resolved":   fl.resolved,
+                "rating":     str(fl.rating),
             })
 
     return Response({
@@ -1261,6 +1273,9 @@ def analytics_view(request):
         "timeline": timeline,
         "service_breakdown": service_breakdown,
         "freelancer_stats": freelancer_stats,
+        "active_customers": active_customers,
+        "active_freelancers": active_freelancers,
+        "total_revenue": total_revenue,
     })
 
 

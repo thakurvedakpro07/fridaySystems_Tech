@@ -8,19 +8,33 @@ import EmptyState from "../components/ui/EmptyState";
 import { useAuthStore } from "../store/authStore";
 import { useTickets } from "../hooks/useTickets";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { getDisplayName } from "../utils/displayName";
 
-const STATUS_OPTIONS = ["", "open", "assigned", "in_progress", "waiting_customer", "resolved", "closed"];
+const STATUS_OPTIONS = [
+  { value: "",                 label: "All statuses" },
+  { value: "open",             label: "Open" },
+  { value: "assigned",         label: "Assigned" },
+  { value: "in_progress",      label: "In Progress" },
+  { value: "waiting_customer", label: "Waiting on You" },
+  { value: "resolved",         label: "Resolved" },
+  { value: "closed",           label: "Closed" },
+];
 
-const STAT_COLORS = {
-  indigo:  { text: "text-indigo-600", bg: "bg-indigo-50" },
-  blue:    { text: "text-blue-600",   bg: "bg-blue-50" },
-  amber:   { text: "text-amber-600",  bg: "bg-amber-50" },
-  emerald: { text: "text-emerald-600",bg: "bg-emerald-50" },
-  slate:   { text: "text-slate-600",  bg: "bg-slate-100" },
+function salutation(name) {
+  const h = new Date().getHours();
+  const base = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  return name ? `${base}, ${name}` : base;
+}
+
+const STAT_META = {
+  indigo:  { text: "text-indigo-600" },
+  blue:    { text: "text-blue-600" },
+  amber:   { text: "text-amber-600" },
+  emerald: { text: "text-emerald-600" },
 };
 
-function StatCard({ label, value, color = "indigo", loading }) {
-  const { text, bg } = STAT_COLORS[color] ?? STAT_COLORS.indigo;
+function StatCard({ label, value, sub, color = "indigo", loading }) {
+  const { text } = STAT_META[color] ?? STAT_META.indigo;
   return (
     <div
       className="bg-white border border-slate-200 rounded-xl px-5 py-4
@@ -31,8 +45,60 @@ function StatCard({ label, value, color = "indigo", loading }) {
       {loading ? (
         <div className="h-7 w-10 shimmer rounded-md" />
       ) : (
-        <p className={`text-2xl font-bold animate-fade-in ${text}`}>{value}</p>
+        <p className={`text-2xl font-bold ${text}`}>{value}</p>
       )}
+      {sub && !loading && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+function GettingStarted() {
+  return (
+    <div
+      className="bg-gradient-to-r from-indigo-50 to-white border border-indigo-100 rounded-2xl p-6 mb-6"
+      style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}
+    >
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-1.5">
+            Quick start
+          </p>
+          <h3 className="text-sm font-semibold text-slate-900 mb-1">
+            Ready to resolve your first IT issue?
+          </h3>
+          <p className="text-xs text-slate-500 leading-relaxed max-w-md">
+            Describe your problem and a vetted engineer is assigned within 2 hours.
+            Pay ₹299 consulting fee upfront — refunded if unaccepted.
+            Resolution fee only charged after the issue is fully fixed.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 shrink-0">
+          <Link
+            to="/tickets/new"
+            className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-xs font-semibold
+                       px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Create Ticket
+          </Link>
+          <Link
+            to="/analytics"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600
+                       border border-slate-200 hover:border-slate-300 px-4 py-2.5 rounded-xl transition-colors"
+          >
+            Analytics
+          </Link>
+          <Link
+            to="/billing"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600
+                       border border-slate-200 hover:border-slate-300 px-4 py-2.5 rounded-xl transition-colors"
+          >
+            Billing
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
@@ -45,7 +111,9 @@ export default function Dashboard() {
 }
 
 function CustomerDashboard() {
-  usePageTitle("My Tickets");
+  usePageTitle("Dashboard");
+  const user = useAuthStore((s) => s.user);
+
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch]           = useState("");
   const [status, setStatus]           = useState("");
@@ -69,11 +137,9 @@ function CustomerDashboard() {
 
   const { tickets, loading, error } = useTickets(filters);
 
-  // Stats come from the analytics endpoint — one lightweight call, always accurate.
-  // This replaces the previous second useTickets({}) call that fetched all tickets
-  // just to compute counts on the frontend.
-  const [stats, setStats]           = useState({ total: 0, open: 0, inProgress: 0, resolved: 0 });
+  const [stats, setStats]               = useState({ total: 0, open: 0, inProgress: 0, resolved: 0 });
   const [statsLoading, setStatsLoading] = useState(true);
+
   useEffect(() => {
     getAnalytics()
       .then(({ data }) => setStats({
@@ -86,18 +152,26 @@ function CustomerDashboard() {
       .finally(() => setStatsLoading(false));
   }, []);
 
+  const name = getDisplayName(user);
+
   return (
     <MainLayout maxWidth="max-w-4xl">
-      {/* Page header */}
-      <div className="flex items-center justify-between mb-6">
+      {/* Personalized greeting */}
+      <div className="flex items-start justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">My Tickets</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Track and manage your support requests</p>
+          <h1 className="text-xl font-bold text-slate-900">{salutation(name)}</h1>
+          <div className="flex items-center gap-3 mt-1">
+            <p className="text-sm text-slate-500">Track and manage your support requests</p>
+            <span className="hidden sm:flex items-center gap-1.5 text-[11px] font-medium text-emerald-600">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+              All systems operational
+            </span>
+          </div>
         </div>
         <Link
           to="/tickets/new"
           className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-medium
-                     px-4 py-2 rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm"
+                     px-4 py-2 rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm shrink-0"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -108,11 +182,14 @@ function CustomerDashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <StatCard label="Total"       value={stats.total}      color="indigo"  loading={statsLoading} />
-        <StatCard label="Open"        value={stats.open}       color="blue"    loading={statsLoading} />
-        <StatCard label="In Progress" value={stats.inProgress} color="amber"   loading={statsLoading} />
-        <StatCard label="Resolved"    value={stats.resolved}   color="emerald" loading={statsLoading} />
+        <StatCard label="Total"       value={stats.total}      sub="all time"           color="indigo"  loading={statsLoading} />
+        <StatCard label="Open"        value={stats.open}       sub="awaiting engineer"  color="blue"    loading={statsLoading} />
+        <StatCard label="In Progress" value={stats.inProgress} sub="being worked on"    color="amber"   loading={statsLoading} />
+        <StatCard label="Resolved"    value={stats.resolved}   sub="successfully fixed" color="emerald" loading={statsLoading} />
       </div>
+
+      {/* Getting started — only shown on zero-ticket accounts */}
+      {!statsLoading && stats.total === 0 && <GettingStarted />}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2.5 mb-5">
@@ -132,8 +209,7 @@ function CustomerDashboard() {
             <button
               onClick={clearSearch}
               aria-label="Clear search"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400
-                         hover:text-slate-600 transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -147,7 +223,7 @@ function CustomerDashboard() {
           className="input-base w-auto"
         >
           {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>{s ? s.replaceAll("_", " ") : "All statuses"}</option>
+            <option key={s.value} value={s.value}>{s.label}</option>
           ))}
         </select>
       </div>

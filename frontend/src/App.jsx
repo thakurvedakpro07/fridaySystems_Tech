@@ -30,6 +30,7 @@ const ResetPassword        = lazy(() => import("./pages/ResetPassword"));
 const VerifyEmail          = lazy(() => import("./pages/VerifyEmail"));
 const CustomerOnboarding   = lazy(() => import("./pages/onboarding/CustomerOnboarding"));
 const FreelancerOnboarding = lazy(() => import("./pages/onboarding/FreelancerOnboarding"));
+const NotificationsPage    = lazy(() => import("./pages/NotificationsPage"));
 
 import { ToastProvider } from "./context/ToastContext";
 import { useAuthStore } from "./store/authStore";
@@ -168,6 +169,12 @@ export default function App() {
           <Route
             path="/billing"
             element={<PrivateRoute><BillingPage /></PrivateRoute>}
+          />
+
+          {/* Notifications full-page view */}
+          <Route
+            path="/notifications"
+            element={<PrivateRoute><NotificationsPage /></PrivateRoute>}
           />
 
           {/* Onboarding — post-registration guided setup (require auth) */}

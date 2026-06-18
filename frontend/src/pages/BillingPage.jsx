@@ -222,8 +222,8 @@ export default function BillingPage() {
       {payments.length > 0 && (
         <p className="text-xs text-slate-400 mt-3 text-center">
           All amounts inclusive of 18% GST. Contact{" "}
-          <a href="mailto:billing@supportmitra.in" className="text-indigo-500 hover:underline">
-            billing@supportmitra.in
+          <a href="mailto:billing@resolvehq.in" className="text-indigo-500 hover:underline">
+            billing@resolvehq.in
           </a>{" "}
           for invoice queries. All completed payments include a downloadable PDF tax invoice.
         </p>

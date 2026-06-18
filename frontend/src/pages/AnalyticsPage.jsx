@@ -265,18 +265,23 @@ export default function AnalyticsPage() {
         <div className="mt-5">
           <Card title="Engineer Performance (Top 5)">
             <div className="divide-y divide-slate-100">
-              {data.freelancer_stats.map((fl, i) => (
-                <div key={fl.email} className="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
-                  <span className="text-xs font-bold text-slate-400 w-5">#{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800 truncate">{fl.email}</p>
-                    <p className="text-xs text-slate-400">{fl.assigned} assigned · {fl.resolved} resolved</p>
+              {data.freelancer_stats.map((fl, i) => {
+                const first = (fl.first_name ?? "").trim();
+                const last  = (fl.last_name  ?? "").trim();
+                const displayName = first && last ? `${first} ${last}` : first || fl.email;
+                return (
+                  <div key={fl.email} className="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
+                    <span className="text-xs font-bold text-slate-400 w-5">#{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-800 truncate">{displayName}</p>
+                      <p className="text-xs text-slate-400">{fl.assigned} assigned · {fl.resolved} resolved</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-amber-500">★ {fl.rating}</p>
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-amber-500">★ {fl.rating}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
         </div>

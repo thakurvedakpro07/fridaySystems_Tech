@@ -261,14 +261,22 @@ export default function NotificationBell() {
             ))}
           </div>
 
-          {/* Footer — overflow hint */}
-          {notifications.length > 20 && (
-            <div className="px-4 py-2.5 border-t border-slate-100 text-center bg-slate-50/60">
+          {/* Footer — view all link */}
+          <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between">
+            {notifications.length > 20 ? (
               <span className="text-xs text-slate-400">
-                Showing 20 of {notifications.length} notifications
+                Showing 20 of {notifications.length}
               </span>
-            </div>
-          )}
+            ) : (
+              <span />
+            )}
+            <button
+              onClick={() => { setOpen(false); navigate("/notifications"); }}
+              className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+            >
+              View all notifications →
+            </button>
+          </div>
         </div>
       )}
     </div>
