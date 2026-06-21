@@ -8,12 +8,22 @@ If a permission class returns False, the view returns 403 Forbidden.
 from rest_framework.permissions import BasePermission
 
 
+def _is_admin(user) -> bool:
+    """True only when both is_staff=True AND role='admin' are set.
+
+    Requiring both prevents privilege escalation if is_staff is accidentally
+    granted to a non-admin role through the Django admin or a migration.
+    Mirrors the AdminRoute guard in the React frontend.
+    """
+    return bool(user and user.is_authenticated and user.is_staff and getattr(user, "role", None) == "admin")
+
+
 class IsAdminUser(BasePermission):
-    """Only allow Django staff users (is_staff=True)."""
+    """Only allow users who have is_staff=True AND role='admin'."""
     message = "You must be an admin to perform this action."
 
     def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and request.user.is_staff)
+        return _is_admin(request.user)
 
 
 class IsCustomer(BasePermission):
@@ -42,13 +52,13 @@ class IsFreelancer(BasePermission):
 
 
 class IsFreelancerOrAdmin(BasePermission):
-    """Allow access to approved freelancers AND admin staff."""
+    """Allow access to approved freelancers AND admin users (is_staff + role=admin)."""
     message = "Only freelancers or admins can access this resource."
 
     def has_permission(self, request, view):
         if not (request.user and request.user.is_authenticated):
             return False
-        if request.user.is_staff:
+        if _is_admin(request.user):
             return True
         return (
             hasattr(request.user, "freelancer_profile")
@@ -59,13 +69,13 @@ class IsFreelancerOrAdmin(BasePermission):
 class IsOwnerOrAdmin(BasePermission):
     """
     Object-level permission.
-    The object's owner OR an admin can access it.
+    The object's owner OR an admin (is_staff + role=admin) can access it.
     Used on ticket detail views so customers can only see their own tickets.
     """
     message = "You do not have permission to access this resource."
 
     def has_object_permission(self, request, view, obj):
-        if request.user.is_staff:
+        if _is_admin(request.user):
             return True
         # For tickets: compare customer id
         if hasattr(obj, "customer"):

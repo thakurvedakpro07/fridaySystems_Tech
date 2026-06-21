@@ -144,14 +144,14 @@ def test_django_admin_url_at_django_admin_not_admin():
 
 
 def test_payment_invoice_no_longer_returns_501():
-    """payment_invoice must not return HTTP 501."""
+    """payment_invoice must not return HTTP 501 and must generate a PDF."""
     import inspect
     import support_app.views as views_module
     src = inspect.getsource(views_module)
     invoice_start = src.find("def payment_invoice(")
     invoice_section = src[invoice_start:invoice_start + 3000]
     assert "HTTP_501_NOT_IMPLEMENTED" not in invoice_section
-    assert "invoice_data" in invoice_section
+    assert "generate_invoice_pdf" in invoice_section
 
 
 def test_sla_breach_detected_after_threshold(mock_ticket):
