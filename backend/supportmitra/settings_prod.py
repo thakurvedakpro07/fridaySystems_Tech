@@ -20,8 +20,8 @@ DEBUG = False
 # Only accept requests for the real domain.
 # Add the VPS internal IP if you use health checks via the private interface.
 ALLOWED_HOSTS = [
-    "supportmitra.in",
-    "www.supportmitra.in",
+    "resolvehq.in",
+    "www.resolvehq.in",
 ]
 
 # ── Proxy / SSL ───────────────────────────────────────────────────────────────
@@ -55,8 +55,8 @@ REST_FRAMEWORK["DEFAULT_PERMISSION_CLASSES"] = [  # noqa: F405
 # Override the dev CORS_ALLOW_ALL_ORIGINS = True from base settings.
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
-    "https://supportmitra.in",
-    "https://www.supportmitra.in",
+    "https://resolvehq.in",
+    "https://www.resolvehq.in",
 ]
 
 # ── Production logging ────────────────────────────────────────────────────────

@@ -210,9 +210,8 @@ REST_FRAMEWORK = {
         "anon": "20/minute",
         "user": "100/minute",
         # Separate bucket for login and register — stricter than global anon.
-        # 10 attempts/minute per IP before a 429 is returned.
-        # In production, consider lowering to 5/minute.
-        "auth": "10/minute",
+        # 5 attempts/minute per IP before a 429 is returned.
+        "auth": "5/minute",
         # Analytics runs expensive DB aggregations; limit to 30/hour per user.
         "analytics": "30/hour",
         # Password change — 5 attempts per 15-minute window per authenticated
@@ -275,6 +274,14 @@ if DEBUG:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 else:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+# SMTP credentials — only used when EMAIL_BACKEND is smtp (i.e. DEBUG=0).
+# In production set all five in backend/.env.
+EMAIL_HOST          = os.getenv("EMAIL_HOST", "smtp.sendgrid.net")
+EMAIL_PORT          = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USE_TLS       = os.getenv("EMAIL_USE_TLS", "1") == "1"
+EMAIL_HOST_USER     = os.getenv("EMAIL_HOST_USER", "apikey")  # SendGrid uses literal "apikey"
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")    # your SendGrid API key
 
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "support@resolvehq.in")  # Temporary placeholder. Replace before production launch.
 
