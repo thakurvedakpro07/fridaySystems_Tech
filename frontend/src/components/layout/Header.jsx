@@ -4,6 +4,8 @@ import { useAuth } from "../../hooks/useAuth";
 import { useAuthStore } from "../../store/authStore";
 import NotificationBell from "../ui/NotificationBell";
 import { getDisplayName } from "../../utils/displayName";
+import { CONTACT } from "../../config/contact";
+
 
 function UserAvatar({ user }) {
   const first    = (user?.first_name ?? "").trim();
@@ -54,12 +56,42 @@ export default function Header() {
 
   return (
     <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40">
+
+      {/* ── Contact bar (unauthenticated only) ──────────────── */}
+      {!isAuthenticated && (
+        <div className="bg-slate-800 border-b border-slate-700/40">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-9 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-5">
+              {/* Phone — always visible */}
+              <a href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
+                 className="flex items-center gap-1.5 text-[11px] text-slate-300 hover:text-white transition-colors">
+                <svg className="w-3 h-3 shrink-0 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                </svg>
+                {CONTACT.tollFree}
+                <span className="hidden sm:inline text-slate-500">(Toll-free)</span>
+              </a>
+              {/* Email — desktop only */}
+              <a href={CONTACT.supportMailto}
+                 className="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-300 hover:text-white transition-colors">
+                <svg className="w-3 h-3 shrink-0 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                </svg>
+                {CONTACT.supportEmail}
+              </a>
+            </div>
+            <p className="text-[10px] text-slate-500 hidden sm:block">{CONTACT.businessHours}</p>
+            <p className="text-[10px] text-slate-500 sm:hidden">Mon–Sat · 9 AM–8 PM IST</p>
+          </div>
+        </div>
+      )}
+
       {/* ── Main header row ─────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[72px] flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[80px] flex items-center justify-between gap-4">
 
         {/* ── Brand ──────────────────────────────────────────── */}
         <Link to="/" className="flex items-center gap-3 shrink-0 group" onClick={closeMenu}>
-          <div className="w-10 h-10 bg-brand-gradient rounded-xl flex items-center justify-center
+          <div className="w-11 h-11 bg-brand-gradient rounded-xl flex items-center justify-center
                           shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
             <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round"
@@ -67,7 +99,7 @@ export default function Header() {
             </svg>
           </div>
           <div>
-            <p className="text-xl font-black text-slate-900 leading-tight tracking-tight">ResolveHQ</p>
+            <p className="text-2xl font-black text-slate-900 leading-tight tracking-tight">ResolveHQ</p>
             <p className="text-[11px] text-slate-500 leading-tight font-semibold tracking-wide hidden sm:block">
               Enterprise IT Support Marketplace
             </p>
@@ -132,13 +164,27 @@ export default function Header() {
             </>
           ) : (
             <>
+              <NavLink to="/services">Services</NavLink>
+              <NavLink to="/about">About</NavLink>
+              <NavLink to="/pricing">Pricing</NavLink>
+              <NavLink to="/contact">Contact</NavLink>
               <Link
                 to="/login"
                 className="text-sm font-medium text-slate-600 hover:text-slate-900
-                           px-3.5 py-2 rounded-xl hover:bg-slate-100 transition-colors"
+                           px-3.5 py-2 rounded-xl hover:bg-slate-100 transition-colors ml-1"
               >
                 Sign in
               </Link>
+              <a
+                href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
+                title={`Call ${CONTACT.tollFree}`}
+                className="ml-1 p-2 rounded-xl hover:bg-emerald-50 transition-colors
+                           text-slate-400 hover:text-emerald-600 border border-transparent hover:border-emerald-100"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                </svg>
+              </a>
               <Link
                 to="/register"
                 className="bg-indigo-600 text-white text-sm font-semibold px-5 py-2 rounded-xl
@@ -172,6 +218,7 @@ export default function Header() {
           </button>
         </div>
       </div>
+
 
       {/* ── Mobile dropdown ─────────────────────────────────── */}
       {menuOpen && (
@@ -237,6 +284,10 @@ export default function Header() {
             </div>
           ) : (
             <div className="space-y-2">
+              <NavLink to="/services" onClick={closeMenu}>Services</NavLink>
+              <NavLink to="/about" onClick={closeMenu}>About</NavLink>
+              <NavLink to="/pricing" onClick={closeMenu}>Pricing</NavLink>
+              <NavLink to="/contact" onClick={closeMenu}>Contact</NavLink>
               <Link
                 to="/login"
                 onClick={closeMenu}

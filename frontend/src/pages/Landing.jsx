@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import LandingFooter from "../components/layout/LandingFooter";
 import Header from "../components/layout/Header";
-import { CONTACT } from "../config/contact";
 
 // ── Animation variants ────────────────────────────────────────────
 const fadeUp = {
@@ -262,33 +261,21 @@ const PROCESS_STEPS = [
     icon: <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" /></svg>,
   },
   {
-    step: "02", title: "Describe Issue",
-    body: "Add context — logs, error messages, what changed recently. More detail = faster resolution.",
-    color: "bg-blue-600", ring: "ring-blue-200",
-    icon: <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" /></svg>,
-  },
-  {
-    step: "03", title: "Pay Consultation Fee",
-    body: "Flat ₹299 via Razorpay. Fully refunded automatically if no engineer accepts within 2 hours.",
+    step: "02", title: "Engineer Assigned",
+    body: "A vetted specialist matching your service type is assigned within 2 hours. Instant notification.",
     color: "bg-violet-600", ring: "ring-violet-200",
-    icon: <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" /></svg>,
-  },
-  {
-    step: "04", title: "Engineer Assigned",
-    body: "A vetted specialist matching your service type is assigned. Instant notification — real-time chat available.",
-    color: "bg-emerald-600", ring: "ring-emerald-200",
     icon: <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>,
   },
   {
-    step: "05", title: "Track Progress",
-    body: "7-stage visual timeline on every ticket. Status updates via notification at every checkpoint.",
-    color: "bg-amber-500", ring: "ring-amber-200",
-    icon: <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" /></svg>,
+    step: "03", title: "Problem Resolved",
+    body: "Real-time collaboration with 7-stage ticket tracking. Status notifications at every checkpoint.",
+    color: "bg-emerald-600", ring: "ring-emerald-200",
+    icon: <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>,
   },
   {
-    step: "06", title: "Invoice Generated",
-    body: "Confirm resolution, rate your experience. GST-compliant PDF invoice downloads automatically.",
-    color: "bg-rose-600", ring: "ring-rose-200",
+    step: "04", title: "Invoice Generated",
+    body: "Confirm resolution and rate your engineer. GST-compliant PDF invoice auto-generated instantly.",
+    color: "bg-amber-500", ring: "ring-amber-200",
     icon: <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" /></svg>,
   },
 ];
@@ -490,12 +477,61 @@ const FAQ_ITEMS = [
   },
 ];
 
+const HERO_TRUST = [
+  {
+    label: "Fast Response SLA",
+    value: "< 2 Hours Guaranteed",
+    bg: "bg-indigo-500/15",
+    color: "text-indigo-300",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+  {
+    label: "Verified Engineers",
+    value: "50+ vetted specialists across India",
+    bg: "bg-emerald-500/15",
+    color: "text-emerald-300",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+      </svg>
+    ),
+  },
+  {
+    label: "Server & Infrastructure",
+    value: "Linux, Windows Server, Cloud Platforms",
+    bg: "bg-violet-500/15",
+    color: "text-violet-300",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
+      </svg>
+    ),
+  },
+  {
+    label: "Network & VPN Support",
+    value: "Remote Access, Firewall, Connectivity",
+    bg: "bg-sky-500/15",
+    color: "text-sky-300",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+      </svg>
+    ),
+  },
+];
+
 // ══════════════════════════════════════════════════════════════════
-// SECTION 1: HERO
+// SECTION 1: HERO — 2-column with compact trust panel
 // ══════════════════════════════════════════════════════════════════
 function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-slate-950 pt-16 pb-28 px-4 sm:px-6">
+    <section className="relative overflow-hidden bg-slate-950 px-4 sm:px-6 py-16 sm:py-20">
+
+      {/* ── Background decorations ── */}
       <motion.div className="absolute -top-40 -right-40 w-[700px] h-[700px] rounded-full opacity-20 pointer-events-none"
         style={{ background: "radial-gradient(circle, #4f46e5, transparent 70%)" }}
         animate={{ x: [0, 30, -15, 0], y: [0, -20, 25, 0], scale: [1, 1.08, 0.94, 1] }}
@@ -504,73 +540,296 @@ function HeroSection() {
         style={{ background: "radial-gradient(circle, #7c3aed, transparent 70%)" }}
         animate={{ x: [0, -25, 20, 0], y: [0, 25, -20, 0], scale: [1, 0.92, 1.06, 1] }}
         transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }} />
-      <motion.div className="absolute top-1/2 left-1/3 w-[400px] h-[400px] rounded-full opacity-10 pointer-events-none"
-        style={{ background: "radial-gradient(circle, #3b82f6, transparent 70%)" }}
-        animate={{ scale: [1, 1.15, 0.9, 1] }}
-        transition={{ duration: 11, repeat: Infinity, ease: "easeInOut", delay: 4 }} />
       <div className="absolute inset-0 pointer-events-none"
         style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
 
-      <div className="relative max-w-5xl mx-auto text-center">
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2.5 bg-white/8 border border-white/12 text-indigo-300 text-xs font-semibold px-4 py-2 rounded-full mb-8">
-          <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shrink-0" />
-          Enterprise IT Support Marketplace · Engineers online now
-        </motion.div>
+      <div className="relative max-w-7xl mx-auto">
+        <div className="grid lg:grid-cols-[1fr_360px] gap-12 lg:gap-16 items-center">
 
-        <motion.h1 initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-          className="text-5xl sm:text-6xl lg:text-7xl font-black text-white leading-[1.05] tracking-tight mb-7">
-          Enterprise IT Support<br className="hidden sm:block" />
-          <span className="text-transparent bg-clip-text"
-            style={{ backgroundImage: "linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #38bdf8 100%)" }}>
-            {" "}Without Enterprise Overhead
-          </span>
-        </motion.h1>
+          {/* ── LEFT: headline + CTAs + stats ── */}
+          <div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              className="inline-flex items-center gap-2.5 bg-white/8 border border-white/12
+                         text-indigo-300 text-xs font-semibold px-4 py-2 rounded-full mb-7"
+            >
+              <span className="relative flex w-2.5 h-2.5 shrink-0">
+                <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-60" />
+                <span className="relative w-2.5 h-2.5 rounded-full bg-emerald-400 block" />
+              </span>
+              India's Enterprise IT Support Marketplace · Engineers Online
+            </motion.div>
 
-        <motion.p initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.22 }}
-          className="text-slate-400 text-lg sm:text-xl lg:text-2xl mb-10 max-w-3xl mx-auto leading-relaxed">
-          Get expert engineers on demand. Resolve critical IT issues faster with transparent pricing,
-          secure payments, and real-time progress tracking — built for Indian SMBs.
-        </motion.p>
+            <motion.h1
+              initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+              className="text-5xl sm:text-6xl lg:text-[3.75rem] xl:text-[4.5rem] font-black text-white
+                         leading-[1.04] tracking-tight mb-5"
+            >
+              Get Your IT Issues<br />
+              <span
+                className="text-transparent bg-clip-text"
+                style={{ backgroundImage: "linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #38bdf8 100%)" }}
+              >
+                Resolved Fast.
+              </span>
+            </motion.h1>
 
-        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.34 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-            <Link to="/register/customer"
-              className="inline-flex items-center justify-center gap-2.5 bg-indigo-500 text-white font-bold px-8 py-4 rounded-2xl hover:bg-indigo-400 transition-colors text-base shadow-lg shadow-indigo-500/25">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              Create Ticket — Free to Start
-            </Link>
-          </motion.div>
-          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-            <a href="#how-it-works"
-              className="inline-flex items-center justify-center gap-2 text-white/80 font-semibold px-8 py-4 rounded-2xl border border-white/15 hover:bg-white/8 hover:text-white transition-all text-base">
-              See How It Works
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-              </svg>
-            </a>
-          </motion.div>
-        </motion.div>
+            <motion.p
+              initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.22 }}
+              className="text-slate-300 text-lg sm:text-xl leading-relaxed mb-8 max-w-xl"
+            >
+              Connect with verified IT specialists on demand. Transparent pricing,
+              secure payments, and real-time tracking — built for Indian SMBs.
+            </motion.p>
 
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.55 }}
-          className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-10 border-t border-white/10 max-w-3xl mx-auto">
-          {[
-            { value: "500+", label: "SMBs served" },
-            { value: "₹299", label: "flat consulting fee" },
-            { value: "< 2 hrs", label: "first response SLA" },
-            { value: "GST", label: "invoice on every ticket" },
-          ].map((s) => (
-            <div key={s.label} className="text-center">
-              <p className="text-2xl font-black text-white">{s.value}</p>
-              <p className="text-xs text-slate-500 mt-1 font-medium">{s.label}</p>
+            <motion.div
+              initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.34 }}
+              className="flex flex-col sm:flex-row gap-3 mb-10"
+            >
+              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                <Link to="/register/customer"
+                  className="inline-flex items-center justify-center gap-2.5 bg-indigo-500 text-white
+                             font-bold px-8 py-4 rounded-2xl hover:bg-indigo-400 active:bg-indigo-600
+                             transition-colors text-base shadow-lg shadow-indigo-500/30">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Create Ticket — Free to Start
+                </Link>
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                <a href="#how-it-works"
+                  className="inline-flex items-center justify-center gap-2 text-white/80 font-semibold
+                             px-8 py-4 rounded-2xl border border-white/15 hover:bg-white/8
+                             hover:text-white transition-all text-base">
+                  How It Works
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </a>
+              </motion.div>
+            </motion.div>
+
+            {/* Stats — large, directly under CTAs */}
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.55 }}
+              className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-8 border-t border-white/10"
+            >
+              {[
+                { value: "500+", label: "SMBs Served",    sub: "and growing" },
+                { value: "₹299", label: "Flat Fee",       sub: "transparent pricing" },
+                { value: "< 2h", label: "First Response", sub: "SLA guaranteed" },
+                { value: "98%",  label: "Satisfaction",   sub: "CSAT score" },
+              ].map((s) => (
+                <div key={s.label}>
+                  <p className="text-4xl font-black text-white leading-none">{s.value}</p>
+                  <p className="text-sm font-semibold text-slate-300 mt-2">{s.label}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{s.sub}</p>
+                </div>
+              ))}
+            </motion.div>
+          </div>
+
+          {/* ── RIGHT: Compact glass trust panel ── */}
+          <motion.div
+            initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
+          >
+            <div className="bg-white/[0.06] backdrop-blur-sm border border-white/[0.10] rounded-3xl p-7">
+              <div className="flex items-center gap-2.5 mb-6 pb-5 border-b border-white/8">
+                <span className="relative flex w-2.5 h-2.5 shrink-0">
+                  <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-60" />
+                  <span className="relative w-2.5 h-2.5 rounded-full bg-emerald-400 block" />
+                </span>
+                <span className="text-emerald-400 text-xs font-bold uppercase tracking-widest">
+                  Engineers Available Now
+                </span>
+              </div>
+
+              <div className="space-y-5 mb-6">
+                {HERO_TRUST.map((item) => (
+                  <div key={item.label} className="flex items-center gap-3.5">
+                    <div className={`w-9 h-9 ${item.bg} rounded-xl flex items-center justify-center shrink-0 ${item.color}`}>
+                      {item.icon}
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold text-sm leading-tight">{item.label}</p>
+                      <p className="text-slate-400 text-xs mt-0.5">{item.value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="border-t border-white/8 pt-5 mb-5">
+                <div className="flex items-center gap-1 mb-1">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <svg key={i} className="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  ))}
+                  <span className="text-white font-black text-sm ml-1.5">4.9 / 5.0</span>
+                </div>
+                <p className="text-slate-400 text-xs">250+ issues resolved this month</p>
+              </div>
+
+              <Link to="/register/customer"
+                className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500
+                           text-white font-semibold py-3 px-5 rounded-xl transition-colors text-sm">
+                Get Help Now
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+              </Link>
             </div>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SECTION 1B: IN-DEMAND IT SERVICES (immediately below hero)
+// ══════════════════════════════════════════════════════════════════
+const IN_DEMAND_SERVICES = [
+  {
+    name: "Microsoft 365 Support",
+    desc: "Exchange, Teams, OneDrive, SharePoint",
+    color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100", shadow: "hover:shadow-blue-100",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+      </svg>
+    ),
+  },
+  {
+    name: "Email & DNS Issues",
+    desc: "DKIM/SPF/DMARC, deliverability, routing",
+    color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100", shadow: "hover:shadow-violet-100",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+      </svg>
+    ),
+  },
+  {
+    name: "VPN & Remote Access",
+    desc: "Setup, auth failures, split tunneling",
+    color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100", shadow: "hover:shadow-emerald-100",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+      </svg>
+    ),
+  },
+  {
+    name: "Server Administration",
+    desc: "Linux/Windows, performance, crashes",
+    color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", shadow: "hover:shadow-indigo-100",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
+      </svg>
+    ),
+  },
+  {
+    name: "Network Troubleshooting",
+    desc: "Packet loss, latency, VLAN, firewall",
+    color: "text-sky-600", bg: "bg-sky-50", border: "border-sky-100", shadow: "hover:shadow-sky-100",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3" />
+      </svg>
+    ),
+  },
+  {
+    name: "Workstation Support",
+    desc: "Hardware, OS issues, drivers, peripherals",
+    color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100", shadow: "hover:shadow-amber-100",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25M3 9.75h18M3 9.75A2.25 2.25 0 015.25 7.5h13.5A2.25 2.25 0 0121 9.75m-18 0v5.25A2.25 2.25 0 005.25 17.25h13.5A2.25 2.25 0 0021 15V9.75" />
+      </svg>
+    ),
+  },
+  {
+    name: "Cybersecurity Assistance",
+    desc: "Ransomware, VAPT, incident response",
+    color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100", shadow: "hover:shadow-rose-100",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+      </svg>
+    ),
+  },
+  {
+    name: "Cloud Infrastructure",
+    desc: "AWS, Azure, GCP, cost optimisation",
+    color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-100", shadow: "hover:shadow-cyan-100",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z" />
+      </svg>
+    ),
+  },
+];
+
+function InDemandServicesSection() {
+  return (
+    <section className="py-14 px-4 sm:px-6 bg-white border-b border-slate-100">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-end justify-between mb-10">
+          <div>
+            <p className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-2">In-Demand Services</p>
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight">
+              What Can We Solve For You?
+            </h2>
+          </div>
+          <Link to="/services"
+            className="hidden sm:flex items-center gap-1.5 text-sm font-semibold text-indigo-600
+                       hover:text-indigo-800 transition-colors shrink-0 mb-1">
+            View All Services
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+            </svg>
+          </Link>
+        </div>
+
+        <motion.div
+          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+          variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.05 }}
+        >
+          {IN_DEMAND_SERVICES.map((svc) => (
+            <motion.div key={svc.name} variants={fadeUp}
+              whileHover={{ y: -6, transition: { duration: 0.2 } }}>
+              <Link to="/register/customer"
+                className={`group flex flex-col gap-3 bg-white border ${svc.border} rounded-2xl p-5
+                            hover:shadow-xl ${svc.shadow} transition-all duration-300 h-full`}
+                style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}
+              >
+                <div className={`w-11 h-11 ${svc.bg} rounded-xl flex items-center justify-center shrink-0
+                                 ${svc.color} group-hover:scale-110 transition-transform duration-200`}>
+                  {svc.icon}
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-slate-900 text-sm leading-snug mb-1">{svc.name}</p>
+                  <p className="text-xs text-slate-500 leading-relaxed">{svc.desc}</p>
+                </div>
+                <div className="flex items-center gap-1.5 mt-auto pt-1">
+                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full shrink-0" />
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex-1">Get Help</span>
+                  <svg className={`w-3.5 h-3.5 ${svc.color} group-hover:translate-x-0.5 transition-transform`}
+                       fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </div>
+              </Link>
+            </motion.div>
           ))}
         </motion.div>
       </div>
@@ -604,9 +863,9 @@ function TrustBarSection() {
 // ══════════════════════════════════════════════════════════════════
 function PopularProblemsSection() {
   return (
-    <section className="py-24 px-4 sm:px-6 bg-slate-50">
+    <section className="py-16 px-4 sm:px-6 bg-slate-50">
       <div className="max-w-7xl mx-auto">
-        <Reveal className="text-center mb-14">
+        <Reveal className="text-center mb-10">
           <SectionBadge>Common IT Crises</SectionBadge>
           <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
             Popular Problems We Solve
@@ -674,14 +933,14 @@ function StatsSection() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, amount: 0.4 });
   return (
-    <section ref={ref} className="py-24 px-4 sm:px-6 relative overflow-hidden"
+    <section ref={ref} className="py-16 px-4 sm:px-6 relative overflow-hidden"
       style={{ background: "linear-gradient(135deg, #4338ca 0%, #6d28d9 50%, #7c3aed 100%)" }}>
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/5 blur-3xl" />
         <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-black/10 blur-3xl" />
       </div>
       <div className="relative max-w-5xl mx-auto">
-        <Reveal className="text-center mb-14">
+        <Reveal className="text-center mb-10">
           <SectionBadge light>Platform Metrics</SectionBadge>
           <h2 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-tight">
             Numbers that speak for themselves
@@ -701,74 +960,64 @@ function StatsSection() {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// SECTION 5: HOW RESOLVEHQ WORKS (6 steps)
+// SECTION 5: HOW RESOLVEHQ WORKS (4 steps)
 // ══════════════════════════════════════════════════════════════════
 function HowItWorksSection() {
   return (
-    <section id="how-it-works" className="py-24 px-4 sm:px-6 bg-white">
-      <div className="max-w-6xl mx-auto">
-        <Reveal className="text-center mb-16">
+    <section id="how-it-works" className="py-16 px-4 sm:px-6 bg-white">
+      <div className="max-w-5xl mx-auto">
+        <Reveal className="text-center mb-12">
           <SectionBadge>Simple Process</SectionBadge>
           <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
             How ResolveHQ Works
           </h2>
           <p className="text-lg text-slate-500 max-w-xl mx-auto">
-            Six clear steps from problem to resolution — no ambiguity, no hidden fees.
+            From issue to invoice in four clear steps — no ambiguity, no hidden fees.
           </p>
         </Reveal>
 
-        {/* Desktop: 3+3 grid with vertical flow */}
-        <div className="hidden lg:block">
-          {/* Row 1 */}
-          <motion.div className="grid grid-cols-3 gap-8 mb-4"
+        {/* Desktop: horizontal 4-step flow */}
+        <div className="hidden sm:block">
+          <motion.div className="grid grid-cols-4 gap-6"
             variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }}>
-            {PROCESS_STEPS.slice(0, 3).map((step, i) => (
-              <motion.div key={step.step} variants={fadeUp} className="flex flex-col items-center text-center">
-                <div className={`w-16 h-16 ${step.color} rounded-2xl flex items-center justify-center mb-4 shadow-lg ring-4 ${step.ring}`}>
+            {PROCESS_STEPS.map((step, i) => (
+              <motion.div key={step.step} variants={fadeUp} className="relative flex flex-col items-center text-center">
+                {/* Connector arrow */}
+                {i < PROCESS_STEPS.length - 1 && (
+                  <div className="absolute top-7 left-[calc(50%+2.5rem)] right-0 flex items-center pointer-events-none">
+                    <div className="flex-1 h-px bg-slate-200" />
+                    <svg className="w-4 h-4 text-slate-300 shrink-0 -mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    </svg>
+                  </div>
+                )}
+                <div className={`w-14 h-14 ${step.color} rounded-2xl flex items-center justify-center mb-4 shadow-lg ring-4 ${step.ring} relative z-10`}>
                   {step.icon}
                 </div>
-                <span className="text-xs font-black text-slate-300 tracking-widest mb-2">STEP {step.step}</span>
-                <h3 className="text-lg font-black text-slate-900 mb-2">{step.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed max-w-[220px]">{step.body}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-          {/* Connector between rows */}
-          <div className="flex justify-center my-2">
-            <div className="flex flex-col items-center">
-              <div className="h-8 w-px bg-slate-200" />
-              <svg className="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-              </svg>
-            </div>
-          </div>
-          {/* Row 2 */}
-          <motion.div className="grid grid-cols-3 gap-8"
-            variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }}>
-            {PROCESS_STEPS.slice(3).map((step) => (
-              <motion.div key={step.step} variants={fadeUp} className="flex flex-col items-center text-center">
-                <div className={`w-16 h-16 ${step.color} rounded-2xl flex items-center justify-center mb-4 shadow-lg ring-4 ${step.ring}`}>
-                  {step.icon}
-                </div>
-                <span className="text-xs font-black text-slate-300 tracking-widest mb-2">STEP {step.step}</span>
-                <h3 className="text-lg font-black text-slate-900 mb-2">{step.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed max-w-[220px]">{step.body}</p>
+                <span className="text-[10px] font-black text-slate-300 tracking-widest mb-2">STEP {step.step}</span>
+                <h3 className="text-base font-black text-slate-900 mb-2 leading-tight">{step.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">{step.body}</p>
               </motion.div>
             ))}
           </motion.div>
         </div>
 
         {/* Mobile: vertical list */}
-        <div className="lg:hidden space-y-6">
-          {PROCESS_STEPS.map((step) => (
+        <div className="sm:hidden space-y-5">
+          {PROCESS_STEPS.map((step, i) => (
             <Reveal key={step.step}>
               <div className="flex items-start gap-4">
-                <div className={`w-12 h-12 ${step.color} rounded-xl flex items-center justify-center shrink-0 shadow-md ring-4 ${step.ring}`}>
-                  {step.icon}
+                <div className="relative shrink-0 flex flex-col items-center">
+                  <div className={`w-12 h-12 ${step.color} rounded-xl flex items-center justify-center shadow-md ring-4 ${step.ring}`}>
+                    {step.icon}
+                  </div>
+                  {i < PROCESS_STEPS.length - 1 && (
+                    <div className="w-px h-6 bg-slate-200 mt-2" />
+                  )}
                 </div>
-                <div className="flex-1 pt-1">
-                  <span className="text-xs font-black text-slate-300 tracking-widest">STEP {step.step}</span>
-                  <h3 className="text-base font-black text-slate-900 mt-1 mb-1">{step.title}</h3>
+                <div className="flex-1 pt-1.5">
+                  <span className="text-[10px] font-black text-slate-300 tracking-widest">STEP {step.step}</span>
+                  <h3 className="text-base font-black text-slate-900 mt-0.5 mb-1">{step.title}</h3>
                   <p className="text-sm text-slate-500 leading-relaxed">{step.body}</p>
                 </div>
               </div>
@@ -785,9 +1034,9 @@ function HowItWorksSection() {
 // ══════════════════════════════════════════════════════════════════
 function PlatformPreviewSection() {
   return (
-    <section className="py-24 px-4 sm:px-6 bg-slate-50 overflow-hidden">
+    <section className="py-16 px-4 sm:px-6 bg-slate-50 overflow-hidden">
       <div className="max-w-6xl mx-auto">
-        <Reveal className="text-center mb-14">
+        <Reveal className="text-center mb-10">
           <SectionBadge>Platform Preview</SectionBadge>
           <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
             See ResolveHQ In Action
@@ -983,9 +1232,9 @@ function PlatformPreviewSection() {
 // ══════════════════════════════════════════════════════════════════
 function TrustSecuritySection() {
   return (
-    <section className="py-24 px-4 sm:px-6 bg-white">
+    <section className="py-16 px-4 sm:px-6 bg-white">
       <div className="max-w-6xl mx-auto">
-        <Reveal className="text-center mb-14">
+        <Reveal className="text-center mb-10">
           <SectionBadge>Security First</SectionBadge>
           <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
             Built For Business-Critical Support
@@ -1025,9 +1274,9 @@ function TrustSecuritySection() {
 // ══════════════════════════════════════════════════════════════════
 function SLASection() {
   return (
-    <section className="py-24 px-4 sm:px-6 bg-slate-50">
+    <section className="py-16 px-4 sm:px-6 bg-slate-50">
       <div className="max-w-5xl mx-auto">
-        <Reveal className="text-center mb-14">
+        <Reveal className="text-center mb-10">
           <SectionBadge>Our Commitments</SectionBadge>
           <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
             Service Commitments
@@ -1071,15 +1320,15 @@ const SEVERITY_COLORS = {
 
 function RecentActivitySection() {
   return (
-    <section className="py-24 px-4 sm:px-6 bg-white">
+    <section className="py-16 px-4 sm:px-6 bg-white">
       <div className="max-w-4xl mx-auto">
-        <Reveal className="text-center mb-14">
+        <Reveal className="text-center mb-10">
           <SectionBadge>Live Feed</SectionBadge>
           <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
-            Recent Issues Resolved
+            Recent Issues We Solve Daily
           </h2>
           <p className="text-lg text-slate-500 max-w-xl mx-auto">
-            Real-time activity from across the platform. Examples are illustrative.
+            A live feed of resolved tickets across the platform. Examples are illustrative.
           </p>
         </Reveal>
 
@@ -1145,9 +1394,9 @@ function RecentActivitySection() {
 // ══════════════════════════════════════════════════════════════════
 function EngineerSection() {
   return (
-    <section className="py-24 px-4 sm:px-6 bg-slate-50">
+    <section className="py-16 px-4 sm:px-6 bg-slate-50">
       <div className="max-w-6xl mx-auto">
-        <Reveal className="text-center mb-14">
+        <Reveal className="text-center mb-10">
           <SectionBadge>Verified Specialists</SectionBadge>
           <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
             Work With Verified Specialists
@@ -1240,9 +1489,9 @@ function TestimonialsSection() {
   }, [total]);
 
   return (
-    <section className="py-24 px-4 sm:px-6 bg-white">
+    <section className="py-16 px-4 sm:px-6 bg-white">
       <div className="max-w-5xl mx-auto">
-        <Reveal className="text-center mb-14">
+        <Reveal className="text-center mb-10">
           <SectionBadge>Customer Stories</SectionBadge>
           <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
             Trusted by real businesses
@@ -1310,9 +1559,9 @@ function TestimonialsSection() {
 // ══════════════════════════════════════════════════════════════════
 function HelpCenterPreviewSection() {
   return (
-    <section className="py-24 px-4 sm:px-6 bg-slate-50">
+    <section className="py-16 px-4 sm:px-6 bg-slate-50">
       <div className="max-w-5xl mx-auto">
-        <Reveal className="text-center mb-14">
+        <Reveal className="text-center mb-10">
           <SectionBadge>Self-Service</SectionBadge>
           <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
             Need Help?
@@ -1422,7 +1671,7 @@ function FreelancerCTASection() {
 // ══════════════════════════════════════════════════════════════════
 function FAQSection() {
   return (
-    <section id="faq" className="py-24 px-4 sm:px-6 bg-slate-50">
+    <section id="faq" className="py-16 px-4 sm:px-6 bg-slate-50">
       <div className="max-w-3xl mx-auto">
         <Reveal className="text-center mb-12">
           <SectionBadge>Common Questions</SectionBadge>
@@ -1448,7 +1697,7 @@ function FAQSection() {
 // ══════════════════════════════════════════════════════════════════
 function BottomCTASection() {
   return (
-    <section className="py-28 px-4 sm:px-6 bg-slate-950 relative overflow-hidden">
+    <section className="py-20 px-4 sm:px-6 bg-slate-950 relative overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-64 pointer-events-none"
         style={{ background: "radial-gradient(ellipse, rgba(99,102,241,0.22), transparent 70%)" }} />
       <motion.div className="absolute -bottom-24 right-0 w-96 h-96 rounded-full pointer-events-none opacity-10"
@@ -1506,6 +1755,7 @@ export default function Landing() {
       <Header />
       <main className="flex-1">
         <HeroSection />
+        <InDemandServicesSection />
         <TrustBarSection />
         <PopularProblemsSection />
         <StatsSection />

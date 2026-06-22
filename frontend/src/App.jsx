@@ -33,8 +33,18 @@ const FreelancerOnboarding = lazy(() => import("./pages/onboarding/FreelancerOnb
 const NotificationsPage    = lazy(() => import("./pages/NotificationsPage"));
 const HelpCenterPage       = lazy(() => import("./pages/HelpCenterPage"));
 
+// Public website pages
+const AboutPage    = lazy(() => import("./pages/AboutPage"));
+const PricingPage  = lazy(() => import("./pages/PricingPage"));
+const ContactPage  = lazy(() => import("./pages/ContactPage"));
+const PrivacyPage  = lazy(() => import("./pages/PrivacyPage"));
+const TermsPage    = lazy(() => import("./pages/TermsPage"));
+const ServicesPage = lazy(() => import("./pages/ServicesPage"));
+
 import { ToastProvider } from "./context/ToastContext";
 import { useAuthStore } from "./store/authStore";
+import StickyTicketCTA from "./components/ui/StickyTicketCTA";
+import FloatingCallButton from "./components/ui/FloatingCallButton";
 
 function PageLoader() {
   return (
@@ -105,10 +115,18 @@ export default function App() {
     <ErrorBoundary>
     <BrowserRouter>
       <OfflineBanner />
+      <FloatingCallButton />
+      <StickyTicketCTA />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public pages */}
           <Route path="/" element={<Landing />} />
+          <Route path="/services" element={<ServicesPage />} />
+          <Route path="/about"    element={<AboutPage />} />
+          <Route path="/pricing"  element={<PricingPage />} />
+          <Route path="/contact"  element={<ContactPage />} />
+          <Route path="/privacy"  element={<PrivacyPage />} />
+          <Route path="/terms"    element={<TermsPage />} />
           <Route path="/login"    element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
           {/* Role selection — new entry point for registration */}
           <Route path="/register" element={<PublicOnlyRoute><RegisterRole /></PublicOnlyRoute>} />

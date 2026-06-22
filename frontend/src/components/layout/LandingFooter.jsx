@@ -6,26 +6,29 @@ const YEAR = new Date().getFullYear();
 
 const NAV = {
   Product: [
-    { label: "How It Works",  href: "#how-it-works" },
-    { label: "Services",      href: "#services" },
-    { label: "FAQ",           href: "#faq" },
+    { label: "How It Works",  href: "/#how-it-works" },
+    { label: "Services",      href: "/services",      internal: true },
+    { label: "Pricing",       href: "/pricing",       internal: true },
+    { label: "About Us",      href: "/about",         internal: true },
+    { label: "Contact",       href: "/contact",       internal: true },
   ],
   Platform: [
-    { label: "Dashboard",     href: "/dashboard",   internal: true },
-    { label: "Analytics",     href: "/analytics",   internal: true },
-    { label: "Billing",       href: "/billing",     internal: true },
-    { label: "Help Center",   href: "/help-center", internal: true },
+    { label: "Dashboard",     href: "/dashboard",     internal: true },
+    { label: "Analytics",     href: "/analytics",     internal: true },
+    { label: "Billing",       href: "/billing",       internal: true },
+    { label: "Help Center",   href: "/help-center",   internal: true },
   ],
   Support: [
-    { label: "Help Center",   href: "/help-center", internal: true },
-    { label: "Open a Ticket", href: "/register",    internal: true },
-    { label: "Contact Us",    href: CONTACT.supportMailto },
+    { label: "Help Center",   href: "/help-center",  internal: true },
+    { label: "Open a Ticket", href: "/register",     internal: true },
+    { label: "Contact Us",    href: "/contact",      internal: true },
+    { label: "Email Support",  href: CONTACT.supportMailto },
   ],
   Legal: [
-    { label: "Privacy Policy", href: "#" },
-    { label: "Terms of Use",   href: "#" },
-    { label: "Refund Policy",  href: "#" },
-    { label: "Cookie Policy",  href: "#" },
+    { label: "Privacy Policy", href: "/privacy",  internal: true },
+    { label: "Terms of Service", href: "/terms",  internal: true },
+    { label: "Refund Policy",  href: "/help-center#refund-policy", internal: true },
+    { label: "Cookie Policy",  href: "/privacy#cookies", internal: true },
   ],
 };
 

@@ -9,91 +9,197 @@ import PaymentGateway from "./PaymentGateway";
 import CSATWidget from "./CSATWidget";
 import Badge from "../ui/Badge";
 
-// ── Ticket Status Tracker ─────────────────────────────────────────
+// ── Ticket Timeline ───────────────────────────────────────────────
 const LIFECYCLE = [
-  { status: "pending_payment",  label: "Payment",    short: "Pay"       },
-  { status: "open",             label: "Queued",     short: "Queue"     },
-  { status: "assigned",         label: "Assigned",   short: "Assigned"  },
-  { status: "in_progress",      label: "In Progress",short: "Progress"  },
-  { status: "waiting_customer", label: "Your Action",short: "Action"    },
-  { status: "resolved",         label: "Resolved",   short: "Resolved"  },
-  { status: "closed",           label: "Closed",     short: "Closed"    },
+  {
+    status: "pending_payment",
+    label: "Ticket Created",
+    desc: "Ticket submitted — awaiting payment to activate",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" />
+      </svg>
+    ),
+  },
+  {
+    status: "open",
+    label: "Payment Received",
+    desc: "Consulting fee confirmed — ticket is now queued",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+      </svg>
+    ),
+  },
+  {
+    status: "assigned",
+    label: "Engineer Assigned",
+    desc: "A verified specialist has accepted your ticket",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+      </svg>
+    ),
+  },
+  {
+    status: "in_progress",
+    label: "Work Started",
+    desc: "Engineer is actively diagnosing and resolving your issue",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" />
+      </svg>
+    ),
+  },
+  {
+    status: "waiting_customer",
+    label: "Waiting For You",
+    desc: "Engineer needs your input or additional access",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+      </svg>
+    ),
+  },
+  {
+    status: "resolved",
+    label: "Resolved",
+    desc: "Issue fixed — please confirm resolution and rate your experience",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+      </svg>
+    ),
+  },
+  {
+    status: "closed",
+    label: "Closed",
+    desc: "Ticket closed — invoice available in Billing",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+      </svg>
+    ),
+  },
 ];
 
-function TicketStatusTracker({ status }) {
+function formatShortDate(dateStr) {
+  if (!dateStr) return null;
+  return new Date(dateStr).toLocaleString("en-IN", {
+    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+  });
+}
+
+function TicketStatusTracker({ status, ticket }) {
   const currentIdx = LIFECYCLE.findIndex((s) => s.status === status);
 
+  // Map statuses to ticket timestamps where available
+  const timestamps = {
+    pending_payment: ticket?.created_at,
+    open:             ticket?.payment_confirmed_at ?? (ticket?.status !== "pending_payment" ? ticket?.created_at : null),
+    assigned:         ticket?.first_response_at,
+    in_progress:      ticket?.first_response_at,
+    resolved:         ticket?.resolved_at,
+    closed:           ticket?.resolved_at,
+  };
+
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-0"
+    <div className="bg-white border border-slate-200 rounded-2xl p-5"
          style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-4">
-        Ticket Progress
-      </p>
-      <div className="relative">
-        {/* Connector line */}
-        <div className="absolute top-3.5 left-3.5 right-3.5 h-px bg-slate-200" aria-hidden="true" />
-        <div
-          className="absolute top-3.5 left-3.5 h-px bg-indigo-400 transition-all duration-500"
-          style={{
-            width: currentIdx <= 0
-              ? "0"
-              : `calc(${(currentIdx / (LIFECYCLE.length - 1)) * 100}% - 7px)`,
-          }}
-          aria-hidden="true"
-        />
-        {/* Steps */}
-        <div className="relative flex justify-between">
-          {LIFECYCLE.map((step, idx) => {
-            const done    = idx < currentIdx;
-            const current = idx === currentIdx;
-            return (
-              <div key={step.status} className="flex flex-col items-center gap-1.5 flex-1 first:items-start last:items-end">
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-all duration-300
-                    ${current
-                      ? "bg-indigo-600 shadow-sm shadow-indigo-200 ring-2 ring-indigo-100"
-                      : done
-                      ? "bg-indigo-500"
-                      : "bg-white border-2 border-slate-200"
-                    }`}
-                >
-                  {done ? (
-                    <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                  ) : current ? (
-                    <div className="w-2 h-2 bg-white rounded-full" />
-                  ) : (
-                    <div className="w-1.5 h-1.5 bg-slate-300 rounded-full" />
-                  )}
-                </div>
-                <span className={`text-[10px] font-semibold text-center leading-tight max-w-[48px]
-                  ${current ? "text-indigo-600" : done ? "text-slate-500" : "text-slate-300"}`}>
-                  {step.short}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      {/* Current status label */}
-      <div className="mt-4 flex items-center justify-between">
-        <span className="text-sm font-semibold text-slate-700">
-          {LIFECYCLE[currentIdx]?.label ?? status}
-        </span>
-        {currentIdx >= 0 && currentIdx < LIFECYCLE.length - 1 && (
-          <span className="text-[11px] text-slate-400">
-            Step {currentIdx + 1} of {LIFECYCLE.length}
-          </span>
-        )}
-        {status === "resolved" || status === "closed" ? (
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+          Ticket Progress
+        </p>
+        {(status === "resolved" || status === "closed") && (
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700
+                           bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
             </svg>
             Complete
           </span>
-        ) : null}
+        )}
+        {status !== "resolved" && status !== "closed" && currentIdx >= 0 && (
+          <span className="text-[11px] text-slate-400 font-medium">
+            Step {currentIdx + 1} of {LIFECYCLE.length}
+          </span>
+        )}
+      </div>
+
+      {/* Vertical timeline */}
+      <div className="space-y-0">
+        {LIFECYCLE.map((step, idx) => {
+          const done    = idx < currentIdx;
+          const current = idx === currentIdx;
+          const future  = idx > currentIdx;
+          const isLast  = idx === LIFECYCLE.length - 1;
+          const ts      = timestamps[step.status];
+
+          return (
+            <div key={step.status} className="flex gap-3">
+              {/* Icon column */}
+              <div className="flex flex-col items-center shrink-0">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-300
+                    ${current
+                      ? "bg-indigo-600 shadow-md shadow-indigo-200 ring-4 ring-indigo-50"
+                      : done
+                      ? "bg-emerald-500"
+                      : "bg-white border-2 border-slate-200"
+                    }`}
+                >
+                  {done ? (
+                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                  ) : (
+                    <span className={current ? "text-white" : "text-slate-300"}>
+                      {step.icon}
+                    </span>
+                  )}
+                </div>
+                {!isLast && (
+                  <div className={`w-0.5 flex-1 my-1 min-h-[20px] transition-colors duration-300
+                    ${done ? "bg-emerald-300" : "bg-slate-150"}`}
+                    style={{ backgroundColor: done ? "#6ee7b7" : "#f1f5f9" }}
+                  />
+                )}
+              </div>
+
+              {/* Content */}
+              <div className={`pb-4 flex-1 min-w-0 ${isLast ? "pb-0" : ""}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className={`text-sm font-semibold leading-tight
+                      ${current ? "text-indigo-700" : done ? "text-slate-800" : "text-slate-300"}`}>
+                      {step.label}
+                    </p>
+                    {(current || done) && (
+                      <p className={`text-xs mt-0.5 leading-relaxed
+                        ${current ? "text-slate-500" : "text-slate-400"}`}>
+                        {step.desc}
+                      </p>
+                    )}
+                  </div>
+                  {ts && (done || current) && (
+                    <span className="text-[10px] text-slate-400 shrink-0 pt-0.5 whitespace-nowrap">
+                      {formatShortDate(ts)}
+                    </span>
+                  )}
+                </div>
+                {current && (
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <span className="relative flex h-2 w-2 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
+                    </span>
+                    <span className="text-[11px] font-semibold text-indigo-600">Active now</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -250,7 +356,7 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
   return (
     <div className="space-y-4">
       {/* ── Status tracker ────────────────────────────────── */}
-      <TicketStatusTracker status={ticket.status} />
+      <TicketStatusTracker status={ticket.status} ticket={ticket} />
 
       {/* ── Ticket header card ─────────────────────────────── */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
