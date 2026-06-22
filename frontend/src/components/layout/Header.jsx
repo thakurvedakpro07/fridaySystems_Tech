@@ -161,7 +161,7 @@ export default function Header() {
                 className="bg-indigo-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl
                            hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-500/20"
               >
-                Get Started
+                Create Ticket
               </Link>
             </>
           )}
@@ -273,7 +273,7 @@ export default function Header() {
                 className="block text-sm font-semibold text-white bg-indigo-600
                            hover:bg-indigo-700 px-3.5 py-2.5 rounded-xl transition-colors text-center"
               >
-                Get Started — Free
+                Create Ticket
               </Link>
             </div>
           )}
