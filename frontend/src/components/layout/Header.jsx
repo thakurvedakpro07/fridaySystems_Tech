@@ -81,15 +81,17 @@ export default function Header() {
         <nav className="hidden sm:flex items-center gap-1.5">
           {isAuthenticated ? (
             <>
-              {user?.is_staff ? (
+              {user?.is_staff && user?.role === "admin" ? (
                 <NavLink to="/admin">Dashboard</NavLink>
+              ) : user?.role === "operations_manager" ? (
+                <NavLink to="/operations">Ops Dashboard</NavLink>
               ) : user?.role === "freelancer" ? (
                 <NavLink to="/freelancer">My Tickets</NavLink>
               ) : (
                 <NavLink to="/dashboard">Dashboard</NavLink>
               )}
 
-              {!user?.is_staff && user?.role !== "freelancer" && (
+              {!user?.is_staff && user?.role !== "freelancer" && user?.role !== "operations_manager" && (
                 <Link
                   to="/tickets/new"
                   className="ml-1 inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm
@@ -103,17 +105,17 @@ export default function Header() {
                 </Link>
               )}
 
-              {user?.is_staff ? (
+              {user?.is_staff && user?.role === "admin" ? (
                 <NavLink to="/admin/analytics">Analytics</NavLink>
-              ) : (
+              ) : user?.role === "operations_manager" ? null : (
                 <NavLink to="/analytics">Analytics</NavLink>
               )}
 
-              {user?.is_staff ? (
+              {user?.is_staff && user?.role === "admin" ? (
                 <NavLink to="/admin/payments">Payments</NavLink>
-              ) : user?.role !== "freelancer" ? (
+              ) : user?.role === "operations_manager" || user?.role === "freelancer" ? null : (
                 <NavLink to="/billing">Billing</NavLink>
-              ) : null}
+              )}
 
               <div className="ml-1">
                 <NotificationBell />
@@ -210,15 +212,17 @@ export default function Header() {
                 </div>
               </div>
 
-              {user?.is_staff ? (
+              {user?.is_staff && user?.role === "admin" ? (
                 <NavLink to="/admin" onClick={closeMenu}>Dashboard</NavLink>
+              ) : user?.role === "operations_manager" ? (
+                <NavLink to="/operations" onClick={closeMenu}>Ops Dashboard</NavLink>
               ) : user?.role === "freelancer" ? (
                 <NavLink to="/freelancer" onClick={closeMenu}>My Tickets</NavLink>
               ) : (
                 <NavLink to="/dashboard" onClick={closeMenu}>Dashboard</NavLink>
               )}
 
-              {!user?.is_staff && user?.role !== "freelancer" && (
+              {!user?.is_staff && user?.role !== "freelancer" && user?.role !== "operations_manager" && (
                 <Link
                   to="/tickets/new"
                   onClick={closeMenu}
@@ -232,15 +236,17 @@ export default function Header() {
                 </Link>
               )}
 
-              <NavLink to={user?.is_staff ? "/admin/analytics" : "/analytics"} onClick={closeMenu}>
-                Analytics
-              </NavLink>
+              {user?.is_staff && user?.role === "admin" ? (
+                <NavLink to="/admin/analytics" onClick={closeMenu}>Analytics</NavLink>
+              ) : user?.role === "operations_manager" ? null : (
+                <NavLink to="/analytics" onClick={closeMenu}>Analytics</NavLink>
+              )}
 
-              {user?.is_staff ? (
+              {user?.is_staff && user?.role === "admin" ? (
                 <NavLink to="/admin/payments" onClick={closeMenu}>Payments</NavLink>
-              ) : user?.role !== "freelancer" ? (
+              ) : user?.role === "operations_manager" || user?.role === "freelancer" ? null : (
                 <NavLink to="/billing" onClick={closeMenu}>Billing</NavLink>
-              ) : null}
+              )}
 
               <NavLink to="/notifications" onClick={closeMenu}>Notifications</NavLink>
               <NavLink to="/settings" onClick={closeMenu}>Settings</NavLink>

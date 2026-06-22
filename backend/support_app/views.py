@@ -54,7 +54,7 @@ from .models import (
     TicketAttachment,
     TicketComment,
 )
-from .permissions import IsAdminUser, IsCustomer, IsFreelancer, IsFreelancerOrAdmin, IsOwnerOrAdmin
+from .permissions import IsAdminUser, IsCustomer, IsFreelancer, IsFreelancerOrAdmin, IsOperationsManager, IsOwnerOrAdmin
 from .serializers import (
     AdminAssignSerializer,
     AdminPaymentSerializer,
@@ -1575,3 +1575,231 @@ def password_reset_confirm(request):
     user.set_password(new_password)
     user.save(update_fields=["password"])
     return Response({"detail": "Password reset successfully. You can now log in."})
+
+
+# ══════════════════════════════════════════════════════════════════
+# OPERATIONS MANAGER VIEWS
+# /api/ops/ — accessible to role="operations_manager" only (not is_staff)
+# Cannot access payments, system settings, or Django admin.
+# ══════════════════════════════════════════════════════════════════
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, IsOperationsManager])
+def ops_dashboard(request):
+    """
+    GET /api/ops/dashboard/
+    Aggregated metrics for the Operations dashboard overview.
+    """
+    from django.db.models import Count, Sum
+    from django.db.models.functions import Coalesce
+
+    by_status = dict(
+        Ticket.objects.values_list("status")
+        .annotate(n=Count("id"))
+        .values_list("status", "n")
+    )
+
+    open_count       = by_status.get("open", 0)
+    assigned_count   = by_status.get("assigned", 0)
+    in_progress_count = by_status.get("in_progress", 0)
+    waiting_count    = by_status.get("waiting_customer", 0)
+    resolved_count   = by_status.get("resolved", 0)
+    closed_count     = by_status.get("closed", 0)
+    pending_count    = by_status.get("pending_payment", 0)
+
+    revenue = Payment.objects.filter(status="completed").aggregate(
+        total=Coalesce(Sum("amount"), 0)
+    )["total"]
+
+    active_freelancers = Freelancer.objects.filter(
+        active=True, onboarding_status="approved"
+    ).count()
+
+    unassigned_count = open_count  # "open" = paid, unassigned
+
+    return Response({
+        "open": open_count,
+        "assigned": assigned_count,
+        "in_progress": in_progress_count,
+        "waiting_customer": waiting_count,
+        "resolved": resolved_count,
+        "closed": closed_count,
+        "pending_payment": pending_count,
+        "total_active": open_count + assigned_count + in_progress_count + waiting_count,
+        "total_resolved": resolved_count + closed_count,
+        "unassigned": unassigned_count,
+        "revenue": float(revenue),
+        "active_freelancers": active_freelancers,
+    })
+
+
+class OpsTicketListView(generics.ListAPIView):
+    """
+    GET /api/ops/tickets/
+    All tickets — status, priority, service, search, ordering filters.
+    """
+    serializer_class = TicketListSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOperationsManager]
+
+    def get_queryset(self):
+        qs = Ticket.objects.select_related("customer__user", "assigned_to__user")
+
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+
+        priority_filter = self.request.query_params.get("priority")
+        if priority_filter:
+            qs = qs.filter(priority=priority_filter)
+
+        service_filter = self.request.query_params.get("service_type")
+        if service_filter:
+            qs = qs.filter(service_type=service_filter)
+
+        search = self.request.query_params.get("search")
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(title__icontains=search)
+                | Q(ticket_number__icontains=search)
+                | Q(customer__user__email__icontains=search)
+            )
+
+        ordering = self.request.query_params.get("ordering", "-created_at")
+        allowed = {"created_at", "-created_at", "priority", "-priority", "status", "-status", "severity", "-severity"}
+        if ordering in allowed:
+            qs = qs.order_by(ordering)
+
+        return qs
+
+
+class OpsFreelancerListView(generics.ListAPIView):
+    """
+    GET /api/ops/freelancers/
+    All approved freelancers with active ticket counts, skills, availability, rating.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsOperationsManager]
+
+    def get(self, request, *args, **kwargs):
+        from django.db.models import Count, Q as DQ
+
+        availability_filter = request.query_params.get("availability")
+        skill_search = request.query_params.get("skills")
+
+        qs = Freelancer.objects.filter(onboarding_status="approved").select_related("user").annotate(
+            active_ticket_count=Count(
+                "assigned_tickets",
+                filter=DQ(assigned_tickets__status__in=["assigned", "in_progress", "waiting_customer"]),
+            )
+        ).order_by("active_ticket_count", "-rating")
+
+        if availability_filter:
+            qs = qs.filter(availability=availability_filter)
+
+        if skill_search:
+            qs = qs.filter(skills__icontains=skill_search)
+
+        data = []
+        for f in qs:
+            first = f.user.first_name.strip()
+            last  = f.user.last_name.strip()
+            data.append({
+                "id": str(f.id),
+                "name": f"{first} {last}".strip() or f.user.email,
+                "email": f.user.email,
+                "skills": f.skills,
+                "availability": f.availability,
+                "rating": str(f.rating),
+                "active_tickets": f.active_ticket_count,
+                "onboarding_status": f.onboarding_status,
+                "active": f.active,
+            })
+
+        return Response(data)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsOperationsManager])
+def ops_assign_ticket(request, ticket_id):
+    """
+    POST /api/ops/tickets/{id}/assign/
+    Body: {"freelancer_id": "<uuid>"}
+    Assign or reassign a freelancer to a ticket.
+    """
+    from .services.ticket_service import assign_ticket
+    from .services.notification_service import create_notification
+
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+
+    if ticket.status == "pending_payment":
+        return Response(
+            {"detail": "Cannot assign a ticket awaiting payment."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    serializer = AdminAssignSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    freelancer = get_object_or_404(
+        Freelancer, pk=serializer.validated_data["freelancer_id"]
+    )
+
+    try:
+        assign_ticket(ticket=ticket, freelancer=freelancer, assigned_by=request.user)
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    create_notification(
+        recipient=freelancer.user,
+        category="ticket_assigned",
+        title=f"New ticket assigned: {ticket.ticket_number}",
+        body=f"{ticket.title} — {ticket.get_service_type_display()}",
+        ticket=ticket,
+    )
+    create_notification(
+        recipient=ticket.customer.user,
+        category="status_changed",
+        title=f"Your ticket {ticket.ticket_number} is being handled",
+        body="A verified support engineer has been assigned to your ticket.",
+        ticket=ticket,
+    )
+
+    ticket.refresh_from_db()
+    return Response(TicketDetailSerializer(ticket).data, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsOperationsManager])
+def ops_unassign_ticket(request, ticket_id):
+    """
+    POST /api/ops/tickets/{id}/unassign/
+    Body: {"note": "optional reason"}
+    Remove current freelancer from a ticket, resetting it to open.
+    """
+    from .services.ticket_service import unassign_ticket
+
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    note = request.data.get("note", "")
+
+    try:
+        unassign_ticket(ticket=ticket, actor=request.user, note=note)
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    ticket.refresh_from_db()
+    return Response(TicketDetailSerializer(ticket).data)
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, IsOperationsManager])
+def ops_ticket_history(request, ticket_id):
+    """
+    GET /api/ops/tickets/{id}/history/
+    Assignment and status-change events for this ticket.
+    """
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    logs = TicketActivityLog.objects.filter(
+        ticket=ticket
+    ).select_related("actor").order_by("-created_at")
+
+    return Response(TicketActivityLogSerializer(logs, many=True).data)

@@ -112,4 +112,14 @@ urlpatterns = [
     # ── Attachments ──────────────────────────────────────────────
     path("tickets/<uuid:ticket_id>/attachments/", views.ticket_attachments, name="ticket-attachments"),
     path("tickets/<uuid:ticket_id>/attachments/<uuid:attachment_id>/", views.ticket_attachment_delete, name="ticket-attachment-delete"),
+
+    # ── Operations Manager ───────────────────────────────────────
+    # Dedicated endpoints for role=operations_manager (no is_staff required).
+    # No payment, system-settings, or Django admin access.
+    path("ops/dashboard/",                                  views.ops_dashboard,          name="ops-dashboard"),
+    path("ops/tickets/",                                    views.OpsTicketListView.as_view(), name="ops-ticket-list"),
+    path("ops/tickets/<uuid:ticket_id>/assign/",            views.ops_assign_ticket,      name="ops-assign-ticket"),
+    path("ops/tickets/<uuid:ticket_id>/unassign/",          views.ops_unassign_ticket,    name="ops-unassign-ticket"),
+    path("ops/tickets/<uuid:ticket_id>/history/",           views.ops_ticket_history,     name="ops-ticket-history"),
+    path("ops/freelancers/",                                views.OpsFreelancerListView.as_view(), name="ops-freelancer-list"),
 ]

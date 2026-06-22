@@ -66,6 +66,29 @@ class IsFreelancerOrAdmin(BasePermission):
         )
 
 
+def _is_ops_manager(user) -> bool:
+    """True only for users with role='operations_manager'.
+
+    Ops managers do NOT have is_staff=True — they cannot access the Django
+    admin panel or any is_staff-gated endpoint. Their access is purely
+    through dedicated /api/ops/ endpoints guarded by this check.
+    """
+    return bool(
+        user
+        and user.is_authenticated
+        and not user.is_staff
+        and getattr(user, "role", None) == "operations_manager"
+    )
+
+
+class IsOperationsManager(BasePermission):
+    """Only allow users with role='operations_manager' (and is_staff=False)."""
+    message = "Only operations managers can access this resource."
+
+    def has_permission(self, request, view):
+        return _is_ops_manager(request.user)
+
+
 class IsOwnerOrAdmin(BasePermission):
     """
     Object-level permission.

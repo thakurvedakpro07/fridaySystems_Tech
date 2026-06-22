@@ -33,6 +33,12 @@ const FreelancerOnboarding = lazy(() => import("./pages/onboarding/FreelancerOnb
 const NotificationsPage    = lazy(() => import("./pages/NotificationsPage"));
 const HelpCenterPage       = lazy(() => import("./pages/HelpCenterPage"));
 
+// Operations Manager pages
+const OpsDashboard    = lazy(() => import("./pages/ops/OpsDashboard"));
+const OpsTicketQueue  = lazy(() => import("./pages/ops/OpsTicketQueue"));
+const OpsFreelancers  = lazy(() => import("./pages/ops/OpsFreelancers"));
+const OpsAssignments  = lazy(() => import("./pages/ops/OpsAssignments"));
+
 // Public website pages
 const AboutPage    = lazy(() => import("./pages/AboutPage"));
 const PricingPage  = lazy(() => import("./pages/PricingPage"));
@@ -79,13 +85,24 @@ function FreelancerRoute({ children }) {
 }
 
 // Redirects already-authenticated users away from /login and /register.
-// Admins go to /admin; everyone else goes to /dashboard.
-// Without this, a logged-in user could open /login and see the auth form again.
+// Admins go to /admin; ops managers go to /operations; everyone else to /dashboard.
 function PublicOnlyRoute({ children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
   if (!isAuthenticated) return children;
-  return <Navigate to={user?.is_staff ? "/admin" : "/dashboard"} replace />;
+  if (user?.is_staff && user?.role === "admin") return <Navigate to="/admin" replace />;
+  if (user?.role === "operations_manager") return <Navigate to="/operations" replace />;
+  return <Navigate to="/dashboard" replace />;
+}
+
+// Redirects unauthenticated users to /login; non-ops-managers to /dashboard.
+// operations_manager must have is_staff=false to prevent Django admin access.
+function OpsRoute({ children }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role !== "operations_manager") return <Navigate to="/dashboard" replace />;
+  return children;
 }
 
 export default function App() {
@@ -211,6 +228,12 @@ export default function App() {
             path="/onboarding/freelancer"
             element={<PrivateRoute><FreelancerOnboarding /></PrivateRoute>}
           />
+
+          {/* Operations Manager pages — require role=operations_manager */}
+          <Route path="/operations"             element={<OpsRoute><OpsDashboard /></OpsRoute>} />
+          <Route path="/operations/tickets"     element={<OpsRoute><OpsTicketQueue /></OpsRoute>} />
+          <Route path="/operations/freelancers" element={<OpsRoute><OpsFreelancers /></OpsRoute>} />
+          <Route path="/operations/assignments" element={<OpsRoute><OpsAssignments /></OpsRoute>} />
 
           {/* Named error pages */}
           <Route path="/403" element={<ForbiddenPage />} />

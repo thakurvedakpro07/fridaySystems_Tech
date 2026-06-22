@@ -105,6 +105,7 @@ class CustomUser(AbstractUser):
         ("customer", "Customer"),
         ("freelancer", "Freelancer"),
         ("admin", "Admin"),
+        ("operations_manager", "Operations Manager"),
     ]
 
     # ── Primary key ──────────────────────────────────────────────
@@ -125,7 +126,7 @@ class CustomUser(AbstractUser):
     # ── Role ─────────────────────────────────────────────────────
     # Stored on the User table (not on profiles) because role is needed
     # on every authenticated request, before any profile is loaded.
-    role = models.CharField(max_length=16, choices=ROLE_CHOICES, default="customer")
+    role = models.CharField(max_length=32, choices=ROLE_CHOICES, default="customer")
 
     # ── Email verification ────────────────────────────────────────
     # True for all existing users (default) and for superusers.

@@ -70,6 +70,12 @@ const IC = {
         d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
     </svg>
   ),
+  assign: (
+    <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
+    </svg>
+  ),
 };
 
 // ── NavItem ───────────────────────────────────────────────────────
@@ -153,7 +159,8 @@ export default function Sidebar({ open, onClose }) {
 
   const isAdmin      = user?.is_staff && user?.role === "admin";
   const isFreelancer = user?.role === "freelancer";
-  const isCustomer   = !isAdmin && !isFreelancer;
+  const isOpsManager = !user?.is_staff && user?.role === "operations_manager";
+  const isCustomer   = !isAdmin && !isFreelancer && !isOpsManager;
 
   return (
     <aside
@@ -226,6 +233,21 @@ export default function Sidebar({ open, onClose }) {
             <NavSection label="Account">
               <NavItem to="/settings"     icon={IC.settings} label="Settings" />
               <NavItem to="/help-center"  icon={IC.help}     label="Help Center" />
+            </NavSection>
+          </>
+        )}
+
+        {isOpsManager && (
+          <>
+            <NavSection label="Operations">
+              <NavItem to="/operations"             icon={IC.dashboard} label="Overview"       exact />
+              <NavItem to="/operations/tickets"     icon={IC.ticket}    label="Ticket Queue" />
+              <NavItem to="/operations/freelancers" icon={IC.engineers} label="Engineers" />
+              <NavItem to="/operations/assignments" icon={IC.assign}    label="Assignments" />
+            </NavSection>
+            <NavSection label="Account">
+              <NavItem to="/settings"    icon={IC.settings} label="Settings" />
+              <NavItem to="/help-center" icon={IC.help}     label="Help Center" />
             </NavSection>
           </>
         )}
