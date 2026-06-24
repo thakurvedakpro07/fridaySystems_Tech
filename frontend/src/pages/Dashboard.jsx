@@ -393,7 +393,8 @@ function TicketsEmptyState({ hasFilters }) {
 // ── Root component ────────────────────────────────────────────────
 export default function Dashboard() {
   const user = useAuthStore((s) => s.user);
-  if (user?.is_staff) return <Navigate to="/admin" replace />;
+  const STAFF_ROLES = ["admin", "operations_manager", "finance_manager", "support_agent"];
+  if (STAFF_ROLES.includes(user?.role)) return <Navigate to="/operations" replace />;
   if (user?.role === "freelancer") return <Navigate to="/freelancer" replace />;
   return <CustomerDashboard />;
 }

@@ -1,0 +1,32 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h1>Customer Needs More Help</h1>
+<p>Hi {{ email }},</p>
+<p>The customer has indicated that their issue is <strong>not yet resolved</strong> and has reopened the ticket.</p>
+<div class="meta-box">
+  <div class="meta-row">
+    <span class="meta-label">Ticket</span>
+    <span class="meta-value">{{ ticket_number }}</span>
+  </div>
+  <div class="meta-row">
+    <span class="meta-label">Title</span>
+    <span class="meta-value">{{ title }}</span>
+  </div>
+  <div class="meta-row">
+    <span class="meta-label">Customer</span>
+    <span class="meta-value">{{ customer_email }}</span>
+  </div>
+  <div class="meta-row">
+    <span class="meta-label">Status</span>
+    <span class="meta-value"><span class="status-badge" style="background:#fef3c7;color:#92400e;">In Progress</span></span>
+  </div>
+  {% if note %}
+  <div class="meta-row">
+    <span class="meta-label">Customer note</span>
+    <span class="meta-value">{{ note }}</span>
+  </div>
+  {% endif %}
+</div>
+<p>Please review the ticket and follow up with the customer.</p>
+<a href="{{ app_url }}/freelancer/tickets/{{ ticket_id }}" class="cta-btn">View Ticket →</a>
+{% endblock %}

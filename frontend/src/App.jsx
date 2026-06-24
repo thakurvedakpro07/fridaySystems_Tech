@@ -33,11 +33,17 @@ const FreelancerOnboarding = lazy(() => import("./pages/onboarding/FreelancerOnb
 const NotificationsPage    = lazy(() => import("./pages/NotificationsPage"));
 const HelpCenterPage       = lazy(() => import("./pages/HelpCenterPage"));
 
-// Operations Manager pages
-const OpsDashboard    = lazy(() => import("./pages/ops/OpsDashboard"));
-const OpsTicketQueue  = lazy(() => import("./pages/ops/OpsTicketQueue"));
-const OpsFreelancers  = lazy(() => import("./pages/ops/OpsFreelancers"));
-const OpsAssignments  = lazy(() => import("./pages/ops/OpsAssignments"));
+// Operations Dashboard pages (all staff roles)
+const OpsDashboard      = lazy(() => import("./pages/ops/OpsDashboard"));
+const OpsTicketQueue    = lazy(() => import("./pages/ops/OpsTicketQueue"));
+const OpsFreelancers    = lazy(() => import("./pages/ops/OpsFreelancers"));
+const OpsAssignments    = lazy(() => import("./pages/ops/OpsAssignments"));
+const OpsUsers          = lazy(() => import("./pages/ops/OpsUsers"));
+const OpsRoles          = lazy(() => import("./pages/ops/OpsRoles"));
+const OpsServices       = lazy(() => import("./pages/ops/OpsServices"));
+const OpsPayments       = lazy(() => import("./pages/ops/OpsPayments"));
+const OpsAnalytics      = lazy(() => import("./pages/ops/OpsAnalytics"));
+const OpsSettings       = lazy(() => import("./pages/ops/OpsSettings"));
 
 // Public website pages
 const AboutPage    = lazy(() => import("./pages/AboutPage"));
@@ -81,27 +87,76 @@ function AdminRoute({ children }) {
 function FreelancerRoute({ children }) {
   const user = useAuthStore((s) => s.user);
   if (user?.role === "freelancer") return children;
-  return <Navigate to={user?.is_staff ? "/admin" : "/dashboard"} replace />;
+  // Any staff role lands at /operations; non-staff non-engineer goes to /dashboard
+  const staffRoles = ["admin", "operations_manager", "finance_manager", "support_agent"];
+  return <Navigate to={staffRoles.includes(user?.role) ? "/operations" : "/dashboard"} replace />;
 }
 
 // Redirects already-authenticated users away from /login and /register.
-// Admins go to /admin; ops managers go to /operations; everyone else to /dashboard.
+// Staff roles go to /operations; everyone else to /dashboard.
 function PublicOnlyRoute({ children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
   if (!isAuthenticated) return children;
-  if (user?.is_staff && user?.role === "admin") return <Navigate to="/admin" replace />;
-  if (user?.role === "operations_manager") return <Navigate to="/operations" replace />;
+  const staffRoles = ["admin", "operations_manager", "finance_manager", "support_agent"];
+  if (staffRoles.includes(user?.role)) return <Navigate to="/operations" replace />;
+  if (user?.role === "freelancer") return <Navigate to="/freelancer" replace />;
   return <Navigate to="/dashboard" replace />;
 }
 
-// Redirects unauthenticated users to /login; non-ops-managers to /dashboard.
-// operations_manager must have is_staff=false to prevent Django admin access.
+// Allows all four internal staff roles onto /operations/* routes.
 function OpsRoute({ children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (user?.role !== "operations_manager") return <Navigate to="/dashboard" replace />;
+  const staffRoles = ["admin", "operations_manager", "finance_manager", "support_agent"];
+  if (!staffRoles.includes(user?.role)) return <Navigate to="/dashboard" replace />;
+  return children;
+}
+
+// Ops Manager + Super Admin only (not Finance Manager or Support Agent).
+// Used for assignment, engineer, and service management routes.
+function OpsManagerRoute({ children }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  const isOpsManager = user?.role === "operations_manager" && !user?.is_staff;
+  const isSuperAdmin = user?.role === "admin" && user?.is_staff;
+  if (!isOpsManager && !isSuperAdmin) return <Navigate to="/403" replace />;
+  return children;
+}
+
+// Finance Manager + Super Admin only (payment write + summary).
+function FinanceRoute({ children }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  const isFinance = user?.role === "finance_manager" && !user?.is_staff;
+  const isSuperAdmin = user?.role === "admin" && user?.is_staff;
+  if (!isFinance && !isSuperAdmin) return <Navigate to="/403" replace />;
+  return children;
+}
+
+// Ops Manager + Finance Manager + Super Admin — for Payments and Analytics pages.
+// Ops Manager gets read-only UI; Finance Manager gets write UI. Role enforcement is
+// inside each page component via useRoles(). The route guard only controls access.
+function PaymentRoute({ children }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  const isOpsManager  = user?.role === "operations_manager" && !user?.is_staff;
+  const isFinance     = user?.role === "finance_manager"    && !user?.is_staff;
+  const isSuperAdmin  = user?.role === "admin"              && user?.is_staff;
+  if (!isOpsManager && !isFinance && !isSuperAdmin) return <Navigate to="/403" replace />;
+  return children;
+}
+
+// Super Admin only — used for user/role management pages inside /operations/*.
+function SuperAdminOpsRoute({ children }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!user?.is_staff || user?.role !== "admin") return <Navigate to="/403" replace />;
   return children;
 }
 
@@ -229,11 +284,26 @@ export default function App() {
             element={<PrivateRoute><FreelancerOnboarding /></PrivateRoute>}
           />
 
-          {/* Operations Manager pages — require role=operations_manager */}
+          {/* Operations Portal — all four staff roles */}
           <Route path="/operations"             element={<OpsRoute><OpsDashboard /></OpsRoute>} />
           <Route path="/operations/tickets"     element={<OpsRoute><OpsTicketQueue /></OpsRoute>} />
-          <Route path="/operations/freelancers" element={<OpsRoute><OpsFreelancers /></OpsRoute>} />
-          <Route path="/operations/assignments" element={<OpsRoute><OpsAssignments /></OpsRoute>} />
+
+          {/* Operations — Ops Manager + Super Admin only */}
+          <Route path="/operations/freelancers" element={<OpsManagerRoute><OpsFreelancers /></OpsManagerRoute>} />
+          <Route path="/operations/assignments" element={<OpsManagerRoute><OpsAssignments /></OpsManagerRoute>} />
+          <Route path="/operations/services"    element={<OpsManagerRoute><OpsServices /></OpsManagerRoute>} />
+
+          {/* Operations — Finance Manager + Ops Manager + Super Admin */}
+          <Route path="/operations/payments"    element={<PaymentRoute><OpsPayments /></PaymentRoute>} />
+          <Route path="/operations/analytics"   element={<PaymentRoute><OpsAnalytics /></PaymentRoute>} />
+
+          {/* Operations — all staff roles */}
+          <Route path="/operations/notifications" element={<OpsRoute><NotificationsPage /></OpsRoute>} />
+
+          {/* Platform Management — Ops Manager + Super Admin (write gated inside page + backend) */}
+          <Route path="/operations/users"       element={<OpsManagerRoute><OpsUsers /></OpsManagerRoute>} />
+          <Route path="/operations/roles"       element={<SuperAdminOpsRoute><OpsRoles /></SuperAdminOpsRoute>} />
+          <Route path="/operations/settings"    element={<SuperAdminOpsRoute><OpsSettings /></SuperAdminOpsRoute>} />
 
           {/* Named error pages */}
           <Route path="/403" element={<ForbiddenPage />} />

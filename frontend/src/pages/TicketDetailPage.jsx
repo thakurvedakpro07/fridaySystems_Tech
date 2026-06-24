@@ -40,6 +40,16 @@ export default function TicketDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Accept pre-fetched ticket data (e.g. from a POST response) to update state
+  // immediately without a round-trip GET; fall back to full re-fetch if not provided.
+  const handleTicketUpdate = useCallback((freshTicket) => {
+    if (freshTicket?.id) {
+      setTicket(freshTicket);
+    } else {
+      loadTicket();
+    }
+  }, [loadTicket]);
+
   useEffect(() => { loadTicket(); }, [loadTicket]);
 
   return (
@@ -83,7 +93,7 @@ export default function TicketDetailPage() {
 
       {!loading && !error && ticket && (
         <div className="animate-fade-in">
-          <TicketDetail ticket={ticket} role={role} onUpdate={loadTicket} />
+          <TicketDetail ticket={ticket} role={role} onUpdate={handleTicketUpdate} />
         </div>
       )}
     </MainLayout>

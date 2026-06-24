@@ -1,6 +1,9 @@
 /**
- * CSATWidget — lets customers rate their experience on resolved/closed tickets.
- * Only shown when: ticket.status is "resolved" or "closed" AND no rating exists yet.
+ * CSATWidget — lets customers rate their experience on closed tickets.
+ * Only shown when: ticket.status is "closed" AND no rating exists yet.
+ * The normal path to closing is via CustomerResolutionActions (which collects
+ * the rating during acceptance). This widget handles the fallback case where
+ * an admin closed the ticket directly without a customer acceptance step.
  *
  * Props:
  *   ticket   — the full ticket object (needs ticket.id, ticket.csat_score)
@@ -26,7 +29,7 @@ export default function CSATWidget({ ticket, onUpdate }) {
   const [saving, setSaving]     = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  if (!["resolved", "closed"].includes(ticket.status)) return null;
+  if (ticket.status !== "closed") return null;
   if (ticket.csat_score != null) {
     return (
       <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center text-sm text-slate-500">

@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
-import { useAuthStore } from "../../store/authStore";
+import { useRoles } from "../../hooks/useRoles";
 
 // ── Inline SVG icon set ───────────────────────────────────────────
 const IC = {
@@ -74,6 +74,24 @@ const IC = {
     <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round"
         d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
+    </svg>
+  ),
+  users: (
+    <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+    </svg>
+  ),
+  roles: (
+    <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+    </svg>
+  ),
+  services: (
+    <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l5.654-4.654m5.905-2.72c.174-.168.35-.337.518-.512a5.29 5.29 0 00-7.497-7.497c-.175.168-.344.343-.512.518" />
     </svg>
   ),
 };
@@ -155,12 +173,12 @@ function UserChip({ user, onLogout }) {
 // ── Sidebar ───────────────────────────────────────────────────────
 export default function Sidebar({ open, onClose }) {
   const { logout } = useAuth();
-  const user = useAuthStore((s) => s.user);
+  const { user, isSuperAdmin, isOpsManager, isFinanceManager, isSupportAgent, isEngineer, isCustomer, isAnyStaff } = useRoles();
+  const { pathname } = useLocation();
 
-  const isAdmin      = user?.is_staff && user?.role === "admin";
-  const isFreelancer = user?.role === "freelancer";
-  const isOpsManager = !user?.is_staff && user?.role === "operations_manager";
-  const isCustomer   = !isAdmin && !isFreelancer && !isOpsManager;
+  const isOnOpsPath = pathname.startsWith("/operations");
+  // All four internal staff roles see the ops sidebar when on /operations/*
+  const showOpsNav  = isAnyStaff && isOnOpsPath;
 
   return (
     <aside
@@ -221,7 +239,7 @@ export default function Sidebar({ open, onClose }) {
           </>
         )}
 
-        {isFreelancer && (
+        {isEngineer && (
           <>
             <NavSection label="Workspace">
               <NavItem to="/freelancer" icon={IC.dashboard} label="My Assignments" exact />
@@ -237,35 +255,46 @@ export default function Sidebar({ open, onClose }) {
           </>
         )}
 
-        {isOpsManager && (
+        {showOpsNav && (
           <>
+            {/* Operations — all four staff roles */}
             <NavSection label="Operations">
-              <NavItem to="/operations"             icon={IC.dashboard} label="Overview"       exact />
-              <NavItem to="/operations/tickets"     icon={IC.ticket}    label="Ticket Queue" />
-              <NavItem to="/operations/freelancers" icon={IC.engineers} label="Engineers" />
-              <NavItem to="/operations/assignments" icon={IC.assign}    label="Assignments" />
+              <NavItem to="/operations"         icon={IC.dashboard} label="Overview"     exact />
+              <NavItem to="/operations/tickets" icon={IC.ticket}    label="Ticket Queue" />
+              {(isSuperAdmin || isOpsManager) && (
+                <NavItem to="/operations/assignments" icon={IC.assign} label="Assignments" />
+              )}
             </NavSection>
-            <NavSection label="Account">
-              <NavItem to="/settings"    icon={IC.settings} label="Settings" />
-              <NavItem to="/help-center" icon={IC.help}     label="Help Center" />
-            </NavSection>
-          </>
-        )}
 
-        {isAdmin && (
-          <>
-            <NavSection label="Operations">
-              <NavItem to="/admin"           icon={IC.dashboard} label="Overview"  exact />
-              <NavItem to="/admin/analytics" icon={IC.analytics} label="Analytics" />
-            </NavSection>
-            <NavSection label="Platform">
-              <NavItem to="/admin/freelancers" icon={IC.engineers} label="Engineers" />
-              <NavItem to="/admin/payments"    icon={IC.payments}  label="Payments" />
-              <NavItem to="/notifications"     icon={IC.bell}      label="Notifications" />
-            </NavSection>
+            {/* Finance — Finance Manager + Super Admin (Ops Manager sees read-only) */}
+            {(isSuperAdmin || isFinanceManager || isOpsManager) && (
+              <NavSection label="Finance">
+                <NavItem to="/operations/payments"  icon={IC.payments}  label="Payments" />
+                <NavItem to="/operations/analytics" icon={IC.analytics} label="Analytics" />
+              </NavSection>
+            )}
+
+            {/* Platform — Ops Manager + Super Admin */}
+            {(isSuperAdmin || isOpsManager) && (
+              <NavSection label="Platform">
+                {isSuperAdmin && (
+                  <>
+                    <NavItem to="/operations/users"    icon={IC.users}    label="Users" />
+                    <NavItem to="/operations/roles"    icon={IC.roles}    label="Roles" />
+                    <NavItem to="/operations/settings" icon={IC.settings} label="Settings" />
+                  </>
+                )}
+                {!isSuperAdmin && isOpsManager && (
+                  <NavItem to="/operations/users" icon={IC.users} label="Users" />
+                )}
+                <NavItem to="/operations/freelancers" icon={IC.engineers} label="Engineers" />
+                <NavItem to="/operations/services"    icon={IC.services}  label="Services" />
+              </NavSection>
+            )}
+
             <NavSection label="Account">
-              <NavItem to="/settings"     icon={IC.settings} label="Settings" />
-              <NavItem to="/help-center"  icon={IC.help}     label="Help Center" />
+              <NavItem to="/operations/notifications" icon={IC.bell}  label="Notifications" />
+              <NavItem to="/help-center"              icon={IC.help}  label="Help Center" />
             </NavSection>
           </>
         )}

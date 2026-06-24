@@ -106,6 +106,8 @@ class CustomUser(AbstractUser):
         ("freelancer", "Freelancer"),
         ("admin", "Admin"),
         ("operations_manager", "Operations Manager"),
+        ("finance_manager", "Finance Manager"),
+        ("support_agent", "Support Agent"),
     ]
 
     # ── Primary key ──────────────────────────────────────────────
@@ -261,21 +263,22 @@ class Ticket(models.Model):
     who is handling it, and what state it is currently in.
 
     Lifecycle:
-      pending_payment → open → in_progress → waiting_customer
-                                           → resolved → closed
+      pending_payment → open → assigned → in_progress → waiting_customer
+                                                      → resolved → closed
     """
 
     # ── Service catalogue ─────────────────────────────────────────
     # Each service type maps to a different resolution fee and SLA target.
     # Adding a new service = add one tuple here + update SLAPolicy table.
     SERVICE_CHOICES = [
-        ("desktop",  "Desktop / Laptop Support"),
-        ("linux",    "Linux Provisioning"),
-        ("windows",  "Windows Provisioning"),
-        ("patching", "OS Patching"),
-        ("security", "Security Hardening"),
-        ("vmware",   "VMware / Hypervisor"),
-        ("sap",      "SAP Basis Lite"),
+        ("desktop",      "Desktop / Laptop Support"),
+        ("linux",        "Linux Provisioning"),
+        ("windows",      "Windows Provisioning"),
+        ("patching",     "OS Patching"),
+        ("security",     "Security Hardening"),
+        ("vmware",       "VMware / Hypervisor"),
+        ("sap",          "SAP Basis Lite"),
+        ("microsoft365", "Microsoft 365 / Exchange"),
     ]
 
     # ── Severity — TECHNICAL impact ───────────────────────────────
@@ -553,6 +556,7 @@ class TicketActivityLog(models.Model):
         ("closed",           "Closed"),
         ("reopened",         "Reopened"),
         ("sla_breached",     "SLA Breached"),
+        ("escalated",        "Escalated"),
     ]
 
     id     = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -887,11 +891,14 @@ class AuditLog(models.Model):
         ("customer", "Customer"),
         ("freelancer", "Freelancer"),
         ("admin", "Admin"),
+        ("operations_manager", "Operations Manager"),
+        ("finance_manager", "Finance Manager"),
+        ("support_agent", "Support Agent"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user_id = models.UUIDField()
-    user_type = models.CharField(max_length=16, choices=USER_TYPE_CHOICES)
+    user_type = models.CharField(max_length=32, choices=USER_TYPE_CHOICES)
     entity = models.CharField(max_length=64, help_text="Table name, e.g. 'tickets'")
     entity_id = models.UUIDField(null=True, blank=True)
     action = models.CharField(max_length=64)
@@ -904,3 +911,84 @@ class AuditLog(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class RoleChangeAudit(models.Model):
+    """
+    Immutable audit trail of every user role change made by a Super Admin.
+
+    Written on every successful role promotion or demotion. Never updated,
+    never deleted — compliance and dispute-resolution record.
+    """
+    ROLE_CHOICES = [
+        ("customer", "Customer"),
+        ("freelancer", "Engineer"),
+        ("admin", "Super Admin"),
+        ("operations_manager", "Operations Manager"),
+        ("finance_manager", "Finance Manager"),
+        ("support_agent", "Support Agent"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # changed_by: the Super Admin who made the change.
+    # SET_NULL so the audit row survives even if that admin account is later deleted.
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="role_changes_made",
+    )
+
+    # target_user: the user whose role was changed.
+    # SET_NULL preserves the audit row even if the target account is deleted.
+    target_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="role_change_history",
+    )
+
+    # Snapshot the email at time of change — readable if the account is later deleted.
+    target_email = models.EmailField(blank=True)
+
+    old_role = models.CharField(max_length=32, choices=ROLE_CHOICES)
+    new_role = models.CharField(max_length=32, choices=ROLE_CHOICES)
+    note = models.TextField(blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.target_email}: {self.old_role} → {self.new_role} at {self.timestamp:%Y-%m-%d %H:%M}"
+
+    class Meta:
+        ordering = ["-timestamp"]
+        verbose_name = "Role Change Audit"
+        verbose_name_plural = "Role Change Audits"
+
+
+class Service(models.Model):
+    """
+    Platform service catalogue entry.
+    Operations Managers and Super Admins can create, edit, enable, or disable services.
+    """
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("inactive", "Inactive"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255, unique=True)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="active")
+    required_skills = models.CharField(
+        max_length=500, blank=True,
+        help_text="Comma-separated skill tags, e.g. linux,sap,vmware",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.status})"
+
+    class Meta:
+        ordering = ["name"]

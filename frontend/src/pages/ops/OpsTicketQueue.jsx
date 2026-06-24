@@ -194,7 +194,7 @@ export default function OpsTicketQueue() {
 
   const loadFreelancers = useCallback(async () => {
     try {
-      const res = await getOpsFreelancers({ availability: "available" });
+      const res = await getOpsFreelancers();
       setFreelancers(res.data?.results ?? res.data ?? []);
     } catch (_) {}
   }, []);

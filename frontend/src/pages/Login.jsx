@@ -35,7 +35,14 @@ export default function Login() {
     setError("");
     const result = await loginUser(form.email, form.password);
     if (result.success) {
-      navigate(result.is_staff ? "/admin" : "/dashboard");
+      const staffRoles = ["admin", "operations_manager", "finance_manager", "support_agent"];
+      if (staffRoles.includes(result.role)) {
+        navigate("/operations");
+      } else if (result.role === "freelancer") {
+        navigate("/freelancer");
+      } else {
+        navigate("/dashboard");
+      }
     } else {
       setError(result.message);
     }

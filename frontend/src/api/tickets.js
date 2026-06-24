@@ -24,6 +24,12 @@ export const addComment = (ticketId, body) =>
 export const submitCSAT = (ticketId, score, comment) =>
   apiClient.post(`/tickets/${ticketId}/csat/`, { score, comment });
 
+export const acceptResolution = (ticketId, score, comment = "") =>
+  apiClient.post(`/tickets/${ticketId}/accept-resolution/`, { score, comment });
+
+export const rejectResolution = (ticketId, note = "") =>
+  apiClient.post(`/tickets/${ticketId}/reject-resolution/`, { note });
+
 export const listServices = () =>
   apiClient.get("/services/");
 

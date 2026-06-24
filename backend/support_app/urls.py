@@ -56,6 +56,8 @@ urlpatterns = [
     path("tickets/<uuid:ticket_id>/comments/", views.TicketCommentListCreateView.as_view(), name="ticket-comments"),
     path("tickets/<uuid:ticket_id>/activity/", views.TicketActivityLogListView.as_view(), name="ticket-activity"),
     path("tickets/<uuid:ticket_id>/csat/", views.submit_csat, name="ticket-csat"),
+    path("tickets/<uuid:ticket_id>/accept-resolution/", views.accept_resolution, name="ticket-accept-resolution"),
+    path("tickets/<uuid:ticket_id>/reject-resolution/", views.reject_resolution, name="ticket-reject-resolution"),
     # Payment flow — per-ticket endpoints
     path("tickets/<uuid:ticket_id>/initiate-payment/", views.ticket_initiate_payment, name="ticket-initiate-payment"),
     path("tickets/<uuid:ticket_id>/verify-payment/", views.ticket_verify_payment, name="ticket-verify-payment"),
@@ -113,13 +115,42 @@ urlpatterns = [
     path("tickets/<uuid:ticket_id>/attachments/", views.ticket_attachments, name="ticket-attachments"),
     path("tickets/<uuid:ticket_id>/attachments/<uuid:attachment_id>/", views.ticket_attachment_delete, name="ticket-attachment-delete"),
 
-    # ── Operations Manager ───────────────────────────────────────
-    # Dedicated endpoints for role=operations_manager (no is_staff required).
+    # ── Operations Dashboard ─────────────────────────────────────
+    # Accessible to role=operations_manager AND role=admin (Super Admin).
     # No payment, system-settings, or Django admin access.
-    path("ops/dashboard/",                                  views.ops_dashboard,          name="ops-dashboard"),
-    path("ops/tickets/",                                    views.OpsTicketListView.as_view(), name="ops-ticket-list"),
-    path("ops/tickets/<uuid:ticket_id>/assign/",            views.ops_assign_ticket,      name="ops-assign-ticket"),
-    path("ops/tickets/<uuid:ticket_id>/unassign/",          views.ops_unassign_ticket,    name="ops-unassign-ticket"),
-    path("ops/tickets/<uuid:ticket_id>/history/",           views.ops_ticket_history,     name="ops-ticket-history"),
-    path("ops/freelancers/",                                views.OpsFreelancerListView.as_view(), name="ops-freelancer-list"),
+    path("ops/dashboard/",                                  views.ops_dashboard,                    name="ops-dashboard"),
+    path("ops/tickets/",                                    views.OpsTicketListView.as_view(),       name="ops-ticket-list"),
+    path("ops/tickets/<uuid:ticket_id>/assign/",            views.ops_assign_ticket,                name="ops-assign-ticket"),
+    path("ops/tickets/<uuid:ticket_id>/unassign/",          views.ops_unassign_ticket,              name="ops-unassign-ticket"),
+    path("ops/tickets/<uuid:ticket_id>/history/",           views.ops_ticket_history,               name="ops-ticket-history"),
+    path("ops/freelancers/",                                views.OpsFreelancerListView.as_view(),  name="ops-freelancer-list"),
+
+    # ── User Management (Super Admin write; both roles read) ─────
+    # NOTE: list/ and detail/<uuid>/ routes must precede action sub-paths
+    path("ops/users/",                                      views.OpsUserListView.as_view(),        name="ops-user-list"),
+    path("ops/users/<uuid:user_id>/",                       views.ops_user_detail,                  name="ops-user-detail"),
+    path("ops/users/<uuid:user_id>/role/",                  views.ops_change_role,                  name="ops-user-role"),
+    path("ops/users/<uuid:user_id>/deactivate/",            views.ops_deactivate_user,              name="ops-user-deactivate"),
+    path("ops/users/<uuid:user_id>/reactivate/",            views.ops_reactivate_user,              name="ops-user-reactivate"),
+
+    # ── Role Change Audit Log ────────────────────────────────────
+    path("ops/role-audit/",                                 views.OpsRoleAuditListView.as_view(),   name="ops-role-audit"),
+
+    # ── Services Management ──────────────────────────────────────
+    # NOTE: toggle/ must precede <uuid:pk>/ to avoid UUID parsing
+    path("ops/services/",                                   views.OpsServiceListCreateView.as_view(), name="ops-service-list"),
+    path("ops/services/<uuid:pk>/toggle/",                  views.ops_service_toggle,               name="ops-service-toggle"),
+    path("ops/services/<uuid:pk>/",                         views.OpsServiceDetailView.as_view(),   name="ops-service-detail"),
+
+    # ── Ops: Payments (Finance Manager write; Ops Manager read) ───
+    path("ops/payments/summary/",                           views.ops_payment_summary,              name="ops-payment-summary"),
+    path("ops/payments/<uuid:pk>/confirm/",                 views.ops_payment_confirm,              name="ops-payment-confirm"),
+    path("ops/payments/<uuid:pk>/refund/",                  views.ops_payment_refund,               name="ops-payment-refund"),
+    path("ops/payments/",                                   views.OpsPaymentListView.as_view(),     name="ops-payment-list"),
+
+    # ── Ops: Ticket Escalation (Support Agent + Ops Manager) ──────
+    path("ops/tickets/<uuid:ticket_id>/escalate/",          views.ops_ticket_escalate,              name="ops-ticket-escalate"),
+
+    # ── Ops: Analytics (role-scoped) ──────────────────────────────
+    path("ops/analytics/",                                  views.ops_analytics,                    name="ops-analytics"),
 ]

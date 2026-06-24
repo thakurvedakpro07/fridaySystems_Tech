@@ -48,10 +48,10 @@ export default function FreelancerTicketActions({ ticket, onUpdate }) {
   const handleUpdate = async () => {
     setSaving(true);
     try {
-      await freelancerUpdateStatus(ticket.id, targetStatus, note);
+      const { data: updatedTicket } = await freelancerUpdateStatus(ticket.id, targetStatus, note);
       toast(`Status updated to ${targetStatus.replaceAll("_", " ")}.`, "success");
       setShowModal(false);
-      onUpdate();
+      onUpdate(updatedTicket);
     } catch (err) {
       toast(err.response?.data?.detail ?? "Failed to update status.", "error");
     } finally {

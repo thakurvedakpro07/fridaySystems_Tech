@@ -81,7 +81,7 @@ def test_admin_assign_ticket_sets_assigned_to(open_ticket, freelancer_user, admi
     assert response.status_code == 200
     open_ticket.refresh_from_db()
     assert open_ticket.assigned_to == freelancer_user.freelancer_profile
-    assert open_ticket.status == "in_progress"
+    assert open_ticket.status == "assigned"
 
 
 @pytest.mark.django_db
@@ -318,6 +318,12 @@ def test_freelancer_cannot_view_unassigned_ticket_detail(open_ticket, freelancer
 def test_freelancer_can_move_to_waiting_customer(assigned_ticket, freelancer_user):
     client = APIClient()
     client.force_authenticate(user=freelancer_user)
+    # Correct workflow: assigned → in_progress → waiting_customer
+    client.post(
+        f"/api/freelancer/tickets/{assigned_ticket.id}/status/",
+        {"new_status": "in_progress"},
+        format="json",
+    )
     response = client.post(
         f"/api/freelancer/tickets/{assigned_ticket.id}/status/",
         {"new_status": "waiting_customer"},
@@ -332,6 +338,12 @@ def test_freelancer_can_move_to_waiting_customer(assigned_ticket, freelancer_use
 def test_freelancer_can_resolve_ticket(assigned_ticket, freelancer_user):
     client = APIClient()
     client.force_authenticate(user=freelancer_user)
+    # Correct workflow: assigned → in_progress → resolved
+    client.post(
+        f"/api/freelancer/tickets/{assigned_ticket.id}/status/",
+        {"new_status": "in_progress"},
+        format="json",
+    )
     response = client.post(
         f"/api/freelancer/tickets/{assigned_ticket.id}/status/",
         {"new_status": "resolved"},

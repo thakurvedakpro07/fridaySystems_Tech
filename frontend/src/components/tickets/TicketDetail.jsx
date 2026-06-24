@@ -7,6 +7,7 @@ import AdminTicketActions from "./AdminTicketActions";
 import FreelancerTicketActions from "./FreelancerTicketActions";
 import PaymentGateway from "./PaymentGateway";
 import CSATWidget from "./CSATWidget";
+import CustomerResolutionActions from "./CustomerResolutionActions";
 import Badge from "../ui/Badge";
 
 // ── Ticket Timeline ───────────────────────────────────────────────
@@ -44,7 +45,7 @@ const LIFECYCLE = [
   {
     status: "in_progress",
     label: "Work Started",
-    desc: "Engineer is actively diagnosing and resolving your issue",
+    desc: "Engineer is actively diagnosing and resolving the issue",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" />
@@ -53,8 +54,8 @@ const LIFECYCLE = [
   },
   {
     status: "waiting_customer",
-    label: "Waiting For You",
-    desc: "Engineer needs your input or additional access",
+    label: "Waiting for Your Response",
+    desc: "The engineer needs your input or additional access",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
@@ -83,6 +84,30 @@ const LIFECYCLE = [
   },
 ];
 
+// Role-aware overrides for the 3 ambiguous steps
+const ROLE_LABEL_OVERRIDES = {
+  assigned: {
+    freelancer: { label: "Assigned to You",                    desc: "This ticket has been assigned to you" },
+    admin:      { label: "Engineer Assigned",                   desc: "A specialist has been assigned to this ticket" },
+  },
+  in_progress: {
+    customer:   { label: "Engineer Working",                    desc: "Your engineer is actively resolving the issue" },
+    admin:      { label: "In Progress",                         desc: "Engineer is actively working on this issue" },
+  },
+  waiting_customer: {
+    freelancer: { label: "Waiting for Customer Response",       desc: "Waiting for the customer to provide input or access" },
+    admin:      { label: "Waiting for Customer",                desc: "Waiting for the customer to provide input or access" },
+  },
+};
+
+function getLifecycle(role) {
+  const r = role === "freelancer" ? "freelancer" : role === "admin" ? "admin" : "customer";
+  return LIFECYCLE.map((step) => {
+    const override = ROLE_LABEL_OVERRIDES[step.status]?.[r];
+    return override ? { ...step, ...override } : step;
+  });
+}
+
 function formatShortDate(dateStr) {
   if (!dateStr) return null;
   return new Date(dateStr).toLocaleString("en-IN", {
@@ -90,8 +115,9 @@ function formatShortDate(dateStr) {
   });
 }
 
-function TicketStatusTracker({ status, ticket }) {
-  const currentIdx = LIFECYCLE.findIndex((s) => s.status === status);
+function TicketStatusTracker({ status, ticket, role }) {
+  const lifecycle = getLifecycle(role);
+  const currentIdx = lifecycle.findIndex((s) => s.status === status);
 
   // Map statuses to ticket timestamps where available
   const timestamps = {
@@ -121,18 +147,18 @@ function TicketStatusTracker({ status, ticket }) {
         )}
         {status !== "resolved" && status !== "closed" && currentIdx >= 0 && (
           <span className="text-[11px] text-slate-400 font-medium">
-            Step {currentIdx + 1} of {LIFECYCLE.length}
+            Step {currentIdx + 1} of {lifecycle.length}
           </span>
         )}
       </div>
 
       {/* Vertical timeline */}
       <div className="space-y-0">
-        {LIFECYCLE.map((step, idx) => {
+        {lifecycle.map((step, idx) => {
           const done    = idx < currentIdx;
           const current = idx === currentIdx;
           const future  = idx > currentIdx;
-          const isLast  = idx === LIFECYCLE.length - 1;
+          const isLast  = idx === lifecycle.length - 1;
           const ts      = timestamps[step.status];
 
           return (
@@ -356,7 +382,7 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
   return (
     <div className="space-y-4">
       {/* ── Status tracker ────────────────────────────────── */}
-      <TicketStatusTracker status={ticket.status} ticket={ticket} />
+      <TicketStatusTracker status={ticket.status} ticket={ticket} role={role} />
 
       {/* ── Ticket header card ─────────────────────────────── */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
@@ -465,7 +491,10 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
         <FreelancerTicketActions ticket={ticket} onUpdate={handleUpdate} />
       )}
       {role === "customer" && (
-        <CSATWidget ticket={ticket} onUpdate={handleUpdate} />
+        <>
+          <CustomerResolutionActions ticket={ticket} onUpdate={handleUpdate} />
+          <CSATWidget ticket={ticket} onUpdate={handleUpdate} />
+        </>
       )}
 
       {/* ── Tab navigation ──────────────────────────────── */}

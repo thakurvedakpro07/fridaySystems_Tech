@@ -48,13 +48,33 @@ from .models import (
     Freelancer,
     Notification,
     Payment,
+    RoleChangeAudit,
+    Service,
     Subscription,
     Ticket,
     TicketActivityLog,
     TicketAttachment,
     TicketComment,
 )
-from .permissions import IsAdminUser, IsCustomer, IsFreelancer, IsFreelancerOrAdmin, IsOperationsManager, IsOwnerOrAdmin
+from .permissions import (
+    IsAdminUser,
+    IsAnyStaffRole,
+    IsCustomer,
+    IsFinanceManager,
+    IsFinanceManagerOrSuperAdmin,
+    IsFreelancer,
+    IsFreelancerOrAdmin,
+    IsOpsManagerOrSuperAdmin,
+    IsOperationsManager,
+    IsOwnerOrAdmin,
+    IsOwnerOrStaff,
+    IsPaymentReader,
+    IsSupportAgent,
+    IsSuperAdmin,
+    is_finance_manager,
+    is_internal_staff,
+    is_support_agent,
+)
 from .serializers import (
     AdminAssignSerializer,
     AdminPaymentSerializer,
@@ -65,9 +85,14 @@ from .serializers import (
     FreelancerSerializer,
     FreelancerStatusSerializer,
     NotificationSerializer,
+    OpsPaymentSerializer,
+    OpsUserSerializer,
     PaymentSerializer,
     PaymentVerifySerializer,
     RegisterSerializer,
+    RoleChangeAuditSerializer,
+    RoleChangeSerializer,
+    ServiceSerializer,
     SubscriptionSerializer,
     TicketActivityLogSerializer,
     TicketAttachmentSerializer,
@@ -75,6 +100,7 @@ from .serializers import (
     TicketCreateSerializer,
     TicketDetailSerializer,
     TicketListSerializer,
+    OpsTicketListSerializer,
     UserProfileUpdateSerializer,
 )
 
@@ -294,13 +320,14 @@ class CustomerMeView(generics.RetrieveUpdateAPIView):
 def services_list(request):
     """GET /api/services/ — all service types with resolution fees."""
     services = [
-        {"key": "desktop",  "name": "Desktop / Laptop Support",  "resolution_fee": 499},
-        {"key": "linux",    "name": "Linux Provisioning",         "resolution_fee": 999},
-        {"key": "windows",  "name": "Windows Provisioning",       "resolution_fee": 999},
-        {"key": "patching", "name": "OS Patching",                "resolution_fee": 799},
-        {"key": "security", "name": "Security Hardening",         "resolution_fee": 1499},
-        {"key": "vmware",   "name": "VMware / Hypervisor",        "resolution_fee": 1299},
-        {"key": "sap",      "name": "SAP Basis Lite",             "resolution_fee": 1999},
+        {"key": "desktop",      "name": "Desktop / Laptop Support",   "resolution_fee": 499},
+        {"key": "linux",        "name": "Linux Provisioning",          "resolution_fee": 999},
+        {"key": "windows",      "name": "Windows Provisioning",        "resolution_fee": 999},
+        {"key": "patching",     "name": "OS Patching",                 "resolution_fee": 799},
+        {"key": "security",     "name": "Security Hardening",          "resolution_fee": 1499},
+        {"key": "vmware",       "name": "VMware / Hypervisor",         "resolution_fee": 1299},
+        {"key": "sap",          "name": "SAP Basis Lite",              "resolution_fee": 1999},
+        {"key": "microsoft365", "name": "Microsoft 365 / Exchange",    "resolution_fee": 1299},
     ]
     return Response(services)
 
@@ -402,7 +429,7 @@ class TicketCommentListCreateView(generics.ListCreateAPIView):
         """
         if not hasattr(self, "_cached_ticket"):
             user = self.request.user
-            if user.is_staff:
+            if user.is_staff or is_internal_staff(user):
                 ticket = get_object_or_404(Ticket, pk=self.kwargs["ticket_id"])
             elif hasattr(user, "freelancer_profile"):
                 ticket = get_object_or_404(
@@ -424,8 +451,9 @@ class TicketCommentListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         ticket = self._get_ticket()
         qs = TicketComment.objects.filter(ticket=ticket).select_related("author")
-        # Customers see only public comments; staff/freelancers see all
-        if not self.request.user.is_staff and not hasattr(self.request.user, "freelancer_profile"):
+        # Internal staff and freelancers see all comments (including internal notes); customers see only public ones.
+        is_staff_or_internal = self.request.user.is_staff or is_internal_staff(self.request.user)
+        if not is_staff_or_internal and not hasattr(self.request.user, "freelancer_profile"):
             qs = qs.filter(is_internal=False)
         return qs
 
@@ -434,7 +462,11 @@ class TicketCommentListCreateView(generics.ListCreateAPIView):
         ticket = self._get_ticket()
         is_internal = bool(
             serializer.validated_data.get("is_internal", False)
-            and (self.request.user.is_staff or hasattr(self.request.user, "freelancer_profile"))
+            and (
+                self.request.user.is_staff
+                or is_internal_staff(self.request.user)
+                or hasattr(self.request.user, "freelancer_profile")
+            )
         )
         comment = add_comment(
             ticket=ticket,
@@ -455,7 +487,7 @@ class TicketActivityLogListView(generics.ListAPIView):
     This is the "history" view shown in the ticket detail page.
 
     Visibility rules:
-      - Admin: all tickets
+      - Super Admin / internal staff (ops, finance, support): all tickets
       - Customer: only own tickets
       - Freelancer: only their currently-assigned tickets
     """
@@ -466,7 +498,7 @@ class TicketActivityLogListView(generics.ListAPIView):
         user = self.request.user
         ticket_id = self.kwargs["ticket_id"]
 
-        if user.is_staff:
+        if user.is_staff or is_internal_staff(user):
             ticket = get_object_or_404(Ticket, pk=ticket_id)
         elif hasattr(user, "freelancer_profile"):
             ticket = get_object_or_404(
@@ -496,9 +528,9 @@ def submit_csat(request, ticket_id):
         pk=ticket_id,
         customer=request.user.customer_profile,
     )
-    if ticket.status not in ("resolved", "closed"):
+    if ticket.status != "closed":
         return Response(
-            {"detail": "CSAT can only be submitted for resolved or closed tickets."},
+            {"detail": "CSAT can only be submitted for closed tickets."},
             status=status.HTTP_400_BAD_REQUEST,
         )
     if hasattr(ticket, "csat_survey"):
@@ -510,6 +542,101 @@ def submit_csat(request, ticket_id):
     serializer.is_valid(raise_exception=True)
     serializer.save(ticket=ticket, customer=request.user.customer_profile)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsCustomer])
+def accept_resolution(request, ticket_id):
+    """
+    POST /api/tickets/{id}/accept-resolution/
+    Customer accepts the engineer's resolution, submits a star rating (1-5),
+    and closes the ticket atomically.
+    Body: {score: int (required), comment: str (optional)}
+
+    Idempotent: calling this endpoint on an already-accepted ticket returns
+    the current closed state (200) rather than an error, so stale-state
+    retries and concurrent requests always converge to the correct UI.
+    """
+    from django.db import transaction
+    from .services.ticket_service import update_status
+
+    ticket = get_object_or_404(
+        Ticket,
+        pk=ticket_id,
+        customer=request.user.customer_profile,
+    )
+
+    # ── Already fully closed — return current state (idempotent) ──
+    if ticket.status == "closed":
+        ticket.refresh_from_db()
+        return Response(
+            TicketDetailSerializer(ticket, context={"request": request}).data,
+            status=status.HTTP_200_OK,
+        )
+
+    # ── Wrong lifecycle state ──────────────────────────────────────
+    if ticket.status != "resolved":
+        return Response(
+            {"detail": "Only resolved tickets can be accepted."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # ── Orphaned state: CSAT exists but ticket was never closed ───
+    # Created by pre-migration testing against the old submit_csat endpoint
+    # (which allowed resolved tickets).  Heal by closing the ticket; the
+    # existing CSAT score is preserved as-is.
+    if hasattr(ticket, "csat_survey"):
+        with transaction.atomic():
+            update_status(ticket, "closed", actor=request.user)
+        ticket.refresh_from_db()
+        return Response(
+            TicketDetailSerializer(ticket, context={"request": request}).data,
+            status=status.HTTP_200_OK,
+        )
+
+    # ── Normal path: validate rating, save CSAT, close atomically ─
+    serializer = CSATSurveySerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    with transaction.atomic():
+        serializer.save(ticket=ticket, customer=request.user.customer_profile)
+        update_status(ticket, "closed", actor=request.user)
+
+    ticket.refresh_from_db()
+    return Response(
+        TicketDetailSerializer(ticket, context={"request": request}).data,
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsCustomer])
+def reject_resolution(request, ticket_id):
+    """
+    POST /api/tickets/{id}/reject-resolution/
+    Customer reports the issue is not fixed, returning the ticket to in_progress.
+    The assigned engineer is notified by email.
+    Body: {note: str (optional)}
+    """
+    ticket = get_object_or_404(
+        Ticket,
+        pk=ticket_id,
+        customer=request.user.customer_profile,
+    )
+    if ticket.status != "resolved":
+        return Response(
+            {"detail": "Only resolved tickets can be rejected."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    note = request.data.get("note", "").strip()
+    from .services.ticket_service import update_status
+    from .services.email_service import send_resolution_rejected
+    update_status(ticket, "in_progress", actor=request.user, note=note)
+    ticket.refresh_from_db()
+    send_resolution_rejected(ticket, note=note)
+    return Response(
+        TicketDetailSerializer(ticket, context={"request": request}).data,
+        status=status.HTTP_200_OK,
+    )
 
 
 # ── Payments (customer) ───────────────────────────────────────────
@@ -617,8 +744,8 @@ def payment_invoice(request, pk):
         pk=pk,
     )
 
-    # Customer can only download their own invoices; staff can download any.
-    if not request.user.is_staff:
+    # Customer can only download their own invoices; Super Admin and all internal staff roles can download any.
+    if not request.user.is_staff and not is_internal_staff(request.user):
         if not hasattr(request.user, "customer_profile") or payment.customer != request.user.customer_profile:
             raise PermissionDenied("You do not have permission to view this invoice.")
 
@@ -1184,7 +1311,7 @@ def analytics_view(request):
     thirty_days_ago = today - timedelta(days=30)
 
     # Base queryset by role
-    if user.is_staff:
+    if user.is_staff or user.role in ("operations_manager", "finance_manager", "support_agent"):
         qs = Ticket.objects.all()
     elif hasattr(user, "freelancer_profile"):
         qs = Ticket.objects.filter(assigned_to=user.freelancer_profile)
@@ -1325,7 +1452,7 @@ _BLOCKED_EXTENSIONS = {
 
 def _get_ticket_for_user(user, ticket_id):
     """Return the ticket if the user is allowed to access it, or raise 404."""
-    if user.is_staff:
+    if user.is_staff or is_internal_staff(user):
         return get_object_or_404(Ticket, pk=ticket_id)
     if hasattr(user, "freelancer_profile"):
         return get_object_or_404(Ticket, pk=ticket_id, assigned_to=user.freelancer_profile)
@@ -1578,19 +1705,22 @@ def password_reset_confirm(request):
 
 
 # ══════════════════════════════════════════════════════════════════
-# OPERATIONS MANAGER VIEWS
-# /api/ops/ — accessible to role="operations_manager" only (not is_staff)
-# Cannot access payments, system settings, or Django admin.
+# OPERATIONS DASHBOARD VIEWS
+# /api/ops/ — accessible to role="operations_manager" AND role="admin" (Super Admin)
+# Operations Managers: can assign tickets, view users/engineers, manage services.
+# Super Admins: everything above PLUS promote/demote users.
+# Neither role can access payments or Django admin through these endpoints.
 # ══════════════════════════════════════════════════════════════════
 
 @api_view(["GET"])
-@permission_classes([permissions.IsAuthenticated, IsOperationsManager])
+@permission_classes([permissions.IsAuthenticated, IsAnyStaffRole])
 def ops_dashboard(request):
     """
     GET /api/ops/dashboard/
     Aggregated metrics for the Operations dashboard overview.
     """
-    from django.db.models import Count, Sum
+    from decimal import Decimal
+    from django.db.models import Count, DecimalField, Sum, Value
     from django.db.models.functions import Coalesce
 
     by_status = dict(
@@ -1607,8 +1737,10 @@ def ops_dashboard(request):
     closed_count     = by_status.get("closed", 0)
     pending_count    = by_status.get("pending_payment", 0)
 
+    # Coalesce requires matching types: Sum("amount") returns DecimalField,
+    # so the fallback must also be Decimal with output_field set explicitly.
     revenue = Payment.objects.filter(status="completed").aggregate(
-        total=Coalesce(Sum("amount"), 0)
+        total=Coalesce(Sum("amount"), Value(Decimal("0.00")), output_field=DecimalField())
     )["total"]
 
     active_freelancers = Freelancer.objects.filter(
@@ -1617,7 +1749,7 @@ def ops_dashboard(request):
 
     unassigned_count = open_count  # "open" = paid, unassigned
 
-    return Response({
+    data = {
         "open": open_count,
         "assigned": assigned_count,
         "in_progress": in_progress_count,
@@ -1628,18 +1760,22 @@ def ops_dashboard(request):
         "total_active": open_count + assigned_count + in_progress_count + waiting_count,
         "total_resolved": resolved_count + closed_count,
         "unassigned": unassigned_count,
-        "revenue": float(revenue),
         "active_freelancers": active_freelancers,
-    })
+    }
+    # Revenue is financial data — Support Agents have no visibility into it.
+    if not is_support_agent(request.user):
+        data["revenue"] = float(revenue)
+    return Response(data)
 
 
 class OpsTicketListView(generics.ListAPIView):
     """
     GET /api/ops/tickets/
     All tickets — status, priority, service, search, ordering filters.
+    Support Agents and Finance Managers get read access alongside Ops Manager and Super Admin.
     """
-    serializer_class = TicketListSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOperationsManager]
+    serializer_class = OpsTicketListSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAnyStaffRole]
 
     def get_queryset(self):
         qs = Ticket.objects.select_related("customer__user", "assigned_to__user")
@@ -1678,7 +1814,7 @@ class OpsFreelancerListView(generics.ListAPIView):
     GET /api/ops/freelancers/
     All approved freelancers with active ticket counts, skills, availability, rating.
     """
-    permission_classes = [permissions.IsAuthenticated, IsOperationsManager]
+    permission_classes = [permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin]
 
     def get(self, request, *args, **kwargs):
         from django.db.models import Count, Q as DQ
@@ -1686,7 +1822,7 @@ class OpsFreelancerListView(generics.ListAPIView):
         availability_filter = request.query_params.get("availability")
         skill_search = request.query_params.get("skills")
 
-        qs = Freelancer.objects.filter(onboarding_status="approved").select_related("user").annotate(
+        qs = Freelancer.objects.filter(onboarding_status="approved", active=True).select_related("user").annotate(
             active_ticket_count=Count(
                 "assigned_tickets",
                 filter=DQ(assigned_tickets__status__in=["assigned", "in_progress", "waiting_customer"]),
@@ -1719,7 +1855,7 @@ class OpsFreelancerListView(generics.ListAPIView):
 
 
 @api_view(["POST"])
-@permission_classes([permissions.IsAuthenticated, IsOperationsManager])
+@permission_classes([permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin])
 def ops_assign_ticket(request, ticket_id):
     """
     POST /api/ops/tickets/{id}/assign/
@@ -1769,7 +1905,7 @@ def ops_assign_ticket(request, ticket_id):
 
 
 @api_view(["POST"])
-@permission_classes([permissions.IsAuthenticated, IsOperationsManager])
+@permission_classes([permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin])
 def ops_unassign_ticket(request, ticket_id):
     """
     POST /api/ops/tickets/{id}/unassign/
@@ -1791,7 +1927,7 @@ def ops_unassign_ticket(request, ticket_id):
 
 
 @api_view(["GET"])
-@permission_classes([permissions.IsAuthenticated, IsOperationsManager])
+@permission_classes([permissions.IsAuthenticated, IsAnyStaffRole])
 def ops_ticket_history(request, ticket_id):
     """
     GET /api/ops/tickets/{id}/history/
@@ -1803,3 +1939,507 @@ def ops_ticket_history(request, ticket_id):
     ).select_related("actor").order_by("-created_at")
 
     return Response(TicketActivityLogSerializer(logs, many=True).data)
+
+
+# ══════════════════════════════════════════════════════════════════
+# USER MANAGEMENT (Super Admin only for write; both roles for read)
+# ══════════════════════════════════════════════════════════════════
+
+_ROLE_DISPLAY = {
+    "customer": "Customer",
+    "freelancer": "Engineer",
+    "admin": "Super Admin",
+    "operations_manager": "Operations Manager",
+    "finance_manager": "Finance Manager",
+    "support_agent": "Support Agent",
+}
+
+# Transitions that require Super Admin. All transitions listed here
+# are ALLOWED for Super Admin. Operations Managers cannot change any roles.
+_ALLOWED_TRANSITIONS = {
+    "customer":            {"freelancer", "operations_manager", "finance_manager", "support_agent", "admin"},
+    "freelancer":          {"customer", "operations_manager", "finance_manager", "support_agent", "admin"},
+    "operations_manager":  {"customer", "freelancer", "finance_manager", "support_agent", "admin"},
+    "finance_manager":     {"customer", "operations_manager", "support_agent"},
+    "support_agent":       {"customer", "operations_manager", "finance_manager"},
+    "admin":               {"operations_manager"},  # Super Admin can step down to ops_manager
+}
+
+
+class OpsUserListView(generics.ListAPIView):
+    """
+    GET /api/ops/users/
+    All users — filterable by role, active status, and search.
+    Accessible to both Operations Managers (read-only) and Super Admins.
+    """
+    serializer_class = OpsUserSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin]
+
+    def get_queryset(self):
+        qs = User.objects.all().order_by("-date_joined")
+
+        role_filter = self.request.query_params.get("role")
+        if role_filter:
+            qs = qs.filter(role=role_filter)
+
+        active_filter = self.request.query_params.get("is_active")
+        if active_filter is not None:
+            qs = qs.filter(is_active=(active_filter.lower() == "true"))
+
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(email__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+            )
+
+        return qs
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin])
+def ops_user_detail(request, user_id):
+    """
+    GET /api/ops/users/{id}/
+    Single user detail including role change history.
+    """
+    target = get_object_or_404(User, pk=user_id)
+    history = RoleChangeAudit.objects.filter(
+        target_user=target
+    ).select_related("changed_by").order_by("-timestamp")[:20]
+
+    return Response({
+        "user": OpsUserSerializer(target).data,
+        "role_history": RoleChangeAuditSerializer(history, many=True).data,
+    })
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsSuperAdmin])
+def ops_change_role(request, user_id):
+    """
+    POST /api/ops/users/{id}/role/
+    Body: {"new_role": "<role>", "note": "optional"}
+
+    Super Admin only. Promote or demote a user's role.
+    Writes an immutable RoleChangeAudit entry on every successful change.
+    """
+    from django.db import transaction
+
+    target = get_object_or_404(User, pk=user_id)
+
+    # Prevent changing your own role (avoid accidental self-demotion)
+    if target.pk == request.user.pk:
+        return Response(
+            {"detail": "Super Admins cannot change their own role."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    serializer = RoleChangeSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    new_role = serializer.validated_data["new_role"]
+    note = serializer.validated_data.get("note", "")
+    old_role = target.role
+
+    if old_role == new_role:
+        return Response(
+            {"detail": f"User already has role '{_ROLE_DISPLAY.get(old_role, old_role)}'."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    allowed = _ALLOWED_TRANSITIONS.get(old_role, set())
+    if new_role not in allowed:
+        return Response(
+            {
+                "detail": (
+                    f"Cannot change role from '{_ROLE_DISPLAY.get(old_role, old_role)}' "
+                    f"to '{_ROLE_DISPLAY.get(new_role, new_role)}'."
+                )
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    with transaction.atomic():
+        # Update role field
+        target.role = new_role
+
+        # Sync is_staff: only admin (Super Admin) should have is_staff=True
+        target.is_staff = (new_role == "admin")
+        target.is_superuser = (new_role == "admin")
+
+        target.save(update_fields=["role", "is_staff", "is_superuser"])
+
+        # Write the immutable audit entry
+        RoleChangeAudit.objects.create(
+            changed_by=request.user,
+            target_user=target,
+            target_email=target.email,
+            old_role=old_role,
+            new_role=new_role,
+            note=note,
+        )
+
+    return Response({
+        "detail": (
+            f"Role changed from '{_ROLE_DISPLAY.get(old_role, old_role)}' "
+            f"to '{_ROLE_DISPLAY.get(new_role, new_role)}'."
+        ),
+        "user": OpsUserSerializer(target).data,
+    })
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsSuperAdmin])
+def ops_deactivate_user(request, user_id):
+    """
+    POST /api/ops/users/{id}/deactivate/
+    Super Admin only. Prevent a user from logging in.
+    """
+    target = get_object_or_404(User, pk=user_id)
+
+    if target.pk == request.user.pk:
+        return Response(
+            {"detail": "You cannot deactivate your own account."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not target.is_active:
+        return Response(
+            {"detail": "User is already inactive."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    target.is_active = False
+    target.save(update_fields=["is_active"])
+
+    return Response({
+        "detail": f"{target.email} has been deactivated.",
+        "user": OpsUserSerializer(target).data,
+    })
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsSuperAdmin])
+def ops_reactivate_user(request, user_id):
+    """
+    POST /api/ops/users/{id}/reactivate/
+    Super Admin only. Re-enable a previously deactivated account.
+    """
+    target = get_object_or_404(User, pk=user_id)
+
+    if target.is_active:
+        return Response(
+            {"detail": "User is already active."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    target.is_active = True
+    target.save(update_fields=["is_active"])
+
+    return Response({
+        "detail": f"{target.email} has been reactivated.",
+        "user": OpsUserSerializer(target).data,
+    })
+
+
+# ══════════════════════════════════════════════════════════════════
+# ROLE CHANGE AUDIT LOG
+# ══════════════════════════════════════════════════════════════════
+
+class OpsRoleAuditListView(generics.ListAPIView):
+    """
+    GET /api/ops/role-audit/
+    Paginated, filterable role change history. Readable by both ops roles.
+    """
+    serializer_class = RoleChangeAuditSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin]
+
+    def get_queryset(self):
+        qs = RoleChangeAudit.objects.select_related(
+            "changed_by", "target_user"
+        ).order_by("-timestamp")
+
+        role_filter = self.request.query_params.get("role")
+        if role_filter:
+            from django.db.models import Q
+            qs = qs.filter(Q(old_role=role_filter) | Q(new_role=role_filter))
+
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            qs = qs.filter(target_email__icontains=search)
+
+        return qs
+
+
+# ══════════════════════════════════════════════════════════════════
+# SERVICES MANAGEMENT
+# ══════════════════════════════════════════════════════════════════
+
+class OpsServiceListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /api/ops/services/ — list all services
+    POST /api/ops/services/ — create a new service
+    Both roles can manage services.
+    """
+    serializer_class = ServiceSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin]
+
+    def get_queryset(self):
+        qs = Service.objects.all()
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(Q(name__icontains=search) | Q(description__icontains=search))
+        return qs
+
+
+class OpsServiceDetailView(generics.RetrieveUpdateAPIView):
+    """
+    GET   /api/ops/services/{id}/ — retrieve a service
+    PATCH /api/ops/services/{id}/ — update name, description, required_skills
+    """
+    serializer_class = ServiceSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin]
+    queryset = Service.objects.all()
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin])
+def ops_service_toggle(request, pk):
+    """
+    POST /api/ops/services/{id}/toggle/
+    Toggle a service between active and inactive.
+    """
+    service = get_object_or_404(Service, pk=pk)
+    service.status = "inactive" if service.status == "active" else "active"
+    service.save(update_fields=["status", "updated_at"])
+    return Response(ServiceSerializer(service).data)
+
+
+# ══════════════════════════════════════════════════════════════════
+# PAYMENTS (Finance Manager + Super Admin write; Ops Manager read)
+# ══════════════════════════════════════════════════════════════════
+
+class OpsPaymentListView(generics.ListAPIView):
+    """
+    GET /api/ops/payments/
+    All payments — Finance Manager and Super Admin see full detail with refund eligibility.
+    Ops Manager gets the same list in read-only mode (no action buttons on the frontend).
+    """
+    permission_classes = [permissions.IsAuthenticated, IsPaymentReader]
+
+    def get_serializer_class(self):
+        if is_finance_manager(self.request.user) or self.request.user.is_staff:
+            return OpsPaymentSerializer
+        return AdminPaymentSerializer
+
+    def get_queryset(self):
+        qs = Payment.objects.select_related("customer__user", "ticket").order_by("-created_at")
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        payment_type = self.request.query_params.get("payment_type")
+        if payment_type:
+            qs = qs.filter(payment_type=payment_type)
+        return qs
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsFinanceManagerOrSuperAdmin])
+def ops_payment_confirm(request, pk):
+    """
+    POST /api/ops/payments/{id}/confirm/
+    Manually mark a payment as completed and move the linked ticket to 'open'.
+    """
+    payment = get_object_or_404(Payment, pk=pk)
+    if payment.status != "pending":
+        return Response(
+            {"detail": f"Payment is already '{payment.status}' — cannot confirm."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    payment.status = "completed"
+    payment.save(update_fields=["status", "updated_at"])
+    if payment.ticket:
+        payment.ticket.status = "open"
+        payment.ticket.save(update_fields=["status", "updated_at"])
+    return Response(OpsPaymentSerializer(payment).data)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsSuperAdmin])
+def ops_payment_refund(request, pk):
+    """
+    POST /api/ops/payments/{id}/refund/
+    Mark a completed payment as refunded. Super Admin only — refunds are irreversible.
+    """
+    payment = get_object_or_404(Payment, pk=pk)
+    if payment.status != "completed":
+        return Response(
+            {"detail": "Only completed payments can be refunded."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    payment.status = "refunded"
+    payment.save(update_fields=["status", "updated_at"])
+    return Response(OpsPaymentSerializer(payment).data)
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, IsFinanceManagerOrSuperAdmin])
+def ops_payment_summary(request):
+    """
+    GET /api/ops/payments/summary/
+    Aggregate revenue metrics for the Finance Manager analytics view.
+    Returns: monthly revenue, payment type breakdown, refund count.
+    """
+    from decimal import Decimal
+    from django.db.models import Count, DecimalField, Sum, Value
+    from django.db.models.functions import Coalesce, TruncMonth
+
+    completed = Payment.objects.filter(status="completed")
+
+    total_revenue = completed.aggregate(
+        total=Coalesce(Sum("amount"), Value(Decimal("0.00")), output_field=DecimalField())
+    )["total"]
+
+    by_type = list(
+        completed.values("payment_type")
+        .annotate(count=Count("id"), total=Sum("amount"))
+        .order_by("payment_type")
+    )
+
+    monthly = list(
+        completed.annotate(month=TruncMonth("created_at"))
+        .values("month")
+        .annotate(total=Sum("amount"))
+        .order_by("month")
+        .values("month", "total")
+    )
+
+    refund_count = Payment.objects.filter(status="refunded").count()
+
+    return Response({
+        "total_revenue": float(total_revenue),
+        "by_type": by_type,
+        "monthly": [
+            {"month": row["month"].strftime("%Y-%m"), "total": float(row["total"])}
+            for row in monthly
+        ],
+        "refund_count": refund_count,
+    })
+
+
+# ══════════════════════════════════════════════════════════════════
+# TICKET ESCALATION (Support Agent + Ops Manager)
+# ══════════════════════════════════════════════════════════════════
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsAnyStaffRole])
+def ops_ticket_escalate(request, ticket_id):
+    """
+    POST /api/ops/tickets/{id}/escalate/
+    Flag a ticket as escalated. Only Support Agents and Ops Managers (and Super Admins) may escalate.
+    Finance Managers have no ticket-management rights.
+    """
+    user = request.user
+    if is_finance_manager(user):
+        return Response(
+            {"detail": "Finance Managers cannot escalate tickets."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    note = request.data.get("note", "")
+    TicketActivityLog.objects.create(
+        ticket=ticket,
+        actor=user,
+        action="escalated",
+        note=note,
+    )
+    return Response({"detail": "Ticket escalated.", "ticket_id": str(ticket.id)})
+
+
+# ══════════════════════════════════════════════════════════════════
+# OPS ANALYTICS (role-scoped)
+# ══════════════════════════════════════════════════════════════════
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, IsAnyStaffRole])
+def ops_analytics(request):
+    """
+    GET /api/ops/analytics/
+    Role-scoped analytics for the /operations portal.
+
+    Scope by role:
+      Super Admin       → all sections (operational + financial + user growth)
+      Ops Manager       → operational only (SLA, engineer utilisation, service demand)
+      Finance Manager   → financial only (revenue, payment types, refund rate)
+      Support Agent     → ticket KPIs only (counts by status, avg resolution time)
+    """
+    from decimal import Decimal
+    from django.db.models import Avg, Count, DecimalField, Sum, Value
+    from django.db.models.functions import Coalesce, TruncMonth
+    from django.utils import timezone
+    from datetime import timedelta
+
+    user = request.user
+    today = timezone.now()
+    thirty_days_ago = today - timedelta(days=30)
+
+    include_operational = user.is_staff or user.role in ("operations_manager", "support_agent")
+    include_financial = user.is_staff or user.role == "finance_manager"
+
+    data = {}
+
+    if include_operational:
+        tickets = Ticket.objects.filter(created_at__gte=thirty_days_ago)
+        by_status = dict(
+            tickets.values_list("status")
+            .annotate(n=Count("id"))
+            .values_list("status", "n")
+        )
+        avg_resolution = Ticket.objects.filter(
+            status__in=["resolved", "closed"],
+            resolved_at__isnull=False,
+        ).aggregate(
+            avg=Avg(
+                models.ExpressionWrapper(
+                    models.F("resolved_at") - models.F("created_at"),
+                    output_field=models.DurationField(),
+                )
+            )
+        )["avg"]
+        avg_hours = round(avg_resolution.total_seconds() / 3600, 1) if avg_resolution else None
+        data["operational"] = {
+            "by_status": by_status,
+            "avg_resolution_hours": avg_hours,
+            "total_last_30_days": tickets.count(),
+        }
+
+    if include_financial:
+        completed = Payment.objects.filter(status="completed")
+        total_revenue = completed.aggregate(
+            total=Coalesce(Sum("amount"), Value(Decimal("0.00")), output_field=DecimalField())
+        )["total"]
+        monthly = list(
+            completed.annotate(month=TruncMonth("created_at"))
+            .values("month")
+            .annotate(total=Sum("amount"))
+            .order_by("month")
+            .values("month", "total")
+        )
+        refund_count = Payment.objects.filter(status="refunded").count()
+        data["financial"] = {
+            "total_revenue": float(total_revenue),
+            "monthly_revenue": [
+                {"month": row["month"].strftime("%Y-%m"), "total": float(row["total"])}
+                for row in monthly
+            ],
+            "refund_count": refund_count,
+        }
+
+    return Response(data)

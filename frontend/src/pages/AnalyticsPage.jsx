@@ -113,13 +113,14 @@ function Card({ title, children }) {
 }
 
 const SERVICE_LABELS = {
-  desktop:  "Desktop",
-  linux:    "Linux",
-  windows:  "Windows",
-  patching: "Patching",
-  security: "Security",
-  vmware:   "VMware",
-  sap:      "SAP",
+  desktop:      "Desktop",
+  linux:        "Linux",
+  windows:      "Windows",
+  patching:     "Patching",
+  security:     "Security",
+  vmware:       "VMware",
+  sap:          "SAP",
+  microsoft365: "Microsoft 365",
 };
 
 export default function AnalyticsPage() {

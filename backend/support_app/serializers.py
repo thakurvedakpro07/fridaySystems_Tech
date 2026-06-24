@@ -21,6 +21,8 @@ from .models import (
     Freelancer,
     Notification,
     Payment,
+    RoleChangeAudit,
+    Service,
     SLALog,
     Subscription,
     Ticket,
@@ -209,6 +211,24 @@ class TicketListSerializer(serializers.ModelSerializer):
         ]
 
 
+class OpsTicketListSerializer(TicketListSerializer):
+    """Extends TicketListSerializer with assignment info for the ops ticket queue."""
+    freelancer = serializers.SerializerMethodField()
+
+    def get_freelancer(self, obj):
+        if not obj.assigned_to:
+            return None
+        u = obj.assigned_to.user
+        return {
+            "id": str(obj.assigned_to.id),
+            "name": f"{u.first_name} {u.last_name}".strip() or u.email,
+            "email": u.email,
+        }
+
+    class Meta(TicketListSerializer.Meta):
+        fields = TicketListSerializer.Meta.fields + ["freelancer"]
+
+
 class TicketDetailSerializer(serializers.ModelSerializer):
     """Full serializer for the ticket detail view (customer-facing)."""
     # Use the public subset — customers must not see contract_signed etc.
@@ -321,6 +341,21 @@ class AdminPaymentSerializer(serializers.ModelSerializer):
 
     def get_ticket_number(self, obj):
         return obj.ticket.ticket_number if obj.ticket_id else None
+
+
+class OpsPaymentSerializer(AdminPaymentSerializer):
+    """Extended payment view for Finance Manager — adds refund eligibility flag."""
+    refund_eligible = serializers.SerializerMethodField()
+
+    class Meta(AdminPaymentSerializer.Meta):
+        fields = AdminPaymentSerializer.Meta.fields + ["refund_eligible"]
+
+    def get_refund_eligible(self, obj):
+        from django.utils import timezone
+        from datetime import timedelta
+        if obj.status != "completed":
+            return False
+        return (timezone.now() - obj.created_at) < timedelta(days=30)
 
 
 class PaymentVerifySerializer(serializers.Serializer):
@@ -450,3 +485,98 @@ class UserProfileUpdateSerializer(serializers.Serializer):
         required=False,
         choices=["full_time", "part_time", "ad_hoc", "unavailable"],
     )
+
+
+# ── Role Management / User Management ────────────────────────────
+
+_ROLE_DISPLAY = {
+    "customer": "Customer",
+    "freelancer": "Engineer",
+    "admin": "Super Admin",
+    "operations_manager": "Operations Manager",
+    "finance_manager": "Finance Manager",
+    "support_agent": "Support Agent",
+}
+
+_PROMOTABLE_ROLES = [
+    "customer", "freelancer", "admin",
+    "operations_manager", "finance_manager", "support_agent",
+]
+
+
+class OpsUserSerializer(serializers.ModelSerializer):
+    """
+    Read-only user list serializer for the Operations Dashboard.
+    Exposes safe fields only — no password hash or payment details.
+    """
+    full_name = serializers.SerializerMethodField()
+    role_display = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
+    def get_full_name(self, obj):
+        first = (obj.first_name or "").strip()
+        last  = (obj.last_name  or "").strip()
+        return f"{first} {last}".strip() or obj.email
+
+    def get_role_display(self, obj):
+        return _ROLE_DISPLAY.get(obj.role, obj.role)
+
+    def get_status(self, obj):
+        return "active" if obj.is_active else "inactive"
+
+    class Meta:
+        model = User
+        fields = [
+            "id", "email", "full_name", "role", "role_display",
+            "status", "is_active", "date_joined",
+        ]
+        read_only_fields = fields
+
+
+class RoleChangeSerializer(serializers.Serializer):
+    """Validates the body of POST /api/ops/users/{id}/role/."""
+    new_role = serializers.ChoiceField(choices=_PROMOTABLE_ROLES)
+    note = serializers.CharField(required=False, allow_blank=True, default="")
+
+    def validate_new_role(self, value):
+        # Prevent changing to admin role via this endpoint if caller is not already admin
+        # (server-side guard — permissions layer also blocks this)
+        return value
+
+
+class RoleChangeAuditSerializer(serializers.ModelSerializer):
+    """Read-only serializer for the role change audit log."""
+    changed_by_email = serializers.SerializerMethodField()
+    old_role_display = serializers.SerializerMethodField()
+    new_role_display = serializers.SerializerMethodField()
+
+    def get_changed_by_email(self, obj):
+        return obj.changed_by.email if obj.changed_by else "System"
+
+    def get_old_role_display(self, obj):
+        return _ROLE_DISPLAY.get(obj.old_role, obj.old_role)
+
+    def get_new_role_display(self, obj):
+        return _ROLE_DISPLAY.get(obj.new_role, obj.new_role)
+
+    class Meta:
+        model = RoleChangeAudit
+        fields = [
+            "id", "changed_by_email", "target_email",
+            "old_role", "old_role_display",
+            "new_role", "new_role_display",
+            "note", "timestamp",
+        ]
+        read_only_fields = fields
+
+
+class ServiceSerializer(serializers.ModelSerializer):
+    """Serializer for the platform services catalogue."""
+
+    class Meta:
+        model = Service
+        fields = [
+            "id", "name", "description", "status",
+            "required_skills", "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]

@@ -80,7 +80,7 @@ def assign_ticket(ticket: Ticket, freelancer, assigned_by) -> TicketAssignment:
         # update_fields avoids overwriting fields another concurrent request changed
         old_status = ticket.status
         ticket.assigned_to = freelancer
-        ticket.status = "in_progress"
+        ticket.status = "assigned"
         ticket.save(update_fields=["assigned_to", "status", "updated_at"])
 
         # Patch the signal-written status_changed log so it shows the real actor
@@ -89,7 +89,7 @@ def assign_ticket(ticket: Ticket, freelancer, assigned_by) -> TicketAssignment:
             ticket=ticket,
             action="status_changed",
             from_value=old_status,
-            to_value="in_progress",
+            to_value="assigned",
             actor__isnull=True,
         ).order_by("-created_at").update(actor=assigned_by)
 

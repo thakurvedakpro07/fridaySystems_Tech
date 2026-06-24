@@ -123,6 +123,25 @@ def send_comment_notification(ticket, comment, recipient_user) -> None:
     )
 
 
+def send_resolution_rejected(ticket, note: str = "") -> None:
+    """Notify the assigned engineer that the customer rejected the resolution."""
+    if not ticket.assigned_to:
+        return
+    _send(
+        to=ticket.assigned_to.user.email,
+        subject=f"[{ticket.ticket_number}] Resolution rejected — customer needs more help",
+        template="email/resolution_rejected.html",
+        context={
+            "email": ticket.assigned_to.user.email,
+            "ticket_number": ticket.ticket_number,
+            "ticket_id": str(ticket.id),
+            "title": ticket.title,
+            "customer_email": ticket.customer.user.email,
+            "note": note,
+        },
+    )
+
+
 def send_verification_email(user) -> None:
     """Send an email verification link after registration."""
     from django.contrib.auth.tokens import default_token_generator

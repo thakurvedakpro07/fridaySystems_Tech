@@ -157,7 +157,7 @@ def test_assign_ticket_creates_assignment_record(ticket, freelancer_user, admin_
 
     ticket.refresh_from_db()
     assert ticket.assigned_to == freelancer_user.freelancer_profile
-    assert ticket.status == "in_progress"
+    assert ticket.status == "assigned"
     assert assignment.freelancer == freelancer_user.freelancer_profile
     assert assignment.assigned_by == admin_user
     assert assignment.unassigned_at is None  # still active
