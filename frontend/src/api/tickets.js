@@ -66,3 +66,13 @@ export const freelancerUpdateStatus = (ticketId, newStatus, note = "") =>
 // Admin freelancer management
 export const listFreelancers = () =>
   apiClient.get("/admin/freelancers/");
+
+// Resolution fee payment flow
+export const getResolutionQuote = (ticketId) =>
+  apiClient.get(`/tickets/${ticketId}/resolution-quote/`);
+
+export const initiateResolutionPayment = (ticketId) =>
+  apiClient.post(`/tickets/${ticketId}/initiate-resolution-payment/`);
+
+export const verifyResolutionPayment = (ticketId, data) =>
+  apiClient.post(`/tickets/${ticketId}/verify-resolution-payment/`, data);

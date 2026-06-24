@@ -48,6 +48,7 @@ from .models import (
     Freelancer,
     Notification,
     Payment,
+    Payout,
     RoleChangeAudit,
     Service,
     Subscription,
@@ -318,18 +319,22 @@ class CustomerMeView(generics.RetrieveUpdateAPIView):
 @api_view(["GET"])
 @permission_classes([permissions.AllowAny])
 def services_list(request):
-    """GET /api/services/ — all service types with resolution fees."""
-    services = [
-        {"key": "desktop",      "name": "Desktop / Laptop Support",   "resolution_fee": 499},
-        {"key": "linux",        "name": "Linux Provisioning",          "resolution_fee": 999},
-        {"key": "windows",      "name": "Windows Provisioning",        "resolution_fee": 999},
-        {"key": "patching",     "name": "OS Patching",                 "resolution_fee": 799},
-        {"key": "security",     "name": "Security Hardening",          "resolution_fee": 1499},
-        {"key": "vmware",       "name": "VMware / Hypervisor",         "resolution_fee": 1299},
-        {"key": "sap",          "name": "SAP Basis Lite",              "resolution_fee": 1999},
-        {"key": "microsoft365", "name": "Microsoft 365 / Exchange",    "resolution_fee": 1299},
-    ]
-    return Response(services)
+    """GET /api/services/ — approved service types with resolution fees and severity surcharges."""
+    from .services.service_catalog import SERVICE_CATALOG, SEVERITY_CONFIG, CONSULTING_FEE
+    severity_surcharges = {k: v["surcharge"] for k, v in SEVERITY_CONFIG.items()}
+    return Response({
+        "consulting_fee": CONSULTING_FEE,
+        "severity_surcharges": severity_surcharges,
+        "services": [
+            {
+                "key":               s["key"],
+                "name":              s["name"],
+                "resolution_fee":    s["resolution_fee"],
+                "scope":             s["scope"],
+            }
+            for s in SERVICE_CATALOG
+        ],
+    })
 
 
 # ── Tickets (Customer) ────────────────────────────────────────────
@@ -633,6 +638,125 @@ def reject_resolution(request, ticket_id):
     update_status(ticket, "in_progress", actor=request.user, note=note)
     ticket.refresh_from_db()
     send_resolution_rejected(ticket, note=note)
+    return Response(
+        TicketDetailSerializer(ticket, context={"request": request}).data,
+        status=status.HTTP_200_OK,
+    )
+
+
+# ── Resolution payment flow (customer) ───────────────────────────
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, IsCustomer])
+def resolution_quote(request, ticket_id):
+    """
+    GET /api/tickets/{id}/resolution-quote/
+    Returns the fee breakdown for the resolution payment:
+      base_fee, severity_surcharge, subtotal, gst_amount, total
+    No side effects — safe to call as many times as needed.
+    """
+    from .services.service_catalog import get_resolution_fee, SEVERITY_CONFIG
+
+    ticket = get_object_or_404(
+        Ticket,
+        pk=ticket_id,
+        customer=request.user.customer_profile,
+    )
+    if ticket.status != "resolved":
+        return Response(
+            {"detail": "Resolution quote is only available for resolved tickets."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    fee = get_resolution_fee(ticket.service_type, ticket.severity)
+    sla = SEVERITY_CONFIG.get(ticket.severity, {})
+    return Response({
+        **fee,
+        "severity": ticket.severity,
+        "severity_label": sla.get("label", ticket.severity.capitalize()),
+        "service_type": ticket.service_type,
+    })
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsCustomer])
+def initiate_resolution_payment(request, ticket_id):
+    """
+    POST /api/tickets/{id}/initiate-resolution-payment/
+    Creates a Razorpay order (or sandbox mock) for the resolution fee.
+    Returns the same shape as initiate_payment: order_id, payment_db_id, etc.
+    """
+    from .services.payment_service import create_resolution_order_for_ticket
+
+    ticket = get_object_or_404(
+        Ticket,
+        pk=ticket_id,
+        customer=request.user.customer_profile,
+    )
+    try:
+        order_data = create_resolution_order_for_ticket(ticket)
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(order_data)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsCustomer])
+def verify_resolution_payment(request, ticket_id):
+    """
+    POST /api/tickets/{id}/verify-resolution-payment/
+    Verifies the Razorpay signature, closes the ticket, saves CSAT, and
+    creates the engineer payout.
+
+    Body:
+      payment_db_id          (str, required)
+      razorpay_payment_id    (str, required in live mode)
+      razorpay_order_id      (str, required in live mode)
+      razorpay_signature     (str, required in live mode)
+      score                  (int 1-5, required)
+      comment                (str, optional)
+    """
+    from .services.payment_service import verify_resolution_payment_service
+
+    ticket = get_object_or_404(
+        Ticket,
+        pk=ticket_id,
+        customer=request.user.customer_profile,
+    )
+
+    payment_db_id       = request.data.get("payment_db_id", "")
+    razorpay_payment_id = request.data.get("razorpay_payment_id", "sandbox_pay")
+    razorpay_order_id   = request.data.get("razorpay_order_id", "sandbox_order")
+    razorpay_signature  = request.data.get("razorpay_signature", "sandbox_sig")
+    score               = request.data.get("score")
+    comment             = request.data.get("comment", "")
+
+    if not payment_db_id:
+        return Response({"detail": "payment_db_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+    if score is None:
+        return Response({"detail": "score is required."}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        score = int(score)
+        if not (1 <= score <= 5):
+            raise ValueError
+    except (TypeError, ValueError):
+        return Response({"detail": "score must be an integer between 1 and 5."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        verify_resolution_payment_service(
+            ticket=ticket,
+            payment_db_id=payment_db_id,
+            razorpay_payment_id=razorpay_payment_id,
+            razorpay_order_id=razorpay_order_id,
+            razorpay_signature=razorpay_signature,
+            score=score,
+            comment=comment,
+            actor=request.user,
+        )
+    except (ValueError, Payment.DoesNotExist) as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    ticket.refresh_from_db()
     return Response(
         TicketDetailSerializer(ticket, context={"request": request}).data,
         status=status.HTTP_200_OK,
@@ -1362,6 +1486,29 @@ def analytics_view(request):
         qs.values("service_type").annotate(n=Count("id")).order_by("-n")[:5]
     )
 
+    # Tickets by severity — counts for donut/bar chart
+    severity_breakdown = list(
+        qs.values("severity").annotate(n=Count("id")).order_by("severity")
+    )
+
+    # Revenue by severity (admin only, from completed resolution_fee payments)
+    severity_revenue = []
+    if user.is_staff:
+        from django.db.models import Sum as _SumSev
+        sev_rev = list(
+            Payment.objects.filter(
+                status="completed", payment_type="resolution_fee",
+                ticket__isnull=False,
+            )
+            .values("ticket__severity")
+            .annotate(revenue=_SumSev(F("amount") + F("gst_amount")))
+            .order_by("ticket__severity")
+        )
+        severity_revenue = [
+            {"severity": r["ticket__severity"], "revenue": float(r["revenue"] or 0)}
+            for r in sev_rev
+        ]
+
     # Admin-only: user counts and freelancer performance
     active_customers = active_freelancers = total_revenue = None
     freelancer_stats = []
@@ -1372,7 +1519,7 @@ def analytics_view(request):
         active_freelancers = _User.objects.filter(role="freelancer",  is_active=True).count()
         from django.db.models import Sum as _Sum
         total_revenue = Payment.objects.filter(status="completed").aggregate(
-            total=_Sum("total_amount")
+            total=_Sum(F("amount") + F("gst_amount"))
         )["total"] or 0
     if user.is_staff:
         for fl in Freelancer.objects.annotate(
@@ -1399,6 +1546,8 @@ def analytics_view(request):
         "csat_count": csat_count,
         "timeline": timeline,
         "service_breakdown": service_breakdown,
+        "severity_breakdown": severity_breakdown,
+        "severity_revenue": severity_revenue,
         "freelancer_stats": freelancer_stats,
         "active_customers": active_customers,
         "active_freelancers": active_freelancers,
@@ -2381,7 +2530,7 @@ def ops_analytics(request):
       Support Agent     → ticket KPIs only (counts by status, avg resolution time)
     """
     from decimal import Decimal
-    from django.db.models import Avg, Count, DecimalField, Sum, Value
+    from django.db.models import Avg, Count, DecimalField, DurationField, ExpressionWrapper, F, Sum, Value
     from django.db.models.functions import Coalesce, TruncMonth
     from django.utils import timezone
     from datetime import timedelta
@@ -2407,17 +2556,40 @@ def ops_analytics(request):
             resolved_at__isnull=False,
         ).aggregate(
             avg=Avg(
-                models.ExpressionWrapper(
-                    models.F("resolved_at") - models.F("created_at"),
-                    output_field=models.DurationField(),
+                ExpressionWrapper(
+                    F("resolved_at") - F("created_at"),
+                    output_field=DurationField(),
                 )
             )
         )["avg"]
         avg_hours = round(avg_resolution.total_seconds() / 3600, 1) if avg_resolution else None
+
+        # Severity distribution (last 30 days)
+        severity_dist = list(
+            tickets.values("severity").annotate(n=Count("id")).order_by("severity")
+        )
+        # Revenue by severity from completed resolution payments (last 30 days)
+        sev_revenue = list(
+            Payment.objects.filter(
+                status="completed",
+                payment_type="resolution_fee",
+                created_at__gte=thirty_days_ago,
+                ticket__isnull=False,
+            )
+            .values("ticket__severity")
+            .annotate(revenue=Sum(F("amount") + F("gst_amount")))
+            .order_by("ticket__severity")
+        )
+
         data["operational"] = {
             "by_status": by_status,
             "avg_resolution_hours": avg_hours,
             "total_last_30_days": tickets.count(),
+            "severity_distribution": severity_dist,
+            "severity_revenue": [
+                {"severity": r["ticket__severity"], "revenue": float(r["revenue"] or 0)}
+                for r in sev_revenue
+            ],
         }
 
     if include_financial:
@@ -2433,6 +2605,18 @@ def ops_analytics(request):
             .values("month", "total")
         )
         refund_count = Payment.objects.filter(status="refunded").count()
+
+        # Revenue split by payment type (consulting vs resolution)
+        by_type = list(
+            completed.values("payment_type")
+            .annotate(total=Sum(F("amount") + F("gst_amount")))
+            .order_by("payment_type")
+        )
+        # Total pending payouts
+        pending_payouts = Payout.objects.filter(status="pending").aggregate(
+            total=Coalesce(Sum("engineer_share"), Value(Decimal("0.00")), output_field=DecimalField())
+        )["total"]
+
         data["financial"] = {
             "total_revenue": float(total_revenue),
             "monthly_revenue": [
@@ -2440,6 +2624,11 @@ def ops_analytics(request):
                 for row in monthly
             ],
             "refund_count": refund_count,
+            "revenue_by_type": [
+                {"payment_type": r["payment_type"], "total": float(r["total"] or 0)}
+                for r in by_type
+            ],
+            "pending_payouts_total": float(pending_payouts),
         }
 
     return Response(data)

@@ -61,6 +61,10 @@ urlpatterns = [
     # Payment flow — per-ticket endpoints
     path("tickets/<uuid:ticket_id>/initiate-payment/", views.ticket_initiate_payment, name="ticket-initiate-payment"),
     path("tickets/<uuid:ticket_id>/verify-payment/", views.ticket_verify_payment, name="ticket-verify-payment"),
+    # Resolution fee payment flow
+    path("tickets/<uuid:ticket_id>/resolution-quote/", views.resolution_quote, name="ticket-resolution-quote"),
+    path("tickets/<uuid:ticket_id>/initiate-resolution-payment/", views.initiate_resolution_payment, name="ticket-initiate-resolution-payment"),
+    path("tickets/<uuid:ticket_id>/verify-resolution-payment/", views.verify_resolution_payment, name="ticket-verify-resolution-payment"),
 
     # ── Notifications ────────────────────────────────────────────
     # NOTE: mark-all-read MUST come before <uuid:pk>/read/ to avoid

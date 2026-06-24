@@ -1,18 +1,43 @@
 /**
  * CustomerResolutionActions — shown to the ticket owner when status is "resolved".
  *
- * Flow:
- *   resolved → [Accept Solution] → star rating form → submit → ticket becomes closed
- *   resolved → [Issue Still Exists] → optional note → submit → ticket returns to in_progress
- *
- * The rating (CSAT) is collected inline during acceptance so the close and rate
- * happen in a single API call.  The CSATWidget handles the separate "already closed"
- * display case (e.g. admin-closed tickets).
+ * New flow:
+ *   resolved →
+ *     [Accept Solution]      → fee quote → Razorpay / sandbox payment →
+ *                              CSAT rating → verify-resolution-payment → closed
+ *     [Issue Still Exists]   → rejection note → ticket returns to in_progress
  */
 import { useEffect, useRef, useState } from "react";
-import { acceptResolution, rejectResolution } from "../../api/tickets";
+import { getResolutionQuote, initiateResolutionPayment, verifyResolutionPayment, rejectResolution } from "../../api/tickets";
 import { useToast } from "../../context/ToastContext";
+import { useAuthStore } from "../../store/authStore";
+import { CONTACT } from "../../config/contact";
 import Button from "../ui/Button";
+
+// ── Razorpay loader ───────────────────────────────────────────────
+function loadRazorpayScript() {
+  return new Promise((resolve) => {
+    if (window.Razorpay) { resolve(true); return; }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
+function fmt(n) {
+  return "₹" + Number(n).toLocaleString("en-IN");
+}
+
+function InvoiceRow({ label, amount, bold = false, border = false }) {
+  return (
+    <div className={`flex justify-between text-sm ${border ? "border-t border-slate-200 pt-2 mt-1" : ""}`}>
+      <span className={bold ? "font-semibold text-slate-900" : "text-slate-500"}>{label}</span>
+      <span className={bold ? "font-semibold text-slate-900" : "text-slate-500"}>{fmt(amount)}</span>
+    </div>
+  );
+}
 
 const SCORES = [
   { value: 5, label: "Excellent", emoji: "😄" },
@@ -24,60 +49,130 @@ const SCORES = [
 
 export default function CustomerResolutionActions({ ticket, onUpdate }) {
   const toast = useToast();
-  const [view, setView]       = useState("decision"); // "decision" | "accepting" | "rejecting"
-  const [score, setScore]     = useState(null);
-  const [comment, setComment] = useState("");
-  const [note, setNote]       = useState("");
-  const [saving, setSaving]   = useState(false);
-  // useRef provides a synchronous in-flight guard. setSaving(true) only queues
-  // a state update and re-render — the button stays enabled in the DOM until
-  // React processes that update. A fast double-click can therefore fire
-  // handleAccept twice before the re-render with disabled=true lands.
-  // submittingRef.current flips synchronously in the same JS task, so the
-  // second call sees it immediately and exits before touching the API.
+  const user  = useAuthStore((s) => s.user);
+
+  // view: "decision" | "quote" | "payment_ready" | "rating" | "rejecting"
+  const [view,         setView]        = useState("decision");
+  const [quote,        setQuote]       = useState(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [orderData,    setOrderData]   = useState(null);
+  // paymentResponse holds the data needed for verify-resolution-payment
+  const [paymentResponse, setPaymentResponse] = useState(null);
+  const [score,        setScore]       = useState(null);
+  const [comment,      setComment]     = useState("");
+  const [note,         setNote]        = useState("");
+  const [saving,       setSaving]      = useState(false);
+  const [error,        setError]       = useState(null);
   const submittingRef = useRef(false);
 
-  // Orphaned-state detection: ticket.csat_score is set but status is still
-  // "resolved".  This means the UI has stale data (e.g. the old submit_csat
-  // endpoint was called before it was restricted to closed-only tickets).
-  // Trigger a re-fetch so the parent receives the actual closed state and
-  // CSATWidget can render the existing rating.  useEffect runs after render
-  // so it avoids the React "side-effect during render" rule.
+  // Orphaned-state detection: CSAT exists but ticket not yet closed
   const isOrphaned = ticket.status === "resolved" && ticket.csat_score != null;
   useEffect(() => {
     if (isOrphaned) onUpdate();
-  // onUpdate identity is stable (useCallback in TicketDetailPage); isOrphaned
-  // changes only when ticket data changes, so this fires at most once.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOrphaned]);
 
   if (ticket.status !== "resolved") return null;
-  if (isOrphaned) return null; // hide form while parent re-fetches
+  if (isOrphaned) return null;
 
-  // ── Accept flow ────────────────────────────────────────────────
-  const handleAccept = async () => {
+  // ── Step 1: load quote ────────────────────────────────────────────
+  const handleShowQuote = async () => {
+    setQuoteLoading(true);
+    setError(null);
+    try {
+      const { data } = await getResolutionQuote(ticket.id);
+      setQuote(data);
+      setView("quote");
+    } catch (err) {
+      setError(err.response?.data?.detail ?? "Could not load fee details. Please try again.");
+    } finally {
+      setQuoteLoading(false);
+    }
+  };
+
+  // ── Step 2: initiate payment ──────────────────────────────────────
+  const handleInitiatePayment = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const { data } = await initiateResolutionPayment(ticket.id);
+      setOrderData(data);
+
+      if (data.mode === "sandbox") {
+        setSaving(false);
+        setView("payment_ready");
+        return;
+      }
+
+      // Live: load Razorpay and open checkout
+      const loaded = await loadRazorpayScript();
+      if (!loaded) throw new Error("Could not load payment gateway. Please refresh and try again.");
+
+      const rzp = new window.Razorpay({
+        key:         data.key_id,
+        amount:      data.amount_paise,
+        currency:    data.currency,
+        order_id:    data.order_id,
+        name:        "ResolveHQ",
+        description: `Resolution fee — ${ticket.ticket_number}`,
+        prefill:     { email: user?.email ?? "" },
+        theme:       { color: "#4F46E5" },
+        handler: (response) => {
+          // Razorpay paid — collect CSAT before final verify
+          setPaymentResponse({
+            payment_db_id:       data.payment_db_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_order_id:   response.razorpay_order_id,
+            razorpay_signature:  response.razorpay_signature,
+          });
+          setSaving(false);
+          setView("rating");
+        },
+        modal: {
+          ondismiss: () => setSaving(false),
+        },
+      });
+      rzp.open();
+    } catch (err) {
+      setError(err.response?.data?.detail ?? err.message ?? "Could not initiate payment.");
+      setSaving(false);
+    }
+  };
+
+  // ── Step 2b: sandbox simulate ─────────────────────────────────────
+  const handleSimulate = () => {
+    setPaymentResponse({
+      payment_db_id:       orderData.payment_db_id,
+      razorpay_payment_id: `pay_sandbox_${Date.now()}`,
+      razorpay_order_id:   orderData.order_id,
+      razorpay_signature:  "sandbox_signature",
+    });
+    setView("rating");
+  };
+
+  // ── Step 3: CSAT + verify ─────────────────────────────────────────
+  const handleVerifyAndClose = async () => {
     if (!score || submittingRef.current) return;
     submittingRef.current = true;
     setSaving(true);
+    setError(null);
     try {
-      const { data: updatedTicket } = await acceptResolution(ticket.id, score, comment);
-      toast("Solution accepted — ticket is now closed. Thank you!", "success");
+      const { data: updatedTicket } = await verifyResolutionPayment(ticket.id, {
+        ...paymentResponse,
+        score,
+        comment,
+      });
+      toast("Payment confirmed — ticket closed. Thank you!", "success");
       onUpdate(updatedTicket);
     } catch (err) {
-      if (err.response?.status === 409) {
-        // Backend says already accepted — our data is stale.  Re-fetch so the
-        // UI transitions to the correct closed state without a manual refresh.
-        onUpdate();
-      } else {
-        toast(err.response?.data?.detail ?? "Could not accept resolution.", "error");
-      }
+      setError(err.response?.data?.detail ?? "Could not confirm payment. Please contact support.");
     } finally {
       submittingRef.current = false;
       setSaving(false);
     }
   };
 
-  // ── Reject flow ────────────────────────────────────────────────
+  // ── Reject flow ───────────────────────────────────────────────────
   const handleReject = async () => {
     if (submittingRef.current) return;
     submittingRef.current = true;
@@ -94,17 +189,90 @@ export default function CustomerResolutionActions({ ticket, onUpdate }) {
     }
   };
 
-  // ── Rating form (after "Accept Solution" is clicked) ──────────
-  if (view === "accepting") {
+  // ── View: fee quote ───────────────────────────────────────────────
+  if (view === "quote") {
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4"
+           style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
+        <div className="flex items-center gap-2">
+          <span className="text-lg">💳</span>
+          <p className="text-sm font-semibold text-slate-800">Resolution Fee</p>
+        </div>
+        <p className="text-xs text-slate-500 -mt-2">
+          Pay to confirm the fix and close the ticket. Your engineer will be paid after.
+        </p>
+
+        {quote && (
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-1.5">
+            <InvoiceRow label={`Base fee (${ticket.service_type})`} amount={quote.base_fee} />
+            {quote.severity_surcharge > 0 && (
+              <InvoiceRow
+                label={`Severity add-on (${quote.severity_label})`}
+                amount={quote.severity_surcharge}
+              />
+            )}
+            <InvoiceRow label="GST (18%)"    amount={quote.gst_amount} />
+            <InvoiceRow label="Total due"    amount={quote.total} bold border />
+          </div>
+        )}
+
+        {error && (
+          <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
+            {error}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <Button onClick={handleInitiatePayment} loading={saving} disabled={saving} className="flex-1">
+            {saving ? "Loading…" : `Pay ${quote ? fmt(quote.total) : ""}  →`}
+          </Button>
+          <Button variant="ghost" disabled={saving} onClick={() => setView("decision")}>Back</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── View: sandbox payment ready ───────────────────────────────────
+  if (view === "payment_ready") {
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4"
+           style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
+        <div className="flex items-start gap-2 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2.5 text-xs text-indigo-700">
+          <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+          </svg>
+          <span><strong>Sandbox mode</strong> — no real charge. Click below to simulate payment.</span>
+        </div>
+
+        {quote && (
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-1.5">
+            <InvoiceRow label={`Base fee (${ticket.service_type})`} amount={quote.base_fee} />
+            {quote.severity_surcharge > 0 && (
+              <InvoiceRow label={`Severity add-on (${quote.severity_label})`} amount={quote.severity_surcharge} />
+            )}
+            <InvoiceRow label="GST (18%)"  amount={quote.gst_amount} />
+            <InvoiceRow label="Total due"  amount={quote.total} bold border />
+          </div>
+        )}
+
+        <Button onClick={handleSimulate} className="w-full">
+          Simulate Payment (Sandbox)
+        </Button>
+      </div>
+    );
+  }
+
+  // ── View: CSAT rating ─────────────────────────────────────────────
+  if (view === "rating") {
     return (
       <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
         <div className="flex items-center gap-2 mb-1">
           <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p className="text-sm font-semibold text-emerald-800">Rate your experience to confirm</p>
+          <p className="text-sm font-semibold text-emerald-800">Payment received — rate your experience</p>
         </div>
-        <p className="text-xs text-emerald-700 mb-4 ml-6">Your rating closes the ticket and helps us improve.</p>
+        <p className="text-xs text-emerald-700 mb-4 ml-6">Your rating closes the ticket and helps us improve service quality.</p>
 
         <div className="flex gap-3 mb-4">
           {SCORES.map(({ value, label, emoji }) => (
@@ -132,23 +300,26 @@ export default function CustomerResolutionActions({ ticket, onUpdate }) {
           className="input-base resize-none mb-3"
         />
 
+        {error && (
+          <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2 mb-3">
+            {error} Contact {CONTACT.supportEmail} if the problem persists.
+          </div>
+        )}
+
         <div className="flex items-center gap-2">
           <Button
             disabled={!score || saving}
             loading={saving}
-            onClick={handleAccept}
+            onClick={handleVerifyAndClose}
           >
-            {saving ? "Closing ticket…" : "Confirm & Close Ticket"}
-          </Button>
-          <Button variant="ghost" disabled={saving} onClick={() => setView("decision")}>
-            Back
+            {saving ? "Closing ticket…" : "Submit & Close Ticket"}
           </Button>
         </div>
       </div>
     );
   }
 
-  // ── Rejection note form (after "Issue Still Exists" is clicked) ─
+  // ── View: rejection note ──────────────────────────────────────────
   if (view === "rejecting") {
     return (
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
@@ -187,7 +358,7 @@ export default function CustomerResolutionActions({ ticket, onUpdate }) {
     );
   }
 
-  // ── Default: decision panel ────────────────────────────────────
+  // ── View: decision ────────────────────────────────────────────────
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-5"
          style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
@@ -198,11 +369,17 @@ export default function CustomerResolutionActions({ ticket, onUpdate }) {
         <p className="text-sm font-semibold text-slate-800">Has your issue been resolved?</p>
       </div>
       <p className="text-xs text-slate-500 mb-4 ml-6">
-        Your engineer has marked this ticket as resolved. Please confirm or let us know if you need more help.
+        Your engineer has marked this ticket as resolved. Accepting will trigger the resolution fee payment.
       </p>
 
+      {error && (
+        <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2 mb-3">
+          {error}
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row gap-2">
-        <Button onClick={() => setView("accepting")} className="flex-1">
+        <Button onClick={handleShowQuote} loading={quoteLoading} disabled={quoteLoading} className="flex-1">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>

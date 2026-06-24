@@ -125,89 +125,9 @@ const TRUST_BAR = [
 
 const POPULAR_PROBLEMS = [
   {
-    title: "Linux Server Down",
-    desc: "Crash, OOM kills, systemd failures, kernel panics",
+    title: "Desktop / Laptop Support",
+    desc: "Remote troubleshooting, driver issues, antivirus, connectivity",
     color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100", glow: "shadow-orange-100",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
-      </svg>
-    ),
-  },
-  {
-    title: "Microsoft 365 Issues",
-    desc: "Exchange sync, Teams outages, OneDrive errors",
-    color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-100", glow: "shadow-teal-100",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-      </svg>
-    ),
-  },
-  {
-    title: "VPN Connectivity Problems",
-    desc: "Split tunneling, auth failures, routing issues",
-    color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-100", glow: "shadow-purple-100",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
-      </svg>
-    ),
-  },
-  {
-    title: "Email Delivery Failures",
-    desc: "DKIM/SPF/DMARC misconfig, blacklisting, bounce errors",
-    color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100", glow: "shadow-amber-100",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-      </svg>
-    ),
-  },
-  {
-    title: "Database Performance",
-    desc: "Slow queries, deadlocks, index tuning, replication lag",
-    color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", glow: "shadow-indigo-100",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 2.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
-      </svg>
-    ),
-  },
-  {
-    title: "Backup & Recovery",
-    desc: "Failed backups, corrupted snapshots, data restore",
-    color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100", glow: "shadow-emerald-100",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-      </svg>
-    ),
-  },
-  {
-    title: "Cybersecurity Incidents",
-    desc: "Ransomware, unauthorized access, vulnerability patching",
-    color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100", glow: "shadow-rose-100",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-      </svg>
-    ),
-  },
-  {
-    title: "Cloud Infrastructure",
-    desc: "AWS/Azure/GCP outages, cost spikes, mis-configuration",
-    color: "text-sky-600", bg: "bg-sky-50", border: "border-sky-100", glow: "shadow-sky-100",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z" />
-      </svg>
-    ),
-  },
-  {
-    title: "Network Troubleshooting",
-    desc: "Packet loss, latency spikes, VLAN & firewall issues",
-    color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-100", glow: "shadow-cyan-100",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3" />
@@ -215,8 +135,18 @@ const POPULAR_PROBLEMS = [
     ),
   },
   {
-    title: "Active Directory Issues",
-    desc: "GPO failures, replication errors, account lockouts",
+    title: "Linux Provisioning",
+    desc: "Server setup, package management, systemd, automation",
+    color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100", glow: "shadow-amber-100",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
+      </svg>
+    ),
+  },
+  {
+    title: "Windows Provisioning",
+    desc: "Windows Server, Active Directory, DNS, DHCP, GPO",
     color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100", glow: "shadow-blue-100",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -225,22 +155,42 @@ const POPULAR_PROBLEMS = [
     ),
   },
   {
-    title: "Website Downtime",
-    desc: "HTTP 5xx errors, nginx/Apache failures, SSL expiry",
-    color: "text-green-600", bg: "bg-green-50", border: "border-green-100", glow: "shadow-green-100",
+    title: "OS Patching",
+    desc: "Managed patching for Windows and Linux nodes",
+    color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-100", glow: "shadow-teal-100",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
       </svg>
     ),
   },
   {
-    title: "DevOps & Deployment",
-    desc: "CI/CD pipeline failures, Docker issues, Kubernetes errors",
-    color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100", glow: "shadow-violet-100",
+    title: "Security Hardening",
+    desc: "CIS baseline hardening, access controls, vulnerability remediation",
+    color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100", glow: "shadow-rose-100",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+      </svg>
+    ),
+  },
+  {
+    title: "VMware / Hypervisor",
+    desc: "ESXi host management, VM provisioning, storage troubleshooting",
+    color: "text-sky-600", bg: "bg-sky-50", border: "border-sky-100", glow: "shadow-sky-100",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 17.25v2.25a2.25 2.25 0 01-2.25 2.25H4.5a2.25 2.25 0 01-2.25-2.25V4.5A2.25 2.25 0 014.5 2.25h10.5m5.25 5.25V2.25m0 5.25h-5.25m5.25 0L12 12" />
+      </svg>
+    ),
+  },
+  {
+    title: "SAP Basis Lite",
+    desc: "Transport management, system health checks, user administration",
+    color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", glow: "shadow-indigo-100",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0l-5.571 3-5.571-3" />
       </svg>
     ),
   },
@@ -328,12 +278,12 @@ const SLA_METRICS = [
 
 const RECENT_ACTIVITY = [
   { issue: "Linux server performance degradation resolved", service: "Linux", time: "23 mins ago", severity: "High" },
-  { issue: "Microsoft 365 mailbox sync failure fixed", service: "M365", time: "1 hr ago", severity: "Medium" },
-  { issue: "VPN connectivity restored for remote workforce", service: "Network", time: "2 hrs ago", severity: "High" },
-  { issue: "MySQL slow query optimisation completed", service: "Database", time: "3 hrs ago", severity: "Medium" },
-  { issue: "Email routing correction and DMARC alignment", service: "Email", time: "4 hrs ago", severity: "Low" },
-  { issue: "AWS EC2 instance scaling issue resolved", service: "Cloud", time: "5 hrs ago", severity: "High" },
-  { issue: "Active Directory replication error fixed", service: "Windows", time: "6 hrs ago", severity: "High" },
+  { issue: "VMware ESXi host stability restored after PSOD", service: "VMware", time: "1 hr ago", severity: "Medium" },
+  { issue: "Windows Active Directory replication error fixed", service: "Windows", time: "2 hrs ago", severity: "High" },
+  { issue: "OS patch rollout completed across 40 Linux nodes", service: "Patching", time: "3 hrs ago", severity: "Medium" },
+  { issue: "Security hardening applied — CIS Level 1 baseline", service: "Security", time: "4 hrs ago", severity: "Low" },
+  { issue: "Desktop driver conflict resolved, user unblocked", service: "Desktop", time: "5 hrs ago", severity: "Medium" },
+  { issue: "SAP Basis transport request failure resolved", service: "SAP", time: "6 hrs ago", severity: "High" },
 ];
 
 const ENGINEERS = [
@@ -361,36 +311,36 @@ const ENGINEERS = [
   },
   {
     name: "Vikram Nair",
-    spec: "Cloud Engineer",
+    spec: "VMware Specialist",
     exp: "5 yrs",
     tickets: 178,
     response: "< 60 min",
     rating: 4.7,
     gradient: "from-sky-500 to-teal-500",
     initials: "VN",
-    skills: ["AWS", "Azure", "Terraform", "K8s"],
+    skills: ["ESXi", "vSphere", "vSAN", "NSX"],
   },
   {
     name: "Sneha Kulkarni",
-    spec: "Network Engineer",
+    spec: "SAP Basis Consultant",
     exp: "7 yrs",
     tickets: 295,
     response: "< 40 min",
     rating: 4.9,
     gradient: "from-purple-500 to-violet-600",
     initials: "SK",
-    skills: ["Cisco", "Fortinet", "VPN", "BGP"],
+    skills: ["SAP Basis", "TR Management", "HANA", "SM21"],
   },
   {
     name: "Rahul Mathur",
-    spec: "Cybersecurity Specialist",
+    spec: "Security Hardening Expert",
     exp: "9 yrs",
     tickets: 189,
     response: "< 50 min",
     rating: 5.0,
     gradient: "from-rose-500 to-pink-600",
     initials: "RM",
-    skills: ["Pentest", "SIEM", "ISO27001", "VAPT"],
+    skills: ["CIS Benchmarks", "VAPT", "ISO 27001", "SELinux"],
   },
 ];
 
@@ -479,32 +429,21 @@ const FAQ_ITEMS = [
 
 const HERO_TRUST = [
   {
-    label: "Microsoft 365 & Teams",
-    value: "Exchange, Teams, OneDrive, SharePoint",
+    label: "SAP Basis",
+    value: "Transport management, system health, user admin",
     bg: "bg-blue-500/15",
     color: "text-blue-300",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0l-5.571 3-5.571-3" />
       </svg>
     ),
   },
   {
-    label: "Email Delivery Problems",
-    value: "DKIM, SPF, DMARC, blacklisting & routing",
-    bg: "bg-violet-500/15",
-    color: "text-violet-300",
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-      </svg>
-    ),
-  },
-  {
-    label: "Server Crashes & Performance",
-    value: "Linux, Windows Server, recovery & tuning",
-    bg: "bg-orange-500/15",
-    color: "text-orange-300",
+    label: "Linux Provisioning",
+    value: "Server setup, package mgmt, systemd, automation",
+    bg: "bg-amber-500/15",
+    color: "text-amber-300",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
@@ -512,30 +451,41 @@ const HERO_TRUST = [
     ),
   },
   {
-    label: "VPN & Remote Access",
-    value: "Auth failures, split tunneling, firewall",
+    label: "OS Patching",
+    value: "Managed patching for Windows and Linux nodes",
+    bg: "bg-teal-500/15",
+    color: "text-teal-300",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+      </svg>
+    ),
+  },
+  {
+    label: "VMware / Hypervisor",
+    value: "ESXi host mgmt, VM provisioning, storage",
     bg: "bg-sky-500/15",
     color: "text-sky-300",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 17.25v2.25a2.25 2.25 0 01-2.25 2.25H4.5a2.25 2.25 0 01-2.25-2.25V4.5A2.25 2.25 0 014.5 2.25h10.5m5.25 5.25V2.25m0 5.25h-5.25m5.25 0L12 12" />
       </svg>
     ),
   },
   {
-    label: "Cloud Infrastructure",
-    value: "AWS, Azure, GCP — incidents & cost spikes",
-    bg: "bg-cyan-500/15",
-    color: "text-cyan-300",
+    label: "Desktop Support",
+    value: "Remote troubleshooting, drivers, antivirus",
+    bg: "bg-orange-500/15",
+    color: "text-orange-300",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3" />
       </svg>
     ),
   },
   {
-    label: "Security Incident Response",
-    value: "Ransomware, VAPT, hardening & compliance",
+    label: "Security Hardening",
+    value: "CIS baseline, access controls, vuln remediation",
     bg: "bg-rose-500/15",
     color: "text-rose-300",
     icon: (
@@ -603,8 +553,8 @@ function HeroSection() {
               transition={{ duration: 0.7, delay: 0.22 }}
               className="text-slate-300 text-lg sm:text-xl leading-relaxed mb-8 max-w-xl"
             >
-              When your server crashes, email stops delivering, or your team
-              can&apos;t connect to VPN — get a verified IT engineer on the problem
+              When your Linux server goes down, Windows AD breaks, or VMware
+              throws a PSOD — get a verified IT engineer on the problem
               in under 2 hours. No retainers. No contracts. Pay only when your issue is fixed.
             </motion.p>
 
@@ -716,31 +666,31 @@ function HeroSection() {
 // ══════════════════════════════════════════════════════════════════
 const PREMIUM_SERVICES = [
   {
-    name: "Microsoft 365 Support",
-    desc: "Full support for the Microsoft 365 ecosystem — mailbox migrations, Teams federation issues, and admin console management.",
+    name: "SAP Basis Lite",
+    desc: "Expert SAP Basis support for Indian SMBs — transport management, system health checks, and user administration tasks.",
     issues: [
-      "Exchange mailbox sync & migration errors",
-      "Microsoft Teams outages & federation issues",
-      "OneDrive / SharePoint access & sync problems",
-      "Licence management & admin console fixes",
+      "Transport request failures & Basis errors",
+      "System health checks & performance alerts",
+      "User administration & role assignment",
+      "Background job scheduling & monitoring",
     ],
     color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100", glow: "hover:border-blue-200", shadow: "hover:shadow-blue-50",
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0l-5.571 3-5.571-3" />
       </svg>
     ),
   },
   {
-    name: "Server Administration",
-    desc: "Linux and Windows Server management — performance tuning, crash recovery, and service restoration for critical business systems.",
+    name: "Linux Provisioning",
+    desc: "Server setup and configuration for Ubuntu, RHEL, and CentOS — from bare-metal to production-ready in one engagement.",
     issues: [
-      "Linux server crashes, OOM kills & kernel panics",
-      "Windows Server roles, IIS & RDS failures",
-      "Nginx, Apache & database server configuration",
-      "Backup restoration & disaster recovery",
+      "Server crashes, OOM kills & kernel panics",
+      "Package management & dependency conflicts",
+      "systemd service failures & boot issues",
+      "Shell automation, cron jobs & log management",
     ],
-    color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", glow: "hover:border-indigo-200", shadow: "hover:shadow-indigo-50",
+    color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100", glow: "hover:border-amber-200", shadow: "hover:shadow-amber-50",
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
@@ -748,66 +698,82 @@ const PREMIUM_SERVICES = [
     ),
   },
   {
-    name: "Network & VPN Support",
-    desc: "End-to-end network troubleshooting, VPN setup and recovery, firewall configuration, and remote access management.",
+    name: "Windows Provisioning",
+    desc: "Windows Server, Active Directory, and desktop infrastructure setup — domain, DNS, DHCP, Group Policy, and role configuration.",
     issues: [
-      "VPN authentication failures & split tunneling",
-      "Packet loss, latency spikes & VLAN issues",
-      "Cisco / Fortinet firewall configuration",
-      "Remote desktop & site-to-site connectivity",
+      "Active Directory replication & account lockouts",
+      "Group Policy failures & GPO mis-application",
+      "DNS / DHCP misconfiguration & resolution errors",
+      "Windows Server roles — IIS, RDS, File Server",
+    ],
+    color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", glow: "hover:border-indigo-200", shadow: "hover:shadow-indigo-50",
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+      </svg>
+    ),
+  },
+  {
+    name: "OS Patching",
+    desc: "Structured patch management for Windows and Linux fleets — assess, test, deploy, and verify with a full audit trail.",
+    issues: [
+      "Patch scheduling & maintenance windows",
+      "Failed Windows Update & WSUS errors",
+      "Linux apt / yum / dnf upgrade failures",
+      "Post-patch regression testing & rollback",
+    ],
+    color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-100", glow: "hover:border-teal-200", shadow: "hover:shadow-teal-50",
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+      </svg>
+    ),
+  },
+  {
+    name: "VMware / Hypervisor",
+    desc: "ESXi host management, VM lifecycle, storage and network troubleshooting for on-premise virtualisation environments.",
+    issues: [
+      "ESXi PSOD & host stability failures",
+      "VM provisioning & snapshot management",
+      "vSAN storage degradation & datastore issues",
+      "vMotion failures & cluster resource contention",
     ],
     color: "text-sky-600", bg: "bg-sky-50", border: "border-sky-100", glow: "hover:border-sky-200", shadow: "hover:shadow-sky-50",
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 17.25v2.25a2.25 2.25 0 01-2.25 2.25H4.5a2.25 2.25 0 01-2.25-2.25V4.5A2.25 2.25 0 014.5 2.25h10.5m5.25 5.25V2.25m0 5.25h-5.25m5.25 0L12 12" />
       </svg>
     ),
   },
   {
-    name: "Email & DNS Issues",
-    desc: "Fix email deliverability failures, DNS misconfigurations, blacklisting, and mail server setup for all major hosting platforms.",
-    issues: [
-      "DKIM / SPF / DMARC misconfiguration",
-      "Email blacklisting & bounce rate issues",
-      "DNS propagation & zone file problems",
-      "cPanel, Postfix & Google Workspace mail setup",
-    ],
-    color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100", glow: "hover:border-violet-200", shadow: "hover:shadow-violet-50",
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-      </svg>
-    ),
-  },
-  {
-    name: "Cloud Infrastructure",
-    desc: "AWS, Azure, and GCP support — from cost spikes and scaling issues to misconfigured services and deployment failures.",
-    issues: [
-      "AWS EC2, RDS, S3 & Lambda incidents",
-      "Azure Active Directory & Entra ID issues",
-      "GCP networking, IAM & billing anomalies",
-      "Cost optimisation & infrastructure rightsizing",
-    ],
-    color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-100", glow: "hover:border-cyan-200", shadow: "hover:shadow-cyan-50",
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z" />
-      </svg>
-    ),
-  },
-  {
-    name: "Cybersecurity Assistance",
-    desc: "Rapid response to security incidents, vulnerability assessments, and hardening for business-critical systems.",
+    name: "Security Hardening",
+    desc: "CIS baseline hardening, access control reviews, and vulnerability remediation for Linux, Windows, and virtualised environments.",
     issues: [
       "Ransomware response & malware removal",
-      "Vulnerability assessment (VAPT)",
-      "Firewall rules & endpoint hardening",
-      "Compliance preparation — ISO 27001, SOC 2",
+      "CIS Level 1 & 2 baseline hardening",
+      "Access control audits & privilege review",
+      "Vulnerability scanning & patch remediation",
     ],
     color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100", glow: "hover:border-rose-200", shadow: "hover:shadow-rose-50",
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+      </svg>
+    ),
+  },
+  {
+    name: "Desktop / Laptop Support",
+    desc: "Remote diagnosis and resolution for end-user workstations — drivers, connectivity, antivirus, and software issues.",
+    issues: [
+      "Driver conflicts & hardware detection failures",
+      "Antivirus & endpoint security issues",
+      "Network connectivity & Wi-Fi troubleshooting",
+      "OS performance, startup errors & crashes",
+    ],
+    color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100", glow: "hover:border-orange-200", shadow: "hover:shadow-orange-50",
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3" />
       </svg>
     ),
   },
@@ -823,7 +789,7 @@ function PremiumServicesSection() {
             What Can We Solve For You?
           </h2>
           <p className="text-lg text-slate-500 max-w-2xl mx-auto">
-            Expert engineers ready for the exact issues disrupting your business — from Microsoft 365 to cloud infrastructure.
+            Expert engineers ready for the exact issues disrupting your business — from SAP Basis to security hardening.
           </p>
         </Reveal>
 

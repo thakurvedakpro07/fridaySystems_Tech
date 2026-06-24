@@ -20,20 +20,12 @@ from datetime import datetime
 from django.conf import settings
 
 from ..models import Payment, Ticket, TicketActivityLog
+from .service_catalog import RESOLUTION_FEES, get_resolution_fee
 
 
 # ── Fee schedule ─────────────────────────────────────────────────
 CONSULTING_FEE = 299  # ₹299 upfront fee to open any ticket
-
-RESOLUTION_FEES = {
-    "desktop":  499,
-    "linux":    999,
-    "windows":  999,
-    "patching": 799,
-    "security": 1499,
-    "vmware":   1299,
-    "sap":      1999,
-}
+# RESOLUTION_FEES + get_resolution_fee imported from service_catalog — do not duplicate here
 
 
 # ── Invoice number generator ─────────────────────────────────────
@@ -238,6 +230,198 @@ def issue_refund(payment) -> None:
     )
     payment.status = "refunded"
     payment.save(update_fields=["status"])
+
+
+# ── Resolution fee order creation ────────────────────────────────
+
+def create_resolution_order_for_ticket(ticket) -> dict:
+    """
+    Create (or retrieve) the pending resolution_fee Payment for this ticket,
+    then create a Razorpay order for the full amount (subtotal + GST).
+
+    Idempotent — if a pending resolution_fee Payment already exists for this
+    ticket, it is reused.  Raises ValueError if no freelancer is assigned or
+    the ticket is not in 'resolved' status.
+
+    Returns the same shape as create_order_for_ticket() plus fee breakdown:
+      order_id, payment_db_id, amount, amount_paise, currency,
+      key_id, invoice_number, mode, fee_breakdown (base_fee, severity_surcharge,
+      subtotal, gst_amount, total)
+    """
+    if ticket.status != "resolved":
+        raise ValueError(f"Ticket {ticket.ticket_number} must be in 'resolved' status to pay resolution fee (is: {ticket.status})")
+
+    # Idempotency: reuse an existing pending resolution_fee payment
+    payment = Payment.objects.filter(
+        ticket=ticket,
+        customer=ticket.customer,
+        payment_type="resolution_fee",
+        status="pending",
+    ).first()
+
+    fee = get_resolution_fee(ticket.service_type, ticket.severity)
+
+    if not payment:
+        payment = Payment.objects.create(
+            customer=ticket.customer,
+            ticket=ticket,
+            amount=fee["subtotal"],
+            gst_amount=fee["gst_amount"],
+            payment_type="resolution_fee",
+            gateway="razorpay",
+            invoice_number=_generate_invoice_number(),
+            status="pending",
+        )
+
+    total_paise = int((payment.amount + payment.gst_amount) * 100)
+
+    if getattr(settings, "RAZORPAY_KEY_ID", ""):
+        from ..integrations.razorpay_client import get_client
+        client = get_client()
+        order = client.order.create({
+            "amount": total_paise,
+            "currency": "INR",
+            "receipt": str(payment.id),
+            "notes": {
+                "ticket_number": ticket.ticket_number,
+                "invoice_number": payment.invoice_number,
+                "payment_type": "resolution_fee",
+            },
+        })
+        if not payment.gateway_order_id:
+            payment.gateway_order_id = order["id"]
+            payment.save(update_fields=["gateway_order_id"])
+        return {
+            "order_id": order["id"],
+            "payment_db_id": str(payment.id),
+            "amount": int(payment.amount + payment.gst_amount),
+            "amount_paise": total_paise,
+            "currency": "INR",
+            "key_id": settings.RAZORPAY_KEY_ID,
+            "invoice_number": payment.invoice_number,
+            "mode": "live",
+            "fee_breakdown": fee,
+        }
+
+    # Sandbox / dev
+    if not payment.gateway_order_id:
+        payment.gateway_order_id = f"order_res_mock_{uuid_lib.uuid4().hex[:16]}"
+        payment.save(update_fields=["gateway_order_id"])
+
+    return {
+        "order_id": payment.gateway_order_id,
+        "payment_db_id": str(payment.id),
+        "amount": int(payment.amount + payment.gst_amount),
+        "amount_paise": total_paise,
+        "currency": "INR",
+        "key_id": None,
+        "invoice_number": payment.invoice_number,
+        "mode": "sandbox",
+        "fee_breakdown": fee,
+    }
+
+
+def verify_resolution_payment_service(
+    ticket,
+    payment_db_id: str,
+    razorpay_payment_id: str,
+    razorpay_order_id: str,
+    razorpay_signature: str,
+    score: int,
+    comment: str,
+    actor,
+) -> Payment:
+    """
+    Verify the resolution fee payment, close the ticket, save CSAT, and
+    create the engineer payout.
+
+    Idempotent — if the payment is already completed, returns early without
+    re-creating CSAT or Payout records.
+
+    Steps:
+      1. Fetch and validate the Payment record
+      2. Verify Razorpay HMAC signature (skipped in sandbox)
+      3. Mark payment completed
+      4. Close the ticket (resolved → closed), set resolved_at
+      5. Save CSATSurvey
+      6. Create Payout (65% / 35% split)
+      7. Log activity
+      8. Notify freelancer of payout created
+    """
+    from django.utils import timezone
+    from ..models import CSATSurvey
+    from .notification_service import create_notification
+    from .payout_service import create_payout_for_ticket
+
+    payment = (
+        Payment.objects.select_related("ticket", "customer__user")
+        .get(id=payment_db_id)
+    )
+
+    if payment.status == "completed":
+        return payment
+
+    if payment.payment_type != "resolution_fee":
+        raise ValueError(f"Payment {payment_db_id} is not a resolution_fee payment")
+
+    # Signature verification (skipped in sandbox)
+    key_secret = getattr(settings, "RAZORPAY_KEY_SECRET", "")
+    if key_secret:
+        expected = hmac.new(
+            key_secret.encode(),
+            f"{razorpay_order_id}|{razorpay_payment_id}".encode(),
+            hashlib.sha256,
+        ).hexdigest()
+        if not hmac.compare_digest(expected, razorpay_signature):
+            raise ValueError("Invalid resolution payment signature")
+
+    payment.gateway_payment_id = razorpay_payment_id
+    payment.status = "completed"
+    payment.save(update_fields=["gateway_payment_id", "status"])
+
+    # Close ticket
+    ticket = payment.ticket
+    if ticket and ticket.status == "resolved":
+        ticket.status = "closed"
+        ticket.resolved_at = timezone.now()
+        ticket.save(update_fields=["status", "resolved_at"])
+
+        TicketActivityLog.objects.create(
+            ticket=ticket,
+            actor=actor,
+            action="closed",
+            from_value="resolved",
+            to_value="closed",
+            note=f"Resolution fee {payment.invoice_number} confirmed; ticket closed",
+        )
+
+    # Save CSAT
+    if ticket and score and not CSATSurvey.objects.filter(ticket=ticket).exists():
+        CSATSurvey.objects.create(
+            ticket=ticket,
+            customer=ticket.customer,
+            score=score,
+            comment=comment or "",
+        )
+
+    # Create payout
+    if ticket and ticket.assigned_to:
+        try:
+            create_payout_for_ticket(ticket, payment)
+        except Exception:
+            pass  # payout creation failure must not roll back the payment
+
+    # Notify freelancer
+    if ticket and ticket.assigned_to:
+        create_notification(
+            recipient=ticket.assigned_to.user,
+            category="payment_confirmed",
+            title=f"Payout pending — #{ticket.ticket_number}",
+            body=f"Customer accepted and paid. Your payout is being processed.",
+            ticket=ticket,
+        )
+
+    return payment
 
 
 # ── Internal helper ───────────────────────────────────────────────

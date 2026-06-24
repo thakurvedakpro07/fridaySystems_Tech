@@ -50,14 +50,14 @@ DEMO_CUSTOMERS = [
 # ── Demo engineer definitions ─────────────────────────────────────
 
 DEMO_ENGINEERS = [
-    {"email": "arjun.verma@engineers.demo",   "first_name": "Arjun",   "last_name": "Verma",   "skills": "microsoft365,exchange,email,dns,outlook",        "availability": "full_time",  "rating": "4.80"},
+    {"email": "arjun.verma@engineers.demo",   "first_name": "Arjun",   "last_name": "Verma",   "skills": "windows,active_directory,dns,dhcp,gpo,outlook",  "availability": "full_time",  "rating": "4.80"},
     {"email": "kavita.rao@engineers.demo",    "first_name": "Kavita",  "last_name": "Rao",     "skills": "linux,server_admin,bash,nginx,ubuntu,centos",     "availability": "full_time",  "rating": "4.90"},
-    {"email": "nitin.chawla@engineers.demo",  "first_name": "Nitin",   "last_name": "Chawla",  "skills": "vpn,cybersecurity,firewall,palo_alto,cisco_asa",   "availability": "full_time",  "rating": "4.75"},
-    {"email": "pooja.desai@engineers.demo",   "first_name": "Pooja",   "last_name": "Desai",   "skills": "cloud,aws,azure,windows_server,vmware",           "availability": "full_time",  "rating": "4.85"},
+    {"email": "nitin.chawla@engineers.demo",  "first_name": "Nitin",   "last_name": "Chawla",  "skills": "security,cis_hardening,firewall,palo_alto,cisco", "availability": "full_time",  "rating": "4.75"},
+    {"email": "pooja.desai@engineers.demo",   "first_name": "Pooja",   "last_name": "Desai",   "skills": "vmware,esxi,windows_server,patching,hyper_v",     "availability": "full_time",  "rating": "4.85"},
     {"email": "sanjay.kumar@engineers.demo",  "first_name": "Sanjay",  "last_name": "Kumar",   "skills": "sap,sap_basis,sap_erp,server_admin,oracle",       "availability": "part_time",  "rating": "4.70"},
-    {"email": "ritika.sharma@engineers.demo", "first_name": "Ritika",  "last_name": "Sharma",  "skills": "microsoft365,sharepoint,teams,cloud,onedrive",    "availability": "full_time",  "rating": "4.95"},
-    {"email": "dev.malhotra@engineers.demo",  "first_name": "Dev",     "last_name": "Malhotra","skills": "cybersecurity,linux,siem,endpoint_security,soc",  "availability": "full_time",  "rating": "4.88"},
-    {"email": "anita.pillai@engineers.demo",  "first_name": "Anita",   "last_name": "Pillai",  "skills": "email,dns,vpn,networking,bind9,postfix",          "availability": "ad_hoc",     "rating": "4.65"},
+    {"email": "ritika.sharma@engineers.demo", "first_name": "Ritika",  "last_name": "Sharma",  "skills": "desktop,windows,patching,endpoint,antivirus",     "availability": "full_time",  "rating": "4.95"},
+    {"email": "dev.malhotra@engineers.demo",  "first_name": "Dev",     "last_name": "Malhotra","skills": "security,linux,siem,endpoint_security,hardening", "availability": "full_time",  "rating": "4.88"},
+    {"email": "anita.pillai@engineers.demo",  "first_name": "Anita",   "last_name": "Pillai",  "skills": "linux,patching,bash,networking,bind9,postfix",    "availability": "ad_hoc",     "rating": "4.65"},
 ]
 
 
@@ -91,13 +91,13 @@ DEMO_TICKETS = [
     ),
     (
         "DEMO_03",
-        "Microsoft 365 MFA login failure blocking 15 users",
+        "Windows login failure blocking 15 users after GPO policy change",
         "desktop", "medium", "high", "open",
         2, None, 3, 1500,
-        "15 out of 40 staff cannot log into Microsoft 365. They receive "
-        "'AADSTS50076: Due to a configuration change, Multi-Factor Authentication is required' "
-        "but the MFA setup screen never loads. This started after an Azure AD Conditional Access "
-        "policy was applied this morning. Affected users are locked out of email and Teams.",
+        "15 out of 40 staff cannot log into their Windows workstations after a Group Policy "
+        "update was pushed this morning. Users see 'The sign-in method you are trying to use '  "
+        "is not allowed. Contact your IT administrator.' The GPO was applied to all users instead "
+        "of just the pilot OU. Affected users are locked out of their desktops.",
     ),
 
     # ── Assigned — 3 tickets (engineer assigned, not yet in progress) ─
@@ -160,13 +160,13 @@ DEMO_TICKETS = [
     ),
     (
         "DEMO_09",
-        "SharePoint Online permissions broken — department folders inaccessible",
+        "Windows shared drive permissions broken — department folders inaccessible",
         "desktop", "medium", "medium", "in_progress",
         8, 5, 6, 1500,
-        "The Finance and HR departments cannot access their SharePoint document libraries "
-        "after our M365 administrator restructured the team site. "
-        "Users see 'Sorry, you don't have access to this page' on folders they previously owned. "
-        "The site collection admin can access everything fine. "
+        "The Finance and HR departments cannot access their network shared drives "
+        "after our Windows admin restructured the file server folder hierarchy. "
+        "Users see 'Access Denied' on folders they previously owned. "
+        "The domain admin can access everything fine. "
         "This is blocking budget approval workflows and HR document processing.",
     ),
 
@@ -254,9 +254,9 @@ DEMO_COMMENTS = [
     # DEMO_02 — Open: VPN dropping
     ("DEMO_02", "customer", "Update: we collected the AnyConnect log. The disconnect reason code is 'Keepalive timer expired'. Attaching the DART bundle from one affected user.", False, 0.5),
 
-    # DEMO_03 — Open: M365 MFA
-    ("DEMO_03", "customer", "Our IT admin accidentally applied the MFA policy to all users instead of just the pilot group. Is there a way to temporarily roll back while you investigate?", False, 1),
-    ("DEMO_03", "staff", "Checked Azure AD portal. Conditional Access policy ID CA-003 is set to 'All users'. Will need to scope it down. Waiting for assignment.", True, 1.5),
+    # DEMO_03 — Open: GPO login failure
+    ("DEMO_03", "customer", "Our IT admin accidentally applied the GPO to all users instead of just the pilot OU. Is there a way to temporarily roll back while you investigate?", False, 1),
+    ("DEMO_03", "staff", "Checked Group Policy Management Console. The policy is linked at domain level affecting all users. Will need to re-scope to the correct OU. Waiting for assignment.", True, 1.5),
 
     # DEMO_04 — Assigned: Windows Server CPU
     ("DEMO_04", "customer", "The server is our primary file server FS01. It runs DFS-N, DFSR, and Backup Exec. We can schedule a maintenance window from 11 PM to 5 AM if needed.", False, 1),
@@ -284,10 +284,10 @@ DEMO_COMMENTS = [
     ("DEMO_08", "engineer", "Applied the pvscsi driver workaround from KB 87697 on ESXI-01 without requiring a reboot. SAP VM successfully vMotion'd back to ESXI-01. Monitoring stability — no further PSODs in 2 hours.", False, 10),
     ("DEMO_08", "staff", "ESXI-01 stable after workaround. Schedule patching to 7.0 U3d during the next maintenance window. Documenting the workaround steps for the customer KB.", True, 11),
 
-    # DEMO_09 — In Progress: SharePoint permissions
-    ("DEMO_09", "customer", "The M365 admin who restructured the site is available to join a Teams call if helpful. We can screen-share the SharePoint admin centre.", False, 1),
-    ("DEMO_09", "engineer", "In the SharePoint admin centre I can see the Finance library inheritance was broken — it's now pointing to a different permission level. The 'Finance Members' security group was removed from site collection permissions. Restoring now.", False, 6),
-    ("DEMO_09", "engineer", "Finance library permissions restored. Testing HR library access now. HR has a more complex structure with nested sub-sites. May take another 30 minutes.", False, 6.5),
+    # DEMO_09 — In Progress: Windows shared drive permissions
+    ("DEMO_09", "customer", "The Windows admin who restructured the folders is available for a remote session if helpful. We can screen-share the File Server Resource Manager.", False, 1),
+    ("DEMO_09", "engineer", "Checked Active Directory and NTFS permissions. The Finance shared drive inheritance was broken — it now points to a different security group. The 'Finance-Users' AD group was removed from the folder ACL. Restoring now.", False, 6),
+    ("DEMO_09", "engineer", "Finance folder permissions restored. Testing HR shared drive access now. HR has a more complex structure with nested sub-folders and explicit deny rules. May take another 30 minutes.", False, 6.5),
 
     # DEMO_10 — Waiting on Customer: RDP blocked
     ("DEMO_10", "customer", "The firewall is a Fortinet FortiGate 100F. Our network admin can provide read-only access to the firewall audit logs if needed.", False, 1),
@@ -302,8 +302,8 @@ DEMO_COMMENTS = [
     # DEMO_12 — Resolved: Ransomware
     ("DEMO_12", "customer", "The 3 affected machines are in the sales bay — SALES-PC-01, SALES-PC-02, SALES-PC-03. They share a mapped drive to \\\\FILESERVER\\Sales. We've physically disconnected them from the network.", False, 0.5),
     ("DEMO_12", "engineer", "Confirmed ransomware strain: Rhysida variant. Encryption limited to the mapped \\Sales share — local drives are clean. Containment is complete. Identified patient-zero: SALES-PC-01, initial infection via phishing email with macro-enabled DOCX. Beginning recovery from clean backup (48h ago). ETA 2 hours.", False, 4),
-    ("DEMO_12", "engineer", "File recovery from backup complete. 847 files restored to the \\Sales share. Running full AV sweep with CrowdStrike on all 3 workstations before reconnecting to network. Also hardening macro policy in M365 to block auto-execution.", False, 6),
-    ("DEMO_12", "engineer", "All 3 workstations clean. Network restored. Delivered incident report with IOCs (Indicators of Compromise) and hardening recommendations. Macro policy updated in Intune MDM. Ticket resolved.", False, 8),
+    ("DEMO_12", "engineer", "File recovery from backup complete. 847 files restored to the \\Sales share. Running full AV sweep with CrowdStrike on all 3 workstations before reconnecting to network. Hardening macro policy via Windows Group Policy to block auto-execution.", False, 6),
+    ("DEMO_12", "engineer", "All 3 workstations clean. Network restored. Delivered incident report with IOCs (Indicators of Compromise) and hardening recommendations. Macro execution policy restricted via GPO. Ticket resolved.", False, 8),
     ("DEMO_12", "customer", "Thank you! The incident report is very thorough. We are scheduling security awareness training for the team based on your recommendations.", False, 10),
 
     # DEMO_13 — Resolved: Domain blacklisted

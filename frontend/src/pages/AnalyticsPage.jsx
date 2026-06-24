@@ -120,7 +120,20 @@ const SERVICE_LABELS = {
   security:     "Security",
   vmware:       "VMware",
   sap:          "SAP",
-  microsoft365: "Microsoft 365",
+};
+
+const SEVERITY_COLORS = {
+  low:      "#10b981",
+  medium:   "#f59e0b",
+  high:     "#f97316",
+  critical: "#ef4444",
+};
+
+const SEVERITY_LABELS = {
+  low:      "Low",
+  medium:   "Medium",
+  high:     "High",
+  critical: "Critical",
 };
 
 export default function AnalyticsPage() {
@@ -239,26 +252,73 @@ export default function AnalyticsPage() {
         </Card>
       </div>
 
-      {/* Service breakdown */}
-      {data.service_breakdown?.length > 0 && (
-        <Card title="Top Services">
-          <div className="space-y-3">
-            {data.service_breakdown.map((s) => (
-              <div key={s.service_type} className="flex items-center gap-3">
-                <span className="text-xs text-slate-500 w-20 shrink-0">
-                  {SERVICE_LABELS[s.service_type] ?? s.service_type}
-                </span>
-                <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
-                  <div
-                    className="h-full bg-indigo-500 rounded-full transition-all duration-500"
-                    style={{ width: `${(s.n / serviceMax) * 100}%` }}
-                  />
+      {/* Service + Severity breakdown row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+        {data.service_breakdown?.length > 0 && (
+          <Card title="Top Services">
+            <div className="space-y-3">
+              {data.service_breakdown.map((s) => (
+                <div key={s.service_type} className="flex items-center gap-3">
+                  <span className="text-xs text-slate-500 w-20 shrink-0">
+                    {SERVICE_LABELS[s.service_type] ?? s.service_type}
+                  </span>
+                  <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                      style={{ width: `${(s.n / serviceMax) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-semibold text-slate-700 w-6 text-right">{s.n}</span>
                 </div>
-                <span className="text-xs font-semibold text-slate-700 w-6 text-right">{s.n}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {data.severity_breakdown?.length > 0 && (
+          <Card title="Tickets by Severity">
+            <DonutChart
+              segments={data.severity_breakdown.map((s) => ({
+                label: SEVERITY_LABELS[s.severity] ?? s.severity,
+                value: s.n,
+                color: SEVERITY_COLORS[s.severity] ?? "#94a3b8",
+              }))}
+            />
+          </Card>
+        )}
+      </div>
+
+      {/* Revenue by severity (admin only) */}
+      {isAdmin && data.severity_revenue?.length > 0 && (
+        <div className="mb-5">
+          <Card title="Revenue by Severity (Resolution Fees)">
+            <div className="space-y-3">
+              {data.severity_revenue.map((s) => {
+                const maxRev = Math.max(...data.severity_revenue.map((x) => x.revenue), 1);
+                return (
+                  <div key={s.severity} className="flex items-center gap-3">
+                    <span className="text-xs font-medium w-16 shrink-0"
+                          style={{ color: SEVERITY_COLORS[s.severity] ?? "#64748b" }}>
+                      {SEVERITY_LABELS[s.severity] ?? s.severity}
+                    </span>
+                    <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${(s.revenue / maxRev) * 100}%`,
+                          backgroundColor: SEVERITY_COLORS[s.severity] ?? "#94a3b8",
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold text-slate-700 w-20 text-right">
+                      ₹{Math.round(s.revenue).toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
       )}
 
       {/* Admin-only freelancer performance */}

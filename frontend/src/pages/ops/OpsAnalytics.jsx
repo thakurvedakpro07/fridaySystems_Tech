@@ -6,6 +6,20 @@ import { useToast } from "../../context/ToastContext";
 import { getOpsAnalytics } from "../../api/ops";
 import { extractErrorMessage } from "../../utils/apiError";
 
+const SEVERITY_COLORS = {
+  low:      "#10b981",
+  medium:   "#f59e0b",
+  high:     "#f97316",
+  critical: "#ef4444",
+};
+
+const SEVERITY_LABELS = {
+  low:      "Low",
+  medium:   "Medium",
+  high:     "High",
+  critical: "Critical",
+};
+
 function StatCard({ label, value, sub }) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -93,6 +107,69 @@ export default function OpsAnalytics() {
                 </div>
               </div>
             )}
+
+            {/* Severity distribution */}
+            {ops.severity_distribution?.length > 0 && (
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-white border border-slate-200 rounded-xl p-5">
+                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">Tickets by Severity (30d)</p>
+                  <div className="space-y-2">
+                    {ops.severity_distribution.map(({ severity, n }) => {
+                      const maxN = Math.max(...ops.severity_distribution.map((x) => x.n), 1);
+                      return (
+                        <div key={severity} className="flex items-center gap-3">
+                          <span className="w-16 text-sm font-medium"
+                                style={{ color: SEVERITY_COLORS[severity] ?? "#64748b" }}>
+                            {SEVERITY_LABELS[severity] ?? severity}
+                          </span>
+                          <div className="flex-1 bg-slate-100 rounded-full h-2">
+                            <div
+                              className="h-2 rounded-full"
+                              style={{
+                                width: `${(n / maxN) * 100}%`,
+                                backgroundColor: SEVERITY_COLORS[severity] ?? "#94a3b8",
+                              }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium text-slate-700 w-6 text-right">{n}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {ops.severity_revenue?.length > 0 && (
+                  <div className="bg-white border border-slate-200 rounded-xl p-5">
+                    <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">Revenue by Severity (30d)</p>
+                    <div className="space-y-2">
+                      {ops.severity_revenue.map(({ severity, revenue }) => {
+                        const maxRev = Math.max(...ops.severity_revenue.map((x) => x.revenue), 1);
+                        return (
+                          <div key={severity} className="flex items-center gap-3">
+                            <span className="w-16 text-sm font-medium"
+                                  style={{ color: SEVERITY_COLORS[severity] ?? "#64748b" }}>
+                              {SEVERITY_LABELS[severity] ?? severity}
+                            </span>
+                            <div className="flex-1 bg-slate-100 rounded-full h-2">
+                              <div
+                                className="h-2 rounded-full"
+                                style={{
+                                  width: `${(revenue / maxRev) * 100}%`,
+                                  backgroundColor: SEVERITY_COLORS[severity] ?? "#94a3b8",
+                                }}
+                              />
+                            </div>
+                            <span className="text-xs font-semibold text-slate-700 w-20 text-right">
+                              ₹{Math.round(revenue).toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
         )}
 
@@ -100,10 +177,13 @@ export default function OpsAnalytics() {
         {showFinancial && fin && (
           <section>
             <SectionHeader title="Financial Overview" description="Revenue and payment metrics." />
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <StatCard label="Total Revenue"    value={`₹${fin.total_revenue?.toLocaleString("en-IN")}`} />
-              <StatCard label="Refund Count"     value={fin.refund_count} />
-              <StatCard label="Monthly Periods"  value={fin.monthly_revenue?.length} sub="Months with revenue" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <StatCard label="Total Revenue"       value={`₹${fin.total_revenue?.toLocaleString("en-IN")}`} />
+              <StatCard label="Refund Count"        value={fin.refund_count} />
+              <StatCard label="Pending Payouts"
+                        value={`₹${Math.round(fin.pending_payouts_total ?? 0).toLocaleString("en-IN")}`}
+                        sub="Awaiting bank transfer" />
+              <StatCard label="Monthly Periods"     value={fin.monthly_revenue?.length} sub="Months with revenue" />
             </div>
             {fin.monthly_revenue?.length > 0 && (
               <div className="mt-4 bg-white border border-slate-200 rounded-xl p-5">

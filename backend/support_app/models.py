@@ -15,6 +15,8 @@ from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+from .services.service_catalog import SERVICE_CHOICES as _SERVICE_CHOICES
+
 
 # ── Custom User System ───────────────────────────────────────────
 #
@@ -268,18 +270,9 @@ class Ticket(models.Model):
     """
 
     # ── Service catalogue ─────────────────────────────────────────
-    # Each service type maps to a different resolution fee and SLA target.
-    # Adding a new service = add one tuple here + update SLAPolicy table.
-    SERVICE_CHOICES = [
-        ("desktop",      "Desktop / Laptop Support"),
-        ("linux",        "Linux Provisioning"),
-        ("windows",      "Windows Provisioning"),
-        ("patching",     "OS Patching"),
-        ("security",     "Security Hardening"),
-        ("vmware",       "VMware / Hypervisor"),
-        ("sap",          "SAP Basis Lite"),
-        ("microsoft365", "Microsoft 365 / Exchange"),
-    ]
+    # Source of truth: support_app/services/service_catalog.py
+    # Do not add choices here — edit the catalog module instead.
+    SERVICE_CHOICES = _SERVICE_CHOICES
 
     # ── Severity — TECHNICAL impact ───────────────────────────────
     # How badly is the system broken?
@@ -710,6 +703,54 @@ class Payment(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class Payout(models.Model):
+    """
+    Records the engineer payout for a single resolved ticket.
+
+    Created once the customer pays the resolution fee and the ticket closes.
+    Stores the pre-GST fee split (65% engineer / 35% platform) so finance
+    can batch-process UPI/bank transfers separately from customer invoicing.
+
+    One payout per ticket — enforced by the OneToOneField.
+    """
+    STATUS_CHOICES = [
+        ("pending",   "Pending"),
+        ("processed", "Processed"),
+    ]
+
+    id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    ticket     = models.OneToOneField(Ticket,    on_delete=models.PROTECT, related_name="payout")
+    freelancer = models.ForeignKey(Freelancer,   on_delete=models.PROTECT, related_name="payouts")
+    payment    = models.ForeignKey(
+        "Payment", on_delete=models.PROTECT, related_name="payouts",
+        help_text="The resolution_fee Payment that triggered this payout",
+    )
+
+    # Pre-GST amounts (GST is a customer-side liability, not engineer income)
+    resolution_fee     = models.DecimalField(max_digits=10, decimal_places=2,
+                                             help_text="base_fee + severity_surcharge (pre-GST)")
+    severity_surcharge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    engineer_share     = models.DecimalField(max_digits=10, decimal_places=2,
+                                             help_text="65% of resolution_fee")
+    platform_share     = models.DecimalField(max_digits=10, decimal_places=2,
+                                             help_text="35% of resolution_fee")
+
+    status     = models.CharField(max_length=16, choices=STATUS_CHOICES, default="pending")
+    utr_number = models.CharField(max_length=64, blank=True,
+                                  help_text="Bank/UPI transaction reference after transfer")
+
+    created_at   = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Payout {self.id} — ₹{self.engineer_share} to {self.freelancer} ({self.status})"
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Payout"
+        verbose_name_plural = "Payouts"
 
 
 class Subscription(models.Model):
