@@ -101,7 +101,9 @@ const ROLE_LABEL_OVERRIDES = {
 };
 
 function getLifecycle(role) {
-  const r = role === "freelancer" ? "freelancer" : role === "admin" ? "admin" : "customer";
+  const r = role === "freelancer" ? "freelancer"
+          : (role === "admin" || role === "support_agent") ? "admin"
+          : "customer";
   return LIFECYCLE.map((step) => {
     const override = ROLE_LABEL_OVERRIDES[step.status]?.[r];
     return override ? { ...step, ...override } : step;
@@ -400,7 +402,6 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
             </div>
             <div className="flex flex-wrap gap-1.5 shrink-0 justify-end">
               <Badge label={ticket.status} dot />
-              {ticket.priority && <Badge label={ticket.priority} />}
               <Badge label={ticket.severity} />
             </div>
           </div>
@@ -414,6 +415,15 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
 
           {/* Metadata grid */}
           <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4 mt-5">
+            {ticket.customer && role !== "customer" && (
+              <MetaItem label="Customer">
+                <span className="block">{ticket.customer.name}</span>
+                {ticket.customer.company && (
+                  <span className="block text-xs text-slate-500 font-normal">{ticket.customer.company}</span>
+                )}
+                <span className="block text-xs text-slate-400 font-normal">{ticket.customer.email}</span>
+              </MetaItem>
+            )}
             <MetaItem label="Service">
               {humanize(ticket.service_type)}
             </MetaItem>

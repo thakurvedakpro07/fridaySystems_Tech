@@ -6,21 +6,12 @@ function humanize(str) {
   return str.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-const PRIORITY_DOT = {
-  urgent: "bg-rose-500",
-  high:   "bg-orange-400",
-  medium: "bg-amber-400",
-  low:    "bg-slate-300",
-};
-
 export default function TicketCard({ ticket }) {
   const createdAt = new Date(ticket.created_at).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
-
-  const priorityDot = PRIORITY_DOT[ticket.priority];
 
   return (
     <Link
@@ -32,11 +23,8 @@ export default function TicketCard({ ticket }) {
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          {/* Ticket number + priority dot */}
+          {/* Ticket number */}
           <div className="flex items-center gap-2 mb-1">
-            {priorityDot && (
-              <span className={`w-2 h-2 rounded-full shrink-0 ${priorityDot}`} title={`${ticket.priority} priority`} />
-            )}
             <span className="text-xs font-mono text-slate-400 font-medium">{ticket.ticket_number}</span>
           </div>
 

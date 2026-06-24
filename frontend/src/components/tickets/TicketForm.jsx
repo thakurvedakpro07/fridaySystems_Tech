@@ -11,13 +11,6 @@ const SEVERITIES = [
   { value: "critical", label: "Critical — production outage" },
 ];
 
-const PRIORITIES = [
-  { value: "low",    label: "Low — can wait" },
-  { value: "medium", label: "Medium — normal priority" },
-  { value: "high",   label: "High — needs fast resolution" },
-  { value: "urgent", label: "Urgent — business blocked" },
-];
-
 const SEVERITY_LABELS = {
   low: "Low",
   medium: "Medium",
@@ -112,7 +105,6 @@ export default function TicketForm({ onSubmit, loading }) {
     description: "",
     service_type: "",
     severity: "medium",
-    priority: "medium",
   });
 
   useEffect(() => {
@@ -181,40 +173,21 @@ export default function TicketForm({ onSubmit, loading }) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="ticket-severity" className="block text-sm font-medium text-slate-700 mb-1.5">
-            Severity *
-          </label>
-          <select
-            id="ticket-severity"
-            name="severity"
-            value={form.severity}
-            onChange={handleChange}
-            className="input-base"
-          >
-            {SEVERITIES.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="ticket-priority" className="block text-sm font-medium text-slate-700 mb-1.5">
-            Priority *
-          </label>
-          <select
-            id="ticket-priority"
-            name="priority"
-            value={form.priority}
-            onChange={handleChange}
-            className="input-base"
-          >
-            {PRIORITIES.map((p) => (
-              <option key={p.value} value={p.value}>{p.label}</option>
-            ))}
-          </select>
-        </div>
+      <div>
+        <label htmlFor="ticket-severity" className="block text-sm font-medium text-slate-700 mb-1.5">
+          Severity *
+        </label>
+        <select
+          id="ticket-severity"
+          name="severity"
+          value={form.severity}
+          onChange={handleChange}
+          className="input-base"
+        >
+          {SEVERITIES.map((s) => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
       </div>
 
       <div>

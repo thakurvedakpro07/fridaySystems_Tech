@@ -8,10 +8,13 @@ import Spinner from "../components/ui/Spinner";
 import { SkeletonDetailCard } from "../components/ui/Spinner";
 import { usePageTitle } from "../hooks/usePageTitle";
 
+const INTERNAL_STAFF_ROLES = ["support_agent", "operations_manager", "finance_manager"];
+
 function useRoleTicketFetcher(id) {
   const user = useAuthStore((s) => s.user);
   if (user?.is_staff) return { fetchFn: () => adminGetTicket(id), role: "admin" };
   if (user?.role === "freelancer") return { fetchFn: () => freelancerGetTicket(id), role: "freelancer" };
+  if (INTERNAL_STAFF_ROLES.includes(user?.role)) return { fetchFn: () => adminGetTicket(id), role: "support_agent" };
   return { fetchFn: () => getTicket(id), role: "customer" };
 }
 

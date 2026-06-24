@@ -15,13 +15,6 @@ const STATUS_BADGE = {
   pending_payment:  "bg-rose-100 text-rose-700",
 };
 
-const PRIORITY_BADGE = {
-  urgent: "bg-rose-100 text-rose-700",
-  high:   "bg-orange-100 text-orange-700",
-  medium: "bg-amber-100 text-amber-700",
-  low:    "bg-slate-100 text-slate-400",
-};
-
 function Badge({ label, colorClass }) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold capitalize ${colorClass}`}>
@@ -139,7 +132,7 @@ function HistoryDrawer({ ticket, onClose, freelancers, onReassign }) {
           <p className="text-sm font-semibold text-slate-900 mb-2">{ticket.title}</p>
           <div className="flex items-center gap-2 flex-wrap">
             <Badge label={ticket.status} colorClass={STATUS_BADGE[ticket.status] ?? "bg-slate-100 text-slate-500"} />
-            <Badge label={ticket.priority} colorClass={PRIORITY_BADGE[ticket.priority] ?? "bg-slate-100 text-slate-500"} />
+            {ticket.severity && <Badge label={ticket.severity} colorClass="bg-slate-100 text-slate-600" />}
             {ticket.freelancer && (
               <span className="text-[11px] text-slate-500">
                 Engineer: <span className="font-semibold">{ticket.freelancer.name ?? ticket.freelancer.email}</span>
@@ -375,7 +368,7 @@ export default function OpsAssignments() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-[11px] font-mono text-slate-400">{t.ticket_number}</span>
-                        <Badge label={t.priority} colorClass={PRIORITY_BADGE[t.priority] ?? "bg-slate-100 text-slate-500"} />
+                        {t.severity && <Badge label={t.severity} colorClass="bg-slate-100 text-slate-600" />}
                       </div>
                       <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
                       <p className="text-[11px] text-slate-400 mt-0.5">{fmtDate(t.created_at)}</p>

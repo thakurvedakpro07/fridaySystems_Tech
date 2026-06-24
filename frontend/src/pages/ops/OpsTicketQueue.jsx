@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import AppShell from "../../components/layout/AppShell";
 import { getOpsTickets, getOpsFreelancers, opsAssignTicket, opsUnassignTicket } from "../../api/ops";
@@ -17,14 +17,6 @@ const STATUS_OPTIONS = [
   { value: "pending_payment", label: "Pending Payment" },
 ];
 
-const PRIORITY_OPTIONS = [
-  { value: "", label: "All Priorities" },
-  { value: "urgent", label: "Urgent" },
-  { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
-  { value: "low", label: "Low" },
-];
-
 const STATUS_BADGE = {
   open:             "bg-indigo-100 text-indigo-700",
   assigned:         "bg-violet-100 text-violet-700",
@@ -33,13 +25,6 @@ const STATUS_BADGE = {
   resolved:         "bg-emerald-100 text-emerald-700",
   closed:           "bg-slate-100 text-slate-500",
   pending_payment:  "bg-rose-100 text-rose-700",
-};
-
-const PRIORITY_BADGE = {
-  urgent: "bg-rose-100 text-rose-700",
-  high:   "bg-orange-100 text-orange-700",
-  medium: "bg-amber-100 text-amber-700",
-  low:    "bg-slate-100 text-slate-400",
 };
 
 function Badge({ label, colorClass }) {
@@ -109,7 +94,7 @@ function AssignModal({ ticket, freelancers, onClose, onDone }) {
             <p className="text-sm font-semibold text-slate-800 truncate">{ticket.title}</p>
             <div className="flex items-center gap-2 mt-1.5">
               <Badge label={ticket.status} colorClass={STATUS_BADGE[ticket.status] ?? "bg-slate-100 text-slate-500"} />
-              <Badge label={ticket.priority} colorClass={PRIORITY_BADGE[ticket.priority] ?? "bg-slate-100 text-slate-500"} />
+              {ticket.severity && <Badge label={ticket.severity} colorClass="bg-slate-100 text-slate-600" />}
             </div>
           </div>
 
@@ -180,6 +165,7 @@ function AssignModal({ ticket, freelancers, onClose, onDone }) {
 export default function OpsTicketQueue() {
   usePageTitle("Ticket Queue — ResolveHQ Ops");
 
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -187,7 +173,6 @@ export default function OpsTicketQueue() {
   const [modalTicket, setModalTicket] = useState(null);
   const [search, setSearch] = useState(searchParams.get("search") ?? "");
   const [status, setStatus] = useState(searchParams.get("status") ?? "");
-  const [priority, setPriority] = useState(searchParams.get("priority") ?? "");
   const [highlight, setHighlight] = useState(searchParams.get("highlight") ?? "");
   const [error, setError] = useState(null);
   const searchDebounce = useRef(null);
@@ -205,7 +190,6 @@ export default function OpsTicketQueue() {
     try {
       const res = await getOpsTickets({
         status: params.status ?? status,
-        priority: params.priority ?? priority,
         search: params.search ?? search,
         ordering: "-created_at",
       });
@@ -215,7 +199,7 @@ export default function OpsTicketQueue() {
     } finally {
       setLoading(false);
     }
-  }, [status, priority, search]);
+  }, [status, search]);
 
   useEffect(() => {
     loadFreelancers();
@@ -226,11 +210,10 @@ export default function OpsTicketQueue() {
   useEffect(() => {
     const p = {};
     if (status) p.status = status;
-    if (priority) p.priority = priority;
     if (search) p.search = search;
     setSearchParams(p, { replace: true });
-    loadTickets({ status, priority, search });
-  }, [status, priority]); // eslint-disable-line react-hooks/exhaustive-deps
+    loadTickets({ status, search });
+  }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function onSearchChange(val) {
     setSearch(val);
@@ -283,18 +266,9 @@ export default function OpsTicketQueue() {
             {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
 
-          {/* Priority filter */}
-          <select
-            value={priority}
-            onChange={(e) => setPriority(e.target.value)}
-            className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white text-slate-700
-                       focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-indigo-400 transition min-w-[140px]">
-            {PRIORITY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-
           {/* Clear */}
-          {(status || priority || search) && (
-            <button onClick={() => { setStatus(""); setPriority(""); setSearch(""); loadTickets({ status: "", priority: "", search: "" }); }}
+          {(status || search) && (
+            <button onClick={() => { setStatus(""); setSearch(""); loadTickets({ status: "", search: "" }); }}
               className="text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors px-2 py-1">
               Clear ×
             </button>
@@ -312,9 +286,9 @@ export default function OpsTicketQueue() {
              style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
 
           {/* Table header */}
-          <div className="hidden md:grid grid-cols-[auto_1fr_120px_100px_130px_100px_120px] gap-3 px-6 py-3 border-b border-slate-100 bg-slate-50">
-            {["#", "Ticket", "Status", "Priority", "Service", "Created", "Action"].map((h) => (
-              <span key={h} className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{h}</span>
+          <div className="hidden md:grid grid-cols-[auto_1fr_120px_130px_100px_80px_120px] gap-3 px-6 py-3 border-b border-slate-100 bg-slate-50">
+            {["#", "Ticket", "Status", "Service", "Created", "", "Action"].map((h, i) => (
+              <span key={i} className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{h}</span>
             ))}
           </div>
 
@@ -344,7 +318,7 @@ export default function OpsTicketQueue() {
                     initial={isHighlighted ? { backgroundColor: "#eef2ff" } : false}
                     animate={isHighlighted ? { backgroundColor: "#ffffff" } : {}}
                     transition={{ duration: 1.5, delay: 0.3 }}
-                    className={`md:grid md:grid-cols-[auto_1fr_120px_100px_130px_100px_120px] gap-3 px-6 py-4
+                    className={`md:grid md:grid-cols-[auto_1fr_120px_130px_100px_80px_120px] gap-3 px-6 py-4
                                hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center`}>
 
                     {/* # */}
@@ -355,9 +329,13 @@ export default function OpsTicketQueue() {
                       <div className="flex items-center gap-2 md:hidden mb-1">
                         <span className="text-[11px] font-mono text-slate-400">{t.ticket_number}</span>
                         <Badge label={t.status} colorClass={STATUS_BADGE[t.status] ?? "bg-slate-100 text-slate-500"} />
-                        <Badge label={t.priority} colorClass={PRIORITY_BADGE[t.priority] ?? "bg-slate-100 text-slate-500"} />
                       </div>
-                      <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
+                      <button
+                        onClick={() => navigate(`/tickets/${t.id}`)}
+                        className="text-sm font-semibold text-slate-900 truncate hover:text-indigo-700 transition-colors text-left w-full"
+                      >
+                        {t.title}
+                      </button>
                       {t.freelancer && (
                         <p className="text-[11px] text-slate-400 mt-0.5">
                           Assigned: <span className="font-medium">{t.freelancer.name ?? t.freelancer.email}</span>
@@ -370,11 +348,6 @@ export default function OpsTicketQueue() {
                       <Badge label={t.status} colorClass={STATUS_BADGE[t.status] ?? "bg-slate-100 text-slate-500"} />
                     </div>
 
-                    {/* Priority */}
-                    <div className="hidden md:block">
-                      <Badge label={t.priority} colorClass={PRIORITY_BADGE[t.priority] ?? "bg-slate-100 text-slate-500"} />
-                    </div>
-
                     {/* Service */}
                     <div className="hidden md:block">
                       <span className="text-xs text-slate-500 capitalize">{t.service_type?.replace(/_/g, " ") ?? "—"}</span>
@@ -383,6 +356,16 @@ export default function OpsTicketQueue() {
                     {/* Created */}
                     <div className="hidden md:block">
                       <span className="text-xs text-slate-400">{fmtDate(t.created_at)}</span>
+                    </div>
+
+                    {/* View */}
+                    <div className="hidden md:block">
+                      <button
+                        onClick={() => navigate(`/tickets/${t.id}`)}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200
+                                   text-slate-600 hover:bg-slate-100 transition-colors">
+                        View
+                      </button>
                     </div>
 
                     {/* Action */}

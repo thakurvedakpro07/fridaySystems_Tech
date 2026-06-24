@@ -14,9 +14,6 @@ const COLOUR_MAP = {
   high:     "bg-orange-50 text-orange-700 border-orange-200",
   critical: "bg-rose-50 text-rose-700 border-rose-200",
 
-  // Priority
-  urgent: "bg-rose-50 text-rose-700 border-rose-200 font-semibold",
-
   // Freelancer onboarding
   pending:   "bg-amber-50 text-amber-700 border-amber-200",
   approved:  "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -33,7 +30,6 @@ const DOT_MAP = {
   pending_payment:  "bg-amber-500",
   critical:         "bg-rose-500",
   high:             "bg-orange-500",
-  urgent:           "bg-rose-500",
   approved:         "bg-emerald-500",
   suspended:        "bg-rose-500",
 };

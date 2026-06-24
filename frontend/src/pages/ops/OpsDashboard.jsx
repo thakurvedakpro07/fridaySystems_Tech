@@ -26,13 +26,6 @@ const STATUS_COLORS = {
   pending_payment:  "bg-rose-100 text-rose-700",
 };
 
-const PRIORITY_COLORS = {
-  urgent: "bg-rose-100 text-rose-700",
-  high:   "bg-orange-100 text-orange-700",
-  medium: "bg-amber-100 text-amber-700",
-  low:    "bg-slate-100 text-slate-500",
-};
-
 function KpiCard({ label, value, sub, color = "indigo", icon, loading, to }) {
   const s = KPI_STYLES[color] ?? KPI_STYLES.indigo;
   const inner = (
@@ -263,7 +256,7 @@ export default function OpsDashboard() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-[11px] font-mono font-semibold text-slate-400">{t.ticket_number}</span>
-                        <Badge label={t.priority} colorClass={PRIORITY_COLORS[t.priority] ?? "bg-slate-100 text-slate-500"} />
+                        {t.severity && <Badge label={t.severity} colorClass="bg-slate-100 text-slate-600" />}
                         <Badge label={t.service_type?.replace(/_/g, " ") ?? "—"} colorClass="bg-slate-100 text-slate-600" />
                       </div>
                       <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>

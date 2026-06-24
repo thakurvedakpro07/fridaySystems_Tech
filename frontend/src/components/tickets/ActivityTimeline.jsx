@@ -18,7 +18,6 @@ import { formatAbsoluteTime, formatRelativeTime } from "../../utils/time";
 const ACTION_META = {
   created:          { icon: "🎫", bg: "bg-blue-100",    text: "text-blue-700",   ring: "ring-blue-200" },
   status_changed:   { icon: "🔄", bg: "bg-amber-100",   text: "text-amber-700",  ring: "ring-amber-200" },
-  priority_changed: { icon: "⚡", bg: "bg-orange-100",  text: "text-orange-700", ring: "ring-orange-200" },
   severity_changed: { icon: "📊", bg: "bg-rose-100",    text: "text-rose-700",   ring: "ring-rose-200" },
   assigned:         { icon: "👤", bg: "bg-violet-100",  text: "text-violet-700", ring: "ring-violet-200" },
   reassigned:       { icon: "↔️", bg: "bg-violet-100",  text: "text-violet-700", ring: "ring-violet-200" },
