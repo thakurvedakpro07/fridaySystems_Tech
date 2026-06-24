@@ -55,7 +55,6 @@ def open_ticket(db, customer_user):
         title="Server down",
         service_type="linux",
         severity="high",
-        priority="urgent",
         status="open",
     )
 
@@ -512,20 +511,174 @@ def test_admin_ticket_search_by_number(open_ticket, admin_user):
 
 
 @pytest.mark.django_db
-def test_admin_ticket_filter_by_priority(customer_user, admin_user):
+def test_admin_ticket_filter_by_severity(customer_user, admin_user):
     Ticket.objects.create(
         customer=customer_user.customer_profile,
-        title="Urgent ticket", service_type="linux",
-        severity="high", priority="urgent", status="open",
+        title="Critical ticket", service_type="linux",
+        severity="critical", status="open",
     )
     Ticket.objects.create(
         customer=customer_user.customer_profile,
         title="Low ticket", service_type="linux",
-        severity="low", priority="low", status="open",
+        severity="low", status="open",
     )
     client = APIClient()
     client.force_authenticate(user=admin_user)
-    response = client.get("/api/admin/tickets/?priority=urgent")
+    response = client.get("/api/admin/tickets/?severity=critical")
 
     results = response.data.get("results", response.data)
-    assert all(r["priority"] == "urgent" for r in results)
+    assert all(r["severity"] == "critical" for r in results)
+
+
+# ── Support Agent permission tests ───────────────────────────────────
+
+@pytest.fixture
+def support_agent_user(db):
+    return User.objects.create_user(
+        email="agent@test.com", password="StrongPass123!", role="support_agent"
+    )
+
+
+@pytest.mark.django_db
+def test_support_agent_can_get_ticket_detail(open_ticket, support_agent_user):
+    """Support Agent must be able to GET any ticket's detail page (read access)."""
+    client = APIClient()
+    client.force_authenticate(user=support_agent_user)
+    response = client.get(f"/api/tickets/{open_ticket.id}/")
+    assert response.status_code == 200
+    assert str(open_ticket.id) == response.data["id"]
+
+
+@pytest.mark.django_db
+def test_support_agent_sees_full_ticket_fields(open_ticket, support_agent_user, customer_user):
+    """Support Agent response must include description, severity, service_type, and customer info."""
+    open_ticket.description = "Server is completely unresponsive since 3am."
+    open_ticket.save(update_fields=["description"])
+
+    client = APIClient()
+    client.force_authenticate(user=support_agent_user)
+    response = client.get(f"/api/tickets/{open_ticket.id}/")
+    assert response.status_code == 200
+
+    assert response.data["description"] == "Server is completely unresponsive since 3am."
+    assert "severity" in response.data
+    assert "service_type" in response.data
+
+    customer = response.data.get("customer")
+    assert customer is not None, "customer field missing from ticket detail response"
+    assert customer["email"] == customer_user.email
+
+
+@pytest.mark.django_db
+def test_support_agent_cannot_patch_ticket(open_ticket, support_agent_user):
+    """Support Agent must NOT be able to PATCH (modify) a ticket."""
+    client = APIClient()
+    client.force_authenticate(user=support_agent_user)
+    response = client.patch(
+        f"/api/tickets/{open_ticket.id}/",
+        {"title": "Hacked by support agent"},
+        format="json",
+    )
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_support_agent_can_see_all_tickets_in_list(open_ticket, support_agent_user, customer_user):
+    """Support Agent should see all tickets in the ops queue, not just their own."""
+    Ticket.objects.create(
+        customer=customer_user.customer_profile,
+        title="Second ticket",
+        service_type="networking",
+        severity="low",
+        status="open",
+    )
+    client = APIClient()
+    client.force_authenticate(user=support_agent_user)
+    response = client.get("/api/ops/tickets/")
+    assert response.status_code == 200
+    results = response.data.get("results", response.data)
+    assert len(results) >= 2
+
+
+# ── Support Agent assignment tests ────────────────────────────────────
+
+@pytest.mark.django_db
+def test_support_agent_can_list_freelancers(support_agent_user, freelancer_user):
+    """Support Agent must be able to load the approved-freelancer list for the assign modal."""
+    client = APIClient()
+    client.force_authenticate(user=support_agent_user)
+    response = client.get("/api/ops/freelancers/")
+    assert response.status_code == 200
+    data = response.data if isinstance(response.data, list) else response.data.get("results", response.data)
+    ids = [str(r["id"]) for r in data]
+    assert str(freelancer_user.freelancer_profile.id) in ids
+
+
+@pytest.mark.django_db
+def test_support_agent_can_assign_engineer(open_ticket, support_agent_user, freelancer_user):
+    """Support Agent must be able to POST to the assign endpoint and get 200."""
+    client = APIClient()
+    client.force_authenticate(user=support_agent_user)
+    response = client.post(
+        f"/api/ops/tickets/{open_ticket.id}/assign/",
+        {"freelancer_id": str(freelancer_user.freelancer_profile.id)},
+        format="json",
+    )
+    assert response.status_code == 200
+    assert response.data["status"] == "assigned"
+    assert response.data["assigned_to"]["id"] == str(freelancer_user.freelancer_profile.id)
+
+
+@pytest.mark.django_db
+def test_ticket_status_becomes_assigned_after_assignment(open_ticket, support_agent_user, freelancer_user):
+    """Ticket status must change to 'assigned' after a Support Agent assigns an engineer."""
+    client = APIClient()
+    client.force_authenticate(user=support_agent_user)
+    client.post(
+        f"/api/ops/tickets/{open_ticket.id}/assign/",
+        {"freelancer_id": str(freelancer_user.freelancer_profile.id)},
+        format="json",
+    )
+    open_ticket.refresh_from_db()
+    assert open_ticket.status == "assigned"
+    assert open_ticket.assigned_to == freelancer_user.freelancer_profile
+
+
+@pytest.mark.django_db
+def test_engineer_receives_notification_on_assignment(open_ticket, support_agent_user, freelancer_user):
+    """Assigning via Support Agent must create a ticket_assigned notification for the engineer."""
+    from support_app.models import Notification
+    client = APIClient()
+    client.force_authenticate(user=support_agent_user)
+    client.post(
+        f"/api/ops/tickets/{open_ticket.id}/assign/",
+        {"freelancer_id": str(freelancer_user.freelancer_profile.id)},
+        format="json",
+    )
+    notif = Notification.objects.filter(
+        recipient=freelancer_user,
+        category="ticket_assigned",
+        ticket=open_ticket,
+    ).first()
+    assert notif is not None
+    assert open_ticket.ticket_number in notif.title
+
+
+@pytest.mark.django_db
+def test_support_agent_cannot_assign_pending_payment_ticket(support_agent_user, customer_user, freelancer_user):
+    """Support Agent must NOT be able to assign a ticket that is still awaiting payment."""
+    ticket = Ticket.objects.create(
+        customer=customer_user.customer_profile,
+        title="Unpaid ticket",
+        service_type="linux",
+        severity="medium",
+        status="pending_payment",
+    )
+    client = APIClient()
+    client.force_authenticate(user=support_agent_user)
+    response = client.post(
+        f"/api/ops/tickets/{ticket.id}/assign/",
+        {"freelancer_id": str(freelancer_user.freelancer_profile.id)},
+        format="json",
+    )
+    assert response.status_code == 400

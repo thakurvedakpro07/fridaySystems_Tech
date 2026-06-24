@@ -349,7 +349,7 @@ class TicketListCreateView(generics.ListCreateAPIView):
       ?service_type=linux
       ?severity=high
       ?search=<text>     (searches title and description)
-      ?ordering=created_at,-priority
+      ?ordering=created_at,-severity
     """
     permission_classes = [permissions.IsAuthenticated, IsCustomer]
 
@@ -381,9 +381,8 @@ class TicketListCreateView(generics.ListCreateAPIView):
             from django.db.models import Q
             qs = qs.filter(Q(title__icontains=search) | Q(description__icontains=search))
 
-        # Ordering: ?ordering=created_at  or  ?ordering=-priority
         ordering = self.request.query_params.get("ordering")
-        allowed_orderings = {"created_at", "-created_at", "priority", "-priority", "status", "-status"}
+        allowed_orderings = {"created_at", "-created_at", "severity", "-severity", "status", "-status"}
         if ordering in allowed_orderings:
             qs = qs.order_by(ordering)
 
@@ -406,17 +405,32 @@ class TicketDetailView(generics.RetrieveUpdateAPIView):
     """
     GET   /api/tickets/{id}/  — get ticket detail
     PATCH /api/tickets/{id}/  — customer updates description/notes before assignment
+
+    Read access: ticket owner, any internal staff role (support_agent, ops, finance, admin).
+    Write access (PATCH): ticket owner and super admin only.
     """
     serializer_class = TicketDetailSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrStaff]
 
     def get_queryset(self):
         qs = Ticket.objects.select_related("customer__user", "assigned_to__user")
-        if self.request.user.is_staff:
+        user = self.request.user
+        if user.is_staff or is_internal_staff(user):
             return qs
-        if hasattr(self.request.user, "freelancer_profile"):
-            return qs.filter(assigned_to=self.request.user.freelancer_profile)
-        return qs.filter(customer=self.request.user.customer_profile)
+        if hasattr(user, "freelancer_profile"):
+            return qs.filter(assigned_to=user.freelancer_profile)
+        if hasattr(user, "customer_profile"):
+            return qs.filter(customer=user.customer_profile)
+        raise PermissionDenied()
+
+    def update(self, request, *args, **kwargs):
+        user = request.user
+        if not (user.is_staff or hasattr(user, "customer_profile")):
+            return Response(
+                {"detail": "Only the ticket owner can update this ticket."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().update(request, *args, **kwargs)
 
 
 class TicketCommentListCreateView(generics.ListCreateAPIView):
@@ -1135,9 +1149,8 @@ class AdminTicketListView(generics.ListAPIView):
       ?status=open
       ?service_type=linux
       ?severity=high
-      ?priority=urgent
       ?search=<text>      (title / ticket_number)
-      ?ordering=created_at,-priority
+      ?ordering=created_at,-severity
     """
     serializer_class = TicketListSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminUser]
@@ -1157,10 +1170,6 @@ class AdminTicketListView(generics.ListAPIView):
         if severity_filter:
             qs = qs.filter(severity=severity_filter)
 
-        priority_filter = self.request.query_params.get("priority")
-        if priority_filter:
-            qs = qs.filter(priority=priority_filter)
-
         search = self.request.query_params.get("search")
         if search:
             from django.db.models import Q
@@ -1171,7 +1180,6 @@ class AdminTicketListView(generics.ListAPIView):
         ordering = self.request.query_params.get("ordering")
         allowed = {
             "created_at", "-created_at",
-            "priority", "-priority",
             "severity", "-severity",
             "status", "-status",
         }
@@ -1920,7 +1928,7 @@ def ops_dashboard(request):
 class OpsTicketListView(generics.ListAPIView):
     """
     GET /api/ops/tickets/
-    All tickets — status, priority, service, search, ordering filters.
+    All tickets — status, severity, service, search, ordering filters.
     Support Agents and Finance Managers get read access alongside Ops Manager and Super Admin.
     """
     serializer_class = OpsTicketListSerializer
@@ -1932,10 +1940,6 @@ class OpsTicketListView(generics.ListAPIView):
         status_filter = self.request.query_params.get("status")
         if status_filter:
             qs = qs.filter(status=status_filter)
-
-        priority_filter = self.request.query_params.get("priority")
-        if priority_filter:
-            qs = qs.filter(priority=priority_filter)
 
         service_filter = self.request.query_params.get("service_type")
         if service_filter:
@@ -1951,7 +1955,7 @@ class OpsTicketListView(generics.ListAPIView):
             )
 
         ordering = self.request.query_params.get("ordering", "-created_at")
-        allowed = {"created_at", "-created_at", "priority", "-priority", "status", "-status", "severity", "-severity"}
+        allowed = {"created_at", "-created_at", "status", "-status", "severity", "-severity"}
         if ordering in allowed:
             qs = qs.order_by(ordering)
 
@@ -1963,7 +1967,7 @@ class OpsFreelancerListView(generics.ListAPIView):
     GET /api/ops/freelancers/
     All approved freelancers with active ticket counts, skills, availability, rating.
     """
-    permission_classes = [permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsAnyStaffRole]
 
     def get(self, request, *args, **kwargs):
         from django.db.models import Count, Q as DQ
@@ -2004,7 +2008,7 @@ class OpsFreelancerListView(generics.ListAPIView):
 
 
 @api_view(["POST"])
-@permission_classes([permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin])
+@permission_classes([permissions.IsAuthenticated, IsAnyStaffRole])
 def ops_assign_ticket(request, ticket_id):
     """
     POST /api/ops/tickets/{id}/assign/
@@ -2054,7 +2058,7 @@ def ops_assign_ticket(request, ticket_id):
 
 
 @api_view(["POST"])
-@permission_classes([permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin])
+@permission_classes([permissions.IsAuthenticated, IsAnyStaffRole])
 def ops_unassign_ticket(request, ticket_id):
     """
     POST /api/ops/tickets/{id}/unassign/

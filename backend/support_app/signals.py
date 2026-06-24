@@ -8,9 +8,8 @@ never requires touching the view.
 
 Signals registered here:
   1. auto_generate_ticket_number  — set TKT-XXXXX before first save
-  2. log_ticket_status_change     — write TicketActivityLog on status change
-  3. log_ticket_priority_change   — write TicketActivityLog on priority change
-  4. set_ticket_resolved_at       — stamp resolved_at when status → resolved
+  2. log_ticket_changes           — write TicketActivityLog on status/severity changes
+  3. set_ticket_resolved_at       — stamp resolved_at when status → resolved
 """
 
 from django.db.models.signals import post_save, pre_save
@@ -55,7 +54,7 @@ def auto_generate_ticket_number(sender, instance, **kwargs):
 def log_ticket_changes(sender, instance, **kwargs):
     """
     On every ticket save:
-      - Write TicketActivityLog entries for status/priority/severity changes.
+      - Write TicketActivityLog entries for status/severity changes.
       - Stamp resolved_at when status transitions to "resolved".
 
     WHY one signal instead of two?
@@ -90,16 +89,6 @@ def log_ticket_changes(sender, instance, **kwargs):
         )
         # Note: resolved_at is set by ticket_service.update_status() which controls
         # update_fields. Setting it here would be ignored when update_fields is used.
-
-    # ── Priority change ────────────────────────────────────────────
-    if old.priority != instance.priority:
-        TicketActivityLog.objects.create(
-            ticket     = instance,
-            actor      = None,
-            action     = "priority_changed",
-            from_value = old.priority,
-            to_value   = instance.priority,
-        )
 
     # ── Severity change ────────────────────────────────────────────
     if old.severity != instance.severity:

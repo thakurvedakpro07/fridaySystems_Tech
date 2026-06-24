@@ -6,7 +6,7 @@ Tests focus on:
   - TicketAssignment records full history through reassignments
   - Internal comments are hidden from customers
   - Service layer functions produce correct side effects
-  - Priority field accepted on ticket creation
+  - Severity field drives SLA and pricing
   - ForeignKey author on comments (not raw UUID)
 
 Run with:
@@ -84,7 +84,6 @@ def ticket(db, customer_user):
         title="Linux server down",
         service_type="linux",
         severity="high",
-        priority="urgent",
         status="open",
     )
 
@@ -311,62 +310,7 @@ def test_internal_comment_does_not_set_first_response_at(ticket, admin_user):
     assert ticket.first_response_at is None
 
 
-# ── Priority field tests ──────────────────────────────────────────
-
-@pytest.mark.django_db
-def test_ticket_accepts_priority_field(customer_user):
-    """
-    Creating a ticket with priority=urgent should persist correctly.
-    """
-    ticket = create_ticket(
-        customer=customer_user.customer_profile,
-        validated_data={
-            "title": "CEO laptop broken",
-            "service_type": "desktop",
-            "severity": "low",
-            "priority": "urgent",
-        },
-    )
-    assert ticket.priority == "urgent"
-    assert ticket.severity == "low"
-
-
-@pytest.mark.django_db
-def test_ticket_default_priority_is_medium(customer_user):
-    """
-    When no priority is specified, it should default to 'medium'.
-    """
-    ticket = create_ticket(
-        customer=customer_user.customer_profile,
-        validated_data={
-            "title": "Routine patch",
-            "service_type": "patching",
-            "severity": "low",
-        },
-    )
-    assert ticket.priority == "medium"
-
-
 # ── API integration tests ─────────────────────────────────────────
-
-@pytest.mark.django_db
-def test_create_ticket_via_api_returns_priority(customer_user):
-    """
-    POST /api/tickets/ must accept priority and return it in the response.
-    """
-    client = APIClient()
-    client.force_authenticate(user=customer_user)
-
-    response = client.post("/api/tickets/", {
-        "title": "SAP login failing",
-        "service_type": "sap",
-        "severity": "high",
-        "priority": "urgent",
-    }, format="json")
-
-    assert response.status_code == 201
-    assert response.data.get("priority") == "urgent"
-
 
 @pytest.mark.django_db
 def test_ticket_activity_log_ordering(ticket, admin_user, freelancer_user):

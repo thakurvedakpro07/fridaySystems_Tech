@@ -251,7 +251,7 @@ class Freelancer(models.Model):
 # Design principles applied here:
 #   1. UUIDs everywhere — safe to expose in URLs, non-guessable
 #   2. ForeignKeys instead of raw UUIDs — database enforces relationships
-#   3. Separate priority AND severity — they measure different things
+#   3. Severity drives SLA response/resolution time and pricing surcharge
 #   4. Status as a string field — readable in logs, easy to add new states
 #   5. Timestamps on every important event — SLA, debugging, billing
 
@@ -284,18 +284,6 @@ class Ticket(models.Model):
         ("medium",   "Medium — Partial degradation"),
         ("high",     "High — Major function blocked"),
         ("critical", "Critical — Complete outage"),
-    ]
-
-    # ── Priority — BUSINESS urgency ───────────────────────────────
-    # How fast does the business need this fixed?
-    # "urgent" = CEO's machine, production payment system, etc.
-    # A low-severity issue can still be urgent (e.g. CEO's mouse broken).
-    # A high-severity issue can be medium priority (dev server, no customers affected).
-    PRIORITY_CHOICES = [
-        ("low",    "Low"),
-        ("medium", "Medium"),
-        ("high",   "High"),
-        ("urgent", "Urgent"),
     ]
 
     # ── Status — the lifecycle state machine ──────────────────────
@@ -340,7 +328,6 @@ class Ticket(models.Model):
 
     # ── Urgency fields ────────────────────────────────────────────
     severity = models.CharField(max_length=16, choices=SEVERITY_CHOICES, default="medium")
-    priority = models.CharField(max_length=16, choices=PRIORITY_CHOICES,  default="medium")
 
     # ── Workflow state ────────────────────────────────────────────
     status = models.CharField(max_length=32, choices=STATUS_CHOICES, default="pending_payment")
@@ -520,7 +507,7 @@ class TicketActivityLog(models.Model):
 
     Every meaningful action on a ticket triggers one log entry:
       - Status change
-      - Priority/severity change
+      - Severity change
       - Assignment / reassignment
       - First public comment
       - Resolution / closure
@@ -531,7 +518,7 @@ class TicketActivityLog(models.Model):
       It is shown in the customer-facing "ticket timeline" UI.
 
     WHY store from_value and to_value as strings?
-      Status names, priority names, and email addresses are all short strings.
+      Status names, severity names, and email addresses are all short strings.
       Storing them as strings means the log is self-contained — readable even
       if the referenced records are later changed or deleted.
     """
@@ -539,7 +526,6 @@ class TicketActivityLog(models.Model):
     ACTION_CHOICES = [
         ("created",          "Ticket Created"),
         ("status_changed",   "Status Changed"),
-        ("priority_changed", "Priority Changed"),
         ("severity_changed", "Severity Changed"),
         ("assigned",         "Assigned to Freelancer"),
         ("unassigned",       "Unassigned"),

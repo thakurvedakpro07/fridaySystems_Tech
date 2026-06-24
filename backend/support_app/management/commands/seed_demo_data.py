@@ -64,7 +64,7 @@ DEMO_ENGINEERS = [
 # ── Demo ticket definitions ───────────────────────────────────────
 #
 # Each tuple:
-#   (demo_id, title, service_type, severity, priority, final_status,
+#   (demo_id, title, service_type, severity, final_status,
 #    customer_idx, engineer_idx_or_None, days_ago, base_amount_inr, description)
 
 DEMO_TICKETS = [
@@ -72,7 +72,7 @@ DEMO_TICKETS = [
     (
         "DEMO_01",
         "Emails bouncing for company domain after DNS migration",
-        "linux", "high", "high", "open",
+        "linux", "high", "open",
         0, None, 2, 2000,
         "Since yesterday evening, all outbound emails from our company domain are bouncing "
         "with 'Relay access denied' errors. Multiple staff have received NDR messages. "
@@ -82,7 +82,7 @@ DEMO_TICKETS = [
     (
         "DEMO_02",
         "VPN connection dropping for all remote staff",
-        "security", "high", "urgent", "open",
+        "security", "high", "open",
         1, None, 1, 2500,
         "Our Cisco AnyConnect VPN has been dropping connections for all 25 remote staff "
         "since this morning. Users authenticate successfully but sessions drop within 2-3 minutes. "
@@ -92,7 +92,7 @@ DEMO_TICKETS = [
     (
         "DEMO_03",
         "Windows login failure blocking 15 users after GPO policy change",
-        "desktop", "medium", "high", "open",
+        "desktop", "medium", "open",
         2, None, 3, 1500,
         "15 out of 40 staff cannot log into their Windows workstations after a Group Policy "
         "update was pushed this morning. Users see 'The sign-in method you are trying to use '  "
@@ -104,7 +104,7 @@ DEMO_TICKETS = [
     (
         "DEMO_04",
         "Windows Server 2019 CPU pegged at 100% under normal load",
-        "windows", "high", "high", "assigned",
+        "windows", "high", "assigned",
         3, 3, 5, 3000,
         "Our primary Windows Server 2019 file server has been running at 95-100% CPU "
         "for 3 days. Normal load averages 30-40%. Performance Monitor shows "
@@ -115,7 +115,7 @@ DEMO_TICKETS = [
     (
         "DEMO_05",
         "SSL certificate expired on customer portal — HTTPS broken",
-        "security", "critical", "urgent", "assigned",
+        "security", "critical", "assigned",
         4, 2, 4, 2500,
         "The SSL/TLS certificate for our customer-facing portal (portal.kratosfintech.com) "
         "expired 6 hours ago. Customers are seeing 'Your connection is not private' warnings. "
@@ -126,7 +126,7 @@ DEMO_TICKETS = [
     (
         "DEMO_06",
         "SAP system log full — users getting login errors after policy change",
-        "sap", "high", "high", "assigned",
+        "sap", "high", "assigned",
         5, 4, 3, 4000,
         "Following our IT security team's password policy enforcement in SAP, "
         "users are seeing SM21 log entries indicating the system log (dev_w0) is full. "
@@ -139,7 +139,7 @@ DEMO_TICKETS = [
     (
         "DEMO_07",
         "Linux server disk at 97% — automated backup cron alerts firing",
-        "linux", "high", "urgent", "in_progress",
+        "linux", "high", "in_progress",
         6, 1, 7, 2000,
         "Our Ubuntu 22.04 application server has disk usage at 97% on the / partition. "
         "Automated monitoring alerts have been firing since last night. "
@@ -150,7 +150,7 @@ DEMO_TICKETS = [
     (
         "DEMO_08",
         "VMware ESXi host purple screen (PSOD) after patch update",
-        "vmware", "critical", "urgent", "in_progress",
+        "vmware", "critical", "in_progress",
         7, 3, 8, 5000,
         "Our VMware ESXi 7.0 U3 host experienced a Purple Screen of Death (PSOD) "
         "after applying patch ESXi700-202310001. The host crashed at 2:15 AM and restarted. "
@@ -161,7 +161,7 @@ DEMO_TICKETS = [
     (
         "DEMO_09",
         "Windows shared drive permissions broken — department folders inaccessible",
-        "desktop", "medium", "medium", "in_progress",
+        "desktop", "medium", "in_progress",
         8, 5, 6, 1500,
         "The Finance and HR departments cannot access their network shared drives "
         "after our Windows admin restructured the file server folder hierarchy. "
@@ -174,7 +174,7 @@ DEMO_TICKETS = [
     (
         "DEMO_10",
         "Remote desktop access lost after firewall rule change",
-        "windows", "medium", "medium", "waiting_customer",
+        "windows", "medium", "waiting_customer",
         9, 6, 10, 2000,
         "Remote Desktop Protocol (RDP) access to our on-premise servers has been blocked "
         "since the network team modified the perimeter firewall rules on Wednesday. "
@@ -185,7 +185,7 @@ DEMO_TICKETS = [
     (
         "DEMO_11",
         "DNS records pointing to wrong IP after domain registrar migration",
-        "linux", "high", "high", "waiting_customer",
+        "linux", "high", "waiting_customer",
         0, 7, 9, 2000,
         "After migrating our domain from GoDaddy to Cloudflare, several DNS records "
         "are pointing to the old server IP (203.0.113.45) instead of our new server (198.51.100.22). "
@@ -198,7 +198,7 @@ DEMO_TICKETS = [
     (
         "DEMO_12",
         "Ransomware indicators found on 3 employee workstations",
-        "security", "critical", "urgent", "resolved",
+        "security", "critical", "resolved",
         1, 2, 20, 5000,
         "Our endpoint detection tool flagged suspicious file encryption activity on "
         "3 workstations in the sales department. Files in shared network drives show "
@@ -209,7 +209,7 @@ DEMO_TICKETS = [
     (
         "DEMO_13",
         "Company domain blacklisted — outbound emails flagged as spam",
-        "linux", "high", "urgent", "resolved",
+        "linux", "high", "resolved",
         2, 0, 18, 2500,
         "Clients are reporting our emails land in spam or get bounced entirely. "
         "MXToolbox shows cloudbridge.in is listed on Spamhaus ZEN and Barracuda BRBL. "
@@ -220,7 +220,7 @@ DEMO_TICKETS = [
     (
         "DEMO_14",
         "Network drive mappings lost after Windows Update KB5034441",
-        "windows", "low", "low", "resolved",
+        "windows", "low", "resolved",
         3, 1, 15, 1500,
         "After Windows Update KB5034441 was applied on 15 workstations last Tuesday, "
         "all users lost their mapped network drives (Z:, Y:). "
@@ -231,7 +231,7 @@ DEMO_TICKETS = [
     (
         "DEMO_15",
         "Cloud backup silently failing for 3 days — recovery risk",
-        "security", "high", "high", "resolved",
+        "security", "high", "resolved",
         4, 3, 12, 3000,
         "Our AWS S3 backup job has been returning exit code 0 (success) but no files "
         "are being transferred. The backup agent logs show successful API authentication "
@@ -465,7 +465,7 @@ class Command(BaseCommand):
         ticket_map = {}
 
         for spec in DEMO_TICKETS:
-            (demo_id, title, service_type, severity, priority,
+            (demo_id, title, service_type, severity,
              final_status, cust_idx, eng_idx, days_ago, base_amount, description) = spec
 
             customer  = customers[cust_idx]
@@ -485,7 +485,6 @@ class Command(BaseCommand):
                 description=description,
                 service_type=service_type,
                 severity=severity,
-                priority=priority,
                 status=final_status,
                 assigned_to=engineer,
                 external_ticket_id=demo_id,

@@ -139,11 +139,11 @@ class TicketAdmin(admin.ModelAdmin):
     # ── List view ────────────────────────────────────────────────
     list_display  = [
         "ticket_number", "customer", "service_type",
-        "priority_badge", "severity", "status_badge",
+        "severity", "status_badge",
         "assigned_to", "created_at",
     ]
     search_fields = ["ticket_number", "title", "customer__user__email"]
-    list_filter   = ["status", "priority", "severity", "service_type"]
+    list_filter   = ["status", "severity", "service_type"]
     date_hierarchy = "created_at"
     ordering       = ["-created_at"]
     list_select_related = ["customer__user", "assigned_to__user"]
@@ -163,7 +163,7 @@ class TicketAdmin(admin.ModelAdmin):
             "fields": ("customer", "title", "description", "service_type"),
         }),
         ("Urgency", {
-            "fields": ("priority", "severity"),
+            "fields": ("severity",),
         }),
         ("Workflow", {
             "fields": ("status", "assigned_to"),
@@ -183,27 +183,6 @@ class TicketAdmin(admin.ModelAdmin):
     )
 
     inlines = [TicketActivityLogInline, TicketAssignmentInline, TicketCommentInline]
-
-    def priority_badge(self, obj):
-        """
-        Render priority as a coloured label in the list view.
-        format_html() safely escapes the string to prevent XSS —
-        never use plain string concatenation with user data in admin.
-        """
-        colours = {
-            "low":    "#28a745",  # green
-            "medium": "#fd7e14",  # orange
-            "high":   "#dc3545",  # red
-            "urgent": "#6f1b1b",  # dark red
-        }
-        colour = colours.get(obj.priority, "#6c757d")
-        return format_html(
-            '<span style="color:white; background:{}; padding:2px 6px; '
-            'border-radius:3px; font-size:11px">{}</span>',
-            colour, obj.get_priority_display(),
-        )
-    priority_badge.short_description = "Priority"
-    priority_badge.admin_order_field = "priority"
 
     def status_badge(self, obj):
         colours = {
