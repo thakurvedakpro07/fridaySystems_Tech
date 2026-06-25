@@ -391,43 +391,45 @@ def verify_resolution_payment_service(
         if not hmac.compare_digest(expected, razorpay_signature):
             raise ValueError("Invalid resolution payment signature")
 
-    payment.gateway_payment_id = razorpay_payment_id
-    payment.status = "completed"
-    payment.save(update_fields=["gateway_payment_id", "status"])
+    with transaction.atomic():
+        payment.gateway_payment_id = razorpay_payment_id
+        payment.status = "completed"
+        payment.save(update_fields=["gateway_payment_id", "status"])
 
-    # Close ticket
-    ticket = payment.ticket
-    if ticket and ticket.status == "resolved":
-        ticket.status = "closed"
-        ticket.resolved_at = timezone.now()
-        ticket.save(update_fields=["status", "resolved_at"])
+        # Close ticket
+        ticket = payment.ticket
+        if ticket and ticket.status == "resolved":
+            ticket.status = "closed"
+            ticket.resolved_at = timezone.now()
+            ticket.save(update_fields=["status", "resolved_at"])
 
-        TicketActivityLog.objects.create(
-            ticket=ticket,
-            actor=actor,
-            action="closed",
-            from_value="resolved",
-            to_value="closed",
-            note=f"Resolution fee {payment.invoice_number} confirmed; ticket closed",
-        )
+            TicketActivityLog.objects.create(
+                ticket=ticket,
+                actor=actor,
+                action="closed",
+                from_value="resolved",
+                to_value="closed",
+                note=f"Resolution fee {payment.invoice_number} confirmed; ticket closed",
+            )
 
-    # Save CSAT
-    if ticket and score and not CSATSurvey.objects.filter(ticket=ticket).exists():
-        CSATSurvey.objects.create(
-            ticket=ticket,
-            customer=ticket.customer,
-            score=score,
-            comment=comment or "",
-        )
+        # Save CSAT
+        if ticket and score and not CSATSurvey.objects.filter(ticket=ticket).exists():
+            CSATSurvey.objects.create(
+                ticket=ticket,
+                customer=ticket.customer,
+                score=score,
+                comment=comment or "",
+            )
 
-    # Create payout
+    # Payout is outside the atomic block — its failure must not roll back a confirmed payment.
+    # The customer has already paid; losing the payment record would be worse than a missing payout.
     if ticket and ticket.assigned_to:
         try:
             create_payout_for_ticket(ticket, payment)
         except Exception:
-            pass  # payout creation failure must not roll back the payment
+            _logger.exception("Payout creation failed for ticket %s", ticket.pk)
 
-    # Notify freelancer
+    # Notify freelancer (outside atomic — notification failure must not roll back payment)
     if ticket and ticket.assigned_to:
         create_notification(
             recipient=ticket.assigned_to.user,
