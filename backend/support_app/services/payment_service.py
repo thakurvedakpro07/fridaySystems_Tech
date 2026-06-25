@@ -14,13 +14,17 @@ Live mode:
 """
 import hashlib
 import hmac
+import logging
 import uuid as uuid_lib
 from datetime import datetime
 
 from django.conf import settings
+from django.db import transaction
 
 from ..models import Payment, Ticket, TicketActivityLog
 from .service_catalog import RESOLUTION_FEES, get_resolution_fee
+
+_logger = logging.getLogger(__name__)
 
 
 # ── Fee schedule ─────────────────────────────────────────────────
@@ -148,8 +152,14 @@ def verify_and_complete_payment(
     if payment.status == "completed":
         return payment
 
-    key_secret = getattr(settings, "RAZORPAY_KEY_SECRET", "")
-    if key_secret:
+    _live_mode = bool(getattr(settings, "RAZORPAY_KEY_ID", ""))
+    if _live_mode:
+        key_secret = getattr(settings, "RAZORPAY_KEY_SECRET", "")
+        if not key_secret:
+            from django.core.exceptions import ImproperlyConfigured
+            raise ImproperlyConfigured(
+                "RAZORPAY_KEY_SECRET must be set when RAZORPAY_KEY_ID is configured"
+            )
         expected = hmac.new(
             key_secret.encode(),
             f"{razorpay_order_id}|{razorpay_payment_id}".encode(),
@@ -158,11 +168,11 @@ def verify_and_complete_payment(
         if not hmac.compare_digest(expected, razorpay_signature):
             raise ValueError("Invalid payment signature")
 
-    payment.gateway_payment_id = razorpay_payment_id
-    payment.status = "completed"
-    payment.save(update_fields=["gateway_payment_id", "status"])
-
-    _open_ticket_after_payment(payment, actor=None, note=f"Payment {payment.invoice_number} confirmed")
+    with transaction.atomic():
+        payment.gateway_payment_id = razorpay_payment_id
+        payment.status = "completed"
+        payment.save(update_fields=["gateway_payment_id", "status"])
+        _open_ticket_after_payment(payment, actor=None, note=f"Payment {payment.invoice_number} confirmed")
     return payment
 
 
@@ -364,9 +374,15 @@ def verify_resolution_payment_service(
     if payment.payment_type != "resolution_fee":
         raise ValueError(f"Payment {payment_db_id} is not a resolution_fee payment")
 
-    # Signature verification (skipped in sandbox)
-    key_secret = getattr(settings, "RAZORPAY_KEY_SECRET", "")
-    if key_secret:
+    # Signature verification — required in live mode, skipped in sandbox (no RAZORPAY_KEY_ID)
+    _live_mode = bool(getattr(settings, "RAZORPAY_KEY_ID", ""))
+    if _live_mode:
+        key_secret = getattr(settings, "RAZORPAY_KEY_SECRET", "")
+        if not key_secret:
+            from django.core.exceptions import ImproperlyConfigured
+            raise ImproperlyConfigured(
+                "RAZORPAY_KEY_SECRET must be set when RAZORPAY_KEY_ID is configured"
+            )
         expected = hmac.new(
             key_secret.encode(),
             f"{razorpay_order_id}|{razorpay_payment_id}".encode(),

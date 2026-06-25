@@ -1,10 +1,12 @@
 """
-Tests for payment endpoints.
-TODO: expand in Phase 2 when Razorpay integration is implemented.
+Tests for payment endpoints and payment service security.
 """
+
+import uuid as uuid_lib
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from rest_framework.test import APIClient
 
 from support_app.models import Customer, Payment, Ticket
@@ -149,3 +151,249 @@ def test_unauthenticated_cannot_list_payments():
     client = APIClient()
     response = client.get("/api/customers/me/payments/")
     assert response.status_code == 401
+
+
+# ── C-002 Security fix tests ──────────────────────────────────────────────────
+# These tests verify that the payment verification bypass (C-002) is fixed.
+#
+# Before the fix:
+#   verify_resolution_payment used .get("razorpay_payment_id", "sandbox_pay") defaults,
+#   allowing an attacker to omit Razorpay fields entirely and have them silently substituted.
+#   Both verify functions skipped HMAC when RAZORPAY_KEY_SECRET was absent, regardless
+#   of whether RAZORPAY_KEY_ID was set (i.e., whether we were in live mode).
+#
+# After the fix:
+#   All three Razorpay fields are required in the view (400 if absent).
+#   HMAC verification is now tied to RAZORPAY_KEY_ID (live mode), not RAZORPAY_KEY_SECRET.
+#   In live mode, a missing RAZORPAY_KEY_SECRET raises ImproperlyConfigured (500).
+
+
+def _make_resolved_ticket_with_payment(email: str):
+    """
+    Create a customer, a resolved ticket, and a pending resolution_fee Payment.
+    Returns (api_client, ticket, payment).
+    """
+    user = User.objects.create_user(email=email, password="StrongPass123!", role="customer")
+    customer = Customer.objects.create(user=user, company="SecCo")
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    ticket = Ticket.objects.create(
+        customer=customer,
+        title="Security test ticket",
+        service_type="linux",
+        severity="low",
+        status="resolved",
+    )
+    payment = Payment.objects.create(
+        customer=customer,
+        ticket=ticket,
+        amount="500.00",
+        gst_amount="90.00",
+        invoice_number=f"INV-SEC-{uuid_lib.uuid4().hex[:8]}",
+        payment_type="resolution_fee",
+        gateway="razorpay",
+        gateway_order_id="order_test_123",
+        status="pending",
+    )
+    return client, ticket, payment
+
+
+_LOCMEM_CACHE = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=_LOCMEM_CACHE)
+def test_verify_resolution_payment_missing_razorpay_payment_id_returns_400():
+    """
+    POST /api/tickets/{id}/verify-resolution-payment/ without razorpay_payment_id → 400.
+    C-002 fix: hardcoded 'sandbox_pay' default removed; field is now required.
+    """
+    client, ticket, payment = _make_resolved_ticket_with_payment("c002_a@example.com")
+    payload = {
+        "payment_db_id": str(payment.id),
+        # razorpay_payment_id intentionally omitted
+        "razorpay_order_id": "order_test_123",
+        "razorpay_signature": "some_sig",
+        "score": 5,
+    }
+    response = client.post(
+        f"/api/tickets/{ticket.id}/verify-resolution-payment/",
+        payload,
+        format="json",
+    )
+    assert response.status_code == 400
+    assert "razorpay_payment_id" in response.data.get("detail", "")
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=_LOCMEM_CACHE)
+def test_verify_resolution_payment_missing_razorpay_order_id_returns_400():
+    """
+    POST /api/tickets/{id}/verify-resolution-payment/ without razorpay_order_id → 400.
+    C-002 fix: hardcoded 'sandbox_order' default removed; field is now required.
+    """
+    client, ticket, payment = _make_resolved_ticket_with_payment("c002_b@example.com")
+    payload = {
+        "payment_db_id": str(payment.id),
+        "razorpay_payment_id": "pay_test_123",
+        # razorpay_order_id intentionally omitted
+        "razorpay_signature": "some_sig",
+        "score": 5,
+    }
+    response = client.post(
+        f"/api/tickets/{ticket.id}/verify-resolution-payment/",
+        payload,
+        format="json",
+    )
+    assert response.status_code == 400
+    assert "razorpay_order_id" in response.data.get("detail", "")
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=_LOCMEM_CACHE)
+def test_verify_resolution_payment_missing_razorpay_signature_returns_400():
+    """
+    POST /api/tickets/{id}/verify-resolution-payment/ without razorpay_signature → 400.
+    C-002 fix: hardcoded 'sandbox_sig' default removed; field is now required.
+    """
+    client, ticket, payment = _make_resolved_ticket_with_payment("c002_c@example.com")
+    payload = {
+        "payment_db_id": str(payment.id),
+        "razorpay_payment_id": "pay_test_123",
+        "razorpay_order_id": "order_test_123",
+        # razorpay_signature intentionally omitted
+        "score": 5,
+    }
+    response = client.post(
+        f"/api/tickets/{ticket.id}/verify-resolution-payment/",
+        payload,
+        format="json",
+    )
+    assert response.status_code == 400
+    assert "razorpay_signature" in response.data.get("detail", "")
+
+
+@pytest.mark.django_db
+def test_verify_and_complete_payment_rejects_bad_signature_in_live_mode():
+    """
+    verify_and_complete_payment raises ValueError when signature is wrong in live mode.
+    C-002 fix: verification is now tied to RAZORPAY_KEY_ID (live mode), not KEY_SECRET presence.
+    """
+    from support_app.services.payment_service import verify_and_complete_payment
+
+    user = User.objects.create_user(email="c002_d@example.com", password="StrongPass123!", role="customer")
+    customer = Customer.objects.create(user=user, company="LiveCo")
+    ticket = Ticket.objects.create(
+        customer=customer,
+        title="Live mode test",
+        service_type="linux",
+        severity="low",
+        status="pending_payment",
+    )
+    payment = Payment.objects.create(
+        customer=customer,
+        ticket=ticket,
+        amount="353.00",
+        gst_amount="53.82",
+        invoice_number=f"INV-LIVE-{uuid_lib.uuid4().hex[:8]}",
+        payment_type="consulting_fee",
+        gateway="razorpay",
+        gateway_order_id="order_live_123",
+        status="pending",
+    )
+
+    with override_settings(RAZORPAY_KEY_ID="rzp_test_key", RAZORPAY_KEY_SECRET="test_secret_xyz"):
+        with pytest.raises(ValueError, match="Invalid payment signature"):
+            verify_and_complete_payment(
+                payment_db_id=str(payment.id),
+                razorpay_payment_id="pay_live_123",
+                razorpay_order_id="order_live_123",
+                razorpay_signature="tampered_signature",  # not the real HMAC
+            )
+
+
+@pytest.mark.django_db
+def test_verify_resolution_payment_service_rejects_bad_signature_in_live_mode():
+    """
+    verify_resolution_payment_service raises ValueError for bad signature in live mode.
+    C-002 fix: live mode detection now uses RAZORPAY_KEY_ID, not RAZORPAY_KEY_SECRET.
+    """
+    from support_app.services.payment_service import verify_resolution_payment_service
+
+    user = User.objects.create_user(email="c002_e@example.com", password="StrongPass123!", role="customer")
+    customer = Customer.objects.create(user=user, company="LiveCo2")
+    ticket = Ticket.objects.create(
+        customer=customer,
+        title="Live resolution test",
+        service_type="linux",
+        severity="low",
+        status="resolved",
+    )
+    payment = Payment.objects.create(
+        customer=customer,
+        ticket=ticket,
+        amount="500.00",
+        gst_amount="90.00",
+        invoice_number=f"INV-LIVERES-{uuid_lib.uuid4().hex[:8]}",
+        payment_type="resolution_fee",
+        gateway="razorpay",
+        gateway_order_id="order_res_live_123",
+        status="pending",
+    )
+
+    with override_settings(RAZORPAY_KEY_ID="rzp_test_key", RAZORPAY_KEY_SECRET="test_secret_xyz"):
+        with pytest.raises(ValueError, match="Invalid resolution payment signature"):
+            verify_resolution_payment_service(
+                ticket=ticket,
+                payment_db_id=str(payment.id),
+                razorpay_payment_id="pay_res_live_123",
+                razorpay_order_id="order_res_live_123",
+                razorpay_signature="tampered_signature",
+                score=5,
+                comment="",
+                actor=user,
+            )
+
+
+@pytest.mark.django_db
+def test_verify_and_complete_payment_sandbox_skips_signature_check():
+    """
+    In sandbox mode (RAZORPAY_KEY_ID not set), any signature value is accepted.
+    This verifies the sandbox dev flow still works after the C-002 fix.
+    """
+    from support_app.services.payment_service import verify_and_complete_payment
+
+    user = User.objects.create_user(email="c002_f@example.com", password="StrongPass123!", role="customer")
+    customer = Customer.objects.create(user=user, company="SandboxCo")
+    ticket = Ticket.objects.create(
+        customer=customer,
+        title="Sandbox test ticket",
+        service_type="linux",
+        severity="low",
+        status="pending_payment",
+    )
+    payment = Payment.objects.create(
+        customer=customer,
+        ticket=ticket,
+        amount="353.00",
+        gst_amount="53.82",
+        invoice_number=f"INV-SB-{uuid_lib.uuid4().hex[:8]}",
+        payment_type="consulting_fee",
+        gateway="razorpay",
+        gateway_order_id="order_sandbox_999",
+        status="pending",
+    )
+
+    # RAZORPAY_KEY_ID not set → sandbox mode → no HMAC check
+    with override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET=""):
+        result = verify_and_complete_payment(
+            payment_db_id=str(payment.id),
+            razorpay_payment_id="pay_sandbox_999",
+            razorpay_order_id="order_sandbox_999",
+            razorpay_signature="sandbox_signature",
+        )
+
+    payment.refresh_from_db()
+    assert payment.status == "completed"
+    assert result.status == "completed"

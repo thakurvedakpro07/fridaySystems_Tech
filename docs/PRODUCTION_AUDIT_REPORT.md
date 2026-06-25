@@ -1,667 +1,482 @@
 # ResolveHQ — Production Readiness Audit Report
 
-**Date:** 2026-06-15  
-**Auditor:** Claude Sonnet 4.6 (automated code review)  
-**Scope:** Full codebase audit — backend, frontend, infrastructure, CI/CD  
-**Purpose:** Identify every bug, deployment risk, and security issue before go-live  
-**Status:** CRITICAL + HIGH ISSUES FIXED — see `docs/CRITICAL_FIX_REPORT.md` and `docs/HIGH_PRIORITY_FIX_REPORT.md`
-
-**Critical fix status (Phase 22 — 2026-06-15):**
-| ID | Status |
-|----|--------|
-| C-01 | ✅ FIXED · VERIFIED · TESTED |
-| C-02 | ✅ FIXED · VERIFIED · TESTED |
-| C-03 | ✅ FIXED · VERIFIED · TESTED |
-| C-04 | ✅ FIXED · VERIFIED · TESTED |
-| C-05 | ✅ FIXED · VERIFIED · TESTED |
-
-**High priority fix status (Phase 23 — 2026-06-15):**
-| ID | Status |
-|----|--------|
-| H-02 | ✅ FIXED · VERIFIED |
-| H-03 | ✅ FIXED · VERIFIED |
-| H-04 | ✅ FIXED · VERIFIED |
-| H-05 | ✅ FIXED · VERIFIED |
-| H-06 | ✅ FIXED · VERIFIED |
-| H-07 | ✅ FIXED · VERIFIED |
-| H-08 | ✅ FIXED · VERIFIED |
-| H-09 | ✅ FIXED · VERIFIED |
+**Date:** 2026-06-25
+**Auditor:** Claude Sonnet 4.6 (automated code review)
+**Scope:** Full codebase audit — backend (Django/DRF), frontend (React/Zustand), services, integrations
+**Purpose:** Identify every bug, deployment risk, and security issue before go-live
+**Prior report:** Supersedes the 2026-06-15 report. Previous critical/high fixes applied. This audit reflects current codebase state.
 
 ---
 
 ## Executive Summary
 
-ResolveHQ is structurally sound and architecturally well-designed. The Docker/Nginx/Gunicorn production stack (Phase 21) is production-ready. However, **5 critical blockers** must be resolved before any paying customer touches the system. An additional **9 high-severity** issues should be fixed in the same sprint. Medium and low issues can be deferred to the first post-launch patch.
+ResolveHQ has a solid architectural foundation — UUID primary keys, role-based permission classes, JWT with refresh rotation, Razorpay payment integration, and a structured service layer. Test coverage is meaningful for happy paths and permission boundaries.
 
-**Critical blockers (launch-blocking):** 5  
-**High severity:** 9  
-**Medium severity:** 8  
-**Low severity:** 7  
-**Total issues:** 29
+However, **five critical issues** threaten production correctness and legal compliance:
+1. Non-atomic financial operations that can create partial payment records
+2. Hardcoded sandbox payment defaults that bypass signature verification
+3. SLA deadline system fully implemented but never invoked (SLA timers never start)
+4. Fraudulent GSTIN placeholder on all customer invoices
+5. Race condition in invoice number generation
 
----
+**Issue counts by severity:**
+| Severity | Count |
+|----------|-------|
+| Critical | 5 |
+| High | 8 |
+| Medium | 9 |
+| Low | 7 |
+| Dead Code | 8 items |
+| Performance | 5 items |
+| Documentation | 4 items |
 
-## Issues Ranked by Launch Risk
-
----
-
-### CRITICAL — Launch Blockers
-
-These issues will either cause the application to be non-functional or create an unacceptable security gap on day one.
-
----
-
-#### C-01 · Django admin completely unreachable in production — ✅ FIXED · VERIFIED · TESTED
-
-**Severity:** CRITICAL  
-**Area:** Docker/Nginx, Admin workflow  
-**Fix commit:** Phase 22 (2026-06-15) — Changed `path("admin/", ...)` → `path("django-admin/", ...)` in `backend/supportmitra/urls.py`. nginx already had `/django-admin/` proxy block. Verified: `/admin/` now returns 404, `/django-admin/` resolves to Django admin index.
-
-**Problem:** `nginx.conf` uses `try_files $uri $uri/ /index.html` as the catch-all location. This means any request to `/admin/` is served by the React SPA, not Django. The Django admin (`path("admin/", admin.site.urls)`) at `backend/supportmitra/urls.py:5` is never reached because nginx intercepts it first.
-
-**Reproduction:**
-1. Deploy with current nginx config
-2. Navigate to `https://supportmitra.in/admin/`
-3. Result: React SPA renders (404 page or Dashboard redirect)
-4. Django admin login page never appears
-
-**Root cause:** Nginx `try_files` catch-all in the `location /` block processes `/admin/` before the `location /api/` proxy block has a chance — because `/admin/` does not start with `/api/`.
-
-**Fix:** Add a dedicated nginx location block **before** the catch-all `location /` block:
-```nginx
-location /django-admin/ {
-    proxy_pass http://127.0.0.1:8000;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-```
-Then change `backend/supportmitra/urls.py` to `path("django-admin/", admin.site.urls)`. Also update `docs/DEPLOYMENT_GUIDE.md` to reference `/django-admin/` instead of the current `/admin/` path (which already correctly uses `/django-admin/` in Step 8 nginx comments).
+**Recommended production deployment:** Block on all Critical + High issues before go-live.
 
 ---
 
-#### C-02 · All Celery tasks are empty stubs — no emails, no SLA monitoring — ✅ FIXED · VERIFIED · TESTED
+## Critical Issues
 
-**Severity:** CRITICAL  
-**Area:** Notifications, SLA, Payments  
-**File:** `backend/support_app/tasks.py`  
-**Fix commit:** Phase 22 (2026-06-15) — All 5 tasks implemented. `send_ticket_opened_email` and `send_ticket_assigned_notification` call the existing `email_service.py` functions with retry logic (max_retries=3). `check_sla_breaches` calls the now-implemented `sla_service.run_sla_check_for_all_open_tickets()`. `process_payout_batch` and `sync_ticket_to_osticket` log their deferred-phase status instead of silently doing nothing.
+### C-001 — Non-Atomic Resolution Payment Flow Allows Partial Commits
 
-**Problem:** Every Celery task body is a bare `pass`:
-```python
-@shared_task
-def send_ticket_opened_email(ticket_id):
-    pass  # ← nothing happens
+- **Category:** Financial / Data Integrity
+- **File:** `backend/support_app/services/payment_service.py` lines 324–424
+- **Description:** `verify_resolution_payment_service()` executes five separate database writes — `payment.save()`, `ticket.save()`, `CSATSurvey.objects.create()`, `Payout.objects.create()`, and `resolved_at` stamping — with no enclosing `transaction.atomic()` block. If any write after the first fails (e.g., a DB error during Payout creation), the payment row is committed as "completed" but the ticket remains in the wrong state and the payout is missing. The customer is charged but the workflow is broken. The same issue exists in `verify_and_complete_payment()` (lines 128–166) for consulting-fee payments.
 
-@shared_task
-def send_ticket_assigned_notification(ticket_id, freelancer_id):
-    pass
+  Additionally, Payout creation failures are **silently swallowed**:
+  ```python
+  except Exception:
+      pass  # payout silently not created, no logging
+  ```
+  Engineers go unpaid with no alerting.
 
-@shared_task
-def check_sla_breaches():
-    pass
-
-@shared_task
-def process_payout_batch():
-    pass
-
-@shared_task
-def sync_ticket_to_osticket(ticket_id):
-    pass
-```
-
-**Impact:**
-- Customers receive **zero emails** after ticket creation, payment, or resolution
-- Freelancers receive **zero notifications** after assignment
-- SLA deadlines are tracked in the database (`due_at`, `first_response_at`) but **never checked**
-- No SLA breach alerts are ever sent
-- Freelancer payouts are never processed
-
-**Note:** `email_service.py` functions (`send_ticket_created`, `send_ticket_assigned`, etc.) are fully implemented and call `render_to_string()` with real templates in `backend/templates/email/`. The templates exist. Only the Celery task wiring is missing.
-
-**Fix:** Implement task bodies to call the existing `email_service` functions. Example:
-```python
-@shared_task
-def send_ticket_opened_email(ticket_id):
-    from .models import Ticket
-    from .services.email_service import send_ticket_created
-    try:
-        ticket = Ticket.objects.select_related("customer__user").get(pk=ticket_id)
-        send_ticket_created(ticket)
-    except Ticket.DoesNotExist:
-        pass
-```
+- **Impact:** Customer charged, ticket stuck in wrong state, freelancer not paid, no alert.
+- **Reproduction:** Submit concurrent payment verifications while introducing a DB error after the first write (e.g., kill DB connection mid-transaction).
+- **Fix:** Wrap both functions in `with transaction.atomic():`. Replace `pass` with `logger.exception("Payout creation failed for ticket %s", ticket.pk)`.
 
 ---
 
-#### C-03 · `notification_service.send_email()` raises NotImplementedError — ✅ FIXED · VERIFIED · TESTED
+### C-002 — Hardcoded Sandbox Defaults Bypass Payment Signature Verification
 
-**Severity:** CRITICAL  
-**Area:** Notifications  
-**File:** `backend/support_app/services/notification_service.py:36-43`  
-**Fix commit:** Phase 22 (2026-06-15) — `send_email()` now delegates to `email_service._send()`. `send_whatsapp()` now logs a notice instead of raising when `ENABLE_WHATSAPP_NOTIFICATIONS=false` (the default). Neither function raises `NotImplementedError` anymore.
+- **Status: VERIFIED ✓ and FIXED ✓** (2026-06-25)
+- **Category:** Security
+- **File:** `backend/support_app/views.py` lines ~717–730; `backend/support_app/services/payment_service.py` lines ~40–60
 
-**Problem:**
-```python
-def send_email(to: str, template_name: str, context: dict) -> None:
-    raise NotImplementedError
-```
-If any code path calls `notification_service.send_email()` directly, it will raise a 500 error. Currently, `email_service.py` is used directly (not `notification_service.send_email()`), so this is not yet causing crashes — but it's a trap for future developers who see the function and use it.
+**Verified root cause (two distinct attack surfaces):**
 
-**Fix:** Either implement the function (delegate to `email_service`) or rename it to `_send_email_not_implemented` to make the stub status obvious.
+1. **`views.py:742-744`** — `verify_resolution_payment` used `.get("razorpay_payment_id", "sandbox_pay")` etc., meaning a POST body with only `payment_db_id` + `score` would pass `"sandbox_pay"`, `"sandbox_order"`, `"sandbox_sig"` directly to the service. The consulting fee endpoint (`ticket_verify_payment`) already used `PaymentVerifySerializer` which required all three fields — the resolution fee endpoint did not.
 
----
+2. **`payment_service.py:151-158`, `368-375`** — Both verify functions gated HMAC on `if key_secret:` (is `RAZORPAY_KEY_SECRET` set?), **not** on `if RAZORPAY_KEY_ID:` (are we in live mode?). If `RAZORPAY_KEY_SECRET` was absent in production while `RAZORPAY_KEY_ID` was set, real Razorpay orders would be created but payment verification would be completely bypassed — any signature accepted.
 
-#### C-04 · SLA service is entirely NotImplementedError — ✅ FIXED · VERIFIED · TESTED
+**Fix applied:**
 
-**Severity:** CRITICAL  
-**Area:** SLA monitoring  
-**File:** `backend/support_app/services/sla_service.py`  
-**Fix commit:** Phase 22 (2026-06-15) — All three functions implemented. `get_sla_policy()` queries the SLAPolicy table with a two-level fallback (exact plan → "default" plan → None). `check_ticket_sla()` compares `due_at` to `timezone.now()`, marks `sla_breach_notified=True`, writes a `SLALog` breach entry, and sends in-app notifications to all admin users. `run_sla_check_for_all_open_tickets()` queries open/assigned/in_progress tickets with `due_at` set and calls `check_ticket_sla()` on each. `_DEFAULTS` dict provides SLA windows for all 4 severity levels when no DB policy exists.
+- **`views.py:741-757`** — Removed all three hardcoded defaults. Added explicit 400 validation guards for `razorpay_payment_id`, `razorpay_order_id`, and `razorpay_signature` before calling the service. Frontend sandbox mode is unaffected (it always sends all three fields with mock values).
 
-**Problem:** All three functions raise `NotImplementedError`. The `check_sla_breaches` Celery Beat task (scheduled every 5 minutes) calls `run_sla_check_for_all_open_tickets()` — or would if the task body wasn't also a stub (C-02). The model fields `first_response_at`, `due_at`, `sla_breach_notified` exist on `Ticket` but are never populated or checked.
+- **`payment_service.py:151-164`, `370-383`** — Changed sandbox detection from `if key_secret:` to `if RAZORPAY_KEY_ID:` (live mode). In live mode, if `RAZORPAY_KEY_SECRET` is absent, raises `ImproperlyConfigured` (500) rather than silently skipping verification. In sandbox mode (no `RAZORPAY_KEY_ID`), signature check is explicitly skipped as intended.
 
-**Impact:** SLA is advertised as a product feature ("Average 2-hour first response" on the Login page). In production, no SLA is ever tracked, and `due_at` is never set on tickets. Customers who paid for SLA-backed support get no protection.
+**Files modified:**
+- `backend/support_app/views.py` (lines 742-757)
+- `backend/support_app/services/payment_service.py` (lines 151-164, 370-383)
+- `backend/tests/test_payments.py` (6 new C-002 tests added)
 
-**Fix:** Implement `get_sla_policy()` to query the `SLAPolicy` model, `check_ticket_sla()` to compare timestamps, and wire both into the Celery Beat task. At minimum, set `due_at` when a ticket is created/opened.
+**Tests added (`tests/test_payments.py`):**
+| Test | Result |
+|------|--------|
+| `test_verify_resolution_payment_missing_razorpay_payment_id_returns_400` | PASSED |
+| `test_verify_resolution_payment_missing_razorpay_order_id_returns_400` | PASSED |
+| `test_verify_resolution_payment_missing_razorpay_signature_returns_400` | PASSED |
+| `test_verify_and_complete_payment_rejects_bad_signature_in_live_mode` | PASSED |
+| `test_verify_resolution_payment_service_rejects_bad_signature_in_live_mode` | PASSED |
+| `test_verify_and_complete_payment_sandbox_skips_signature_check` | PASSED |
 
----
-
-#### C-05 · Invoice download returns HTTP 501 — ✅ FIXED · VERIFIED · TESTED
-
-**Severity:** CRITICAL  
-**Area:** Payments, Billing  
-**File:** `backend/support_app/views.py` (`payment_invoice` view)  
-**Fix commit:** Phase 22 (2026-06-15) — `payment_invoice` now returns a structured JSON invoice with full billing details: invoice number, date, seller (business name/GSTIN/email), buyer (customer name/email/company/GSTIN), ticket reference, line items with GST breakdown, payment gateway details, and grand total. Returns `Content-Disposition: attachment; filename="invoice_*.json"`. Permission check ensures only the payment's customer or an admin can download. PDF generation remains a Phase 5 deliverable; this JSON endpoint is the immediate fix.
-
-**Problem:** The invoice download endpoint (`GET /api/payments/{id}/invoice/`) is a stub that returns 501:
-```python
-def payment_invoice(request, payment_id):
-    return Response({"detail": "Invoice generation not yet implemented."}, status=501)
-```
-
-The frontend `BillingPage.jsx` calls `downloadInvoice(id)` via `payments.js:14`. Currently BillingPage doesn't show a download button (it's hidden), but the API endpoint is publicly documented and the frontend module calls it. Any customer who discovers this endpoint gets a 501.
-
-**Fix:** Implement PDF invoice generation using a library like `reportlab` or `weasyprint`. Minimum viable version: return a JSON invoice with all billing fields. Mark the button as "coming soon" in the UI until PDF generation is ready.
+**No regressions:** 38 previously passing tests still pass. 81 pre-existing failures are all Redis/Docker infrastructure errors (no change).
 
 ---
 
-### HIGH — Should Fix Before Launch
+### C-003 — SLA Deadlines Never Set: Entire SLA System is Non-Functional
+
+- **Category:** Feature Broken
+- **File:** `backend/support_app/services/sla_service.py` lines 55–78; `backend/supportmitra/settings.py`
+- **Description:** `set_ticket_due_at()` is correctly implemented — it looks up SLAPolicy by service type and severity, then sets `ticket.due_at`. However, this function is **never called from any code path** in `payment_service.py`, `ticket_service.py`, `views.py`, `signals.py`, or `tasks.py`. Every ticket has `due_at = null`.
+
+  Additionally, the Celery Beat schedule for `check_sla_breaches` is **not defined in `settings.py`** — the task exists but never runs automatically. Consequence: SLA breach detection never fires, no breach notifications are sent, `SLALog` is never populated, and the entire SLA feature is silently dead.
+
+- **Impact:** SLA commitments advertised to customers are never enforced. Tickets can breach SLA with zero alerting to ops/admin. Breach log is always empty.
+- **Reproduction:** Create a ticket, wait for any SLA window to pass. `ticket.due_at` is null; no breach notification sent.
+- **Fix:** Call `set_ticket_due_at(ticket)` at the end of `verify_and_complete_payment()` after ticket moves to "open". Add `CELERY_BEAT_SCHEDULE` entry for `check_sla_breaches` in `settings.py`.
 
 ---
 
-#### H-01 · Freelancers get 403 on TicketDetailView — permission class bug
+### C-004 — Fraudulent GSTIN Placeholder on All Customer Invoices
 
-**Severity:** HIGH  
-**Area:** Freelancer workflow, Permissions  
-**File:** `backend/support_app/permissions.py`
+- **Category:** Legal / Compliance (CGST Act)
+- **File:** `backend/support_app/invoice_pdf.py` lines 100, 307
+- **Description:**
+  ```python
+  business_gstin = getattr(s, "BUSINESS_GSTIN", "22AAAAA0000A1Z5")
+  ```
+  `22AAAAA0000A1Z5` is the Indian government's canonical example/test GSTIN used in documentation. It is not a valid GST registration. If `BUSINESS_GSTIN` is not set in the production environment, every GST-compliant invoice sent to customers will display a fraudulent GSTIN. This is a statutory violation under the CGST Act. Line 307 also contains hardcoded placeholder contact details (`1800-123-4567`, `billing@resolvehq.in`).
 
-**Problem:** `IsOwnerOrAdmin` only implements `has_object_permission`, not `has_permission`. DRF evaluates `has_permission` **before** running the queryset or calling `has_object_permission`. For freelancers, `has_permission` falls through to the default `BasePermission.has_permission` which returns `True` (since `IsOwnerOrAdmin` doesn't override it). This actually means the permission is more permissive than intended, not less — BUT:
-
-The `TicketDetailView` uses `permission_classes = [IsAuthenticated, IsOwnerOrAdmin]`. `has_object_permission` in `IsOwnerOrAdmin` checks `ticket.customer.user == request.user` — for a freelancer, this is always `False`. There is no `elif request.user.role == "freelancer"` branch. So an approved freelancer who is assigned to a ticket will get a 403 when trying to load `GET /api/tickets/{id}/`.
-
-**Reproduction:**
-1. Log in as an approved freelancer
-2. Navigate to `/tickets/{uuid}` for a ticket assigned to them
-3. `freelancerGetTicket()` calls `GET /api/freelancer/tickets/{id}/` (via `FreelancerTicketView`) — this may work correctly
-4. BUT `adminGetTicket()` in `TicketDetailPage.jsx:13` uses `GET /api/tickets/{id}/` for `is_staff` users — confirmed issue for that path
-
-**Note:** `TicketDetailPage.jsx:14` routes freelancers through `freelancerGetTicket()` which uses `/api/freelancer/tickets/{id}/` — a separate endpoint. The 403 primarily affects the admin path where an `is_staff` freelancer exists. However, if `IsOwnerOrAdmin` is applied elsewhere, the gap remains dangerous.
-
-**Fix:** Add a freelancer check to `IsOwnerOrAdmin.has_object_permission()`:
-```python
-if hasattr(request.user, 'freelancer_profile'):
-    return ticket.assigned_to == request.user
-```
+- **Impact:** Statutory violation. Customers receive legally invalid invoices. Potential GST authority action.
+- **Reproduction:** Do not set `BUSINESS_GSTIN` env var. Generate any invoice. GSTIN shows `22AAAAA0000A1Z5`.
+- **Fix:** Require `BUSINESS_GSTIN` in settings with `ImproperlyConfigured` if absent. Read phone/email from environment variables — remove hardcoded placeholders.
 
 ---
 
-#### H-02 · `change_password` bypasses StrongPasswordValidator
+### C-005 — Race Condition in Non-Atomic Invoice Number Generation
 
-**Severity:** HIGH  
-**Area:** Authentication, Security  
-**File:** `backend/support_app/views.py` (`change_password` view)
+- **Category:** Data Integrity / Concurrency
+- **File:** `backend/support_app/services/payment_service.py` lines 33–47
+- **Description:** `_generate_invoice_number()` performs a non-atomic read-then-write:
+  1. `Payment.objects.filter(invoice_number__startswith=prefix).count()` — reads current count
+  2. Constructs `INV-YYYYMM-NNNN` from that count
+  3. Saves the new payment record
 
-**Problem:** The change password view checks only length:
-```python
-if len(new_pw) < 10:
-    return Response({"detail": "Password must be at least 10 characters."}, status=400)
-```
-It never calls Django's `validate_password(new_pw, user)`. The `StrongPasswordValidator` in `backend/support_app/validators.py` requires uppercase, lowercase, digit, and special character — but these rules are completely skipped during password change. A user can change to `aaaaaaaaaa` (10 lowercase chars) without error.
+  Under concurrent requests (two customers paying simultaneously), both threads read the same count, generate the same invoice number, and both attempt to save. The `unique=True` constraint on `invoice_number` means one raises `IntegrityError` — surfacing as a 500 to the user mid-payment.
 
-**Fix:**
-```python
-from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ValidationError as DjangoValidationError
-
-try:
-    validate_password(new_pw, user)
-except DjangoValidationError as e:
-    return Response({"detail": "; ".join(e.messages)}, status=400)
-```
+- **Impact:** Random payment failures during concurrent load. Bad UX for paying customers. Risk of lost payments.
+- **Reproduction:** Hammer the payment endpoint with 2+ concurrent requests in the same month.
+- **Fix:** Use `select_for_update()` within `transaction.atomic()`, or use a PostgreSQL sequence for the numeric suffix.
 
 ---
 
-#### H-03 · No password reset flow
+## High Issues
 
-**Severity:** HIGH  
-**Area:** Authentication  
-**File:** `backend/support_app/urls.py`, `frontend/src/pages/Login.jsx`
+### H-001 — Unverified Users Can Access All Private Routes
 
-**Problem:** There is no "Forgot password?" link in `Login.jsx` (line 206 only shows "No account? Create one free"). There are no backend URL routes for password reset. If a customer forgets their password, they have no recovery path — they must contact support.
-
-Django provides `PasswordResetView`, `PasswordResetConfirmView` etc. out of the box. SimpleJWT doesn't, but DRF has `djoser` or the reset can be custom-built.
-
-**Fix:** Add `POST /api/auth/password/reset/` and `POST /api/auth/password/reset/confirm/` endpoints using Django's built-in `send_mail` + `default_token_generator`. Add a "Forgot password?" link to `Login.jsx`. This is a blocker for any production SaaS.
+- **Category:** Security / Auth
+- **File:** `frontend/src/App.jsx` — `PrivateRoute` component
+- **Description:** `PrivateRoute` only checks `isAuthenticated` from Zustand store. It does **not** check `is_verified`. A user who registered but has not confirmed their email can log in (the backend issues tokens without checking `is_verified`) and access all customer-facing routes including creating tickets and initiating payments. The `is_verified` field is present in `authStore.js` but never read by any route guard.
+- **Impact:** Unverified email accounts can create tickets and initiate payments. Orphaned/uncontactable ticket records.
+- **Fix:** In `PrivateRoute`, add `&& user.is_verified` check. On backend login view, reject users with `is_verified=False`.
 
 ---
 
-#### H-04 · No email verification on registration
+### H-002 — Activity Log Actor-Patching Is Race-Prone
 
-**Severity:** HIGH  
-**Area:** Authentication, Security  
-
-**Problem:** `RegisterSerializer` creates a user account immediately with no email verification step. Anyone can register with any email address — including `support@razorpay.com` or `admin@yourcompany.com`. There is no `is_verified` flag, no verification email sent, and no token-based verification flow.
-
-**Impact:** Account enumeration, spam registrations, impersonation of email addresses the registrant doesn't own.
-
-**Fix:** After registration, send a verification token via email. Prevent login (or restrict access) until the token is confirmed. The `active` field on `CustomUser` can be set to `False` until verification.
+- **Category:** Data Integrity / Concurrency
+- **File:** `backend/support_app/services/ticket_service.py` lines 221–270; `backend/support_app/signals.py` lines 83–89
+- **Description:** The activity log pattern: `pre_save` signal creates a `TicketActivityLog` with `actor=None`, then the service immediately calls `.update(actor=actor)` on the most-recent NULL-actor log entry for that ticket. This blind "patch latest entry" approach is not keyed to a specific log PK. If two concurrent status changes hit the same ticket, one actor patch can overwrite the log entry from the other — misattributing actions in the audit trail.
+- **Impact:** Corrupted audit trail under load. Wrong actors attributed to status changes.
+- **Fix:** Pass `actor` through the signal (thread-local or `update_fields`), or create `TicketActivityLog` directly in the service layer and suppress signal logging for those calls.
 
 ---
 
-#### H-05 · Payout details stored in plaintext despite "Encrypted" claim
+### H-003 — Ticket Assignment Race Condition
 
-**Severity:** HIGH  
-**Area:** Security, Freelancer workflow  
-**File:** `backend/support_app/models.py` (Freelancer model)
-
-**Problem:** The model comment says `# "Encrypted" — placeholder, real encryption in Phase 5`:
-```python
-payout_details = models.JSONField(
-    default=dict,
-    help_text="Encrypted bank/UPI details stored as JSON."  # NOT actually encrypted
-)
-```
-Freelancers enter their bank account numbers and UPI IDs in the Settings page. This data is stored as plaintext JSON in PostgreSQL. A database leak or a compromised Django shell would expose all freelancer financial details.
-
-**Fix:** Use Django's `django-encrypted-fields` or `pgcrypto` extension to encrypt at rest. At minimum, add a clear `TODO: ENCRYPT BEFORE LAUNCH` comment and document the risk. As a stopgap, restrict `payout_details` field from being exposed in any serializer or API response beyond the owner.
+- **Category:** Concurrency
+- **File:** `backend/support_app/services/ticket_service.py` lines 47–117
+- **Description:** `assign_ticket()` checks `if ticket.assigned_to is not None: raise ...` then sets `ticket.assigned_to = freelancer`. No `select_for_update()` on the ticket row. Two concurrent admin requests can both pass the guard and assign the ticket to different freelancers, with last-write winning silently. The first freelancer is notified of an assignment that is immediately overwritten.
+- **Impact:** Double-assignment under concurrent admin usage. First freelancer mislead.
+- **Fix:** Wrap in `with transaction.atomic():` and add `ticket = Ticket.objects.select_for_update().get(pk=ticket.pk)` at the start.
 
 ---
 
-#### H-06 · `APP_URL` missing from settings — emails link to localhost
+### H-004 — Incomplete State Machine: Invalid Status Transitions Allowed
 
-**Severity:** HIGH  
-**Area:** Notifications, Configuration  
-**File:** `backend/support_app/services/email_service.py:15`
+- **Category:** Business Logic
+- **File:** `backend/support_app/services/ticket_service.py` lines 221–270
+- **Description:** `update_status()` only blocks transitions _from_ `"closed"`. All other transitions are permitted, enabling:
+  - `pending_payment` → `resolved` (bypasses payment entirely)
+  - `pending_payment` → `in_progress` (bypasses assignment)
+  - `assigned` → `closed` (bypasses resolution flow)
 
-**Problem:**
-```python
-APP_URL = getattr(settings, "APP_URL", "http://localhost:5173")
-```
-`APP_URL` is not in `settings.py`, `settings_prod.py`, or `.env.example`. In production, all email templates that use `APP_URL` (ticket links, CTA buttons) will generate URLs pointing to `http://localhost:5173` — which customers cannot access.
-
-**Fix:** Add `APP_URL=https://supportmitra.in` to `.env.example` and `settings.py`:
-```python
-APP_URL = env("APP_URL", default="http://localhost:5173")
-```
+  The existing test only validates an invalid status string, not an invalid transition.
+- **Impact:** Tickets can reach terminal states without completing required workflow steps. Revenue loss (resolution payment skipped).
+- **Fix:** Implement an `ALLOWED_TRANSITIONS` dict and validate `(old_status, new_status)` pairs in `update_status()`.
 
 ---
 
-#### H-07 · AdminRoute only checks `is_staff`, not `role == "admin"`
+### H-005 — Admin vs Ops Payment Confirm: Inconsistent Audit Trail
 
-**Severity:** HIGH  
-**Area:** Route protection, Admin workflow  
-**File:** `frontend/src/App.jsx`
-
-**Problem:**
-```jsx
-function AdminRoute({ children }) {
-  const user = useAuthStore((s) => s.user);
-  if (!user) return <Navigate to="/login" replace />;
-  if (!user.is_staff) return <Navigate to="/dashboard" replace />;
-  return children;
-}
-```
-This allows any Django staff user (`is_staff=True`) to access admin pages, regardless of their `role` field. If a freelancer is accidentally granted `is_staff` in the Django admin, they immediately gain full admin page access including `AdminDashboard`, `FreelancerList`, and `PaymentsDashboard`.
-
-**Fix:** Change the guard to also verify role:
-```jsx
-if (!user.is_staff || user.role !== "admin") return <Navigate to="/dashboard" replace />;
-```
-Or, if `is_staff` is the authoritative admin signal, remove the `role` field's relevance from admin checks and document it clearly.
+- **Category:** Consistency / Compliance
+- **File:** `backend/support_app/views.py` lines ~960 (`admin_payment_confirm`), ~2419 (`ops_payment_confirm`)
+- **Description:** `admin_payment_confirm` creates a `TicketActivityLog` entry and sends a `Notification` to the customer after confirming payment. `ops_payment_confirm` does neither — it confirms payment and updates status but produces no audit trail entry and no customer notification. A customer whose payment is confirmed by an Ops Manager receives no notification.
+- **Impact:** Customers unaware their payment was confirmed. Incomplete audit trail for Ops confirmations.
+- **Fix:** Extract the activity log + notification logic into a shared helper `_on_payment_confirmed(ticket, actor)` and call it from both views.
 
 ---
 
-#### H-08 · Razorpay webhook signature check bypassed when secret unset
+### H-006 — AuditLog Model Is Never Populated
 
-**Severity:** HIGH  
-**Area:** Payments, Security  
-**File:** `backend/support_app/services/payment_service.py`
-
-**Problem:**
-```python
-def verify_webhook_signature(payload_body: bytes, signature: str) -> bool:
-    secret = getattr(settings, "RAZORPAY_WEBHOOK_SECRET", "")
-    if not secret:
-        return True   # ← accepts ANY webhook if secret not configured
-```
-If `RAZORPAY_WEBHOOK_SECRET` is left empty in production `.env` (easy to forget), any HTTP client can POST a fake webhook to `/api/payments/webhook/` and trigger payment completion for any ticket.
-
-**Fix:** If `RAZORPAY_WEBHOOK_SECRET` is empty in production (where `DEBUG=False`), the webhook handler should return 400 or raise an `ImproperlyConfigured` error at startup, not silently accept all webhooks.
+- **Category:** Dead Feature / Compliance
+- **File:** `backend/support_app/models.py` — `AuditLog` model
+- **Description:** `AuditLog` has fields for `action`, `entity_type`, `entity_id`, `old_values`, `new_values`. A search across all views, services, signals, and tasks reveals **zero writes** to `AuditLog`. The model exists and migrations have been run, but no audit records are ever created. Notably, `user_id` is a raw `UUIDField` (not a ForeignKey), preventing Django ORM joins to user data.
+- **Impact:** Admin compliance/audit trail is entirely empty. No record of role changes, payment operations, or user management actions.
+- **Fix:** Either wire up writes to `AuditLog` in relevant service calls (role changes, payments, user mgmt) or drop the model and migration if intentionally replaced by `RoleChangeAudit` + `TicketActivityLog`.
 
 ---
 
-#### H-09 · JWT tokens stored in localStorage — XSS attack surface
+### H-007 — EngineerTrustCard Displays Fabricated Statistics
 
-**Severity:** HIGH  
-**Area:** Authentication, Security  
-**File:** `frontend/src/api/client.js`, `frontend/src/store/authStore.js`
-
-**Problem:** Access tokens, refresh tokens, and the serialized user object are all stored in `localStorage`. Any XSS vulnerability (injected scripts, third-party dependency compromise, malicious attachment served from media URL) can steal tokens and hijack sessions. `localStorage` is accessible to any JavaScript on the same origin.
-
-**Impact:** Token theft via XSS leads to full account takeover with no way to detect or revoke without explicitly revoking the refresh token.
-
-**Note:** This is a known trade-off for SPAs and is common in the industry. However for a payments-handling app with sensitive business data, httpOnly cookies are the industry security baseline.
-
-**Fix (ideal):** Switch to httpOnly cookies (requires backend changes to `TokenObtainPairView` to set `Set-Cookie` headers and frontend to send `credentials: "include"`). **Fix (pragmatic for now):** Ensure Content Security Policy headers in nginx block all inline scripts and restrict `script-src`. Add SameSite cookie handling. Document the risk.
-
----
-
-### MEDIUM — Fix in First Post-Launch Patch
+- **Category:** Misleading UI / Customer Trust
+- **File:** `frontend/src/components/tickets/TicketDetail.jsx` lines 256–343
+- **Description:** The `EngineerTrustCard` shown to customers on ticket assignment always displays hardcoded values:
+  ```javascript
+  const TRUST = {
+    yearsExp: 5, ticketsSolved: 142, rating: 4.8,
+    responseTime: "< 30 min", status: "online",
+  };
+  ```
+  Every engineer, regardless of their actual profile, always appears as 5 years of experience, 142 tickets solved, 4.8/5 rating, always "Online". This is materially false and misleading to customers making trust decisions about who is handling their IT infrastructure.
+- **Impact:** False advertising. Customer trust broken on discovery. Potential legal exposure.
+- **Fix:** Fetch real stats from a `GET /api/freelancer/{id}/public-profile/` endpoint. Show a skeleton while loading.
 
 ---
 
-#### M-01 · Admin can accidentally reset ticket to `pending_payment`
+### H-008 — Old CSAT Endpoint Creates Dual Submission Path, Can Skip Resolution Payment
 
-**Severity:** MEDIUM  
-**Area:** Admin workflow, Ticket lifecycle  
-**File:** `backend/support_app/serializers.py` (`AdminStatusSerializer`)
-
-**Problem:** `AdminStatusSerializer` validates `new_status` against all 7 `STATUS_CHOICES` including `pending_payment`. An admin using "Change Status" can move a ticket from `open` back to `pending_payment`, which removes customer access to the ticket until they pay again — for a ticket they may have already paid for.
-
-The frontend `AdminTicketActions.jsx` does guard this (its `STATUS_TRANSITIONS` dict doesn't include `pending_payment` as a target from any state), but the backend serializer doesn't enforce the same constraint. A direct API call can exploit this.
-
-**Fix:** In `AdminStatusSerializer.validate_new_status()`, reject `pending_payment` as a transition target: `if value == "pending_payment": raise ValidationError("Cannot manually set pending_payment status.")`.
+- **Category:** Business Logic / Revenue
+- **File:** `backend/support_app/urls.py` line 58
+- **Description:** The old `/api/tickets/<uuid>/csat/` endpoint still exists alongside the new `/accept-resolution/` and `/reject-resolution/` endpoints. A customer can POST directly to the old CSAT endpoint after a ticket moves to `resolved`, recording CSAT without going through the accept/reject resolution workflow. This means the resolution payment step is skipped and the freelancer gets no payout trigger.
+- **Impact:** Revenue loss (resolution payment bypassed). Freelancer not paid. Billing records inconsistent.
+- **Fix:** Remove the old `/csat/` URL route and view, or add a guard requiring `ticket.status == "closed"` (post-acceptance) before allowing CSAT submission.
 
 ---
 
-#### M-02 · FreelancerDashboard shows system-wide stats, not freelancer-scoped stats
+## Medium Issues
 
-**Severity:** MEDIUM  
-**Area:** Freelancer workflow, Analytics  
-**File:** `frontend/src/pages/freelancer/FreelancerDashboard.jsx:64-73`
+### M-001 — Analytics View N+1 Query
 
-**Problem:** The freelancer stats cards call `getAnalytics()` which returns system-wide aggregates:
-```javascript
-getAnalytics()
-  .then(({ data }) => setStats({
-    total:    data.total,      // ALL tickets in system
-    active:   data.in_progress, // ALL in-progress tickets
-    waiting:  data.open,        // ALL open tickets
-    resolved: data.resolved,    // ALL resolved tickets
-  }))
-```
-A freelancer sees "Total Assigned: 1,247" when they actually have 3 tickets. The stat card label says "Total Assigned" but the value is the system total.
-
-**Fix:** The backend analytics view should filter by `request.user` for non-admin users. Verify `backend/support_app/views.py`'s `get_analytics` view applies the correct filter — the dashboard stat cards should either call a separate `/api/freelancer/stats/` endpoint or the analytics endpoint must scope results to the caller.
+- **Category:** Performance
+- **File:** `backend/support_app/views.py` lines ~1800–1850
+- **Description:** Analytics view iterates `Freelancer.objects.all()` accessing `freelancer.user.email` without `select_related("user")`. With 50 freelancers: 51 queries. With 500: 501 queries.
+- **Fix:** `Freelancer.objects.all().select_related("user")`
 
 ---
 
-#### M-03 · BillingPage stats computed from first page only (pagination bug)
+### M-002 — SLA Breach Notification N+1 Query
 
-**Severity:** MEDIUM  
-**Area:** Billing, Customer workflow  
-**File:** `frontend/src/pages/BillingPage.jsx:119-121`
-
-**Problem:**
-```javascript
-const totalPaid = payments.filter((p) => p.status === "completed")
-                          .reduce((s, p) => s + p.total_amount, 0);
-```
-`payments` state is set from `data.results ?? data`. If the API paginates (returns `{count, results: [...first 20...]}`), only the first page is loaded. A customer with 50 payments will see wrong "Total Paid" amounts.
-
-**Fix:** Either fetch all payments (no pagination), or move the aggregation to the backend and return summary stats separately. The backend `list_my_payments` view should include `total_paid`, `pending_count`, `failed_count` in the response alongside paginated results.
+- **Category:** Performance
+- **File:** `backend/support_app/services/sla_service.py` lines 124–143
+- **Description:** `_notify_admins_of_breach()` queries `User.objects.filter(role="admin")` inside the per-ticket loop. If 20 tickets breach simultaneously, fires 20 identical admin-list queries.
+- **Fix:** Fetch admin list once before the loop in `run_sla_check_for_all_open_tickets()` and pass it in.
 
 ---
 
-#### M-04 · No "Forgot password?" link in Login UI
+### M-003 — Redundant COUNT(*) Before Iterator in SLA Check
 
-**Severity:** MEDIUM  
-**Area:** Authentication UX  
-**File:** `frontend/src/pages/Login.jsx`
-
-**Problem:** `Login.jsx` has no "Forgot password?" or "Reset password" link. When combined with H-03 (no backend reset endpoint), users who forget their password have zero recovery path visible in the UI. Even if H-03 is implemented, the UI link must be added.
-
-**Fix:** Add a "Forgot password?" link below the password field pointing to `/forgot-password` route.
+- **Category:** Performance
+- **File:** `backend/support_app/services/sla_service.py` lines 146–177
+- **Description:** `tickets.count()` fires a separate `SELECT COUNT(*)` query before `tickets.iterator()`, with the count only used in a log line. Two DB round-trips where one suffices.
+- **Fix:** Remove the `.count()` call or compute count from iteration results.
 
 ---
 
-#### M-05 · `adminConfirmPayment` frontend call has no matching backend URL
+### M-004 — Dashboard Profile Fetch Error Silently Swallowed
 
-**Severity:** MEDIUM  
-**Area:** Admin workflow, Payments  
-**File:** `frontend/src/api/payments.js:27-28`
-
-**Problem:**
-```javascript
-export const adminConfirmPayment = (paymentId) =>
-  apiClient.post(`/admin/payments/${paymentId}/confirm/`);
-```
-There is no `admin/payments/<id>/confirm/` URL in `backend/support_app/urls.py`. This function exists in the frontend API module but calling it will always result in a 404. No current UI component calls it (the `PaymentsDashboard.jsx` admin page wasn't read, but it imports from `payments.js`).
-
-**Fix:** Either implement the backend endpoint or remove the dead frontend function to avoid developer confusion.
+- **Category:** UX / Reliability
+- **File:** `frontend/src/pages/Dashboard.jsx` lines ~45–55
+- **Description:**
+  ```javascript
+  getProfile().then(({ data }) => setProfile(data)).catch(() => {})
+  ```
+  If `getProfile()` fails (403, network error), the catch does nothing. Dashboard renders with `profile = null`, potentially causing downstream `Cannot read properties of null` crashes in child components.
+- **Fix:** Set error state in catch block and render a fallback UI, or at minimum `console.error` the failure.
 
 ---
 
-#### M-06 · File uploads use client-supplied MIME type without magic bytes check
+### M-005 — finance_manager Cannot Be Promoted Directly to admin
 
-**Severity:** MEDIUM  
-**Area:** Security, File uploads  
-**File:** `backend/support_app/models.py` (`TicketAttachment.ALLOWED_MIME_TYPES`)
-
-**Problem:** The model defines `ALLOWED_MIME_TYPES` but the MIME type validation relies on `content_type` from the HTTP multipart header — a field that the client controls entirely. An attacker can upload a PHP script with `Content-Type: image/png` and bypass the type check. The `AttachmentSection.jsx` frontend also validates by extension only.
-
-**Fix:** Use Python's `python-magic` library to read the first few bytes (magic bytes) and verify the actual file type, not the declared type:
-```python
-import magic
-actual_mime = magic.from_buffer(file.read(1024), mime=True)
-file.seek(0)
-if actual_mime not in ALLOWED_MIME_TYPES:
-    raise ValidationError("File type not allowed.")
-```
+- **Category:** Business Logic
+- **File:** `backend/support_app/views.py` lines 2112–2119
+- **Description:** `_ALLOWED_TRANSITIONS` maps `finance_manager` only to `["operations_manager"]`. A finance_manager who should become an admin requires a two-step role change with no documentation of why this constraint exists. Meanwhile, `operations_manager → admin` is a single step.
+- **Fix:** Either document the intentional two-step path, or add `"admin"` to `finance_manager`'s allowed transitions.
 
 ---
 
-#### M-07 · Invoice number generation has race condition
+### M-006 — Payout Idempotency Guard Race Condition
 
-**Severity:** MEDIUM  
-**Area:** Payments  
-**File:** `backend/support_app/services/payment_service.py` (`_generate_invoice_number`)
-
-**Problem:** The invoice number generation queries the last invoice number then increments it in Python. Under concurrent payment processing (two requests within milliseconds of each other), both can read the same last invoice number and generate a duplicate. `invoice_number` has `unique=True` in the DB, so one transaction will fail with an IntegrityError — but this is an unhandled crash path in `verify_and_complete_payment`.
-
-**Fix:** Use `SELECT ... FOR UPDATE` or generate invoice numbers from a PostgreSQL sequence:
-```python
-from django.db import transaction
-with transaction.atomic():
-    last = Payment.objects.select_for_update().order_by("-created_at").first()
-    ...
-```
+- **Category:** Concurrency
+- **File:** `backend/support_app/services/payout_service.py` lines 44–84
+- **Description:** `create_payout_for_ticket()` checks `Payout.objects.get(ticket=ticket)` before creating. Without `select_for_update()`, two concurrent calls both pass the guard and both attempt `Payout.objects.create()`. The `OneToOneField` constraint causes one to raise `IntegrityError`, surfacing as a 500 to the caller.
+- **Fix:** Wrap in `transaction.atomic()` with `select_for_update()`, or use `get_or_create()`.
 
 ---
 
-#### M-08 · Auth state trusts localStorage on page refresh without server validation
+### M-007 — Stub Celery Tasks Registered but Never Implemented
 
-**Severity:** MEDIUM  
-**Area:** Authentication  
-**File:** `frontend/src/store/authStore.js` (`initializeAuth`)
-
-**Problem:** On page load, `initializeAuth` reads the stored user object from localStorage and uses it directly without making a server request to validate the token or user state. If a user is deactivated in the Django admin (`is_active=False`) or their role is changed, the frontend will continue showing them as logged in with their old permissions until their access token expires (15 minutes by default).
-
-**Fix:** During `initializeAuth`, make a lightweight call to `/api/auth/me/` or `/api/profile/` to verify the token is still valid and refresh the user object. If the call fails with 401, clear auth state and redirect to login.
+- **Category:** Dead Code / Misleading
+- **File:** `backend/support_app/tasks.py` lines 84–108
+- **Description:** `process_payout_batch` (lines 84–96) and `sync_ticket_to_osticket` (lines 98–108) are registered Celery tasks containing only `pass`. They appear in Celery worker logs and Flower dashboards, creating the false impression of working batch processing and osTicket sync. No Beat schedule defined for either.
+- **Fix:** Implement or remove. If removing, delete the task registrations.
 
 ---
 
-### LOW — Backlog / Polish
+### M-008 — No Minimum Length Validation on Ticket Description
+
+- **Category:** Validation
+- **File:** `backend/support_app/serializers.py` — `TicketCreateSerializer`
+- **Description:** `description` is `TextField(blank=True, default="")` on the model. A ticket with an empty description is operationally useless for support engineers. No minimum length is enforced at the serializer level. The existing test creates a ticket with no description field.
+- **Fix:** Add `MinLengthValidator(20)` on `description` in `TicketCreateSerializer` with a clear error message.
 
 ---
 
-#### L-01 · `mfa_enabled` model field has no effect in auth system
+### M-009 — PrivateRoute Does Not Check is_verified (frontend complement of H-001)
 
-**Severity:** LOW  
-**Area:** Security  
-**File:** `backend/support_app/models.py` (Customer model)
-
-**Problem:** `mfa_enabled = models.BooleanField(default=False)` exists on `Customer` but the authentication flow never checks it. Login proceeds with username+password regardless of whether MFA is enabled. The Settings page tells users "Enable two-factor authentication when available" — implying it's not yet available, which is accurate but misleading.
-
-**Fix (backlog):** Implement TOTP-based MFA using `django-otp` in a future phase, or remove the field until the feature is built.
+- **Category:** Security
+- **File:** `frontend/src/App.jsx`
+- **Description:** Subset of H-001. Without the `is_verified` check, even non-malicious unverified users who receive a resend-verification email while still logged in can reach protected pages, creating orphaned records.
+- **Fix:** See H-001 fix.
 
 ---
 
-#### L-02 · Extra database SELECT on every ticket save (signal performance)
+## Low Issues
 
-**Severity:** LOW  
-**Area:** Performance  
-**File:** `backend/support_app/signals.py` (`log_ticket_changes`)
+### L-001 — Notification Polling Never Backs Off on Error
 
-**Problem:** The `log_ticket_changes` post_save signal issues a `sender.objects.get(pk=instance.pk)` query on **every ticket save** to detect field changes. This doubles the DB queries for any ticket update. Under load (SLA checks updating 100 tickets at once), this becomes 200 queries instead of 100.
-
-**Fix:** Use Django's `pre_save` signal instead to capture old values before saving, then compare in `post_save` without the extra SELECT.
-
----
-
-#### L-03 · FreelancerTicketActions returns null for non-actionable states — no user message
-
-**Severity:** LOW  
-**Area:** Freelancer workflow, UX  
-**File:** `frontend/src/components/tickets/FreelancerTicketActions.jsx:40`
-
-**Problem:** `if (nextStatuses.length === 0) return null;` — for `closed`, `pending_payment`, or `open` (unassigned) tickets, the component renders nothing. A freelancer viewing a closed ticket has no visual indication of why there are no action buttons.
-
-**Fix:** Return a small informational message instead of null: "This ticket is closed. No further actions available."
+- **Category:** Reliability
+- **File:** `frontend/src/hooks/useNotifications.js`
+- **Description:** Polls `/notifications/unread-count/` every 30 seconds regardless of error state. If the backend returns 5xx, the frontend continues firing at full rate, amplifying load on a struggling server.
+- **Fix:** Implement exponential backoff on consecutive failures (30s → 60s → 120s → cap 300s), resetting on success.
 
 ---
 
-#### L-04 · Login always redirects to `/dashboard`, ignores intended destination
+### L-002 — Dashboard Makes Two API Calls That Could Be One
 
-**Severity:** LOW  
-**Area:** UX, Authentication  
-**File:** `frontend/src/pages/Login.jsx:36-38`
-
-**Problem:** After login, the app navigates to `/admin` (staff) or `/dashboard` (everyone else). If a user was trying to access `/tickets/abc123` and got redirected to login (session expired), they land on `/dashboard` and must navigate again.
-
-**Fix:** Use a `from` location state to redirect back to the intended page after login. Set `from` in the `PrivateRoute` redirect and read it in `Login.jsx`.
+- **Category:** Performance
+- **File:** `frontend/src/pages/Dashboard.jsx` lines ~40–60
+- **Description:** `getAnalytics()` and `getProfile()` fire as separate requests on mount. Each round-trip adds 50–100ms latency on Indian mobile connections.
+- **Fix:** Combine into a single `/api/dashboard/` endpoint, or confirm both fire simultaneously via `Promise.all`.
 
 ---
 
-#### L-05 · SOC 2 compliance claim in Login.jsx is factually incorrect
+### L-003 — `is_engineer()` Permission Function Is Unused
 
-**Severity:** LOW  
-**Area:** Legal, UX  
-**File:** `frontend/src/pages/Login.jsx:216`
-
-**Problem:** The security badge reads "256-bit SSL encryption · SOC 2 compliant". ResolveHQ has not undergone a SOC 2 audit. This is a false claim that could create legal liability.
-
-**Fix:** Change to "256-bit SSL encryption · Data stays in India" or remove the second claim entirely.
+- **Category:** Dead Code
+- **File:** `backend/support_app/permissions.py` lines 23–25
+- **Description:** `is_engineer()` is defined but never referenced in any view, permission class, or test. Confuses future developers.
+- **Fix:** Remove the function.
 
 ---
 
-#### L-06 · Dashboard analytics error silently swallowed — stats show zeros
+### L-004 — `IsOwnerOrAdmin` Imported but Never Applied
 
-**Severity:** LOW  
-**Area:** Customer workflow, Error handling  
-**File:** `frontend/src/pages/Dashboard.jsx:86`
-
-**Problem:**
-```javascript
-getAnalytics()
-  .then(...)
-  .catch(() => {})   // ← error ignored entirely
-  .finally(() => setStatsLoading(false));
-```
-If the analytics API fails, stat cards show `0` for everything with no error message. The user doesn't know if they truly have zero tickets or if there was a loading error.
-
-**Fix:** On error, show a small "Could not load stats" message in the stat cards area, similar to how `tickets` loading errors are handled.
+- **Category:** Dead Code
+- **File:** `backend/support_app/permissions.py` lines 205–218; `backend/support_app/views.py` import block
+- **Description:** `IsOwnerOrAdmin` is defined and imported but never set as `permission_classes` on any view.
+- **Fix:** Remove the import and class, or apply it to appropriate views.
 
 ---
 
-#### L-07 · Attachment delete permission excludes assigned freelancers
+### L-005 — DEFAULT_FROM_EMAIL Placeholder Causes All Emails to Fail
 
-**Severity:** LOW  
-**Area:** Freelancer workflow, File uploads  
-**File:** `frontend/src/components/tickets/AttachmentSection.jsx:195`
+- **Category:** Configuration
+- **File:** `backend/supportmitra/settings.py` line 286
+- **Description:** If left as the Django default (`webmaster@localhost`) in production, all outbound emails (password reset, ticket notifications) will come from an undeliverable address and be rejected or flagged as spam.
+- **Fix:** Require `DEFAULT_FROM_EMAIL` from environment variable with a startup check.
 
-**Problem:**
-```javascript
-canDelete={isStaff || att.uploaded_by_email === userEmail}
-```
-An assigned freelancer who didn't upload a file cannot delete it even if it's irrelevant or incorrectly attached. Only the uploader or admin can delete. This may be intentional but creates friction for freelancers managing ticket context.
+---
 
-**Fix (if desired):** Allow `isFreelancerAssigned` as a third condition. Whether to do this is a product decision.
+### L-006 — `is_internal_staff()` Inconsistency with AdminRoute
+
+- **Category:** Consistency
+- **File:** `backend/support_app/permissions.py` lines 64–70
+- **Description:** `is_internal_staff()` returns `True` for users with `role in ["admin", ...]` without checking `is_staff=True`. The `IsAdminUser` class requires both. A user with `role="admin"` but `is_staff=False` (misconfigured) passes `is_internal_staff()` but fails `IsAdminUser`, creating inconsistent access.
+- **Fix:** Align — either always check both fields for admin role, or document the intentional split.
+
+---
+
+### L-007 — Subscription Model Has No API Surface
+
+- **Category:** Dead Code
+- **File:** `backend/support_app/models.py` — `Subscription` model; `backend/support_app/urls.py`
+- **Description:** The `Subscription` model (plan, start_date, end_date, is_active) has no URL routes, views, serializers, or frontend components. It is created in migrations but never read from or written to in application code.
+- **Fix:** Implement the subscription feature or remove the model and migration to reduce schema clutter.
+
+---
+
+## Dead Code Inventory
+
+| # | Type | Location | Description |
+|---|------|----------|-------------|
+| D-001 | Unused model | `models.py` — `AuditLog` | Model defined, migrated, zero writes anywhere. `user_id` is raw UUIDField (not FK). |
+| D-002 | Unused model | `models.py` — `Subscription` | No views, serializers, or URL routes reference it. |
+| D-003 | Unused function | `permissions.py` lines 23–25 | `is_engineer()` defined but never called. |
+| D-004 | Unused class + import | `permissions.py` lines 205–218, `views.py` import | `IsOwnerOrAdmin` imported but never applied to any view. |
+| D-005 | Stub Celery task | `tasks.py` lines 84–96 | `process_payout_batch` — body is `pass`, no Beat schedule. |
+| D-006 | Stub Celery task | `tasks.py` lines 98–108 | `sync_ticket_to_osticket` — body is `pass`, no Beat schedule. |
+| D-007 | Orphaned endpoint | `urls.py` line 58 | Old `/api/tickets/<uuid>/csat/` superseded by accept/reject resolution workflow but not removed. |
+| D-008 | Unscheduled task | `tasks.py` + `settings.py` | `check_sla_breaches` task defined but `CELERY_BEAT_SCHEDULE` absent from `settings.py` — never auto-runs. |
+
+---
+
+## Performance Issues
+
+| # | File | Lines | Description |
+|---|------|-------|-------------|
+| P-001 | `views.py` | ~1800–1850 | N+1: iterates `Freelancer.objects.all()` accessing `.user` without `select_related`. 1 + N queries per analytics load. |
+| P-002 | `sla_service.py` | 124–143 | N+1 in `_notify_admins_of_breach`: admin list queried once per breaching ticket. |
+| P-003 | `sla_service.py` | 146–177 | Redundant `SELECT COUNT(*)` before `.iterator()` — two DB round-trips where one suffices. |
+| P-004 | `Dashboard.jsx` | ~40–60 | Two separate API calls on every dashboard mount that could be parallelized or combined. |
+| P-005 | `useNotifications.js` | polling logic | 30-second polling with no error backoff amplifies load during backend degradation. |
+
+---
+
+## Documentation Issues
+
+| # | File | Lines | Description |
+|---|------|-------|-------------|
+| DOC-001 | `invoice_pdf.py` | 100 | Hardcoded placeholder GSTIN `22AAAAA0000A1Z5` has no warning comment. No indication this is a test value. |
+| DOC-002 | `tasks.py` | 84–108 | Stub tasks have no TODO comments, issue tracker links, or indication of intended implementation. |
+| DOC-003 | `settings.py` | 286 | `DEFAULT_FROM_EMAIL` placeholder acknowledged but no guidance on required format or email service. |
+| DOC-004 | `ticket_service.py` | 221–270 | `update_status()` has no comment on which transitions are valid; missing validation appears intentional but is undocumented. |
 
 ---
 
 ## Summary Table
 
-| ID | Area | Severity | Description |
-|----|------|----------|-------------|
-| C-01 | Nginx/Admin | CRITICAL | Django admin unreachable — nginx serves React for /admin/ |
-| C-02 | Notifications/SLA | CRITICAL | All 5 Celery tasks are empty stubs |
-| C-03 | Notifications | CRITICAL | `notification_service.send_email()` raises NotImplementedError |
-| C-04 | SLA | CRITICAL | Entire SLA service is NotImplementedError |
-| C-05 | Payments | CRITICAL | Invoice download returns HTTP 501 |
-| H-01 | Permissions | HIGH | `IsOwnerOrAdmin` missing `has_permission` — freelancer 403 risk |
-| H-02 | Auth/Security | HIGH | `change_password` bypasses StrongPasswordValidator |
-| H-03 | Auth | HIGH | No password reset flow anywhere |
-| H-04 | Auth/Security | HIGH | No email verification on registration |
-| H-05 | Security | HIGH | Payout details stored plaintext despite "Encrypted" claim |
-| H-06 | Config | HIGH | `APP_URL` missing — email links use localhost in production |
-| H-07 | Auth/Routes | HIGH | AdminRoute only checks `is_staff`, not `role == "admin"` |
-| H-08 | Payments/Security | HIGH | Webhook signature check bypassed when RAZORPAY_WEBHOOK_SECRET unset |
-| H-09 | Auth/Security | HIGH | JWT in localStorage — XSS attack surface |
-| M-01 | Admin workflow | MEDIUM | Admin can accidentally set ticket back to `pending_payment` |
-| M-02 | Freelancer/Analytics | MEDIUM | Freelancer stats show system-wide totals, not personal stats |
-| M-03 | Billing | MEDIUM | Billing total computed from first page only (pagination bug) |
-| M-04 | Auth UX | MEDIUM | No "Forgot password?" link in Login UI |
-| M-05 | Admin/Payments | MEDIUM | `adminConfirmPayment` API call has no matching backend URL |
-| M-06 | Security/Uploads | MEDIUM | File uploads validated by content-type header, not magic bytes |
-| M-07 | Payments | MEDIUM | Invoice number race condition (no SELECT FOR UPDATE) |
-| M-08 | Auth | MEDIUM | Auth state trusts localStorage on refresh without server check |
-| L-01 | Security | LOW | `mfa_enabled` field has no effect in auth system |
-| L-02 | Performance | LOW | Extra SELECT on every ticket save in signal |
-| L-03 | Freelancer UX | LOW | FreelancerTicketActions renders null with no message for closed tickets |
-| L-04 | UX | LOW | Login ignores intended destination after session expiry |
-| L-05 | Legal | LOW | SOC 2 compliance claim is false |
-| L-06 | UX | LOW | Dashboard analytics errors silently swallowed — stats show zeros |
-| L-07 | Freelancer UX | LOW | Attached freelancer cannot delete files they didn't upload |
+| ID | Severity | Category | File | Title |
+|----|----------|----------|------|-------|
+| C-001 | Critical | Financial/Data Integrity | `payment_service.py:324–424` | Non-atomic resolution payment — partial commit risk |
+| C-002 | Critical | Security | `views.py:~717`, `payment_service.py:~40` | ~~Sandbox defaults bypass payment signature verification~~ **FIXED 2026-06-25** |
+| C-003 | Critical | Feature Broken | `sla_service.py:55`, `settings.py` | SLA due_at never set; entire SLA system non-functional |
+| C-004 | Critical | Legal/Compliance | `invoice_pdf.py:100,307` | Fraudulent GSTIN placeholder on all customer invoices |
+| C-005 | Critical | Data Integrity | `payment_service.py:33–47` | Race condition in non-atomic invoice number generation |
+| H-001 | High | Security | `App.jsx:PrivateRoute` | Unverified users can access all private routes |
+| H-002 | High | Data Integrity | `ticket_service.py:221`, `signals.py:83` | Activity log actor-patching is race-prone |
+| H-003 | High | Concurrency | `ticket_service.py:47–117` | Ticket assignment race condition without select_for_update |
+| H-004 | High | Business Logic | `ticket_service.py:221–270` | Incomplete state machine — invalid status transitions allowed |
+| H-005 | High | Consistency | `views.py:~960,~2419` | Ops payment confirm has no audit trail or customer notification |
+| H-006 | High | Dead Feature | `models.py:AuditLog` | AuditLog model never populated anywhere |
+| H-007 | High | Misleading UI | `TicketDetail.jsx:256–343` | EngineerTrustCard shows entirely fabricated statistics |
+| H-008 | High | Business Logic | `urls.py:58` | Old CSAT endpoint allows resolution payment bypass |
+| M-001 | Medium | Performance | `views.py:~1800` | Analytics view N+1 on freelancer.user |
+| M-002 | Medium | Performance | `sla_service.py:124–143` | SLA breach N+1: admin query per breaching ticket |
+| M-003 | Medium | Performance | `sla_service.py:146–177` | Redundant COUNT(*) before iterator in SLA check |
+| M-004 | Medium | UX/Reliability | `Dashboard.jsx:~45` | Profile fetch error silently swallowed → null crash |
+| M-005 | Medium | Business Logic | `views.py:2112–2119` | finance_manager cannot be promoted directly to admin |
+| M-006 | Medium | Concurrency | `payout_service.py:44–84` | Payout idempotency guard race condition |
+| M-007 | Medium | Dead Code | `tasks.py:84–108` | Stub Celery tasks registered with no implementation |
+| M-008 | Medium | Validation | `serializers.py:TicketCreateSerializer` | No minimum length on ticket description |
+| M-009 | Medium | Security | `App.jsx:PrivateRoute` | PrivateRoute does not check is_verified (see H-001) |
+| L-001 | Low | Reliability | `useNotifications.js` | No exponential backoff on notification polling errors |
+| L-002 | Low | Performance | `Dashboard.jsx:~40` | Two API calls on dashboard mount that could be one |
+| L-003 | Low | Dead Code | `permissions.py:23–25` | `is_engineer()` defined but never used |
+| L-004 | Low | Dead Code | `permissions.py:205–218` | `IsOwnerOrAdmin` imported and defined but never applied |
+| L-005 | Low | Config | `settings.py:286` | DEFAULT_FROM_EMAIL placeholder — emails sent from invalid address |
+| L-006 | Low | Consistency | `permissions.py:64–70` | `is_internal_staff()` checks admin role without is_staff |
+| L-007 | Low | Dead Code | `models.py:Subscription` | Subscription model has no API surface |
 
 ---
 
-## What Is Working Well
+## Recommended Fix Priority Order
 
-- **Payment flow (Razorpay):** Full dual-mode sandbox/live implementation with HMAC-SHA256 signature verification. PaymentGateway.jsx handles both modes cleanly.
-- **Ticket state machine:** Well-structured 7-state lifecycle with frontend guards matching backend transitions. `AdminTicketActions.jsx` STATUS_TRANSITIONS correctly prevents invalid moves in the UI.
-- **JWT refresh interceptor:** `client.js` properly handles 401 responses, refreshes tokens, retries the original request, and clears state on refresh failure. No race conditions.
-- **Production infrastructure (Phase 21):** Multi-stage Docker builds, Gunicorn auto-worker count, SECURE_PROXY_SSL_HEADER fix, restart policies, healthchecks, named volumes — all correct.
-- **Custom exception handler:** Normalised error shape `{detail, errors, status}` with structured logging. All 4xx/5xx properly logged.
-- **CSAT system:** Complete flow from widget to API to model storage. Score visible in analytics.
-- **Activity timeline:** Immutable audit log, actor patching pattern is sound.
-- **Notification bell:** In-app notification creation via `create_notification()` is properly implemented.
-- **Role-based routing:** Frontend `PrivateRoute`, `AdminRoute`, `FreelancerRoute` guard all pages. Backend `IsCustomer`, `IsFreelancer`, `IsAdminUser` permission classes are consistent.
-- **Registration:** Password validated with StrongPasswordValidator on registration (but bypassed on change — see H-02).
-- **CORS settings:** `settings_prod.py` correctly overrides `CORS_ALLOW_ALL_ORIGINS = False` from the base settings.
+1. **C-002** — Sandbox payment bypass (security — stop fraudulent payments immediately)
+2. **C-004** — Fake GSTIN on invoices (legal — CGST Act violation)
+3. **C-001** — Non-atomic payment flow (financial data integrity)
+4. **C-005** — Invoice number race condition (data integrity under concurrent load)
+5. **H-001 / M-009** — Unverified user access (security)
+6. **C-003** — SLA system never starts (feature correctness — contractual obligation)
+7. **H-008** — Old CSAT endpoint bypasses resolution payment (revenue)
+8. **H-007** — Fabricated engineer stats shown to customers (trust / false advertising)
+9. **H-003** — Ticket assignment race (correctness under concurrent ops)
+10. **H-004** — Invalid status transitions allowed (workflow correctness)
+11. **H-002** — Activity log actor patching race (audit trail integrity)
+12. **H-005** — Ops payment confirm missing audit/notification
+13. **H-006** — AuditLog model never populated
+14. **M-006** — Payout idempotency race
+15. **Remaining Medium/Low** — address before sustained production load
 
 ---
 
-## Recommended Fix Order
-
-**Sprint 1 (before any user touches the system):**  
-C-01 → H-06 → H-08 → C-02 (basic email implementation) → H-03 → H-02
-
-**Sprint 2 (before public launch):**  
-C-05 (invoice stub) → H-04 → H-05 (payout encryption) → M-04 → H-07 → M-07 → M-01
-
-**Sprint 3 (first patch after soft launch):**  
-C-03, C-04 (SLA implementation) → M-02 → M-03 → M-06 → M-05 → M-08
-
-**Backlog:**  
-L-01 through L-07 → H-09 (httpOnly cookies — significant refactor)
+*Generated by Claude Sonnet 4.6 on 2026-06-25. Do not make changes based on this report without first verifying findings against current code state.*

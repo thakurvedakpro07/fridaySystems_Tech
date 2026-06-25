@@ -739,14 +739,20 @@ def verify_resolution_payment(request, ticket_id):
     )
 
     payment_db_id       = request.data.get("payment_db_id", "")
-    razorpay_payment_id = request.data.get("razorpay_payment_id", "sandbox_pay")
-    razorpay_order_id   = request.data.get("razorpay_order_id", "sandbox_order")
-    razorpay_signature  = request.data.get("razorpay_signature", "sandbox_sig")
+    razorpay_payment_id = request.data.get("razorpay_payment_id", "")
+    razorpay_order_id   = request.data.get("razorpay_order_id", "")
+    razorpay_signature  = request.data.get("razorpay_signature", "")
     score               = request.data.get("score")
     comment             = request.data.get("comment", "")
 
     if not payment_db_id:
         return Response({"detail": "payment_db_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+    if not razorpay_payment_id:
+        return Response({"detail": "razorpay_payment_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+    if not razorpay_order_id:
+        return Response({"detail": "razorpay_order_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+    if not razorpay_signature:
+        return Response({"detail": "razorpay_signature is required."}, status=status.HTTP_400_BAD_REQUEST)
     if score is None:
         return Response({"detail": "score is required."}, status=status.HTTP_400_BAD_REQUEST)
     try:
