@@ -1,11 +1,31 @@
 """
-Custom Django password validators.
-Added to AUTH_PASSWORD_VALIDATORS in settings.py alongside the built-in validators.
+Custom Django validators — password strength and GSTIN format.
 """
 import re
 
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
+
+
+# ── GSTIN format validation ───────────────────────────────────────
+# Standard Indian GSTIN: 2-digit state code + PAN (10 chars) + entity number + "Z" + check digit.
+# Example: 29ABCDE1234F1Z5
+_GSTIN_RE = re.compile(r"^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$")
+
+
+def validate_gstin_format(value: str) -> None:
+    """
+    Validate an Indian GSTIN (15 chars). Blank values are allowed (B2C customers).
+    Raises ValidationError if the value is non-empty but malformed.
+    """
+    if not value:
+        return
+    if not _GSTIN_RE.match(value.strip().upper()):
+        raise ValidationError(
+            "Enter a valid 15-character GSTIN (e.g. 29ABCDE1234F1Z5). "
+            "Format: 2-digit state code + PAN (10 chars) + entity code + Z + check digit.",
+            code="invalid_gstin",
+        )
 
 
 class StrongPasswordValidator:

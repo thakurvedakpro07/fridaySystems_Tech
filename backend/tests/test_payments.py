@@ -623,3 +623,368 @@ def test_payout_failure_is_logged():
         )
 
     mock_log.assert_called_once_with("Payout creation failed for ticket %s", ticket.pk)
+
+
+# ── C-004 Tests — GSTIN validation and invoice compliance ─────────────────────
+
+
+def test_gstin_validator_accepts_valid_gstin():
+    """validate_gstin_format must accept a correctly formatted 15-char GSTIN."""
+    from support_app.validators import validate_gstin_format
+    from django.core.exceptions import ValidationError
+
+    # These should not raise
+    for gstin in ["29ABCDE1234F1Z5", "07AABCU9603R1ZP", "27AAPFU0939F1ZV"]:
+        validate_gstin_format(gstin)
+
+
+def test_gstin_validator_accepts_blank():
+    """validate_gstin_format must accept blank (B2C customers have no GSTIN)."""
+    from support_app.validators import validate_gstin_format
+    validate_gstin_format("")
+    validate_gstin_format(None)
+
+
+def test_invoice_pdf_source_has_no_hardcoded_placeholder_gstin():
+    """
+    invoice_pdf.py must not contain the hardcoded placeholder GSTIN '22AAAAA0000A1Z5'.
+    C-004 fix: removed hardcoded fallback — BUSINESS_GSTIN env var required or invoice
+    shows 'Not GST Registered'. The placeholder value must never appear in source code.
+    """
+    import inspect
+    from support_app import invoice_pdf
+    src = inspect.getsource(invoice_pdf)
+    assert "22AAAAA0000A1Z5" not in src, (
+        "Hardcoded fake GSTIN '22AAAAA0000A1Z5' must be removed from invoice_pdf.py"
+    )
+
+
+def test_gstin_validator_rejects_short_string():
+    """validate_gstin_format must reject strings shorter than 15 chars."""
+    from support_app.validators import validate_gstin_format
+    from django.core.exceptions import ValidationError
+
+    with pytest.raises(ValidationError):
+        validate_gstin_format("29ABCDE1234F1Z")
+
+
+def test_gstin_validator_rejects_random_string():
+    """validate_gstin_format must reject arbitrary text."""
+    from support_app.validators import validate_gstin_format
+    from django.core.exceptions import ValidationError
+
+    for bad in ["INVALID", "123456789012345", "not-a-gstin"]:
+        with pytest.raises(ValidationError):
+            validate_gstin_format(bad)
+
+
+def test_serializer_rejects_invalid_gstin():
+    """UserProfileUpdateSerializer.validate_gstin must reject malformed GSTIN."""
+    from support_app.serializers import UserProfileUpdateSerializer
+    from django.core.exceptions import ValidationError as DjangoVE
+    from rest_framework.exceptions import ValidationError as DRFValidationError
+
+    serializer = UserProfileUpdateSerializer(data={"gstin": "INVALID_GSTIN_12"}, partial=True)
+    assert not serializer.is_valid()
+    assert "gstin" in serializer.errors
+
+
+def test_serializer_accepts_valid_gstin():
+    """UserProfileUpdateSerializer.validate_gstin must accept a valid GSTIN."""
+    from support_app.serializers import UserProfileUpdateSerializer
+
+    serializer = UserProfileUpdateSerializer(data={"gstin": "29ABCDE1234F1Z5"}, partial=True)
+    assert serializer.is_valid(), serializer.errors
+    assert serializer.validated_data["gstin"] == "29ABCDE1234F1Z5"
+
+
+def test_serializer_normalizes_gstin_to_uppercase():
+    """UserProfileUpdateSerializer must normalize GSTIN to uppercase."""
+    from support_app.serializers import UserProfileUpdateSerializer
+
+    serializer = UserProfileUpdateSerializer(data={"gstin": "29abcde1234f1z5"}, partial=True)
+    assert serializer.is_valid(), serializer.errors
+    assert serializer.validated_data["gstin"] == "29ABCDE1234F1Z5"
+
+
+def test_serializer_accepts_blank_gstin():
+    """Empty GSTIN must be accepted (B2C customer profile update)."""
+    from support_app.serializers import UserProfileUpdateSerializer
+
+    serializer = UserProfileUpdateSerializer(data={"gstin": ""}, partial=True)
+    assert serializer.is_valid(), serializer.errors
+
+
+def _make_mock_consulting_payment(inv_num, customer_gstin="", b2b=False):
+    """Return a MagicMock payment suitable for passing to generate_invoice_pdf."""
+    from unittest.mock import MagicMock
+    from datetime import datetime
+
+    payment = MagicMock()
+    payment.invoice_number = inv_num
+    payment.created_at = datetime(2026, 6, 25, 10, 0, 0)
+    payment.status = "completed"
+    payment.get_status_display.return_value = "Completed"
+    payment.payment_type = "consulting_fee"
+    payment.get_payment_type_display.return_value = "Consulting Fee"
+    payment.amount = 299
+    payment.gst_amount = 53.82
+    payment.gateway = "razorpay"
+    payment.gateway_payment_id = "pay_001"
+    payment.gateway_order_id = "order_001"
+    payment.currency = "INR"
+    payment.ticket = None
+
+    customer = MagicMock()
+    customer.gstin = customer_gstin
+    customer.company = "TestCo Ltd"
+    customer.phone = ""
+    customer.address = ""
+    customer.user.first_name = "Test"
+    customer.user.last_name = "User"
+    customer.user.email = "test@example.com"
+    payment.customer = customer
+    return payment
+
+
+def test_invoice_pdf_b2c_no_fake_gstin():
+    """
+    B2C invoice (no customer GSTIN) must never contain the placeholder GSTIN
+    '22AAAAA0000A1Z5'. The bill-to section must show 'B2C Consumer (Unregistered)'.
+    C-004 fix: removed hardcoded fallback from invoice_pdf.py.
+    """
+    import reportlab.rl_config as _rl
+    from django.test import override_settings
+    from support_app.invoice_pdf import generate_invoice_pdf
+
+    payment = _make_mock_consulting_payment("INV-C004-B2C", customer_gstin="")
+
+    _prev = _rl.pageCompression
+    try:
+        _rl.pageCompression = 0  # disable compression so text is searchable in raw bytes
+        with override_settings(BUSINESS_GSTIN="", BUSINESS_NAME="TestCo", GST_RATE=0.18):
+            pdf_bytes = generate_invoice_pdf(payment)
+    finally:
+        _rl.pageCompression = _prev
+
+    assert pdf_bytes[:4] == b"%PDF"
+    decoded = pdf_bytes.decode("latin-1", errors="replace")
+    # The fake placeholder GSTIN must never appear
+    assert "22AAAAA0000A1Z5" not in decoded, (
+        "Placeholder GSTIN '22AAAAA0000A1Z5' must not appear in any invoice"
+    )
+    # B2C must be stated clearly
+    assert "B2C Consumer" in decoded
+
+
+def test_invoice_pdf_b2b_shows_customer_gstin():
+    """
+    B2B invoice (customer has GSTIN) must include the customer's GSTIN and B2B label.
+    C-004 fix: is_b2b flag shows GSTIN and 'B2B (Registered Dealer)' on invoice.
+    """
+    import reportlab.rl_config as _rl
+    from django.test import override_settings
+    from support_app.invoice_pdf import generate_invoice_pdf
+
+    payment = _make_mock_consulting_payment("INV-C004-B2B", customer_gstin="29ABCDE1234F1Z5")
+
+    _prev = _rl.pageCompression
+    try:
+        _rl.pageCompression = 0
+        with override_settings(BUSINESS_GSTIN="27AAPFU0939F1ZV", BUSINESS_NAME="TestCo", GST_RATE=0.18):
+            pdf_bytes = generate_invoice_pdf(payment)
+    finally:
+        _rl.pageCompression = _prev
+
+    assert pdf_bytes[:4] == b"%PDF"
+    decoded = pdf_bytes.decode("latin-1", errors="replace")
+    assert "29ABCDE1234F1Z5" in decoded, "Customer GSTIN must appear in B2B invoice"
+    assert "B2B" in decoded
+
+
+def test_invoice_pdf_business_gstin_not_registered():
+    """
+    When BUSINESS_GSTIN is empty, the invoice must show 'Not GST Registered'
+    and must not contain the placeholder '22AAAAA0000A1Z5'.
+    C-004 fix: removed hardcoded fallback.
+    """
+    import reportlab.rl_config as _rl
+    from django.test import override_settings
+    from support_app.invoice_pdf import generate_invoice_pdf
+
+    payment = _make_mock_consulting_payment("INV-C004-NOREG")
+
+    _prev = _rl.pageCompression
+    try:
+        _rl.pageCompression = 0
+        with override_settings(BUSINESS_GSTIN="", BUSINESS_NAME="TestCo", GST_RATE=0.18):
+            pdf_bytes = generate_invoice_pdf(payment)
+    finally:
+        _rl.pageCompression = _prev
+
+    assert pdf_bytes[:4] == b"%PDF"
+    decoded = pdf_bytes.decode("latin-1", errors="replace")
+    assert "22AAAAA0000A1Z5" not in decoded
+    assert "Not GST Registered" in decoded
+
+
+def test_invoice_pdf_resolution_fee_generates_valid_pdf():
+    """
+    A resolution_fee payment must produce a valid PDF with severity surcharge breakdown.
+    C-004 fix: generate_invoice_pdf now handles resolution_fee with line-item breakdown.
+    """
+    import reportlab.rl_config as _rl
+    from datetime import datetime
+    from unittest.mock import MagicMock, PropertyMock
+    from django.test import override_settings
+    from support_app.invoice_pdf import generate_invoice_pdf
+
+    ticket = MagicMock()
+    ticket.ticket_number = "TKT-0042"
+    ticket.get_service_type_display.return_value = "Linux Provisioning"
+    ticket.get_severity_display.return_value = "High"
+    ticket.service_type = "linux"
+    ticket.severity = "high"
+    ticket.title = "Server setup"
+    # Simulate no payout yet — accessing ticket.payout should raise so we fall back to catalog
+    type(ticket).payout = PropertyMock(side_effect=Exception("no payout"))
+
+    payment = MagicMock()
+    payment.invoice_number = "INV-C004-RES"
+    payment.created_at = datetime(2026, 6, 25, 10, 0, 0)
+    payment.status = "completed"
+    payment.get_status_display.return_value = "Completed"
+    payment.payment_type = "resolution_fee"
+    payment.get_payment_type_display.return_value = "Resolution Fee"
+    payment.amount = 1499   # linux ₹999 + high surcharge ₹500
+    payment.gst_amount = 270
+    payment.gateway = "razorpay"
+    payment.gateway_payment_id = "pay_res_001"
+    payment.gateway_order_id = "order_res_001"
+    payment.currency = "INR"
+    payment.ticket = ticket
+
+    customer = MagicMock()
+    customer.gstin = ""
+    customer.company = "SMBCo"
+    customer.phone = ""
+    customer.address = ""
+    customer.user.first_name = "Rahul"
+    customer.user.last_name = "Verma"
+    customer.user.email = "rahul@smb.com"
+    payment.customer = customer
+
+    _prev = _rl.pageCompression
+    try:
+        _rl.pageCompression = 0
+        with override_settings(BUSINESS_GSTIN="", BUSINESS_NAME="TestCo", GST_RATE=0.18):
+            pdf_bytes = generate_invoice_pdf(payment)
+    finally:
+        _rl.pageCompression = _prev
+
+    assert pdf_bytes[:4] == b"%PDF"
+    decoded = pdf_bytes.decode("latin-1", errors="replace")
+    assert "22AAAAA0000A1Z5" not in decoded
+    # Severity Surcharge breakdown must appear for linux/high (surcharge=₹500)
+    assert "Severity Surcharge" in decoded
+
+
+@pytest.mark.django_db
+def test_duplicate_invoice_number_rejected():
+    """
+    Payment.invoice_number has unique=True — two Payments with the same number
+    must raise IntegrityError.
+    C-004 fix: verifies the DB constraint that prevents duplicate invoices.
+    """
+    from django.db import IntegrityError
+
+    _, customer = _make_customer_client(db=None, email="dup_inv@example.com")
+    Payment.objects.create(
+        customer=customer,
+        amount="299.00",
+        gst_amount="53.82",
+        invoice_number="INV-DUP-000001",
+        payment_type="consulting_fee",
+        status="pending",
+    )
+    with pytest.raises(IntegrityError):
+        Payment.objects.create(
+            customer=customer,
+            amount="299.00",
+            gst_amount="53.82",
+            invoice_number="INV-DUP-000001",  # same number — must be rejected
+            payment_type="consulting_fee",
+            status="pending",
+        )
+
+
+@pytest.mark.django_db
+def test_invoice_totals_match_payment_amounts():
+    """
+    PaymentSerializer.total_amount must equal amount + gst_amount for any payment.
+    C-004 fix: verifies consistent GST calculation on serialized output.
+    """
+    from rest_framework.test import APIClient
+    from django.test import override_settings
+
+    _LOCMEM_CACHE = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+    with override_settings(CACHES=_LOCMEM_CACHE):
+        client, customer = _make_customer_client(db=None, email="totals@example.com")
+        payment = Payment.objects.create(
+            customer=customer,
+            amount="1499.00",
+            gst_amount="269.82",
+            invoice_number=f"INV-TOT-{uuid_lib.uuid4().hex[:8]}",
+            payment_type="resolution_fee",
+            status="completed",
+        )
+
+        response = client.get(f"/api/payments/{payment.id}/")
+        assert response.status_code == 200
+        data = response.data
+        assert int(data["amount"]) + int(float(data["gst_amount"])) == data["total_amount"] or \
+               abs(float(data["amount"]) + float(data["gst_amount"]) - float(data["total_amount"])) < 1
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET="")
+def test_gstin_profile_update_invalid_gstin_returns_400():
+    """
+    PATCH /api/auth/profile/ with an invalid GSTIN must return 400.
+    C-004 fix: UserProfileUpdateSerializer.validate_gstin rejects malformed values.
+    """
+    from django.test import override_settings
+
+    _LOCMEM_CACHE = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+    with override_settings(CACHES=_LOCMEM_CACHE):
+        client, _ = _make_customer_client(db=None, email="gstin_bad@example.com")
+        response = client.patch(
+            "/api/auth/profile/",
+            {"gstin": "INVALID_GST_NO"},
+            format="json",
+        )
+        assert response.status_code == 400, response.data
+        assert "gstin" in str(response.data).lower()
+
+
+@pytest.mark.django_db
+def test_gstin_profile_update_valid_gstin_returns_200():
+    """
+    PATCH /api/auth/profile/ with a valid GSTIN must return 200.
+    C-004 fix: valid GSTIN passes through validate_gstin and is saved.
+    """
+    _LOCMEM_CACHE = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+    from django.test import override_settings
+    with override_settings(CACHES=_LOCMEM_CACHE):
+        client, customer = _make_customer_client(db=None, email="gstin_good@example.com")
+        response = client.patch(
+            "/api/auth/profile/",
+            {"gstin": "29ABCDE1234F1Z5"},
+            format="json",
+        )
+        assert response.status_code == 200, response.data
+        customer.refresh_from_db()
+        assert customer.gstin == "29ABCDE1234F1Z5"

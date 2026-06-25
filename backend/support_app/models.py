@@ -16,6 +16,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 from .services.service_catalog import SERVICE_CHOICES as _SERVICE_CHOICES
+from .validators import validate_gstin_format
 
 
 # ── Custom User System ───────────────────────────────────────────
@@ -180,7 +181,11 @@ class Customer(models.Model):
     phone = models.CharField(max_length=32, blank=True)
     address = models.TextField(blank=True)
     plan = models.CharField(max_length=32, choices=PLAN_CHOICES, default="free")
-    gstin = models.CharField(max_length=15, blank=True, help_text="GST registration number (B2B customers)")
+    gstin = models.CharField(
+        max_length=15, blank=True,
+        validators=[validate_gstin_format],
+        help_text="GST registration number for B2B customers — 15-char format: 29ABCDE1234F1Z5",
+    )
     oauth_provider = models.CharField(max_length=64, blank=True, null=True)
     oauth_id = models.CharField(max_length=255, blank=True, null=True)
     mfa_enabled = models.BooleanField(default=False)

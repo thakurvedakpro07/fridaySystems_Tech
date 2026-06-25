@@ -149,6 +149,7 @@ if not DEBUG:
         "RAZORPAY_KEY_ID",
         "RAZORPAY_KEY_SECRET",
         "RAZORPAY_WEBHOOK_SECRET",
+        "BUSINESS_GSTIN",  # required — invoices must carry a valid supplier GSTIN
     ]
     _missing = [v for v in _REQUIRED_PROD_VARS if not os.environ.get(v)]
     if _missing:
@@ -306,8 +307,14 @@ ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 
 # ── Business / GST ────────────────────────────────────────────────
 GST_RATE = float(os.getenv("GST_RATE", "0.18"))
+# BUSINESS_GSTIN must be set in backend/.env before going live.
+# Required in production (enforced in the guard above). In development/test it
+# is allowed to be empty — invoices will show "Not GST Registered" instead of
+# a placeholder value.
 BUSINESS_GSTIN = os.getenv("BUSINESS_GSTIN", "")
 BUSINESS_NAME = os.getenv("BUSINESS_NAME", "SupportMitra Technologies")
+BUSINESS_SUPPORT_EMAIL = os.getenv("BUSINESS_SUPPORT_EMAIL", "")
+BUSINESS_SUPPORT_PHONE = os.getenv("BUSINESS_SUPPORT_PHONE", "")
 APP_URL = os.getenv("APP_URL", "http://localhost:5173")
 
 # ── Razorpay ─────────────────────────────────────────────────────

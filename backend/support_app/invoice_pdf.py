@@ -6,6 +6,13 @@ Returns raw bytes; the caller is responsible for wrapping in an HttpResponse.
 
 SAC code 998313 (IT support / technical consulting services).
 IGST 18% shown by default (CGST+SGST split requires knowing buyer's state).
+
+B2B vs B2C:
+  - B2B: customer supplies a valid GSTIN — shown on invoice.
+  - B2C: no customer GSTIN — invoice clearly states "B2C Consumer (Unregistered)".
+In both cases, the supplier (us) must have a valid GSTIN. If BUSINESS_GSTIN is
+not set in settings, the invoice header shows "Not GST Registered" instead of a
+placeholder value — never a fake or test GSTIN.
 """
 
 from io import BytesIO
@@ -75,6 +82,36 @@ def _currency(amount):
         return "—"
 
 
+def _get_resolution_breakdown(payment):
+    """
+    Return (base_fee, severity_surcharge) for a resolution_fee payment.
+
+    Tries the linked Payout record first (most accurate — locked-in at time of
+    payment). Falls back to the service catalog if the payout hasn't been created
+    yet or the ticket is missing.
+
+    Returns (None, None) if breakdown cannot be determined.
+    """
+    ticket = payment.ticket
+    if not ticket:
+        return None, None
+
+    try:
+        payout = ticket.payout
+        surcharge = float(payout.severity_surcharge)
+        base = float(payout.resolution_fee) - surcharge
+        return base, surcharge
+    except Exception:
+        pass
+
+    try:
+        from .services.service_catalog import get_resolution_fee
+        fee = get_resolution_fee(ticket.service_type, ticket.severity)
+        return float(fee["base_fee"]), float(fee["severity_surcharge"])
+    except Exception:
+        return None, None
+
+
 # ── Public entry point ────────────────────────────────────────────
 def generate_invoice_pdf(payment) -> bytes:
     """
@@ -96,12 +133,18 @@ def generate_invoice_pdf(payment) -> bytes:
     )
 
     # ── Derived values ────────────────────────────────────────────
-    business_name  = getattr(s, "BUSINESS_NAME",   "Friday Tech Systems")
-    business_gstin = getattr(s, "BUSINESS_GSTIN",  "22AAAAA0000A1Z5")
-    # Temporary placeholder contact information. Replace before production launch.
-    business_email = getattr(s, "DEFAULT_FROM_EMAIL", "support@resolvehq.in")
-    gst_rate       = float(getattr(s, "GST_RATE", 0.18))
-    gst_pct        = f"{gst_rate * 100:.0f}%"
+    business_name    = getattr(s, "BUSINESS_NAME", "Friday Tech Systems")
+    # Use the configured GSTIN, never a hardcoded placeholder.
+    # An empty/missing GSTIN is shown as "Not GST Registered" so the invoice
+    # never contains a fake or test GSTIN value.
+    business_gstin   = getattr(s, "BUSINESS_GSTIN", "") or ""
+    support_email    = getattr(s, "BUSINESS_SUPPORT_EMAIL", "") or ""
+    support_phone    = getattr(s, "BUSINESS_SUPPORT_PHONE", "") or ""
+    # Fall back to DEFAULT_FROM_EMAIL if BUSINESS_SUPPORT_EMAIL is not set
+    if not support_email:
+        support_email = getattr(s, "DEFAULT_FROM_EMAIL", "")
+    gst_rate         = float(getattr(s, "GST_RATE", 0.18))
+    gst_pct          = f"{gst_rate * 100:.0f}%"
 
     customer = payment.customer
     ticket   = payment.ticket
@@ -116,12 +159,16 @@ def generate_invoice_pdf(payment) -> bytes:
     gst_amt    = float(payment.gst_amount)
     total_amt  = base_amt + gst_amt
 
+    # B2B: customer provided a validated GSTIN; B2C: no GSTIN (consumer)
+    customer_gstin = (customer.gstin or "").strip()
+    is_b2b = bool(customer_gstin)
+
     # ── STORY ─────────────────────────────────────────────────────
     story = []
     W = 180 * mm   # usable width
 
     # ── 1. Header band ────────────────────────────────────────────
-    # Two-column: brand left, invoice meta right
+    gstin_display = business_gstin if business_gstin else "Not GST Registered"
     header_data = [[
         # Left: brand
         [
@@ -130,8 +177,8 @@ def generate_invoice_pdf(payment) -> bytes:
                                      textColor=SLATE_500, leading=10)),
             _p(business_name, _style("biz", fontName="Helvetica-Bold", fontSize=9,
                                      textColor=SLATE_700, leading=12)),
-            _p(f"GSTIN: {business_gstin}", SMALL),
-            _p(f"Email: {business_email}", SMALL),
+            _p(f"GSTIN: {gstin_display}", SMALL),
+            _p(f"Email: {support_email}", SMALL) if support_email else Spacer(1, 1),
             _p("SAC: 998313 | India", SMALL),
         ],
         # Right: invoice details
@@ -169,15 +216,20 @@ def generate_invoice_pdf(payment) -> bytes:
             Spacer(1, 1 * mm),
         ]
 
+    # Customer section: show GSTIN if B2B, otherwise note B2C status
     left_col = (
         [_p("Bill To", H3), Spacer(1, 2 * mm)]
         + _field("Name",    buyer_name)
         + _field("Company", customer.company)
         + _field("Email",   customer.user.email)
         + _field("Phone",   customer.phone)
-        + _field("GSTIN",   customer.gstin)
         + _field("Address", customer.address)
     )
+    if is_b2b:
+        left_col += _field("GSTIN", customer_gstin)
+        left_col += [_p("Invoice Type: B2B (Registered Dealer)", SMALL), Spacer(1, 1 * mm)]
+    else:
+        left_col += [_p("Invoice Type: B2C Consumer (Unregistered)", SMALL), Spacer(1, 1 * mm)]
 
     right_col = [_p("Ticket", H3), Spacer(1, 2 * mm)]
     if ticket:
@@ -217,19 +269,58 @@ def generate_invoice_pdf(payment) -> bytes:
         _p("Total",         _style("th5", fontName="Helvetica-Bold", fontSize=8,
                                     textColor=WHITE, alignment=TA_RIGHT, leading=11)),
     ]
-    item_row = [
-        _p(payment.get_payment_type_display(), BODY),
-        _p("998313",  _style("sac", fontSize=8, textColor=SLATE_500,
-                               alignment=TA_CENTER, leading=11)),
-        _p(_currency(base_amt), BODY_RIGHT),
-        _p(_currency(gst_amt),  BODY_RIGHT),
-        _p(_currency(total_amt), _style("tot", fontName="Helvetica-Bold",
-                                         fontSize=9, textColor=SLATE_900,
-                                         alignment=TA_RIGHT, leading=13)),
-    ]
+
+    # Build line item rows — consulting_fee is single-row, resolution_fee may have
+    # a base + surcharge breakdown when the fee detail is available.
     col_w = [W * 0.38, W * 0.14, W * 0.16, W * 0.16, W * 0.16]
+
+    if payment.payment_type == "resolution_fee":
+        base_fee, severity_surcharge = _get_resolution_breakdown(payment)
+        if base_fee is not None and severity_surcharge is not None and severity_surcharge > 0:
+            severity_label = ticket.get_severity_display() if ticket else "Severity"
+            item_rows = [
+                # Row 1: base resolution fee
+                [
+                    _p(f"Resolution Fee — {ticket.get_service_type_display() if ticket else 'IT Service'} (Base)", BODY),
+                    _p("998313", _style("sac1", fontSize=8, textColor=SLATE_500, alignment=TA_CENTER, leading=11)),
+                    _p(_currency(base_fee), BODY_RIGHT),
+                    _p("—", BODY_RIGHT),
+                    _p(_currency(base_fee), BODY_RIGHT),
+                ],
+                # Row 2: severity surcharge
+                [
+                    _p(f"Severity Surcharge ({severity_label})", BODY),
+                    _p("998313", _style("sac2", fontSize=8, textColor=SLATE_500, alignment=TA_CENTER, leading=11)),
+                    _p(_currency(severity_surcharge), BODY_RIGHT),
+                    _p("—", BODY_RIGHT),
+                    _p(_currency(severity_surcharge), BODY_RIGHT),
+                ],
+            ]
+        else:
+            # No surcharge or breakdown unavailable — show as single line
+            service_label = ticket.get_service_type_display() if ticket else "IT Service"
+            item_rows = [[
+                _p(f"Resolution Fee — {service_label}", BODY),
+                _p("998313", _style("sac3", fontSize=8, textColor=SLATE_500, alignment=TA_CENTER, leading=11)),
+                _p(_currency(base_amt), BODY_RIGHT),
+                _p("—", BODY_RIGHT),
+                _p(_currency(base_amt), BODY_RIGHT),
+            ]]
+    else:
+        # consulting_fee or other: single row, GST on the full amount
+        item_rows = [[
+            _p(payment.get_payment_type_display(), BODY),
+            _p("998313", _style("sac", fontSize=8, textColor=SLATE_500,
+                                alignment=TA_CENTER, leading=11)),
+            _p(_currency(base_amt), BODY_RIGHT),
+            _p(_currency(gst_amt), BODY_RIGHT),
+            _p(_currency(total_amt), _style("tot", fontName="Helvetica-Bold",
+                                            fontSize=9, textColor=SLATE_900,
+                                            alignment=TA_RIGHT, leading=13)),
+        ]]
+
     items_table = Table(
-        [item_header, item_row],
+        [item_header] + item_rows,
         colWidths=col_w,
         repeatRows=1,
     )
@@ -247,7 +338,22 @@ def generate_invoice_pdf(payment) -> bytes:
     story.append(Spacer(1, 5 * mm))
 
     # ── 4. Totals summary ─────────────────────────────────────────
-    totals_data = [
+    totals_data = []
+
+    if payment.payment_type == "resolution_fee":
+        # Show component breakdown above subtotal
+        base_fee, severity_surcharge = _get_resolution_breakdown(payment)
+        if base_fee is not None:
+            totals_data.append(
+                [_p("Base Resolution Fee", BODY_MID), _p(_currency(base_fee), BODY_RIGHT)]
+            )
+            if severity_surcharge and severity_surcharge > 0:
+                sev_label = ticket.get_severity_display() if ticket else "Severity"
+                totals_data.append(
+                    [_p(f"Severity Surcharge ({sev_label})", BODY_MID), _p(_currency(severity_surcharge), BODY_RIGHT)]
+                )
+
+    totals_data += [
         [_p("Subtotal",           BODY_MID), _p(_currency(base_amt),  BODY_RIGHT)],
         [_p(f"IGST @ {gst_pct}", BODY_MID), _p(_currency(gst_amt),   BODY_RIGHT)],
         [_p("Grand Total",        _style("gt", fontName="Helvetica-Bold",
@@ -256,15 +362,19 @@ def generate_invoice_pdf(payment) -> bytes:
                                           fontSize=11, textColor=INDIGO,
                                           alignment=TA_RIGHT, leading=16))],
     ]
+
+    # Index of "Grand Total" row (last row)
+    grand_idx = len(totals_data) - 1
+
     totals_table = Table(totals_data, colWidths=[W * 0.75, W * 0.25])
     totals_table.setStyle(TableStyle([
         ("VALIGN",       (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING",   (0, 0), (-1, -1), 4),
         ("BOTTOMPADDING",(0, 0), (-1, -1), 4),
-        ("LINEABOVE",    (0, 2), (-1, 2), 1.0, INDIGO),
-        ("TOPPADDING",   (0, 2), (-1, 2), 6),
-        ("BOTTOMPADDING",(0, 2), (-1, 2), 6),
-        ("BACKGROUND",   (0, 2), (-1, 2), INDIGO_LIGHT),
+        ("LINEABOVE",    (0, grand_idx), (-1, grand_idx), 1.0, INDIGO),
+        ("TOPPADDING",   (0, grand_idx), (-1, grand_idx), 6),
+        ("BOTTOMPADDING",(0, grand_idx), (-1, grand_idx), 6),
+        ("BACKGROUND",   (0, grand_idx), (-1, grand_idx), INDIGO_LIGHT),
     ]))
     story.append(totals_table)
     story.append(Spacer(1, 5 * mm))
@@ -301,10 +411,22 @@ def generate_invoice_pdf(payment) -> bytes:
     story.append(Spacer(1, 3 * mm))
 
     # ── 6. Footer ─────────────────────────────────────────────────
-    story.append(_p(
+    contact_parts = ["For billing queries contact"]
+    if support_email:
+        contact_parts.append(support_email)
+    if support_phone:
+        contact_parts.append(f"or call {support_phone}")
+    contact_str = " ".join(contact_parts) + "." if len(contact_parts) > 1 else ""
+
+    footer_text = (
         "This is a computer-generated GST Tax Invoice and does not require a physical signature. "
-        f"IGST charged at {gst_pct} under SAC 998313 (IT support services). "
-        "For billing queries contact billing@resolvehq.in or call 1800-123-4567 (Mon–Sat, 9 AM–8 PM IST).",  # Temporary placeholder. Replace before production launch.
+        f"IGST charged at {gst_pct} under SAC 998313 (IT support services)."
+    )
+    if contact_str:
+        footer_text = f"{footer_text} {contact_str}"
+
+    story.append(_p(
+        footer_text,
         _style("footer", fontSize=7.5, textColor=SLATE_500, leading=11),
     ))
     story.append(_p(

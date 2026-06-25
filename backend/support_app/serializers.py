@@ -521,6 +521,14 @@ class UserProfileUpdateSerializer(serializers.Serializer):
         choices=["full_time", "part_time", "ad_hoc", "unavailable"],
     )
 
+    def validate_gstin(self, value):
+        from support_app.validators import validate_gstin_format
+        if value:
+            normalized = value.strip().upper()
+            validate_gstin_format(normalized)
+            return normalized
+        return value
+
 
 # ── Role Management / User Management ────────────────────────────
 

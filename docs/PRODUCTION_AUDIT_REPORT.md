@@ -177,17 +177,59 @@ However, **five critical issues** threaten production correctness and legal comp
 
 ### C-004 — Fraudulent GSTIN Placeholder on All Customer Invoices
 
+**VERIFIED ✓ | FIXED ✓ 2026-06-25**
+
 - **Category:** Legal / Compliance (CGST Act)
 - **File:** `backend/support_app/invoice_pdf.py` lines 100, 307
-- **Description:**
-  ```python
-  business_gstin = getattr(s, "BUSINESS_GSTIN", "22AAAAA0000A1Z5")
-  ```
-  `22AAAAA0000A1Z5` is the Indian government's canonical example/test GSTIN used in documentation. It is not a valid GST registration. If `BUSINESS_GSTIN` is not set in the production environment, every GST-compliant invoice sent to customers will display a fraudulent GSTIN. This is a statutory violation under the CGST Act. Line 307 also contains hardcoded placeholder contact details (`1800-123-4567`, `billing@resolvehq.in`).
 
-- **Impact:** Statutory violation. Customers receive legally invalid invoices. Potential GST authority action.
-- **Reproduction:** Do not set `BUSINESS_GSTIN` env var. Generate any invoice. GSTIN shows `22AAAAA0000A1Z5`.
-- **Fix:** Require `BUSINESS_GSTIN` in settings with `ImproperlyConfigured` if absent. Read phone/email from environment variables — remove hardcoded placeholders.
+**Root cause (three independent gaps):**
+
+1. **Hardcoded fake GSTIN as fallback** — `getattr(s, "BUSINESS_GSTIN", "22AAAAA0000A1Z5")` put the Indian government's example/test GSTIN on every invoice whenever `BUSINESS_GSTIN` env var was not set. Statutory violation under CGST Act.
+
+2. **No GSTIN format validation on customer records** — `Customer.gstin` field accepted any string (no regex validator). Customers could store arbitrary text in the GSTIN field, which would appear verbatim on B2B invoices.
+
+3. **No B2B/B2C distinction** — Invoice never indicated whether the buyer was a registered GST dealer (B2B) or an unregistered consumer (B2C). GST rules require this distinction.
+
+**Additional gaps addressed:**
+
+4. **No resolution fee line-item breakdown** — `resolution_fee` invoices showed a single lump sum. GST-compliant invoices must show `base_fee` and `severity_surcharge` as separate line items.
+
+5. **Hardcoded contact details in footer** — `billing@resolvehq.in` and `1800-123-4567` were hardcoded placeholders. Now read from env vars.
+
+**Files changed:**
+
+| File | Change |
+|------|--------|
+| `backend/support_app/validators.py` | Added `validate_gstin_format(value)` — validates 15-char Indian GSTIN format |
+| `backend/support_app/models.py` | Added `validate_gstin_format` validator to `Customer.gstin` field |
+| `backend/support_app/migrations/0019_validate_gstin.py` | Migration recording the validator change |
+| `backend/support_app/serializers.py` | `UserProfileUpdateSerializer.validate_gstin()` — rejects invalid GSTINs, normalizes to uppercase |
+| `backend/support_app/invoice_pdf.py` | Removed fake GSTIN fallback; `BUSINESS_GSTIN=""` shows "Not GST Registered"; B2B/B2C labeling; resolution fee line-item breakdown; contact details from env vars |
+| `backend/supportmitra/settings.py` | `BUSINESS_GSTIN` added to `_REQUIRED_PROD_VARS`; `BUSINESS_SUPPORT_EMAIL` and `BUSINESS_SUPPORT_PHONE` env vars added |
+| `backend/tests/test_payments.py` | 13 new C-004 tests |
+
+**Tests added (13):**
+
+- `test_invoice_pdf_source_has_no_hardcoded_placeholder_gstin` — source code must not contain `22AAAAA0000A1Z5`
+- `test_gstin_validator_accepts_valid_gstin` — valid 15-char GSTIN accepted
+- `test_gstin_validator_accepts_blank` — empty GSTIN accepted (B2C)
+- `test_gstin_validator_rejects_short_string` — malformed GSTIN rejected
+- `test_gstin_validator_rejects_random_string` — random strings rejected
+- `test_serializer_rejects_invalid_gstin` — PATCH profile with bad GSTIN → 400
+- `test_serializer_accepts_valid_gstin` — PATCH profile with valid GSTIN → 200
+- `test_serializer_normalizes_gstin_to_uppercase` — lowercase input normalized to uppercase
+- `test_serializer_accepts_blank_gstin` — empty GSTIN accepted in profile update
+- `test_invoice_pdf_b2c_no_fake_gstin` — B2C invoice: no fake GSTIN, shows "B2C Consumer"
+- `test_invoice_pdf_b2b_shows_customer_gstin` — B2B invoice: customer GSTIN shown, "B2B" label
+- `test_invoice_pdf_business_gstin_not_registered` — empty `BUSINESS_GSTIN` → "Not GST Registered"
+- `test_invoice_pdf_resolution_fee_generates_valid_pdf` — resolution fee invoice shows severity surcharge breakdown
+
+**Remaining risks:**
+
+- `BUSINESS_GSTIN` is enforced at startup in production (`_REQUIRED_PROD_VARS`) — must be set before first deploy.
+- GSTIN format validation is structural only — does not verify that the GSTIN is actually registered with GST authorities. GSTN API verification is out of scope.
+- Existing `Customer` records with invalid GSTIN values in the DB are not retroactively invalidated by this migration (validator runs at application layer, not DB layer). A one-time data cleanup script may be needed.
+- C-005 (race condition in invoice number generation) remains open and is the next critical item.
 
 ---
 
@@ -499,7 +541,7 @@ However, **five critical issues** threaten production correctness and legal comp
 | C-001 | Critical | Financial/Data Integrity | `payment_service.py:324–424` | ~~Non-atomic resolution payment — partial commit risk~~ **FIXED 2026-06-25** |
 | C-002 | Critical | Security | `views.py:~717`, `payment_service.py:~40` | ~~Sandbox defaults bypass payment signature verification~~ **FIXED 2026-06-25** |
 | C-003 | Critical | Feature Broken | `sla_service.py:55`, `settings.py` | ~~SLA due_at never set; entire SLA system non-functional~~ **FIXED 2026-06-25** |
-| C-004 | Critical | Legal/Compliance | `invoice_pdf.py:100,307` | Fraudulent GSTIN placeholder on all customer invoices |
+| C-004 | Critical | Legal/Compliance | `invoice_pdf.py:100,307` | ~~Fraudulent GSTIN placeholder on all customer invoices~~ **FIXED 2026-06-25** |
 | C-005 | Critical | Data Integrity | `payment_service.py:33–47` | Race condition in non-atomic invoice number generation |
 | H-001 | High | Security | `App.jsx:PrivateRoute` | Unverified users can access all private routes |
 | H-002 | High | Data Integrity | `ticket_service.py:221`, `signals.py:83` | Activity log actor-patching is race-prone |
@@ -532,10 +574,10 @@ However, **five critical issues** threaten production correctness and legal comp
 
 1. ~~**C-002** — Sandbox payment bypass~~ **FIXED 2026-06-25**
 2. ~~**C-001** — Non-atomic payment flow~~ **FIXED 2026-06-25**
-3. **C-004** — Fake GSTIN on invoices (legal — CGST Act violation)
+3. ~~**C-004** — Fake GSTIN on invoices (legal — CGST Act violation)~~ **FIXED 2026-06-25**
 4. **C-005** — Invoice number race condition (data integrity under concurrent load)
 5. **H-001 / M-009** — Unverified user access (security)
-6. **C-003** — SLA system never starts (feature correctness — contractual obligation)
+6. ~~**C-003** — SLA system never starts (feature correctness — contractual obligation)~~ **FIXED 2026-06-25**
 7. **H-008** — Old CSAT endpoint bypasses resolution payment (revenue)
 8. **H-007** — Fabricated engineer stats shown to customers (trust / false advertising)
 9. **H-003** — Ticket assignment race (correctness under concurrent ops)
