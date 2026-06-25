@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from django.test import override_settings
 from rest_framework.test import APIClient
 
-from support_app.models import Customer, Payment, Ticket
+from support_app.models import Customer, Freelancer, Payment, Ticket
 
 User = get_user_model()
 
@@ -397,3 +397,229 @@ def test_verify_and_complete_payment_sandbox_skips_signature_check():
     payment.refresh_from_db()
     assert payment.status == "completed"
     assert result.status == "completed"
+
+
+# ── C-001 Atomicity and payout-logging tests ──────────────────────────────────
+# These tests verify that the non-atomic payment flow (C-001) is fixed.
+#
+# Before the fix:
+#   Both verify functions performed multiple DB writes outside any transaction.
+#   If any write after payment.save() failed, the payment row was committed as
+#   "completed" while the ticket and downstream records were in a broken state.
+#   Payout creation failures were silently swallowed with `pass` — no log emitted.
+#
+# After the fix:
+#   Core financial writes (payment, ticket, CSAT) are wrapped in transaction.atomic().
+#   Payout creation is outside the atomic block (its failure must not re-charge the customer).
+#   Payout failures emit _logger.exception() for ops visibility.
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET="")
+def test_verify_and_complete_payment_is_atomic():
+    """
+    If ticket update fails after payment.save(), the payment row must be rolled back.
+    C-001 fix: payment.save + _open_ticket_after_payment are inside transaction.atomic().
+    """
+    from unittest.mock import patch
+    from support_app.services.payment_service import verify_and_complete_payment
+
+    user = User.objects.create_user(email="c001_a@example.com", password="StrongPass123!", role="customer")
+    customer = Customer.objects.create(user=user, company="AtomicCo")
+    ticket = Ticket.objects.create(
+        customer=customer,
+        title="Atomicity test",
+        service_type="linux",
+        severity="low",
+        status="pending_payment",
+    )
+    payment = Payment.objects.create(
+        customer=customer,
+        ticket=ticket,
+        amount="353.00",
+        gst_amount="53.82",
+        invoice_number=f"INV-AT-{uuid_lib.uuid4().hex[:8]}",
+        payment_type="consulting_fee",
+        gateway="razorpay",
+        gateway_order_id="order_atomic_001",
+        status="pending",
+    )
+
+    with patch(
+        "support_app.services.payment_service._open_ticket_after_payment",
+        side_effect=RuntimeError("Simulated failure inside atomic block"),
+    ):
+        with pytest.raises(RuntimeError):
+            verify_and_complete_payment(
+                payment_db_id=str(payment.id),
+                razorpay_payment_id="pay_atomic_001",
+                razorpay_order_id="order_atomic_001",
+                razorpay_signature="sandbox_sig",
+            )
+
+    payment.refresh_from_db()
+    assert payment.status == "pending", "payment.save() inside atomic block must have rolled back"
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET="")
+def test_verify_resolution_payment_service_is_atomic():
+    """
+    If TicketActivityLog.create fails after payment+ticket saves, all writes must roll back.
+    C-001 fix: payment, ticket close, CSAT are all inside transaction.atomic().
+    """
+    from unittest.mock import patch
+    from support_app.services.payment_service import verify_resolution_payment_service
+    from support_app.models import TicketActivityLog
+
+    user = User.objects.create_user(email="c001_b@example.com", password="StrongPass123!", role="customer")
+    customer = Customer.objects.create(user=user, company="AtomicRes")
+    ticket = Ticket.objects.create(
+        customer=customer,
+        title="Atomic resolution test",
+        service_type="linux",
+        severity="low",
+        status="resolved",
+    )
+    payment = Payment.objects.create(
+        customer=customer,
+        ticket=ticket,
+        amount="500.00",
+        gst_amount="90.00",
+        invoice_number=f"INV-ATRES-{uuid_lib.uuid4().hex[:8]}",
+        payment_type="resolution_fee",
+        gateway="razorpay",
+        gateway_order_id="order_atomic_res_001",
+        status="pending",
+    )
+
+    with patch.object(
+        TicketActivityLog.objects,
+        "create",
+        side_effect=RuntimeError("Simulated log-write failure"),
+    ):
+        with pytest.raises(RuntimeError):
+            verify_resolution_payment_service(
+                ticket=ticket,
+                payment_db_id=str(payment.id),
+                razorpay_payment_id="pay_atomic_res_001",
+                razorpay_order_id="order_atomic_res_001",
+                razorpay_signature="sandbox_sig",
+                score=5,
+                comment="",
+                actor=user,
+            )
+
+    payment.refresh_from_db()
+    ticket.refresh_from_db()
+    assert payment.status == "pending", "payment.save() must have rolled back"
+    assert ticket.status == "resolved", "ticket.save() must have rolled back"
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET="")
+def test_payout_failure_does_not_rollback_resolution_payment():
+    """
+    Payout creation failure must NOT roll back payment or ticket close.
+    C-001 fix: payout creation is outside transaction.atomic() so it cannot undo the payment.
+    """
+    from unittest.mock import patch
+    from support_app.services.payment_service import verify_resolution_payment_service
+
+    user = User.objects.create_user(email="c001_c@example.com", password="StrongPass123!", role="customer")
+    customer = Customer.objects.create(user=user, company="PayoutCo")
+    fl_user = User.objects.create_user(email="c001_c_fl@example.com", password="StrongPass123!", role="freelancer")
+    freelancer = Freelancer.objects.create(user=fl_user)
+    ticket = Ticket.objects.create(
+        customer=customer,
+        title="Payout isolation test",
+        service_type="linux",
+        severity="low",
+        status="resolved",
+        assigned_to=freelancer,
+    )
+    payment = Payment.objects.create(
+        customer=customer,
+        ticket=ticket,
+        amount="500.00",
+        gst_amount="90.00",
+        invoice_number=f"INV-PO-{uuid_lib.uuid4().hex[:8]}",
+        payment_type="resolution_fee",
+        gateway="razorpay",
+        gateway_order_id="order_payout_001",
+        status="pending",
+    )
+
+    with patch(
+        "support_app.services.payout_service.create_payout_for_ticket",
+        side_effect=RuntimeError("Payout service unavailable"),
+    ):
+        # Must not raise — payout failure is caught and logged, payment stands
+        verify_resolution_payment_service(
+            ticket=ticket,
+            payment_db_id=str(payment.id),
+            razorpay_payment_id="pay_payout_001",
+            razorpay_order_id="order_payout_001",
+            razorpay_signature="sandbox_sig",
+            score=4,
+            comment="Good work",
+            actor=user,
+        )
+
+    payment.refresh_from_db()
+    ticket.refresh_from_db()
+    assert payment.status == "completed"
+    assert ticket.status == "closed"
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET="")
+def test_payout_failure_is_logged():
+    """
+    Payout creation failure must emit _logger.exception with the ticket pk.
+    C-001 fix: replaced `pass` with `_logger.exception(...)` for ops observability.
+    """
+    from unittest.mock import patch
+    from support_app.services.payment_service import verify_resolution_payment_service
+    import support_app.services.payment_service as _ps
+
+    user = User.objects.create_user(email="c001_d@example.com", password="StrongPass123!", role="customer")
+    customer = Customer.objects.create(user=user, company="LogCo")
+    fl_user = User.objects.create_user(email="c001_d_fl@example.com", password="StrongPass123!", role="freelancer")
+    freelancer = Freelancer.objects.create(user=fl_user)
+    ticket = Ticket.objects.create(
+        customer=customer,
+        title="Payout log test",
+        service_type="linux",
+        severity="low",
+        status="resolved",
+        assigned_to=freelancer,
+    )
+    payment = Payment.objects.create(
+        customer=customer,
+        ticket=ticket,
+        amount="500.00",
+        gst_amount="90.00",
+        invoice_number=f"INV-LOG-{uuid_lib.uuid4().hex[:8]}",
+        payment_type="resolution_fee",
+        gateway="razorpay",
+        gateway_order_id="order_log_001",
+        status="pending",
+    )
+
+    with patch(
+        "support_app.services.payout_service.create_payout_for_ticket",
+        side_effect=RuntimeError("Payout service unavailable"),
+    ), patch.object(_ps._logger, "exception") as mock_log:
+        verify_resolution_payment_service(
+            ticket=ticket,
+            payment_db_id=str(payment.id),
+            razorpay_payment_id="pay_log_001",
+            razorpay_order_id="order_log_001",
+            razorpay_signature="sandbox_sig",
+            score=4,
+            comment="",
+            actor=user,
+        )
+
+    mock_log.assert_called_once_with("Payout creation failed for ticket %s", ticket.pk)

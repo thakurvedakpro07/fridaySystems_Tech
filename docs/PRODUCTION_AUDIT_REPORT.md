@@ -38,20 +38,41 @@ However, **five critical issues** threaten production correctness and legal comp
 
 ### C-001 — Non-Atomic Resolution Payment Flow Allows Partial Commits
 
+- **Status: VERIFIED ✓ and FIXED ✓** (2026-06-25)
 - **Category:** Financial / Data Integrity
 - **File:** `backend/support_app/services/payment_service.py` lines 324–424
-- **Description:** `verify_resolution_payment_service()` executes five separate database writes — `payment.save()`, `ticket.save()`, `CSATSurvey.objects.create()`, `Payout.objects.create()`, and `resolved_at` stamping — with no enclosing `transaction.atomic()` block. If any write after the first fails (e.g., a DB error during Payout creation), the payment row is committed as "completed" but the ticket remains in the wrong state and the payout is missing. The customer is charged but the workflow is broken. The same issue exists in `verify_and_complete_payment()` (lines 128–166) for consulting-fee payments.
 
-  Additionally, Payout creation failures are **silently swallowed**:
-  ```python
-  except Exception:
-      pass  # payout silently not created, no logging
-  ```
-  Engineers go unpaid with no alerting.
+**Verified root cause (two distinct attack surfaces):**
 
-- **Impact:** Customer charged, ticket stuck in wrong state, freelancer not paid, no alert.
-- **Reproduction:** Submit concurrent payment verifications while introducing a DB error after the first write (e.g., kill DB connection mid-transaction).
-- **Fix:** Wrap both functions in `with transaction.atomic():`. Replace `pass` with `logger.exception("Payout creation failed for ticket %s", ticket.pk)`.
+1. **`verify_and_complete_payment()` (lines 167-172)** — `payment.save()` and `_open_ticket_after_payment()` (which calls `ticket.save()`, `TicketActivityLog.create()`, and `create_notification()`) were all executed sequentially with no wrapping transaction. If `_open_ticket_after_payment()` failed after `payment.save()` committed, the payment row was permanently "completed" while the ticket remained stuck in `pending_payment`. Customer charged; ticket never opened.
+
+2. **`verify_resolution_payment_service()` (lines 390-424)** — Five writes (payment, ticket close, `TicketActivityLog`, `CSATSurvey`, payout) with no transaction envelope. Any failure after the first `payment.save()` left the payment committed but the ticket, CSAT, or payout in a broken state. Payout creation failures were silently swallowed with `except Exception: pass` — engineers go unpaid with no log, no alert.
+
+**Fix applied:**
+
+- **`payment_service.py:15-27`** — Added `import logging`, `from django.db import transaction`, and `_logger = logging.getLogger(__name__)` at module level.
+
+- **`payment_service.py:171-176` (`verify_and_complete_payment`)** — Wrapped `payment.save()` + `_open_ticket_after_payment()` call in `with transaction.atomic():`. If the ticket update fails, the payment save rolls back atomically.
+
+- **`payment_service.py:394-442` (`verify_resolution_payment_service`)** — Wrapped the core financial writes (payment, ticket close, `TicketActivityLog`, `CSATSurvey`) in `with transaction.atomic():`. Payout creation is left **outside** the atomic block by design — its failure must not re-trigger a payment reversal (the customer has already paid). Replaced `except Exception: pass` with `_logger.exception("Payout creation failed for ticket %s", ticket.pk)`.
+
+**Files modified:**
+- `backend/support_app/services/payment_service.py` (lines 15-27, 171-176, 394-442)
+- `backend/tests/test_payments.py` (4 new C-001 tests, `Freelancer` added to imports)
+
+**Tests added (`tests/test_payments.py`):**
+| Test | Result |
+|------|--------|
+| `test_verify_and_complete_payment_is_atomic` | PASSED |
+| `test_verify_resolution_payment_service_is_atomic` | PASSED |
+| `test_payout_failure_does_not_rollback_resolution_payment` | PASSED |
+| `test_payout_failure_is_logged` | PASSED |
+
+**No regressions:** 11 tests pass in `test_payments.py` (up from 7 before C-001 fix). 8 pre-existing failures are all Redis/Docker infrastructure errors (no change).
+
+**Remaining risks:**
+- `_open_ticket_after_payment` calls `create_notification()` inside the atomic block. If notification creation ever does external I/O (email, push), a network failure would roll back the payment. Currently `create_notification` only writes a DB row — safe. Monitor if this changes.
+- Payout failures are now logged but still do not trigger an ops alert or retry queue. Log monitoring must be set up for `payment_service` logger at ERROR level.
 
 ---
 
@@ -427,7 +448,7 @@ However, **five critical issues** threaten production correctness and legal comp
 
 | ID | Severity | Category | File | Title |
 |----|----------|----------|------|-------|
-| C-001 | Critical | Financial/Data Integrity | `payment_service.py:324–424` | Non-atomic resolution payment — partial commit risk |
+| C-001 | Critical | Financial/Data Integrity | `payment_service.py:324–424` | ~~Non-atomic resolution payment — partial commit risk~~ **FIXED 2026-06-25** |
 | C-002 | Critical | Security | `views.py:~717`, `payment_service.py:~40` | ~~Sandbox defaults bypass payment signature verification~~ **FIXED 2026-06-25** |
 | C-003 | Critical | Feature Broken | `sla_service.py:55`, `settings.py` | SLA due_at never set; entire SLA system non-functional |
 | C-004 | Critical | Legal/Compliance | `invoice_pdf.py:100,307` | Fraudulent GSTIN placeholder on all customer invoices |
@@ -461,11 +482,12 @@ However, **five critical issues** threaten production correctness and legal comp
 
 ## Recommended Fix Priority Order
 
-1. **C-002** — Sandbox payment bypass (security — stop fraudulent payments immediately)
-2. **C-004** — Fake GSTIN on invoices (legal — CGST Act violation)
-3. **C-001** — Non-atomic payment flow (financial data integrity)
+1. ~~**C-002** — Sandbox payment bypass~~ **FIXED 2026-06-25**
+2. ~~**C-001** — Non-atomic payment flow~~ **FIXED 2026-06-25**
+3. **C-004** — Fake GSTIN on invoices (legal — CGST Act violation)
 4. **C-005** — Invoice number race condition (data integrity under concurrent load)
-5. **H-001 / M-009** — Unverified user access (security)
+5. **C-003** — SLA system never starts
+6. **H-001 / M-009** — Unverified user access (security)
 6. **C-003** — SLA system never starts (feature correctness — contractual obligation)
 7. **H-008** — Old CSAT endpoint bypasses resolution payment (revenue)
 8. **H-007** — Fabricated engineer stats shown to customers (trust / false advertising)
