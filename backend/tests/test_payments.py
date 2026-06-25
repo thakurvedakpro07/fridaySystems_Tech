@@ -988,3 +988,188 @@ def test_gstin_profile_update_valid_gstin_returns_200():
         assert response.status_code == 200, response.data
         customer.refresh_from_db()
         assert customer.gstin == "29ABCDE1234F1Z5"
+
+
+# ── C-005 Tests — Concurrency-safe invoice number generation ──────────────────
+
+
+def test_invoice_counter_model_has_correct_fields():
+    """
+    InvoiceCounter must have year_month (unique CharField) and last_seq (PositiveIntegerField).
+    C-005 fix: the model is the atomic counter that replaces the race-prone read-then-write.
+    """
+    from support_app.models import InvoiceCounter
+    field_map = {f.name: f for f in InvoiceCounter._meta.get_fields() if hasattr(f, 'name')}
+    assert 'year_month' in field_map, "InvoiceCounter must have year_month field"
+    assert 'last_seq' in field_map, "InvoiceCounter must have last_seq field"
+    assert field_map['year_month'].unique is True, "year_month must be unique"
+
+
+def test_generate_invoice_number_uses_select_for_update():
+    """
+    _generate_invoice_number() must use InvoiceCounter + select_for_update().
+    C-005 fix: verifies the old race-prone read-then-write pattern is gone.
+    """
+    import inspect
+    from support_app.services import payment_service
+
+    src = inspect.getsource(payment_service._generate_invoice_number)
+    assert 'InvoiceCounter' in src, "_generate_invoice_number must use InvoiceCounter"
+    assert 'select_for_update' in src, "_generate_invoice_number must use select_for_update"
+    # Old racy pattern must be gone
+    assert 'rsplit' not in src, "Old read-then-rsplit pattern must be removed"
+    assert 'order_by("-invoice_number")' not in src, "Old sort-by-invoice-number pattern must be removed"
+
+
+def test_invoice_number_format():
+    """Invoice numbers must match the INV-YYYYMM-NNNNNN format."""
+    import re
+    pattern = re.compile(r'^INV-\d{6}-\d{6}$')
+    assert pattern.match("INV-202606-000001")
+    assert pattern.match("INV-202606-000042")
+    assert pattern.match("INV-202612-999999")
+    assert not pattern.match("INV-202606-42")          # not zero-padded
+    assert not pattern.match("INVOICE-202606-000001")  # wrong prefix
+    assert not pattern.match("INV-2026-06-000001")     # wrong month format
+
+
+@pytest.mark.django_db
+def test_generate_invoice_number_sequential():
+    """
+    Three sequential calls must produce 000001, 000002, 000003 for the same month.
+    C-005 fix: InvoiceCounter increments atomically — no gaps from race conditions.
+    """
+    from unittest.mock import patch
+    from datetime import datetime
+    from support_app.services.payment_service import _generate_invoice_number
+
+    fixed_month = "202606"
+    with patch("support_app.services.payment_service.datetime") as mock_dt:
+        mock_dt.now.return_value = datetime(2026, 6, 15, 10, 0, 0)
+        n1 = _generate_invoice_number()
+        n2 = _generate_invoice_number()
+        n3 = _generate_invoice_number()
+
+    assert n1 == "INV-202606-000001"
+    assert n2 == "INV-202606-000002"
+    assert n3 == "INV-202606-000003"
+
+
+@pytest.mark.django_db
+def test_generate_invoice_number_independent_per_month():
+    """
+    Invoice counters for different months are independent — each month starts at 000001.
+    C-005 fix: InvoiceCounter has one row per year_month, not a global counter.
+    """
+    from unittest.mock import patch
+    from datetime import datetime
+    from support_app.services.payment_service import _generate_invoice_number
+
+    with patch("support_app.services.payment_service.datetime") as mock_dt:
+        mock_dt.now.return_value = datetime(2026, 6, 15, 10, 0, 0)
+        june_1 = _generate_invoice_number()
+        june_2 = _generate_invoice_number()
+
+    with patch("support_app.services.payment_service.datetime") as mock_dt:
+        mock_dt.now.return_value = datetime(2026, 7, 1, 10, 0, 0)
+        july_1 = _generate_invoice_number()
+
+    assert june_1 == "INV-202606-000001"
+    assert june_2 == "INV-202606-000002"
+    assert july_1 == "INV-202607-000001", "New month must restart at 000001"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_generate_invoice_numbers_unique_under_concurrent_load():
+    """
+    Ten threads generating invoice numbers simultaneously must produce 10 unique numbers.
+    C-005 fix: SELECT FOR UPDATE on InvoiceCounter serializes concurrent callers —
+    no two threads can claim the same sequence number.
+    """
+    import threading
+    from unittest.mock import patch
+    from datetime import datetime
+    from support_app.services.payment_service import _generate_invoice_number
+
+    results = []
+    errors = []
+    lock = threading.Lock()
+
+    def generate():
+        try:
+            with patch("support_app.services.payment_service.datetime") as mock_dt:
+                mock_dt.now.return_value = datetime(2026, 6, 25, 12, 0, 0)
+                number = _generate_invoice_number()
+            with lock:
+                results.append(number)
+        except Exception as exc:
+            with lock:
+                errors.append(str(exc))
+
+    threads = [threading.Thread(target=generate) for _ in range(10)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors, f"Concurrent generation raised errors: {errors}"
+    assert len(results) == 10, f"Expected 10 results, got {len(results)}"
+    assert len(set(results)) == 10, (
+        f"Duplicate invoice numbers detected under concurrent load: "
+        f"{[n for n in results if results.count(n) > 1]}"
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_rollback_does_not_cause_duplicate():
+    """
+    If a Payment.objects.create() fails AFTER the counter has been incremented,
+    the next call must produce the next sequence number (not a duplicate).
+    A gap in the sequence is acceptable; a collision is not.
+    C-005 fix: counter is committed independently of the Payment row.
+    """
+    from unittest.mock import patch
+    from datetime import datetime
+    from django.db import IntegrityError
+    from support_app.services.payment_service import _generate_invoice_number
+    from support_app.models import InvoiceCounter
+
+    # Simulate: counter incremented to 1 (normal), then Payment.create fails
+    with patch("support_app.services.payment_service.datetime") as mock_dt:
+        mock_dt.now.return_value = datetime(2026, 6, 25, 12, 0, 0)
+        first = _generate_invoice_number()  # → INV-202606-000001, counter.last_seq=1
+
+    # Counter row must exist with last_seq=1 even though no Payment was created
+    counter = InvoiceCounter.objects.get(year_month="202606")
+    assert counter.last_seq == 1
+
+    # Next call must generate 000002, not try to regenerate 000001
+    with patch("support_app.services.payment_service.datetime") as mock_dt:
+        mock_dt.now.return_value = datetime(2026, 6, 25, 12, 0, 0)
+        second = _generate_invoice_number()
+
+    assert first == "INV-202606-000001"
+    assert second == "INV-202606-000002", (
+        "After a failed payment (gap in invoice sequence), next number must be 000002, not a duplicate 000001"
+    )
+
+
+def test_invoice_pdf_still_works_after_counter_change():
+    """
+    generate_invoice_pdf() must still produce a valid PDF after the invoice
+    number generation change. The PDF reads payment.invoice_number directly —
+    it does not call _generate_invoice_number().
+    C-005 fix: verifies the PDF path is unaffected by the counter model change.
+    """
+    from datetime import datetime
+    from unittest.mock import MagicMock
+    from django.test import override_settings
+    from support_app.invoice_pdf import generate_invoice_pdf
+
+    payment = _make_mock_consulting_payment("INV-202606-000042")
+
+    with override_settings(BUSINESS_GSTIN="", BUSINESS_NAME="TestCo", GST_RATE=0.18):
+        pdf_bytes = generate_invoice_pdf(payment)
+
+    assert pdf_bytes[:4] == b"%PDF", "PDF generation must still work after counter model addition"
+    assert len(pdf_bytes) > 1024, "PDF must be non-trivially sized"

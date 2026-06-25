@@ -698,6 +698,27 @@ class Payment(models.Model):
         ordering = ["-created_at"]
 
 
+class InvoiceCounter(models.Model):
+    """
+    Per-month atomic sequence counter for invoice numbers.
+
+    One row per calendar month (year_month='YYYYMM'). The `last_seq` field is
+    incremented under SELECT FOR UPDATE inside _generate_invoice_number() in
+    payment_service.py, serializing concurrent writers and guaranteeing that no
+    two payments can ever receive the same invoice number.
+
+    DO NOT update `last_seq` directly. Always go through _generate_invoice_number().
+    """
+    year_month = models.CharField(max_length=6, unique=True)  # e.g. "202606"
+    last_seq   = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = []  # no default ordering needed
+
+    def __str__(self):
+        return f"InvoiceCounter {self.year_month}: {self.last_seq}"
+
+
 class Payout(models.Model):
     """
     Records the engineer payout for a single resolved ticket.

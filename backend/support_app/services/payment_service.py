@@ -21,7 +21,7 @@ from datetime import datetime
 from django.conf import settings
 from django.db import transaction
 
-from ..models import Payment, Ticket, TicketActivityLog
+from ..models import InvoiceCounter, Payment, Ticket, TicketActivityLog
 from .service_catalog import RESOLUTION_FEES, get_resolution_fee
 
 _logger = logging.getLogger(__name__)
@@ -35,20 +35,60 @@ CONSULTING_FEE = 299  # ₹299 upfront fee to open any ticket
 # ── Invoice number generator ─────────────────────────────────────
 
 def _generate_invoice_number() -> str:
-    prefix = f"INV-{datetime.now().strftime('%Y%m')}"
-    last = (
-        Payment.objects.filter(invoice_number__startswith=prefix)
-        .order_by("-invoice_number")
-        .first()
-    )
-    if last and last.invoice_number:
-        try:
-            seq = int(last.invoice_number.rsplit("-", 1)[-1]) + 1
-        except (ValueError, IndexError):
-            seq = 1
-    else:
-        seq = 1
-    return f"{prefix}-{seq:06d}"
+    """
+    Generate a guaranteed-unique, monotonically-increasing invoice number.
+
+    Uses a per-month InvoiceCounter row locked with SELECT FOR UPDATE to serialize
+    concurrent writers. No two requests can receive the same sequence number even
+    when they arrive simultaneously.
+
+    Format: INV-YYYYMM-NNNNNN  (e.g. INV-202606-000042)
+
+    A gap in the sequence can occur only when a Payment.objects.create() fails
+    after the counter has already been committed (e.g. a DB error between the two
+    writes). Gaps are acceptable under GST — gap-free sequences are not required.
+    Race-condition duplicates are impossible with this implementation.
+    """
+    from django.db import IntegrityError
+
+    prefix_month = datetime.now().strftime('%Y%m')
+
+    with transaction.atomic():
+        # Lock the existing counter row for this month so concurrent callers queue up.
+        counter = (
+            InvoiceCounter.objects
+            .select_for_update()
+            .filter(year_month=prefix_month)
+            .first()
+        )
+
+        if counter is not None:
+            counter.last_seq += 1
+            counter.save(update_fields=['last_seq'])
+        else:
+            # First invoice of this month — create the counter row at sequence 1.
+            # Wrap in a savepoint: if two threads race to create the very first
+            # row, the slower one gets IntegrityError which rolls back only this
+            # savepoint (not the outer atomic block), then falls through to the
+            # select_for_update path to safely get the next number.
+            try:
+                with transaction.atomic():
+                    counter = InvoiceCounter.objects.create(
+                        year_month=prefix_month,
+                        last_seq=1,
+                    )
+            except IntegrityError:
+                # Another thread won the creation race.
+                # Lock the now-existing row and increment to claim the next number.
+                counter = (
+                    InvoiceCounter.objects
+                    .select_for_update()
+                    .get(year_month=prefix_month)
+                )
+                counter.last_seq += 1
+                counter.save(update_fields=['last_seq'])
+
+    return f"INV-{prefix_month}-{counter.last_seq:06d}"
 
 
 # ── Order creation ────────────────────────────────────────────────

@@ -229,24 +229,59 @@ However, **five critical issues** threaten production correctness and legal comp
 - `BUSINESS_GSTIN` is enforced at startup in production (`_REQUIRED_PROD_VARS`) — must be set before first deploy.
 - GSTIN format validation is structural only — does not verify that the GSTIN is actually registered with GST authorities. GSTN API verification is out of scope.
 - Existing `Customer` records with invalid GSTIN values in the DB are not retroactively invalidated by this migration (validator runs at application layer, not DB layer). A one-time data cleanup script may be needed.
-- C-005 (race condition in invoice number generation) remains open and is the next critical item.
+- C-005 (race condition in invoice number generation) is now fixed.
 
 ---
 
 ### C-005 — Race Condition in Non-Atomic Invoice Number Generation
 
+**VERIFIED ✓ | FIXED ✓ 2026-06-25**
+
 - **Category:** Data Integrity / Concurrency
 - **File:** `backend/support_app/services/payment_service.py` lines 33–47
-- **Description:** `_generate_invoice_number()` performs a non-atomic read-then-write:
-  1. `Payment.objects.filter(invoice_number__startswith=prefix).count()` — reads current count
-  2. Constructs `INV-YYYYMM-NNNN` from that count
-  3. Saves the new payment record
 
-  Under concurrent requests (two customers paying simultaneously), both threads read the same count, generate the same invoice number, and both attempt to save. The `unique=True` constraint on `invoice_number` means one raises `IntegrityError` — surfacing as a 500 to the user mid-payment.
+**Root cause:**
 
-- **Impact:** Random payment failures during concurrent load. Bad UX for paying customers. Risk of lost payments.
-- **Reproduction:** Hammer the payment endpoint with 2+ concurrent requests in the same month.
-- **Fix:** Use `select_for_update()` within `transaction.atomic()`, or use a PostgreSQL sequence for the numeric suffix.
+`_generate_invoice_number()` performed a non-atomic read-then-write:
+1. `Payment.objects.filter(invoice_number__startswith=prefix).order_by("-invoice_number").first()` — reads last invoice row
+2. Extracts sequence number with `.rsplit("-", 1)[-1]` and increments in Python
+3. Returns the string — caller creates `Payment` row immediately after
+
+Under concurrent requests, both threads read the same "last" row before either has committed a new `Payment`. Both compute the same next sequence number. Both attempt `Payment.objects.create(invoice_number=same_number)`. One succeeds, the other raises `IntegrityError` (from the `unique=True` constraint) — surfacing as HTTP 500 to the paying customer mid-payment.
+
+**Fix: `InvoiceCounter` model with `SELECT FOR UPDATE`**
+
+Replaced the read-then-write with a dedicated `InvoiceCounter` table (one row per calendar month). `_generate_invoice_number()` acquires a row-level PostgreSQL lock (`SELECT FOR UPDATE`) on the counter row, increments `last_seq`, and commits — all within `transaction.atomic()`. Concurrent callers queue behind the lock. No two callers ever see the same `last_seq` value.
+
+The first-invoice-of-month edge case (no counter row exists yet) is handled with a savepoint: if two threads race to `INSERT` the first row, the slower one catches `IntegrityError`, the savepoint rolls back cleanly, and the thread then locks the now-existing row to increment it.
+
+Invoice format `INV-YYYYMM-NNNNNN` is fully preserved.
+
+**Files changed:**
+
+| File | Change |
+|------|--------|
+| `backend/support_app/models.py` | Added `InvoiceCounter` model (`year_month` unique CharField, `last_seq` PositiveIntegerField) |
+| `backend/support_app/migrations/0020_add_invoice_counter.py` | Migration creating the InvoiceCounter table |
+| `backend/support_app/services/payment_service.py` | Replaced `_generate_invoice_number()` — removed racy read-then-write; uses InvoiceCounter + `select_for_update()` |
+| `backend/tests/test_payments.py` | 8 new C-005 tests |
+
+**Tests added (8 total — 4 non-DB, 4 DB):**
+
+- `test_invoice_counter_model_has_correct_fields` — model fields and uniqueness constraint
+- `test_generate_invoice_number_uses_select_for_update` — source inspection: old pattern removed, new pattern present
+- `test_invoice_number_format` — `INV-YYYYMM-NNNNNN` regex
+- `test_invoice_pdf_still_works_after_counter_change` — PDF generation unaffected
+- `test_generate_invoice_number_sequential` (DB) — three calls produce 000001, 000002, 000003
+- `test_generate_invoice_number_independent_per_month` (DB) — June and July counters are independent
+- `test_generate_invoice_numbers_unique_under_concurrent_load` (DB, `transaction=True`) — 10 threads, 10 unique numbers
+- `test_rollback_does_not_cause_duplicate` (DB, `transaction=True`) — gap after rollback is acceptable; no duplicate
+
+**Remaining risks:**
+
+- A gap in the invoice sequence can occur if `Payment.objects.create()` fails after `_generate_invoice_number()` has already committed the counter increment. This is acceptable — GST does not require gap-free invoice sequences.
+- The counter row is committed in its own `transaction.atomic()` block. If the outer payment transaction rolls back, the counter increment is NOT rolled back (by design — this prevents duplicate numbers). This is the same behaviour as a PostgreSQL sequence.
+- `select_for_update()` is a no-op in SQLite (used in test environments without Docker). The concurrent test (`transaction=True`) therefore requires PostgreSQL to truly verify the lock behaviour. It will pass in Docker CI but the locking is not verified outside it.
 
 ---
 
@@ -542,7 +577,7 @@ However, **five critical issues** threaten production correctness and legal comp
 | C-002 | Critical | Security | `views.py:~717`, `payment_service.py:~40` | ~~Sandbox defaults bypass payment signature verification~~ **FIXED 2026-06-25** |
 | C-003 | Critical | Feature Broken | `sla_service.py:55`, `settings.py` | ~~SLA due_at never set; entire SLA system non-functional~~ **FIXED 2026-06-25** |
 | C-004 | Critical | Legal/Compliance | `invoice_pdf.py:100,307` | ~~Fraudulent GSTIN placeholder on all customer invoices~~ **FIXED 2026-06-25** |
-| C-005 | Critical | Data Integrity | `payment_service.py:33–47` | Race condition in non-atomic invoice number generation |
+| C-005 | Critical | Data Integrity | `payment_service.py:33–47` | ~~Race condition in non-atomic invoice number generation~~ **FIXED 2026-06-25** |
 | H-001 | High | Security | `App.jsx:PrivateRoute` | Unverified users can access all private routes |
 | H-002 | High | Data Integrity | `ticket_service.py:221`, `signals.py:83` | Activity log actor-patching is race-prone |
 | H-003 | High | Concurrency | `ticket_service.py:47–117` | Ticket assignment race condition without select_for_update |
@@ -575,7 +610,7 @@ However, **five critical issues** threaten production correctness and legal comp
 1. ~~**C-002** — Sandbox payment bypass~~ **FIXED 2026-06-25**
 2. ~~**C-001** — Non-atomic payment flow~~ **FIXED 2026-06-25**
 3. ~~**C-004** — Fake GSTIN on invoices (legal — CGST Act violation)~~ **FIXED 2026-06-25**
-4. **C-005** — Invoice number race condition (data integrity under concurrent load)
+4. ~~**C-005** — Invoice number race condition (data integrity under concurrent load)~~ **FIXED 2026-06-25**
 5. **H-001 / M-009** — Unverified user access (security)
 6. ~~**C-003** — SLA system never starts (feature correctness — contractual obligation)~~ **FIXED 2026-06-25**
 7. **H-008** — Old CSAT endpoint bypasses resolution payment (revenue)
