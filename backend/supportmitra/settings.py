@@ -259,6 +259,12 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True  # silence Celery 6.0 deprecation warning
+CELERY_BEAT_SCHEDULE = {
+    "check-sla-breaches-every-5-minutes": {
+        "task": "support_app.tasks.check_sla_breaches",
+        "schedule": 300,  # seconds
+    },
+}
 
 # ── Cache ─────────────────────────────────────────────────────────
 CACHES = {

@@ -1912,6 +1912,20 @@ def ops_dashboard(request):
 
     unassigned_count = open_count  # "open" = paid, unassigned
 
+    # SLA counts — only active (non-terminal) tickets with a deadline set
+    from django.utils import timezone as _tz
+    _now = _tz.now()
+    _active_sla_statuses = ["open", "assigned", "in_progress", "waiting_customer"]
+    sla_overdue = Ticket.objects.filter(
+        status__in=_active_sla_statuses,
+        due_at__lt=_now,
+    ).count()
+    sla_due_soon = Ticket.objects.filter(
+        status__in=_active_sla_statuses,
+        due_at__gte=_now,
+        due_at__lt=_now + _tz.timedelta(hours=2),
+    ).count()
+
     data = {
         "open": open_count,
         "assigned": assigned_count,
@@ -1924,6 +1938,8 @@ def ops_dashboard(request):
         "total_resolved": resolved_count + closed_count,
         "unassigned": unassigned_count,
         "active_freelancers": active_freelancers,
+        "sla_overdue": sla_overdue,
+        "sla_due_soon": sla_due_soon,
     }
     # Revenue is financial data — Support Agents have no visibility into it.
     if not is_support_agent(request.user):

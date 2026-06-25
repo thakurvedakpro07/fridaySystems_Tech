@@ -54,19 +54,32 @@ def get_sla_policy(service_type: str, severity: str, plan: str = "default"):
 
 def set_ticket_due_at(ticket) -> None:
     """
-    Compute and save `due_at` for a ticket that just moved to 'open' status.
+    Compute and save `due_at` and `first_response_due_at` for a ticket that
+    just moved to 'open' status.
 
-    Called from ticket_service.py / payment_service.py when payment is confirmed
-    and the ticket transitions out of pending_payment.
+    Idempotent: if `due_at` is already set this is a no-op, protecting against
+    accidental re-initialization on engineer reassignment or status transitions
+    that pass back through 'open'.
+
+    Called from payment_service._open_ticket_after_payment() when payment is
+    confirmed and the ticket transitions from pending_payment → open.
     """
+    if ticket.due_at is not None:
+        return  # SLA already initialized — do not reset
+
     policy = get_sla_policy(ticket.service_type, ticket.severity)
     if policy:
+        first_response_seconds = policy.first_response_seconds
         resolution_seconds = policy.resolution_seconds
     else:
-        _, resolution_seconds = _DEFAULTS.get(ticket.severity, _DEFAULTS["medium"])
+        first_response_seconds, resolution_seconds = _DEFAULTS.get(
+            ticket.severity, _DEFAULTS["medium"]
+        )
 
-    ticket.due_at = timezone.now() + timezone.timedelta(seconds=resolution_seconds)
-    ticket.save(update_fields=["due_at"])
+    now = timezone.now()
+    ticket.due_at = now + timezone.timedelta(seconds=resolution_seconds)
+    ticket.first_response_due_at = now + timezone.timedelta(seconds=first_response_seconds)
+    ticket.save(update_fields=["due_at", "first_response_due_at"])
 
     from ..models import SLALog
     SLALog.objects.create(
@@ -74,7 +87,10 @@ def set_ticket_due_at(ticket) -> None:
         event="created",
         status="pending",
         target_seconds=resolution_seconds,
-        notes=f"SLA deadline set to {ticket.due_at.isoformat()}",
+        notes=(
+            f"SLA initialized: first_response_due={ticket.first_response_due_at.isoformat()}, "
+            f"resolution_due={ticket.due_at.isoformat()}"
+        ),
     )
 
 

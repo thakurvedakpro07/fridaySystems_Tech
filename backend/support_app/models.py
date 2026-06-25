@@ -346,11 +346,13 @@ class Ticket(models.Model):
     # ── SLA tracking ──────────────────────────────────────────────
     # first_response_at: when the FIRST public comment was posted by non-customer.
     # Used to measure "first response SLA" compliance.
-    first_response_at   = models.DateTimeField(null=True, blank=True)
+    first_response_at     = models.DateTimeField(null=True, blank=True)
+    # first_response_due_at: deadline for first engineer response (set when ticket opens).
+    first_response_due_at = models.DateTimeField(null=True, blank=True)
     # due_at: SLA deadline for resolution. Set when ticket moves to "open".
-    due_at              = models.DateTimeField(null=True, blank=True)
+    due_at                = models.DateTimeField(null=True, blank=True)
     # sla_breach_notified: prevents sending duplicate breach alerts.
-    sla_breach_notified = models.BooleanField(default=False)
+    sla_breach_notified   = models.BooleanField(default=False)
 
     # ── Tooling ───────────────────────────────────────────────────
     # remote_session_url: AnyDesk / TeamViewer link shared with customer.

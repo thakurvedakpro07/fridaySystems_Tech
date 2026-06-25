@@ -3,9 +3,11 @@ Tests for SLA monitoring logic (C-04 fix verification).
 """
 
 import datetime
+import uuid as uuid_lib
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.test import override_settings
 from django.utils import timezone
 
 
@@ -179,3 +181,226 @@ def test_sla_met_when_resolved_in_time(mock_ticket):
 
     mock_log.objects.create.assert_not_called()
     assert mock_ticket.sla_breach_notified is False
+
+
+# ── C-003 Integration tests — SLA initialization ──────────────────────────────
+# These tests require real DB (set_ticket_due_at writes to the DB) and verify
+# the fix for "SLA deadlines never initialized" (C-003).
+
+
+def _make_open_ticket(email: str):
+    """
+    Create a customer + ticket in 'open' status (simulating post-payment state).
+    Returns (ticket, customer_user).
+    """
+    from django.contrib.auth import get_user_model
+    from support_app.models import Customer, Ticket
+
+    User = get_user_model()
+    user = User.objects.create_user(email=email, password="StrongPass123!", role="customer")
+    customer = Customer.objects.create(user=user, company="SLACo")
+    ticket = Ticket.objects.create(
+        customer=customer,
+        title="SLA test ticket",
+        service_type="linux",
+        severity="medium",
+        status="open",
+    )
+    return ticket, user
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("severity,expected_order", [
+    ("critical", 0),
+    ("high", 1),
+    ("medium", 2),
+    ("low", 3),
+])
+def test_set_ticket_due_at_respects_severity(severity, expected_order):
+    """
+    Different severities must produce different deadlines.
+    critical < high < medium < low (shorter = more urgent).
+    C-003 fix: set_ticket_due_at() now correctly computes resolution + first_response deadlines.
+    """
+    from django.contrib.auth import get_user_model
+    from support_app.models import Customer, Ticket
+    from support_app.services.sla_service import set_ticket_due_at, _DEFAULTS
+
+    User = get_user_model()
+    user = User.objects.create_user(
+        email=f"sla_{severity}@example.com", password="StrongPass123!", role="customer"
+    )
+    customer = Customer.objects.create(user=user, company="SLACo")
+    ticket = Ticket.objects.create(
+        customer=customer,
+        title=f"SLA {severity} test",
+        service_type="linux",
+        severity=severity,
+        status="open",
+    )
+
+    before = timezone.now()
+    set_ticket_due_at(ticket)
+    after = timezone.now()
+
+    ticket.refresh_from_db()
+    assert ticket.due_at is not None
+    assert ticket.first_response_due_at is not None
+    assert before < ticket.due_at <= after + datetime.timedelta(
+        seconds=_DEFAULTS[severity][1]
+    )
+    assert before < ticket.first_response_due_at <= after + datetime.timedelta(
+        seconds=_DEFAULTS[severity][0]
+    )
+    # first_response deadline must be <= resolution deadline
+    assert ticket.first_response_due_at <= ticket.due_at
+
+
+@pytest.mark.django_db
+def test_set_ticket_due_at_sets_both_deadlines():
+    """
+    set_ticket_due_at() must write both due_at and first_response_due_at to the DB.
+    C-003 fix: was a no-op before because it was never called; now it sets both fields.
+    """
+    from support_app.models import SLALog
+    from support_app.services.sla_service import set_ticket_due_at
+
+    ticket, _ = _make_open_ticket("sla_both@example.com")
+    assert ticket.due_at is None
+    assert ticket.first_response_due_at is None
+
+    set_ticket_due_at(ticket)
+
+    ticket.refresh_from_db()
+    assert ticket.due_at is not None
+    assert ticket.first_response_due_at is not None
+    assert ticket.first_response_due_at < ticket.due_at
+
+    # SLALog entry must have been created
+    log = SLALog.objects.filter(ticket=ticket, event="created").first()
+    assert log is not None
+    assert log.status == "pending"
+
+
+@pytest.mark.django_db
+def test_set_ticket_due_at_is_idempotent():
+    """
+    Calling set_ticket_due_at() a second time must not change the existing deadlines.
+    C-003 fix: idempotency guard (`if ticket.due_at is not None: return`) protects
+    against SLA reset on engineer reassignment or repeated payment webhook delivery.
+    """
+    from support_app.services.sla_service import set_ticket_due_at
+
+    ticket, _ = _make_open_ticket("sla_idem@example.com")
+    set_ticket_due_at(ticket)
+    ticket.refresh_from_db()
+    original_due = ticket.due_at
+    original_fr_due = ticket.first_response_due_at
+
+    # Calling again must not change the deadlines
+    set_ticket_due_at(ticket)
+    ticket.refresh_from_db()
+    assert ticket.due_at == original_due
+    assert ticket.first_response_due_at == original_fr_due
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("new_status", ["assigned", "in_progress", "waiting_customer"])
+def test_sla_survives_status_transitions(new_status):
+    """
+    SLA deadlines must not be cleared when ticket moves through assignment/work statuses.
+    C-003 fix: set_ticket_due_at is idempotent — re-entering open status doesn't reset SLA.
+    """
+    from support_app.models import Ticket
+    from support_app.services.sla_service import set_ticket_due_at
+
+    ticket, _ = _make_open_ticket(f"sla_trans_{new_status}@example.com")
+    set_ticket_due_at(ticket)
+    ticket.refresh_from_db()
+    original_due = ticket.due_at
+
+    # Simulate status change
+    ticket.status = new_status
+    ticket.save(update_fields=["status"])
+
+    ticket.refresh_from_db()
+    assert ticket.due_at == original_due, f"due_at was reset after transition to {new_status}"
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET="")
+def test_payment_verified_initializes_sla():
+    """
+    After verify_and_complete_payment() succeeds, the ticket must have due_at set.
+    C-003 fix: _open_ticket_after_payment now calls set_ticket_due_at().
+    """
+    from django.contrib.auth import get_user_model
+    from support_app.models import Customer, Payment, Ticket
+    from support_app.services.payment_service import verify_and_complete_payment
+
+    User = get_user_model()
+    user = User.objects.create_user(email="sla_pay@example.com", password="StrongPass123!", role="customer")
+    customer = Customer.objects.create(user=user, company="SLAPayCo")
+    ticket = Ticket.objects.create(
+        customer=customer,
+        title="SLA payment test",
+        service_type="linux",
+        severity="high",
+        status="pending_payment",
+    )
+    payment = Payment.objects.create(
+        customer=customer,
+        ticket=ticket,
+        amount="353.00",
+        gst_amount="53.82",
+        invoice_number=f"INV-SLAP-{uuid_lib.uuid4().hex[:8]}",
+        payment_type="consulting_fee",
+        gateway="razorpay",
+        gateway_order_id="order_sla_pay_001",
+        status="pending",
+    )
+
+    verify_and_complete_payment(
+        payment_db_id=str(payment.id),
+        razorpay_payment_id="pay_sla_001",
+        razorpay_order_id="order_sla_pay_001",
+        razorpay_signature="sandbox_sig",
+    )
+
+    ticket.refresh_from_db()
+    assert ticket.status == "open"
+    assert ticket.due_at is not None, "SLA resolution deadline must be set after payment"
+    assert ticket.first_response_due_at is not None, "SLA first-response deadline must be set after payment"
+    assert ticket.first_response_due_at < ticket.due_at
+
+
+@pytest.mark.django_db
+def test_closed_ticket_excluded_from_sla_check():
+    """
+    Closed/resolved tickets must not be returned by run_sla_check_for_all_open_tickets.
+    The Celery task must only evaluate active tickets.
+    """
+    from support_app.models import Customer, Ticket
+    from django.contrib.auth import get_user_model
+    from support_app.services.sla_service import set_ticket_due_at, run_sla_check_for_all_open_tickets
+
+    User = get_user_model()
+    user = User.objects.create_user(email="sla_closed@example.com", password="StrongPass123!", role="customer")
+    customer = Customer.objects.create(user=user, company="ClosedCo")
+
+    # Create a ticket that's "closed" but has an overdue due_at
+    ticket = Ticket.objects.create(
+        customer=customer,
+        title="Closed SLA ticket",
+        service_type="linux",
+        severity="critical",
+        status="closed",
+        due_at=timezone.now() - datetime.timedelta(hours=10),
+        sla_breach_notified=False,
+    )
+
+    # run_sla_check should not flag this — closed tickets are excluded
+    run_sla_check_for_all_open_tickets()
+
+    ticket.refresh_from_db()
+    assert ticket.sla_breach_notified is False, "Closed tickets must not be flagged for SLA breach"

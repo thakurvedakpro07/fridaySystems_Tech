@@ -212,8 +212,9 @@ class TicketListSerializer(serializers.ModelSerializer):
 
 
 class OpsTicketListSerializer(TicketListSerializer):
-    """Extends TicketListSerializer with assignment info for the ops ticket queue."""
+    """Extends TicketListSerializer with assignment info and SLA status for the ops ticket queue."""
     freelancer = serializers.SerializerMethodField()
+    sla_status = serializers.SerializerMethodField()
 
     def get_freelancer(self, obj):
         if not obj.assigned_to:
@@ -225,8 +226,29 @@ class OpsTicketListSerializer(TicketListSerializer):
             "email": u.email,
         }
 
+    def get_sla_status(self, obj):
+        """
+        Computed SLA health label for the ops ticket queue.
+        "no_deadline" — due_at not set (ticket not yet open or SLA not initialized)
+        "overdue"     — past the resolution deadline
+        "due_soon"    — deadline within the next 2 hours
+        "ok"          — deadline is more than 2 hours away
+        Resolved/closed tickets always return "no_deadline" (SLA no longer active).
+        """
+        if obj.status in ("resolved", "closed", "pending_payment") or not obj.due_at:
+            return "no_deadline"
+        from django.utils import timezone as tz
+        now = tz.now()
+        if now > obj.due_at:
+            return "overdue"
+        if (obj.due_at - now).total_seconds() < 7200:
+            return "due_soon"
+        return "ok"
+
     class Meta(TicketListSerializer.Meta):
-        fields = TicketListSerializer.Meta.fields + ["freelancer"]
+        fields = TicketListSerializer.Meta.fields + [
+            "freelancer", "due_at", "first_response_due_at", "sla_status",
+        ]
 
 
 class TicketDetailSerializer(serializers.ModelSerializer):
@@ -263,12 +285,12 @@ class TicketDetailSerializer(serializers.ModelSerializer):
             "service_type", "severity", "status",
             "assigned_to", "customer", "remote_session_url",
             "created_at", "updated_at", "resolved_at",
-            "first_response_at", "due_at", "csat_score",
+            "first_response_at", "first_response_due_at", "due_at", "csat_score",
         ]
         read_only_fields = [
             "id", "ticket_number", "status", "assigned_to", "customer",
             "created_at", "updated_at", "resolved_at",
-            "first_response_at", "due_at", "csat_score",
+            "first_response_at", "first_response_due_at", "due_at", "csat_score",
         ]
 
 

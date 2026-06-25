@@ -445,8 +445,9 @@ def verify_resolution_payment_service(
 # ── Internal helper ───────────────────────────────────────────────
 
 def _open_ticket_after_payment(payment, actor, note: str) -> None:
-    """Move a pending_payment ticket to open, log the event, notify customer."""
+    """Move a pending_payment ticket to open, log the event, initialize SLA, notify customer."""
     from .notification_service import create_notification
+    from .sla_service import set_ticket_due_at
 
     ticket = payment.ticket
     if not ticket or ticket.status != "pending_payment":
@@ -464,6 +465,14 @@ def _open_ticket_after_payment(payment, actor, note: str) -> None:
         to_value="open",
         note=note,
     )
+
+    # Initialize SLA deadlines inside an isolated savepoint so a failure here
+    # cannot roll back the payment confirmation already written above.
+    try:
+        with transaction.atomic():
+            set_ticket_due_at(ticket)
+    except Exception:
+        _logger.exception("Failed to initialize SLA deadline for ticket %s", ticket.ticket_number)
 
     create_notification(
         recipient=payment.customer.user,

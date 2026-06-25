@@ -115,15 +115,63 @@ However, **five critical issues** threaten production correctness and legal comp
 
 ### C-003 — SLA Deadlines Never Set: Entire SLA System is Non-Functional
 
+- **Status: VERIFIED ✓ and FIXED ✓** (2026-06-25)
 - **Category:** Feature Broken
-- **File:** `backend/support_app/services/sla_service.py` lines 55–78; `backend/supportmitra/settings.py`
-- **Description:** `set_ticket_due_at()` is correctly implemented — it looks up SLAPolicy by service type and severity, then sets `ticket.due_at`. However, this function is **never called from any code path** in `payment_service.py`, `ticket_service.py`, `views.py`, `signals.py`, or `tasks.py`. Every ticket has `due_at = null`.
 
-  Additionally, the Celery Beat schedule for `check_sla_breaches` is **not defined in `settings.py`** — the task exists but never runs automatically. Consequence: SLA breach detection never fires, no breach notifications are sent, `SLALog` is never populated, and the entire SLA feature is silently dead.
+**Verified root cause (three independent gaps):**
 
-- **Impact:** SLA commitments advertised to customers are never enforced. Tickets can breach SLA with zero alerting to ops/admin. Breach log is always empty.
-- **Reproduction:** Create a ticket, wait for any SLA window to pass. `ticket.due_at` is null; no breach notification sent.
-- **Fix:** Call `set_ticket_due_at(ticket)` at the end of `verify_and_complete_payment()` after ticket moves to "open". Add `CELERY_BEAT_SCHEDULE` entry for `check_sla_breaches` in `settings.py`.
+1. **`set_ticket_due_at()` was never called from any code path.** The function was correctly written but had zero callers across `payment_service.py`, `ticket_service.py`, `views.py`, `signals.py`, and `tasks.py`. Every ticket had `due_at = null`. SLA breach checks always filtered them out (`due_at__isnull=False`), so breach detection was also dead.
+
+2. **`CELERY_BEAT_SCHEDULE` was absent from `settings.py`.** The `check_sla_breaches` Celery task existed but was never scheduled to run automatically. Even if deadlines had been set, breach detection would never fire.
+
+3. **`first_response_due_at` field did not exist.** `SLAPolicy.first_response_seconds` was stored but had nowhere to land on the Ticket model, so first-response SLA could never be tracked.
+
+**Fix applied:**
+
+- **`models.py` + migration `0018_add_first_response_due_at.py`** — Added `first_response_due_at = DateTimeField(null=True, blank=True)` to the Ticket model.
+
+- **`sla_service.py` (`set_ticket_due_at()`)** — Updated to be idempotent (`if ticket.due_at is not None: return`), protecting against SLA reset on reassignment. Now writes both `due_at` (resolution deadline) and `first_response_due_at` using the policy's `first_response_seconds`. Updated `SLALog` notes to include both timestamps.
+
+- **`payment_service.py` (`_open_ticket_after_payment()`)** — Added `set_ticket_due_at(ticket)` call inside an isolated `transaction.atomic()` savepoint. A savepoint is used so an SLA initialization failure cannot roll back the payment confirmation already written (the customer must not be re-charged). This call covers both code paths: normal payment verify (`verify_and_complete_payment`) AND the Razorpay webhook handler (`process_payment_webhook`).
+
+- **`settings.py`** — Added `CELERY_BEAT_SCHEDULE` with `check_sla_breaches` scheduled every 300 seconds (5 minutes).
+
+- **`serializers.py`** — Added `first_response_due_at` to `TicketDetailSerializer`. Added `due_at`, `first_response_due_at`, and computed `sla_status` field to `OpsTicketListSerializer`. `sla_status` returns `"overdue"`, `"due_soon"` (within 2h), `"ok"`, or `"no_deadline"`.
+
+- **`views.py` (`ops_dashboard()`)** — Added `sla_overdue` and `sla_due_soon` counts to the ops dashboard API response.
+
+**Files modified:**
+- `backend/support_app/models.py` (SLA tracking section)
+- `backend/support_app/migrations/0018_add_first_response_due_at.py` (new migration)
+- `backend/support_app/services/sla_service.py` (`set_ticket_due_at()`)
+- `backend/support_app/services/payment_service.py` (`_open_ticket_after_payment()`)
+- `backend/supportmitra/settings.py` (`CELERY_BEAT_SCHEDULE`)
+- `backend/support_app/serializers.py` (`TicketDetailSerializer`, `OpsTicketListSerializer`)
+- `backend/support_app/views.py` (`ops_dashboard()`)
+- `backend/tests/test_sla.py` (11 new C-003 tests)
+
+**Tests added (`tests/test_sla.py`):**
+| Test | Result |
+|------|--------|
+| `test_set_ticket_due_at_respects_severity[critical-0]` | PASSED |
+| `test_set_ticket_due_at_respects_severity[high-1]` | PASSED |
+| `test_set_ticket_due_at_respects_severity[medium-2]` | PASSED |
+| `test_set_ticket_due_at_respects_severity[low-3]` | PASSED |
+| `test_set_ticket_due_at_sets_both_deadlines` | PASSED |
+| `test_set_ticket_due_at_is_idempotent` | PASSED |
+| `test_sla_survives_status_transitions[assigned]` | PASSED |
+| `test_sla_survives_status_transitions[in_progress]` | PASSED |
+| `test_sla_survives_status_transitions[waiting_customer]` | PASSED |
+| `test_payment_verified_initializes_sla` | PASSED |
+| `test_closed_ticket_excluded_from_sla_check` | PASSED |
+
+**Full test suite:** 24/24 in `test_sla.py`. 11/19 in `test_payments.py` (8 pre-existing Redis failures unchanged). Zero regressions.
+
+**Remaining risks:**
+- `SLAPolicy` database table is empty by default — the service falls back to `_DEFAULTS` (hardcoded per-severity windows). Before go-live, seed at least one `SLAPolicy` row per service_type/severity pair via Django admin, or confirm the defaults are acceptable.
+- Celery Beat requires its own process (`celery -A supportmitra beat`) and the `django-celery-beat` DB scheduler (`python manage.py migrate`) to be running in production. The schedule entry is now defined but will silently not fire if the Beat process is not started.
+- The ops dashboard now returns `sla_overdue` and `sla_due_soon` but the frontend (`OpsDashboard.jsx`) does not yet display them — this is a frontend task outside C-003 scope.
+- The `waiting_customer` status is included in SLA active checks. If business rules require pausing SLA when waiting on the customer, a separate `SLA pause/resume` mechanism would be needed (out of scope for C-003).
 
 ---
 
@@ -450,7 +498,7 @@ However, **five critical issues** threaten production correctness and legal comp
 |----|----------|----------|------|-------|
 | C-001 | Critical | Financial/Data Integrity | `payment_service.py:324–424` | ~~Non-atomic resolution payment — partial commit risk~~ **FIXED 2026-06-25** |
 | C-002 | Critical | Security | `views.py:~717`, `payment_service.py:~40` | ~~Sandbox defaults bypass payment signature verification~~ **FIXED 2026-06-25** |
-| C-003 | Critical | Feature Broken | `sla_service.py:55`, `settings.py` | SLA due_at never set; entire SLA system non-functional |
+| C-003 | Critical | Feature Broken | `sla_service.py:55`, `settings.py` | ~~SLA due_at never set; entire SLA system non-functional~~ **FIXED 2026-06-25** |
 | C-004 | Critical | Legal/Compliance | `invoice_pdf.py:100,307` | Fraudulent GSTIN placeholder on all customer invoices |
 | C-005 | Critical | Data Integrity | `payment_service.py:33–47` | Race condition in non-atomic invoice number generation |
 | H-001 | High | Security | `App.jsx:PrivateRoute` | Unverified users can access all private routes |
@@ -486,8 +534,7 @@ However, **five critical issues** threaten production correctness and legal comp
 2. ~~**C-001** — Non-atomic payment flow~~ **FIXED 2026-06-25**
 3. **C-004** — Fake GSTIN on invoices (legal — CGST Act violation)
 4. **C-005** — Invoice number race condition (data integrity under concurrent load)
-5. **C-003** — SLA system never starts
-6. **H-001 / M-009** — Unverified user access (security)
+5. **H-001 / M-009** — Unverified user access (security)
 6. **C-003** — SLA system never starts (feature correctness — contractual obligation)
 7. **H-008** — Old CSAT endpoint bypasses resolution payment (revenue)
 8. **H-007** — Fabricated engineer stats shown to customers (trust / false advertising)
