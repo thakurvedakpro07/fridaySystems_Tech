@@ -76,22 +76,14 @@ def assign_ticket(ticket: Ticket, freelancer, assigned_by) -> TicketAssignment:
                 unassigned_at__isnull=True,  # only the active (open) assignment
             ).update(unassigned_at=timezone.now())
 
-        # Step 2: Update the ticket itself
-        # update_fields avoids overwriting fields another concurrent request changed
+        # Step 2: Update the ticket itself.
+        # _actor is read by the log_ticket_changes signal to write the correct
+        # actor directly — no post-save patch query needed.
         old_status = ticket.status
+        ticket._actor = assigned_by
         ticket.assigned_to = freelancer
         ticket.status = "assigned"
         ticket.save(update_fields=["assigned_to", "status", "updated_at"])
-
-        # Patch the signal-written status_changed log so it shows the real actor
-        # (signals can't know who triggered the save; the service layer can)
-        TicketActivityLog.objects.filter(
-            ticket=ticket,
-            action="status_changed",
-            from_value=old_status,
-            to_value="assigned",
-            actor__isnull=True,
-        ).order_by("-created_at").update(actor=assigned_by)
 
         # Step 3: Record the new assignment
         assignment = TicketAssignment.objects.create(
@@ -140,6 +132,7 @@ def unassign_ticket(ticket: Ticket, actor, reason: str = "admin_action", note: s
             unassigned_at__isnull=True,
         ).update(unassigned_at=timezone.now())
 
+        ticket._actor = actor
         ticket.assigned_to = None
         ticket.status = "open"
         ticket.save(update_fields=["assigned_to", "status", "updated_at"])
@@ -244,6 +237,8 @@ def update_status(ticket: Ticket, new_status: str, actor, note: str = "") -> Tic
 
     with transaction.atomic():
         old_status = ticket.status
+        ticket._actor = actor
+        ticket._actor_note = note
         ticket.status = new_status
 
         if new_status == "resolved" and ticket.resolved_at is None:
@@ -253,15 +248,8 @@ def update_status(ticket: Ticket, new_status: str, actor, note: str = "") -> Tic
             ticket.resolved_at = None
 
         ticket.save(update_fields=["status", "resolved_at", "updated_at"])
-
-        # Patch the signal-written log entry to include the real actor
-        TicketActivityLog.objects.filter(
-            ticket=ticket,
-            action__in=["status_changed", "resolved", "closed"],
-            from_value=old_status,
-            to_value=new_status,
-            actor__isnull=True,
-        ).order_by("-created_at").update(actor=actor, note=note)
+        # The log_ticket_changes signal reads ticket._actor and writes the
+        # correct actor directly — no post-save patch query is needed.
 
         if new_status == "resolved":
             from .email_service import send_ticket_resolved

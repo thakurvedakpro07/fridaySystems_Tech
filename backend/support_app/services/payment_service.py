@@ -576,18 +576,12 @@ def verify_resolution_payment_service(
         # Close ticket
         ticket = payment.ticket
         if ticket and ticket.status == "resolved":
+            ticket._actor = actor
+            ticket._actor_note = f"Resolution fee {payment.invoice_number} confirmed; ticket closed"
             ticket.status = "closed"
             ticket.resolved_at = timezone.now()
             ticket.save(update_fields=["status", "resolved_at"])
-
-            TicketActivityLog.objects.create(
-                ticket=ticket,
-                actor=actor,
-                action="closed",
-                from_value="resolved",
-                to_value="closed",
-                note=f"Resolution fee {payment.invoice_number} confirmed; ticket closed",
-            )
+            # log_ticket_changes signal writes TicketActivityLog(action="closed", actor=actor).
 
         # Save CSAT
         if ticket and score and not CSATSurvey.objects.filter(ticket=ticket).exists():
@@ -630,18 +624,11 @@ def _open_ticket_after_payment(payment, actor, note: str) -> None:
     if not ticket or ticket.status != "pending_payment":
         return
 
-    old_status = ticket.status
+    ticket._actor = actor
+    ticket._actor_note = note
     ticket.status = "open"
     ticket.save(update_fields=["status"])
-
-    TicketActivityLog.objects.create(
-        ticket=ticket,
-        actor=actor,
-        action="status_changed",
-        from_value=old_status,
-        to_value="open",
-        note=note,
-    )
+    # log_ticket_changes signal writes the correct TicketActivityLog entry.
 
     # Initialize SLA deadlines inside an isolated savepoint so a failure here
     # cannot roll back the payment confirmation already written above.

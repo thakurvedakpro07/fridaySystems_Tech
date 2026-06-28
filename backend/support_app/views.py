@@ -437,6 +437,12 @@ class TicketDetailView(generics.RetrieveUpdateAPIView):
             )
         return super().update(request, *args, **kwargs)
 
+    def perform_update(self, serializer):
+        # Set _actor so log_ticket_changes signal writes the correct actor
+        # for any status or severity change triggered via this PATCH endpoint.
+        serializer.instance._actor = self.request.user
+        serializer.save()
+
 
 class TicketCommentListCreateView(generics.ListCreateAPIView):
     """
@@ -994,17 +1000,11 @@ def admin_payment_confirm(request, pk):
 
         ticket = payment.ticket
         if ticket and ticket.status == "pending_payment":
-            old_status = ticket.status
+            ticket._actor = request.user
+            ticket._actor_note = f"Payment {payment.invoice_number} manually confirmed by admin"
             ticket.status = "open"
             ticket.save(update_fields=["status"])
-            TicketActivityLog.objects.create(
-                ticket=ticket,
-                actor=request.user,
-                action="status_changed",
-                from_value=old_status,
-                to_value="open",
-                note=f"Payment {payment.invoice_number} manually confirmed by admin",
-            )
+            # log_ticket_changes signal writes TicketActivityLog(actor=request.user).
             create_notification(
                 recipient=payment.customer.user,
                 category="payment_confirmed",
@@ -2469,6 +2469,8 @@ def ops_payment_confirm(request, pk):
         payment.status = "completed"
         payment.save(update_fields=["status", "updated_at"])
         if payment.ticket:
+            payment.ticket._actor = request.user
+            payment.ticket._actor_note = f"Payment {payment.invoice_number} manually confirmed"
             payment.ticket.status = "open"
             payment.ticket.save(update_fields=["status", "updated_at"])
 

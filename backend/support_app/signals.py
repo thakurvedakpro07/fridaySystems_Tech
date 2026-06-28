@@ -55,7 +55,19 @@ def log_ticket_changes(sender, instance, **kwargs):
     """
     On every ticket save:
       - Write TicketActivityLog entries for status/severity changes.
-      - Stamp resolved_at when status transitions to "resolved".
+
+    Actor tracking — thread-safe per-instance attribute:
+      The caller sets ``instance._actor = <user>`` on the Python object before
+      calling ``ticket.save()``.  Each HTTP request owns its own Ticket Python
+      object (fetched fresh from DB by that request's view), so setting
+      ``_actor`` on it cannot affect any other concurrent request's object.
+      No threadlocals, no global state, no shared mutable data.
+
+      Optional ``instance._actor_note`` carries a human-readable context string
+      for the log entry (e.g. "Payment INV-202506-0001 confirmed via webhook").
+
+      When neither attribute is set (Celery tasks, Django shell, tests that save
+      directly) the actor defaults to None — correct for system-triggered changes.
 
     WHY one signal instead of two?
       Each @receiver on pre_save is a separate DB query to fetch the old row.
@@ -75,6 +87,11 @@ def log_ticket_changes(sender, instance, **kwargs):
     except sender.DoesNotExist:
         return
 
+    # Read per-instance actor set by the service/view layer before ticket.save().
+    # Falls back to None for system-triggered saves (Celery, shell, seed scripts).
+    actor = getattr(instance, "_actor", None)
+    note  = getattr(instance, "_actor_note", "")
+
     # ── Status change ──────────────────────────────────────────────
     if old.status != instance.status:
         action = "resolved" if instance.status == "resolved" else (
@@ -82,22 +99,22 @@ def log_ticket_changes(sender, instance, **kwargs):
         )
         TicketActivityLog.objects.create(
             ticket     = instance,
-            actor      = None,   # actor is patched by the service layer
+            actor      = actor,
             action     = action,
             from_value = old.status,
             to_value   = instance.status,
+            note       = note,
         )
-        # Note: resolved_at is set by ticket_service.update_status() which controls
-        # update_fields. Setting it here would be ignored when update_fields is used.
 
     # ── Severity change ────────────────────────────────────────────
     if old.severity != instance.severity:
         TicketActivityLog.objects.create(
             ticket     = instance,
-            actor      = None,
+            actor      = actor,
             action     = "severity_changed",
             from_value = old.severity,
             to_value   = instance.severity,
+            note       = note,
         )
 
 
