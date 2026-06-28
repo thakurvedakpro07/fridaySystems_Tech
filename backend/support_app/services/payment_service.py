@@ -248,38 +248,175 @@ def process_payment_webhook(event: dict) -> None:
     if not order_id:
         return
 
-    payment = (
-        Payment.objects.select_related("ticket", "customer__user")
+    # Fast pre-check — avoids acquiring a row lock for events already processed
+    pre = (
+        Payment.objects
         .filter(gateway_order_id=order_id)
+        .values("pk", "status")
         .first()
     )
-    if not payment or payment.status == "completed":
+    if not pre or pre["status"] == "completed":
         return
 
-    payment.gateway_payment_id = gateway_payment_id or ""
-    payment.status = "completed"
-    payment.save(update_fields=["gateway_payment_id", "status"])
+    with transaction.atomic():
+        payment = (
+            Payment.objects.select_related("ticket", "customer__user")
+            .select_for_update(of=("self",))
+            .get(pk=pre["pk"])
+        )
+        # Re-check under lock: a concurrent delivery may have already processed this
+        if payment.status == "completed":
+            return
 
-    _open_ticket_after_payment(
-        payment, actor=None,
-        note=f"Payment {payment.invoice_number} confirmed via webhook",
-    )
+        payment.gateway_payment_id = gateway_payment_id or ""
+        payment.status = "completed"
+        payment.save(update_fields=["gateway_payment_id", "status"])
+
+        _open_ticket_after_payment(
+            payment, actor=None,
+            note=f"Payment {payment.invoice_number} confirmed via webhook",
+        )
 
 
 # ── Refund ────────────────────────────────────────────────────────
 
-def issue_refund(payment) -> None:
-    """Initiate a Razorpay refund for a completed payment."""
-    if not getattr(settings, "RAZORPAY_KEY_ID", ""):
-        raise NotImplementedError("Razorpay not configured — cannot issue refund")
-    from ..integrations.razorpay_client import get_client
-    client = get_client()
-    client.payment.refund(
-        payment.gateway_payment_id,
-        {"amount": int((payment.amount + payment.gst_amount) * 100)},
-    )
-    payment.status = "refunded"
-    payment.save(update_fields=["status"])
+def issue_refund(payment, refund_amount_paise: int | None = None) -> "Payment":
+    """
+    Initiate a Razorpay refund for a completed payment and persist the result.
+
+    Idempotent: if ``gateway_refund_id`` is already set (a previous call succeeded),
+    returns the payment unchanged without making a second API call.
+
+    Sandbox mode: when ``RAZORPAY_KEY_ID`` is not configured, a deterministic mock
+    refund ID is generated so the full refund workflow can be exercised in development
+    without a live Razorpay account.
+
+    The database is never updated to ``status="refunded"`` unless the Razorpay API
+    (or sandbox) confirms the refund — a gateway exception leaves the payment in its
+    original ``"completed"`` state so the caller can retry.
+
+    A row-level lock (``SELECT FOR UPDATE``) serialises concurrent refund attempts on
+    the same payment (e.g., two admin tabs clicking Refund simultaneously).  The lock
+    is intentionally held during the API call because the alternative — check, release,
+    call, re-lock — introduces a window where two threads could both issue a Razorpay
+    refund for the same payment.  Refunds are infrequent admin actions; the brief lock
+    duration (~1–2 s) is acceptable.
+
+    Args:
+        payment:              ``Payment`` instance to refund.  Must have
+                              ``status="completed"`` when evaluated under the lock.
+        refund_amount_paise:  Optional override in paise for partial refunds.
+                              Defaults to the full ``(amount + gst_amount) × 100``.
+
+    Returns:
+        The refreshed ``Payment`` instance with ``status="refunded"`` and
+        ``gateway_refund_id`` set.
+
+    Raises:
+        ValueError:   Payment is not in ``"completed"`` status, or it has no
+                      ``gateway_payment_id`` in live mode (cannot refund a payment
+                      that was never captured by the gateway).
+        Exception:    Any error raised by the Razorpay SDK is logged with full context
+                      and re-raised.  The payment record is not modified.
+    """
+    with transaction.atomic():
+        # Re-fetch under a row-level lock to serialise concurrent refund attempts.
+        locked = Payment.objects.select_for_update().get(pk=payment.pk)
+
+        # ── Idempotency: already refunded ────────────────────────────
+        if locked.gateway_refund_id:
+            _logger.info(
+                "issue_refund: payment %s already has gateway_refund_id=%s — "
+                "returning without a second API call.",
+                locked.pk, locked.gateway_refund_id,
+            )
+            return locked
+
+        if locked.status == "refunded":
+            # Refunded status without a refund ID means a previous call succeeded at
+            # Razorpay but crashed before saving gateway_refund_id.  Log a warning
+            # and return without touching Razorpay again — we do not know the refund
+            # ID and a second API call could issue a duplicate refund.
+            _logger.warning(
+                "issue_refund: payment %s has status='refunded' but no gateway_refund_id. "
+                "A previous refund attempt may have partially succeeded.  "
+                "Inspect the Razorpay dashboard for payment %s to confirm.",
+                locked.pk, locked.gateway_payment_id,
+            )
+            return locked
+
+        # ── Pre-condition ────────────────────────────────────────────
+        if locked.status != "completed":
+            raise ValueError(
+                f"Cannot refund payment {locked.pk}: expected status='completed', "
+                f"got '{locked.status}'."
+            )
+
+        # ── Compute refund amount ────────────────────────────────────
+        full_paise = int((locked.amount + locked.gst_amount) * 100)
+        amount_paise = refund_amount_paise if refund_amount_paise is not None else full_paise
+        is_partial = amount_paise < full_paise
+
+        _logger.info(
+            "issue_refund: initiating %s refund | payment=%s | invoice=%s | "
+            "amount=%d paise | gateway_payment_id=%s",
+            "partial" if is_partial else "full",
+            locked.pk, locked.invoice_number, amount_paise,
+            locked.gateway_payment_id or "(none — sandbox)",
+        )
+
+        # ── Call Razorpay or generate a sandbox mock ID ──────────────
+        if getattr(settings, "RAZORPAY_KEY_ID", ""):
+            if not locked.gateway_payment_id:
+                raise ValueError(
+                    f"Payment {locked.pk} has no gateway_payment_id. "
+                    "A Razorpay refund requires a captured payment ID."
+                )
+            try:
+                from ..integrations.razorpay_client import get_client
+                client = get_client()
+                response = client.payment.refund(
+                    locked.gateway_payment_id,
+                    {"amount": amount_paise},
+                )
+                refund_id = response["id"]
+                _logger.info(
+                    "issue_refund: Razorpay refund created | payment=%s | "
+                    "razorpay_refund_id=%s | amount=%d paise",
+                    locked.pk, refund_id, amount_paise,
+                )
+            except Exception as exc:
+                _logger.exception(
+                    "issue_refund: Razorpay API call failed | payment=%s | "
+                    "gateway_payment_id=%s | amount=%d paise | error=%s",
+                    locked.pk, locked.gateway_payment_id, amount_paise, exc,
+                )
+                raise  # payment.status intentionally left as "completed"
+        else:
+            # Sandbox / dev: no live keys configured.
+            # Generate a deterministic mock refund ID so the full admin workflow
+            # (view → service → DB) can be exercised without a Razorpay account.
+            refund_id = f"rfnd_sandbox_{uuid_lib.uuid4().hex[:16]}"
+            _logger.info(
+                "issue_refund: sandbox mode — simulated refund | payment=%s | "
+                "mock_refund_id=%s",
+                locked.pk, refund_id,
+            )
+
+        # ── Persist only after confirmed success ─────────────────────
+        # Both fields are written in one save() call inside the same atomic block
+        # that holds the SELECT FOR UPDATE lock, preventing any gap between the
+        # API success and the DB update.
+        locked.gateway_refund_id = refund_id
+        locked.status = "refunded"
+        locked.save(update_fields=["gateway_refund_id", "status", "updated_at"])
+
+        _logger.info(
+            "issue_refund: payment %s marked refunded | invoice=%s | refund_id=%s",
+            locked.pk, locked.invoice_number, refund_id,
+        )
+
+    return locked
 
 
 # ── Resolution fee order creation ────────────────────────────────

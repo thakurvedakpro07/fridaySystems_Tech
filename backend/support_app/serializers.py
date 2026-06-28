@@ -367,7 +367,7 @@ class AdminPaymentSerializer(serializers.ModelSerializer):
         fields = [
             "id", "customer_email", "amount", "gst_amount", "total_amount",
             "currency", "invoice_number", "payment_type", "gateway",
-            "gateway_payment_id", "gateway_order_id", "status",
+            "gateway_payment_id", "gateway_order_id", "gateway_refund_id", "status",
             "ticket", "ticket_number", "created_at",
         ]
 

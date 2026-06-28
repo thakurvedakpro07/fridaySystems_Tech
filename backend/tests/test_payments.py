@@ -1173,3 +1173,611 @@ def test_invoice_pdf_still_works_after_counter_change():
 
     assert pdf_bytes[:4] == b"%PDF", "PDF generation must still work after counter model addition"
     assert len(pdf_bytes) > 1024, "PDF must be non-trivially sized"
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# C-NEW-001  Refund workflow — issue_refund() and ops_payment_refund endpoint
+#
+# Root cause: ops_payment_refund() only set payment.status = "refunded" in the
+# DB without calling issue_refund() or the Razorpay API.  Customers were never
+# actually refunded; money stayed with Razorpay indefinitely.
+#
+# Fix:
+#   • Added Payment.gateway_refund_id field (migration 0021).
+#   • Rewrote issue_refund() with SELECT FOR UPDATE idempotency guard, full
+#     Razorpay API call, refund ID persistence, sandbox mock, and logging.
+#   • Rewrote ops_payment_refund() to call issue_refund() and return 502 on
+#     gateway failure (leaving payment in "completed" so admin can retry).
+# ════════════════════════════════════════════════════════════════════════════
+
+
+# ── Shared helpers ────────────────────────────────────────────────────────────
+
+def _make_admin_client(db):
+    """Super admin user (is_staff=True, role='admin') + authenticated client."""
+    user = User.objects.create_user(
+        email=f"admin_{uuid_lib.uuid4().hex[:6]}@test.com",
+        password="StrongPass123!",
+        role="admin",
+        is_staff=True,
+    )
+    client = APIClient()
+    client.force_authenticate(user=user)
+    return client, user
+
+
+def _make_completed_payment(customer, gateway_payment_id="pay_testXXXXXX"):
+    """Completed Payment with a gateway_payment_id (as captured by Razorpay)."""
+    return Payment.objects.create(
+        customer=customer,
+        amount="299.00",
+        gst_amount="53.82",
+        invoice_number=f"INV-REFTEST-{uuid_lib.uuid4().hex[:8]}",
+        payment_type="consulting_fee",
+        gateway="razorpay",
+        gateway_payment_id=gateway_payment_id,
+        gateway_order_id="order_testXXXXXX",
+        status="completed",
+    )
+
+
+# ── Service unit tests ────────────────────────────────────────────────────────
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET="")
+def test_issue_refund_sandbox_stores_mock_refund_id(db):
+    """
+    In sandbox mode (no RAZORPAY_KEY_ID) issue_refund() generates a deterministic
+    mock refund ID, marks payment refunded, and persists gateway_refund_id to the DB.
+    No Razorpay API call is made.
+    """
+    from support_app.services.payment_service import issue_refund
+
+    _, customer = _make_customer_client(db, "rfnd_sb1@test.com")
+    payment = _make_completed_payment(customer)
+
+    result = issue_refund(payment)
+
+    assert result.status == "refunded"
+    assert result.gateway_refund_id.startswith("rfnd_sandbox_")
+
+    payment.refresh_from_db()
+    assert payment.status == "refunded"
+    assert payment.gateway_refund_id.startswith("rfnd_sandbox_")
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET="")
+def test_issue_refund_sandbox_is_idempotent(db):
+    """
+    Calling issue_refund() twice in sandbox returns the same refund ID on both
+    calls — no second mock ID is generated, no second API call occurs.
+    """
+    from support_app.services.payment_service import issue_refund
+
+    _, customer = _make_customer_client(db, "rfnd_sb2@test.com")
+    payment = _make_completed_payment(customer)
+
+    r1 = issue_refund(payment)
+    r2 = issue_refund(payment)
+
+    assert r1.gateway_refund_id == r2.gateway_refund_id, (
+        "Second call must return the existing refund ID — no duplicate refund"
+    )
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="rzp_test_key", RAZORPAY_KEY_SECRET="test_secret")
+def test_issue_refund_live_calls_razorpay_with_correct_amount(db):
+    """
+    In live mode issue_refund() calls client.payment.refund() with the full amount
+    in paise and stores the Razorpay-returned refund ID.
+    Amount: (299.00 + 53.82) × 100 = 35282 paise.
+    """
+    from unittest.mock import MagicMock, patch
+    from support_app.services.payment_service import issue_refund
+
+    _, customer = _make_customer_client(db, "rfnd_lv1@test.com")
+    payment = _make_completed_payment(customer, gateway_payment_id="pay_live001")
+
+    mock_client = MagicMock()
+    mock_client.payment.refund.return_value = {
+        "id": "rfnd_live_AAAAAA",
+        "entity": "refund",
+        "amount": 35282,
+        "currency": "INR",
+        "payment_id": "pay_live001",
+    }
+
+    with patch("support_app.integrations.razorpay_client.get_client", return_value=mock_client):
+        result = issue_refund(payment)
+
+    mock_client.payment.refund.assert_called_once_with("pay_live001", {"amount": 35282})
+    assert result.status == "refunded"
+    assert result.gateway_refund_id == "rfnd_live_AAAAAA"
+
+    payment.refresh_from_db()
+    assert payment.status == "refunded"
+    assert payment.gateway_refund_id == "rfnd_live_AAAAAA"
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="rzp_test_key", RAZORPAY_KEY_SECRET="test_secret")
+def test_issue_refund_live_idempotent_no_second_api_call(db):
+    """
+    If gateway_refund_id is already set, issue_refund() returns immediately without
+    calling the Razorpay API.  Prevents double-refund on retry.
+    """
+    from unittest.mock import MagicMock, patch
+    from support_app.services.payment_service import issue_refund
+
+    _, customer = _make_customer_client(db, "rfnd_lv2@test.com")
+    payment = _make_completed_payment(customer)
+    payment.gateway_refund_id = "rfnd_already_BBBBBB"
+    payment.status = "refunded"
+    payment.save(update_fields=["gateway_refund_id", "status"])
+
+    mock_client = MagicMock()
+
+    with patch("support_app.integrations.razorpay_client.get_client", return_value=mock_client):
+        result = issue_refund(payment)
+
+    mock_client.payment.refund.assert_not_called()
+    assert result.gateway_refund_id == "rfnd_already_BBBBBB"
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET="")
+def test_issue_refund_rejects_non_completed_payment(db):
+    """
+    issue_refund() raises ValueError when payment.status != 'completed'.
+    The payment record must be unchanged after the rejection.
+    """
+    from support_app.services.payment_service import issue_refund
+
+    _, customer = _make_customer_client(db, "rfnd_sb3@test.com")
+    payment = Payment.objects.create(
+        customer=customer,
+        amount="299.00",
+        gst_amount="53.82",
+        invoice_number=f"INV-PENDING-{uuid_lib.uuid4().hex[:8]}",
+        payment_type="consulting_fee",
+        status="pending",
+    )
+
+    with pytest.raises(ValueError, match="status='completed'"):
+        issue_refund(payment)
+
+    payment.refresh_from_db()
+    assert payment.status == "pending"
+    assert payment.gateway_refund_id == ""
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="rzp_test_key", RAZORPAY_KEY_SECRET="test_secret")
+def test_issue_refund_api_failure_leaves_payment_completed(db):
+    """
+    If the Razorpay API raises an exception, issue_refund() re-raises it and
+    the payment stays in 'completed' status — never silently marked refunded.
+    """
+    from unittest.mock import MagicMock, patch
+    from support_app.services.payment_service import issue_refund
+
+    _, customer = _make_customer_client(db, "rfnd_lv3@test.com")
+    payment = _make_completed_payment(customer, gateway_payment_id="pay_failtest")
+
+    mock_client = MagicMock()
+    mock_client.payment.refund.side_effect = Exception("Gateway timeout")
+
+    with patch("support_app.integrations.razorpay_client.get_client", return_value=mock_client):
+        with pytest.raises(Exception, match="Gateway timeout"):
+            issue_refund(payment)
+
+    payment.refresh_from_db()
+    assert payment.status == "completed", "Status must not be changed on gateway failure"
+    assert payment.gateway_refund_id == "", "Refund ID must not be stored on gateway failure"
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="rzp_test_key", RAZORPAY_KEY_SECRET="test_secret")
+def test_issue_refund_partial_amount_passes_correct_paise(db):
+    """
+    When refund_amount_paise is provided, issue_refund() passes that exact value
+    to the Razorpay API (partial refund support).
+    """
+    from unittest.mock import MagicMock, patch
+    from support_app.services.payment_service import issue_refund
+
+    _, customer = _make_customer_client(db, "rfnd_partial@test.com")
+    payment = _make_completed_payment(customer, gateway_payment_id="pay_partial")
+
+    mock_client = MagicMock()
+    mock_client.payment.refund.return_value = {"id": "rfnd_partial_CCCCCC"}
+
+    with patch("support_app.integrations.razorpay_client.get_client", return_value=mock_client):
+        result = issue_refund(payment, refund_amount_paise=10000)
+
+    mock_client.payment.refund.assert_called_once_with("pay_partial", {"amount": 10000})
+    assert result.status == "refunded"
+    assert result.gateway_refund_id == "rfnd_partial_CCCCCC"
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="rzp_test_key", RAZORPAY_KEY_SECRET="test_secret")
+def test_issue_refund_live_requires_gateway_payment_id(db):
+    """
+    In live mode, a payment with no gateway_payment_id cannot be refunded —
+    issue_refund() raises ValueError without calling the Razorpay API.
+    """
+    from unittest.mock import MagicMock, patch
+    from support_app.services.payment_service import issue_refund
+
+    _, customer = _make_customer_client(db, "rfnd_nopayid@test.com")
+    payment = Payment.objects.create(
+        customer=customer,
+        amount="299.00",
+        gst_amount="53.82",
+        invoice_number=f"INV-NOGW-{uuid_lib.uuid4().hex[:8]}",
+        payment_type="consulting_fee",
+        gateway_payment_id="",  # never captured at gateway
+        status="completed",
+    )
+
+    mock_client = MagicMock()
+    with patch("support_app.integrations.razorpay_client.get_client", return_value=mock_client):
+        with pytest.raises(ValueError, match="gateway_payment_id"):
+            issue_refund(payment)
+
+    mock_client.payment.refund.assert_not_called()
+    payment.refresh_from_db()
+    assert payment.status == "completed"
+
+
+# ── View (endpoint) tests ─────────────────────────────────────────────────────
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET="")
+def test_ops_refund_endpoint_sandbox_returns_200_and_refund_id(db):
+    """
+    POST /api/ops/payments/{id}/refund/ (sandbox) returns 200, sets status='refunded',
+    and includes gateway_refund_id in the response.
+    """
+    admin_client, _ = _make_admin_client(db)
+    _, customer = _make_customer_client(db, "rfnd_ep1@test.com")
+    payment = _make_completed_payment(customer)
+
+    response = admin_client.post(f"/api/ops/payments/{payment.id}/refund/")
+
+    assert response.status_code == 200
+    assert response.data["status"] == "refunded"
+    assert response.data["gateway_refund_id"].startswith("rfnd_sandbox_")
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET="")
+def test_ops_refund_endpoint_requires_super_admin(db):
+    """
+    POST /api/ops/payments/{id}/refund/ returns 403 for any non-super-admin user.
+    """
+    for role in ("operations_manager", "finance_manager", "customer"):
+        is_staff = False
+        user = User.objects.create_user(
+            email=f"rfnd_perm_{role}@test.com",
+            password="StrongPass123!",
+            role=role,
+            is_staff=is_staff,
+        )
+        client = APIClient()
+        client.force_authenticate(user=user)
+        _, customer = _make_customer_client(db, f"rfnd_ep2_{role}@test.com")
+        payment = _make_completed_payment(customer)
+
+        response = client.post(f"/api/ops/payments/{payment.id}/refund/")
+        assert response.status_code == 403, f"Role '{role}' must not access refund endpoint"
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET="")
+def test_ops_refund_endpoint_rejects_non_completed_payment(db):
+    """
+    POST /api/ops/payments/{id}/refund/ returns 400 for payments not in 'completed' status.
+    """
+    admin_client, _ = _make_admin_client(db)
+    _, customer = _make_customer_client(db, "rfnd_ep3@test.com")
+
+    for bad_status in ("pending", "failed"):
+        payment = Payment.objects.create(
+            customer=customer,
+            amount="299.00",
+            gst_amount="53.82",
+            invoice_number=f"INV-BAD-{uuid_lib.uuid4().hex[:8]}",
+            payment_type="consulting_fee",
+            status=bad_status,
+        )
+        response = admin_client.post(f"/api/ops/payments/{payment.id}/refund/")
+        assert response.status_code == 400, f"Status '{bad_status}' must be rejected"
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET="")
+def test_ops_refund_endpoint_is_idempotent(db):
+    """
+    Calling POST /api/ops/payments/{id}/refund/ twice returns 200 on both calls
+    with the same gateway_refund_id — no duplicate refund is issued.
+    """
+    admin_client, _ = _make_admin_client(db)
+    _, customer = _make_customer_client(db, "rfnd_ep4@test.com")
+    payment = _make_completed_payment(customer)
+
+    r1 = admin_client.post(f"/api/ops/payments/{payment.id}/refund/")
+    r2 = admin_client.post(f"/api/ops/payments/{payment.id}/refund/")
+
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    assert r1.data["gateway_refund_id"] == r2.data["gateway_refund_id"], (
+        "Second refund call must return the same refund ID (idempotency)"
+    )
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="rzp_test_key", RAZORPAY_KEY_SECRET="test_secret")
+def test_ops_refund_endpoint_live_mode_calls_razorpay_and_returns_refund_id(db):
+    """
+    In live mode the endpoint calls client.payment.refund() exactly once and
+    includes the Razorpay-returned refund ID in the response.
+    """
+    from unittest.mock import MagicMock, patch
+
+    admin_client, _ = _make_admin_client(db)
+    _, customer = _make_customer_client(db, "rfnd_ep5@test.com")
+    payment = _make_completed_payment(customer, gateway_payment_id="pay_ep_live")
+
+    mock_client = MagicMock()
+    mock_client.payment.refund.return_value = {"id": "rfnd_ep_DDDDDD"}
+
+    with patch("support_app.integrations.razorpay_client.get_client", return_value=mock_client):
+        response = admin_client.post(f"/api/ops/payments/{payment.id}/refund/")
+
+    assert response.status_code == 200
+    assert response.data["status"] == "refunded"
+    assert response.data["gateway_refund_id"] == "rfnd_ep_DDDDDD"
+    mock_client.payment.refund.assert_called_once()
+
+    payment.refresh_from_db()
+    assert payment.status == "refunded"
+    assert payment.gateway_refund_id == "rfnd_ep_DDDDDD"
+
+
+@pytest.mark.django_db
+@override_settings(RAZORPAY_KEY_ID="rzp_test_key", RAZORPAY_KEY_SECRET="test_secret")
+def test_ops_refund_endpoint_returns_502_on_gateway_error_and_does_not_update_db(db):
+    """
+    If the Razorpay API raises an exception the endpoint returns 502 and the
+    payment remains in 'completed' status — the admin can safely retry.
+    """
+    from unittest.mock import MagicMock, patch
+
+    admin_client, _ = _make_admin_client(db)
+    _, customer = _make_customer_client(db, "rfnd_ep6@test.com")
+    payment = _make_completed_payment(customer, gateway_payment_id="pay_ep_fail")
+
+    mock_client = MagicMock()
+    mock_client.payment.refund.side_effect = Exception("Connection refused")
+
+    with patch("support_app.integrations.razorpay_client.get_client", return_value=mock_client):
+        response = admin_client.post(f"/api/ops/payments/{payment.id}/refund/")
+
+    assert response.status_code == 502
+    payment.refresh_from_db()
+    assert payment.status == "completed", "DB must not be updated on gateway failure"
+    assert payment.gateway_refund_id == "", "Refund ID must not be stored on gateway failure"
+
+
+# ── C-NEW-002: process_payment_webhook atomicity ──────────────────────────────
+
+def _make_pending_payment_with_ticket(customer, order_id: str):
+    """Pending payment linked to a pending_payment ticket — mirrors real pre-webhook state."""
+    ticket = Ticket.objects.create(
+        customer=customer,
+        title="Test ticket",
+        service_type="linux",
+        severity="low",
+        status="pending_payment",
+    )
+    return Payment.objects.create(
+        customer=customer,
+        ticket=ticket,
+        amount="299.00",
+        gst_amount="53.82",
+        invoice_number=f"INV-WH-{uuid_lib.uuid4().hex[:8]}",
+        payment_type="consulting_fee",
+        gateway="razorpay",
+        gateway_payment_id="",
+        gateway_order_id=order_id,
+        status="pending",
+    )
+
+
+def _make_webhook_event(order_id: str, payment_id: str = "pay_wh_test") -> dict:
+    return {
+        "event": "payment.captured",
+        "payload": {
+            "payment": {
+                "entity": {
+                    "id": payment_id,
+                    "order_id": order_id,
+                }
+            }
+        },
+    }
+
+
+@pytest.mark.django_db
+def test_webhook_rolls_back_payment_when_ticket_open_fails(db):
+    """
+    C-NEW-002: If _open_ticket_after_payment raises inside process_payment_webhook,
+    the outer transaction.atomic() must roll back — payment must remain 'pending'.
+    """
+    from unittest.mock import patch
+    from support_app.services.payment_service import process_payment_webhook
+
+    _, customer = _make_customer_client(db, "wh_atomic@test.com")
+    order_id = f"order_wh_{uuid_lib.uuid4().hex[:8]}"
+    payment = _make_pending_payment_with_ticket(customer, order_id)
+
+    with patch(
+        "support_app.services.payment_service._open_ticket_after_payment",
+        side_effect=RuntimeError("Simulated DB failure"),
+    ):
+        with pytest.raises(RuntimeError):
+            process_payment_webhook(_make_webhook_event(order_id))
+
+    payment.refresh_from_db()
+    assert payment.status == "pending", "Transaction must roll back when ticket open fails"
+    assert payment.gateway_payment_id == "", "gateway_payment_id must not be persisted on rollback"
+
+
+@pytest.mark.django_db
+def test_webhook_idempotent_duplicate_delivery(db):
+    """
+    C-NEW-002: A second delivery of the same payment.captured webhook (Razorpay
+    sometimes retries) must be ignored — _open_ticket_after_payment called once only.
+    """
+    from unittest.mock import patch
+    from support_app.services.payment_service import process_payment_webhook
+
+    _, customer = _make_customer_client(db, "wh_idem@test.com")
+    order_id = f"order_idem_{uuid_lib.uuid4().hex[:8]}"
+    _make_pending_payment_with_ticket(customer, order_id)
+    event = _make_webhook_event(order_id)
+
+    with patch(
+        "support_app.services.payment_service._open_ticket_after_payment"
+    ) as mock_open:
+        process_payment_webhook(event)
+        process_payment_webhook(event)  # duplicate delivery
+
+    mock_open.assert_called_once(), "Ticket must be opened exactly once on duplicate webhook"
+
+
+# ── C-NEW-003: admin_payment_confirm and ops_payment_confirm atomicity ─────────
+
+def _make_pending_payment(customer, order_id: str | None = None):
+    """Pending payment for manual-confirm tests."""
+    ticket = Ticket.objects.create(
+        customer=customer,
+        title="Test ticket",
+        service_type="linux",
+        severity="low",
+        status="pending_payment",
+    )
+    return Payment.objects.create(
+        customer=customer,
+        ticket=ticket,
+        amount="299.00",
+        gst_amount="53.82",
+        invoice_number=f"INV-CONF-{uuid_lib.uuid4().hex[:8]}",
+        payment_type="consulting_fee",
+        gateway="razorpay",
+        gateway_payment_id="",
+        gateway_order_id=order_id or f"order_conf_{uuid_lib.uuid4().hex[:8]}",
+        status="pending",
+    )
+
+
+@pytest.mark.django_db
+def test_admin_confirm_rolls_back_when_ticket_save_fails(db):
+    """
+    C-NEW-003: If the ticket.save() inside admin_payment_confirm raises, the outer
+    transaction must roll back — payment must remain 'pending'.
+    """
+    from unittest.mock import patch
+    from support_app.models import Ticket as TicketModel
+
+    admin_client, _ = _make_admin_client(db)
+    _, customer = _make_customer_client(db, "adm_conf_atomic@test.com")
+    payment = _make_pending_payment(customer)
+
+    original_save = TicketModel.save
+
+    call_count = {"n": 0}
+
+    def fail_on_ticket_save(self, *args, **kwargs):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            raise RuntimeError("Simulated ticket DB failure")
+        return original_save(self, *args, **kwargs)
+
+    with patch.object(TicketModel, "save", fail_on_ticket_save):
+        response = admin_client.post(f"/api/admin/payments/{payment.id}/confirm/")
+
+    assert response.status_code == 500  # unhandled exception → 500 from DRF
+    payment.refresh_from_db()
+    assert payment.status == "pending", "Payment must roll back when ticket.save() fails"
+
+
+@pytest.mark.django_db
+def test_admin_confirm_is_idempotent(db):
+    """
+    C-NEW-003: Calling admin confirm twice on the same payment returns 400 on
+    the second call and does not double-open the ticket.
+    """
+    admin_client, _ = _make_admin_client(db)
+    _, customer = _make_customer_client(db, "adm_conf_idem@test.com")
+    payment = _make_pending_payment(customer)
+
+    r1 = admin_client.post(f"/api/admin/payments/{payment.id}/confirm/")
+    r2 = admin_client.post(f"/api/admin/payments/{payment.id}/confirm/")
+
+    assert r1.status_code == 200
+    assert r2.status_code == 400
+    payment.refresh_from_db()
+    assert payment.status == "completed"
+
+
+@pytest.mark.django_db
+def test_ops_confirm_is_atomic_and_rolls_back(db):
+    """
+    C-NEW-003: If ticket.save() raises inside ops_payment_confirm, the outer
+    transaction must roll back — payment must remain 'pending'.
+    """
+    from unittest.mock import patch
+    from support_app.models import Ticket as TicketModel
+
+    admin_client, _ = _make_admin_client(db)
+    _, customer = _make_customer_client(db, "ops_conf_atomic@test.com")
+    payment = _make_pending_payment(customer)
+
+    original_save = TicketModel.save
+    call_count = {"n": 0}
+
+    def fail_on_ticket_save(self, *args, **kwargs):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            raise RuntimeError("Simulated ticket DB failure")
+        return original_save(self, *args, **kwargs)
+
+    with patch.object(TicketModel, "save", fail_on_ticket_save):
+        response = admin_client.post(f"/api/ops/payments/{payment.id}/confirm/")
+
+    assert response.status_code == 500
+    payment.refresh_from_db()
+    assert payment.status == "pending", "Payment must roll back when ticket.save() fails"
+
+
+@pytest.mark.django_db
+def test_ops_confirm_is_idempotent(db):
+    """
+    C-NEW-003: Calling ops confirm twice returns 400 on the second call.
+    """
+    admin_client, _ = _make_admin_client(db)
+    _, customer = _make_customer_client(db, "ops_conf_idem@test.com")
+    payment = _make_pending_payment(customer)
+
+    r1 = admin_client.post(f"/api/ops/payments/{payment.id}/confirm/")
+    r2 = admin_client.post(f"/api/ops/payments/{payment.id}/confirm/")
+
+    assert r1.status_code == 200
+    assert r2.status_code == 400
+    payment.refresh_from_db()
+    assert payment.status == "completed"

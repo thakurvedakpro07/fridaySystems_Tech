@@ -27,10 +27,15 @@ API VERSIONING NOTE:
   The views themselves are version-agnostic — no code changes required.
 """
 
+import logging
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Q as models_q
 from django.shortcuts import get_object_or_404
+
+_logger = logging.getLogger(__name__)
 
 User = get_user_model()
 from rest_framework import generics, permissions, status
@@ -962,9 +967,7 @@ def admin_payment_confirm(request, pk):
     """
     from .services.notification_service import create_notification
 
-    payment = get_object_or_404(
-        Payment.objects.select_related("ticket", "customer__user"), pk=pk
-    )
+    payment = get_object_or_404(Payment, pk=pk)
 
     if payment.status != "pending":
         return Response(
@@ -972,30 +975,43 @@ def admin_payment_confirm(request, pk):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    payment.gateway_payment_id = f"manual_{payment.invoice_number}"
-    payment.status = "completed"
-    payment.save(update_fields=["gateway_payment_id", "status"])
+    with transaction.atomic():
+        payment = (
+            Payment.objects.select_related("ticket", "customer__user")
+            .select_for_update(of=("self",))
+            .get(pk=payment.pk)
+        )
+        # Re-check under lock: guard against concurrent confirm calls
+        if payment.status != "pending":
+            return Response(
+                {"detail": f"Payment is already {payment.status}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-    ticket = payment.ticket
-    if ticket and ticket.status == "pending_payment":
-        old_status = ticket.status
-        ticket.status = "open"
-        ticket.save(update_fields=["status"])
-        TicketActivityLog.objects.create(
-            ticket=ticket,
-            actor=request.user,
-            action="status_changed",
-            from_value=old_status,
-            to_value="open",
-            note=f"Payment {payment.invoice_number} manually confirmed by admin",
-        )
-        create_notification(
-            recipient=payment.customer.user,
-            category="payment_confirmed",
-            title=f"Payment confirmed — #{ticket.ticket_number}",
-            body=f"₹{int(payment.amount + payment.gst_amount)} received. Your ticket is now open.",
-            ticket=ticket,
-        )
+        payment.gateway_payment_id = f"manual_{payment.invoice_number}"
+        payment.status = "completed"
+        payment.save(update_fields=["gateway_payment_id", "status"])
+
+        ticket = payment.ticket
+        if ticket and ticket.status == "pending_payment":
+            old_status = ticket.status
+            ticket.status = "open"
+            ticket.save(update_fields=["status"])
+            TicketActivityLog.objects.create(
+                ticket=ticket,
+                actor=request.user,
+                action="status_changed",
+                from_value=old_status,
+                to_value="open",
+                note=f"Payment {payment.invoice_number} manually confirmed by admin",
+            )
+            create_notification(
+                recipient=payment.customer.user,
+                category="payment_confirmed",
+                title=f"Payment confirmed — #{ticket.ticket_number}",
+                body=f"₹{int(payment.amount + payment.gst_amount)} received. Your ticket is now open.",
+                ticket=ticket,
+            )
 
     return Response(AdminPaymentSerializer(payment).data)
 
@@ -2438,11 +2454,24 @@ def ops_payment_confirm(request, pk):
             {"detail": f"Payment is already '{payment.status}' — cannot confirm."},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    payment.status = "completed"
-    payment.save(update_fields=["status", "updated_at"])
-    if payment.ticket:
-        payment.ticket.status = "open"
-        payment.ticket.save(update_fields=["status", "updated_at"])
+
+    with transaction.atomic():
+        payment = (
+            Payment.objects.select_related("ticket")
+            .select_for_update(of=("self",))
+            .get(pk=payment.pk)
+        )
+        if payment.status != "pending":
+            return Response(
+                {"detail": f"Payment is already '{payment.status}' — cannot confirm."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        payment.status = "completed"
+        payment.save(update_fields=["status", "updated_at"])
+        if payment.ticket:
+            payment.ticket.status = "open"
+            payment.ticket.save(update_fields=["status", "updated_at"])
+
     return Response(OpsPaymentSerializer(payment).data)
 
 
@@ -2451,17 +2480,57 @@ def ops_payment_confirm(request, pk):
 def ops_payment_refund(request, pk):
     """
     POST /api/ops/payments/{id}/refund/
-    Mark a completed payment as refunded. Super Admin only — refunds are irreversible.
+    Initiate a Razorpay refund for a completed payment and mark it refunded in the
+    database.  Super Admin only — refunds are irreversible.
+
+    Idempotent: if the payment already has a gateway_refund_id (a prior call succeeded),
+    returns 200 with the current state without making a second Razorpay API call.
+
+    On gateway failure the payment is left in 'completed' status and 502 is returned
+    so the admin can retry.
     """
-    payment = get_object_or_404(Payment, pk=pk)
-    if payment.status != "completed":
+    from .services.payment_service import issue_refund as _issue_refund
+
+    payment = get_object_or_404(
+        Payment.objects.select_related("customer__user", "ticket"), pk=pk
+    )
+
+    if payment.status not in ("completed", "refunded"):
         return Response(
-            {"detail": "Only completed payments can be refunded."},
+            {"detail": f"Only completed payments can be refunded (current status: '{payment.status}')."},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    payment.status = "refunded"
-    payment.save(update_fields=["status", "updated_at"])
-    return Response(OpsPaymentSerializer(payment).data)
+
+    _logger.info(
+        "ops_payment_refund: refund requested by user %s for payment %s "
+        "(invoice=%s, status=%s)",
+        request.user.pk, payment.pk, payment.invoice_number, payment.status,
+    )
+
+    try:
+        updated = _issue_refund(payment)
+    except ValueError as exc:
+        _logger.warning(
+            "ops_payment_refund: refund rejected for payment %s — %s",
+            payment.pk, exc,
+        )
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception:
+        _logger.exception(
+            "ops_payment_refund: gateway error for payment %s (gateway_payment_id=%s)",
+            payment.pk, payment.gateway_payment_id,
+        )
+        return Response(
+            {
+                "detail": (
+                    "Refund could not be processed by the payment gateway. "
+                    "Please try again or initiate the refund manually via the Razorpay dashboard."
+                )
+            },
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+
+    return Response(OpsPaymentSerializer(updated).data)
 
 
 @api_view(["GET"])
