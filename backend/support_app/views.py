@@ -77,8 +77,10 @@ from .permissions import (
     IsPaymentReader,
     IsSupportAgent,
     IsSuperAdmin,
+    IsTicketManagementStaff,
     is_finance_manager,
     is_internal_staff,
+    is_super_admin,
     is_support_agent,
 )
 from .serializers import (
@@ -430,7 +432,10 @@ class TicketDetailView(generics.RetrieveUpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         user = request.user
-        if not (user.is_staff or hasattr(user, "customer_profile")):
+        # PATCH is for customers editing their own ticket fields (title/description/severity).
+        # Super Admin can also edit any ticket. Ops Managers and Support Agents manage
+        # tickets through the /api/ops/ endpoints, not this customer-facing one.
+        if not (is_super_admin(user) or hasattr(user, "customer_profile")):
             return Response(
                 {"detail": "Only the ticket owner can update this ticket."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -2046,12 +2051,14 @@ class OpsFreelancerListView(generics.ListAPIView):
 
 
 @api_view(["POST"])
-@permission_classes([permissions.IsAuthenticated, IsAnyStaffRole])
+@permission_classes([permissions.IsAuthenticated, IsTicketManagementStaff])
 def ops_assign_ticket(request, ticket_id):
     """
     POST /api/ops/tickets/{id}/assign/
     Body: {"freelancer_id": "<uuid>"}
     Assign or reassign a freelancer to a ticket.
+    Accessible to Ops Manager, Support Agent, and Super Admin.
+    Finance Managers are blocked — they have no ticket-management authority.
     """
     from .services.ticket_service import assign_ticket
     from .services.notification_service import create_notification
@@ -2096,12 +2103,14 @@ def ops_assign_ticket(request, ticket_id):
 
 
 @api_view(["POST"])
-@permission_classes([permissions.IsAuthenticated, IsAnyStaffRole])
+@permission_classes([permissions.IsAuthenticated, IsTicketManagementStaff])
 def ops_unassign_ticket(request, ticket_id):
     """
     POST /api/ops/tickets/{id}/unassign/
     Body: {"note": "optional reason"}
     Remove current freelancer from a ticket, resetting it to open.
+    Accessible to Ops Manager, Support Agent, and Super Admin.
+    Finance Managers are blocked — they have no ticket-management authority.
     """
     from .services.ticket_service import unassign_ticket
 
@@ -2130,6 +2139,46 @@ def ops_ticket_history(request, ticket_id):
     ).select_related("actor").order_by("-created_at")
 
     return Response(TicketActivityLogSerializer(logs, many=True).data)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsTicketManagementStaff])
+def ops_status_update(request, ticket_id):
+    """
+    POST /api/ops/tickets/{id}/status/
+    Body: {"new_status": "in_progress", "note": "optional"}
+
+    Update a ticket's status from the operations portal.
+    Accessible to Ops Manager, Support Agent, and Super Admin.
+    Finance Managers are blocked — they have no ticket-management authority.
+    """
+    from .services.ticket_service import update_status
+    from .services.notification_service import create_notification
+
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+
+    serializer = AdminStatusSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    try:
+        ticket = update_status(
+            ticket=ticket,
+            new_status=serializer.validated_data["new_status"],
+            actor=request.user,
+            note=serializer.validated_data.get("note", ""),
+        )
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    create_notification(
+        recipient=ticket.customer.user,
+        category="status_changed",
+        title=f"Ticket {ticket.ticket_number} status updated",
+        body=f"Your ticket is now: {ticket.get_status_display()}",
+        ticket=ticket,
+    )
+
+    return Response(TicketDetailSerializer(ticket).data)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -2478,12 +2527,12 @@ def ops_payment_confirm(request, pk):
 
 
 @api_view(["POST"])
-@permission_classes([permissions.IsAuthenticated, IsSuperAdmin])
+@permission_classes([permissions.IsAuthenticated, IsFinanceManagerOrSuperAdmin])
 def ops_payment_refund(request, pk):
     """
     POST /api/ops/payments/{id}/refund/
     Initiate a Razorpay refund for a completed payment and mark it refunded in the
-    database.  Super Admin only — refunds are irreversible.
+    database.  Finance Manager or Super Admin — refunds are irreversible.
 
     Idempotent: if the payment already has a gateway_refund_id (a prior call succeeded),
     returns 200 with the current state without making a second Razorpay API call.
@@ -2585,19 +2634,15 @@ def ops_payment_summary(request):
 # ══════════════════════════════════════════════════════════════════
 
 @api_view(["POST"])
-@permission_classes([permissions.IsAuthenticated, IsAnyStaffRole])
+@permission_classes([permissions.IsAuthenticated, IsTicketManagementStaff])
 def ops_ticket_escalate(request, ticket_id):
     """
     POST /api/ops/tickets/{id}/escalate/
-    Flag a ticket as escalated. Only Support Agents and Ops Managers (and Super Admins) may escalate.
-    Finance Managers have no ticket-management rights.
+    Flag a ticket as escalated.
+    Accessible to Ops Manager, Support Agent, and Super Admin.
+    Finance Managers are blocked at the permission class — no inline check needed.
     """
     user = request.user
-    if is_finance_manager(user):
-        return Response(
-            {"detail": "Finance Managers cannot escalate tickets."},
-            status=status.HTTP_403_FORBIDDEN,
-        )
     ticket = get_object_or_404(Ticket, pk=ticket_id)
     note = request.data.get("note", "")
     TicketActivityLog.objects.create(

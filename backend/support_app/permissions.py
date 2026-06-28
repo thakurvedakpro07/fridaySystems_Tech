@@ -190,6 +190,23 @@ class IsAnyStaffRole(BasePermission):
         return is_internal_staff(request.user)
 
 
+class IsTicketManagementStaff(BasePermission):
+    """Allow Ops Manager, Support Agent, and Super Admin to manage ticket state.
+
+    Finance Managers are explicitly excluded: they have financial visibility
+    but no ticket-management authority (cannot assign engineers, escalate
+    tickets, or update ticket status).
+    """
+    message = "Only Operations Managers, Support Agents, or Super Admins can perform this action."
+
+    def has_permission(self, request, view):
+        return (
+            is_operations_manager(request.user)
+            or is_support_agent(request.user)
+            or is_super_admin(request.user)
+        )
+
+
 class IsPaymentReader(BasePermission):
     """Allow Ops Manager, Finance Manager, and Super Admin to read payment data."""
     message = "Only staff with financial visibility can access payment records."

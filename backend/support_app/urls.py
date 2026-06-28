@@ -126,6 +126,7 @@ urlpatterns = [
     path("ops/tickets/",                                    views.OpsTicketListView.as_view(),       name="ops-ticket-list"),
     path("ops/tickets/<uuid:ticket_id>/assign/",            views.ops_assign_ticket,                name="ops-assign-ticket"),
     path("ops/tickets/<uuid:ticket_id>/unassign/",          views.ops_unassign_ticket,              name="ops-unassign-ticket"),
+    path("ops/tickets/<uuid:ticket_id>/status/",            views.ops_status_update,                name="ops-ticket-status"),
     path("ops/tickets/<uuid:ticket_id>/history/",           views.ops_ticket_history,               name="ops-ticket-history"),
     path("ops/freelancers/",                                views.OpsFreelancerListView.as_view(),  name="ops-freelancer-list"),
 
@@ -152,7 +153,7 @@ urlpatterns = [
     path("ops/payments/<uuid:pk>/refund/",                  views.ops_payment_refund,               name="ops-payment-refund"),
     path("ops/payments/",                                   views.OpsPaymentListView.as_view(),     name="ops-payment-list"),
 
-    # ── Ops: Ticket Escalation (Support Agent + Ops Manager) ──────
+    # ── Ops: Ticket Escalation (Ops Manager + Support Agent + Super Admin) ──
     path("ops/tickets/<uuid:ticket_id>/escalate/",          views.ops_ticket_escalate,              name="ops-ticket-escalate"),
 
     # ── Ops: Analytics (role-scoped) ──────────────────────────────
