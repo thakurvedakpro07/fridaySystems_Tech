@@ -157,6 +157,9 @@ class CustomUser(AbstractUser):
         ordering = ["-date_joined"]
         verbose_name = "User"
         verbose_name_plural = "Users"
+        indexes = [
+            models.Index(fields=["role", "is_active"], name="idx_user_role_active"),
+        ]
 
 
 class Customer(models.Model):
@@ -246,6 +249,9 @@ class Freelancer(models.Model):
 
     class Meta:
         ordering = ["-rating"]
+        indexes = [
+            models.Index(fields=["onboarding_status", "active"], name="idx_freelancer_status_active"),
+        ]
 
 
 # ── Ticket System ────────────────────────────────────────────────
@@ -382,6 +388,7 @@ class Ticket(models.Model):
         indexes = [
             models.Index(fields=["status", "customer"], name="idx_ticket_status_customer"),
             models.Index(fields=["assigned_to", "status"], name="idx_ticket_assigned_status"),
+            models.Index(fields=["status", "due_at"], name="idx_ticket_status_due_at"),
         ]
 
 
@@ -697,6 +704,11 @@ class Payment(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["gateway_order_id"],      name="idx_payment_gateway_order_id"),
+            models.Index(fields=["customer", "status"],    name="idx_payment_customer_status"),
+            models.Index(fields=["status", "created_at"],  name="idx_payment_status_created"),
+        ]
 
 
 class InvoiceCounter(models.Model):
