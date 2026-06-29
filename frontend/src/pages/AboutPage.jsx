@@ -67,7 +67,7 @@ const VALUES = [
 
 const MILESTONES = [
   { year: "2023", label: "Founded", desc: "Started as a tool to solve our own IT support problem at a 30-person startup." },
-  { year: "2024 Q1", label: "First 100 Tickets", desc: "Reached 100 resolved tickets with a 4.8 CSAT score. Started formalising the engineer vetting process." },
+  { year: "2024 Q1", label: "First 100 Tickets", desc: "Reached our first 100 resolved tickets. Started formalising the engineer vetting process." },
   { year: "2024 Q3", label: "Razorpay Integration", desc: "Automated billing and GST invoice generation — the feature SMBs asked for most." },
   { year: "2025", label: "Beta Launch", desc: "Public beta opens to Indian SMBs across manufacturing, pharma, logistics, and services sectors." },
 ];
@@ -125,10 +125,10 @@ export default function AboutPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               {[
-                { num: "500+", label: "SMBs Served", color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
-                { num: "98%",  label: "CSAT Score",   color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-                { num: "50+",  label: "Verified Engineers", color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
-                { num: "< 2h", label: "First Response", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
+                { num: "< 2h", label: "First Response SLA", color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
+                { num: "₹299", label: "Flat Consulting Fee", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+                { num: "7",    label: "Ticket Stages",       color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
+                { num: "GST",  label: "Invoice Included",    color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-100" },
               ].map((s) => (
                 <div key={s.label} className={`${s.bg} border ${s.border} rounded-2xl p-5 text-center`}>
                   <p className={`text-3xl font-black ${s.color} mb-1`}>{s.num}</p>

@@ -296,10 +296,10 @@ export default function ServicesPage() {
           {/* Hero stats */}
           <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
             {[
-              { value: "10+", label: "IT Specialisations" },
-              { value: "< 2h", label: "First Response" },
-              { value: "4.9★", label: "Average Rating" },
+              { value: "10+",  label: "IT Specialisations" },
+              { value: "< 2h", label: "First Response SLA" },
               { value: "₹299", label: "Consulting Fee" },
+              { value: "GST",  label: "Invoice Included" },
             ].map(({ value, label }) => (
               <div key={label} className="text-center">
                 <p className="text-2xl font-black text-white">{value}</p>

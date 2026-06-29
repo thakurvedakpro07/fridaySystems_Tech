@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import LandingFooter from "../components/layout/LandingFooter";
 import Header from "../components/layout/Header";
 
@@ -36,26 +36,6 @@ function Reveal({ children, delay = 0, className = "" }) {
   );
 }
 
-function useCountUp(end, duration = 2, inView) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    if (!inView) return;
-    setCount(0);
-    const start = Date.now();
-    const ms = duration * 1000;
-    let raf;
-    const tick = () => {
-      const pct = Math.min((Date.now() - start) / ms, 1);
-      const eased = 1 - Math.pow(1 - pct, 3);
-      setCount(Math.round(eased * end));
-      if (pct < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [end, duration, inView]);
-  return count;
-}
-
 // ── Shared atoms ──────────────────────────────────────────────────
 function SectionBadge({ children, light = false }) {
   return (
@@ -66,19 +46,6 @@ function SectionBadge({ children, light = false }) {
                         : "bg-indigo-50 border border-indigo-100 text-indigo-600"}`}>
       {children}
     </span>
-  );
-}
-
-function StarRow({ count = 5 }) {
-  return (
-    <div className="flex gap-0.5">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <svg key={i} className={`w-4 h-4 ${i < count ? "text-amber-400" : "text-slate-200"}`}
-             fill="currentColor" viewBox="0 0 20 20">
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      ))}
-    </div>
   );
 }
 
@@ -196,12 +163,6 @@ const POPULAR_PROBLEMS = [
   },
 ];
 
-const STATS = [
-  { prefix: "",   value: 250, suffix: "+",    label: "Issues Resolved",      sub: "and counting" },
-  { prefix: "",   value: 98,  suffix: "%",    label: "Customer Satisfaction", sub: "CSAT score" },
-  { prefix: "< ", value: 2,   suffix: " hrs", label: "Avg Response Time",     sub: "first engineer response" },
-  { prefix: "",   value: 50,  suffix: "+",    label: "Verified Specialists",  sub: "across India" },
-];
 
 const PROCESS_STEPS = [
   {
@@ -290,10 +251,6 @@ const ENGINEERS = [
   {
     name: "Arjun Kapoor",
     spec: "Linux Specialist",
-    exp: "8 yrs",
-    tickets: 340,
-    response: "< 45 min",
-    rating: 4.9,
     gradient: "from-orange-500 to-amber-500",
     initials: "AK",
     skills: ["RHEL", "Ubuntu", "Nginx", "Docker"],
@@ -301,10 +258,6 @@ const ENGINEERS = [
   {
     name: "Preethi Rajan",
     spec: "Windows Administrator",
-    exp: "6 yrs",
-    tickets: 212,
-    response: "< 30 min",
-    rating: 4.8,
     gradient: "from-blue-500 to-indigo-500",
     initials: "PR",
     skills: ["AD", "Group Policy", "Hyper-V", "RDS"],
@@ -312,10 +265,6 @@ const ENGINEERS = [
   {
     name: "Vikram Nair",
     spec: "VMware Specialist",
-    exp: "5 yrs",
-    tickets: 178,
-    response: "< 60 min",
-    rating: 4.7,
     gradient: "from-sky-500 to-teal-500",
     initials: "VN",
     skills: ["ESXi", "vSphere", "vSAN", "NSX"],
@@ -323,10 +272,6 @@ const ENGINEERS = [
   {
     name: "Sneha Kulkarni",
     spec: "SAP Basis Consultant",
-    exp: "7 yrs",
-    tickets: 295,
-    response: "< 40 min",
-    rating: 4.9,
     gradient: "from-purple-500 to-violet-600",
     initials: "SK",
     skills: ["SAP Basis", "TR Management", "HANA", "SM21"],
@@ -334,10 +279,6 @@ const ENGINEERS = [
   {
     name: "Rahul Mathur",
     spec: "Security Hardening Expert",
-    exp: "9 yrs",
-    tickets: 189,
-    response: "< 50 min",
-    rating: 5.0,
     gradient: "from-rose-500 to-pink-600",
     initials: "RM",
     skills: ["CIS Benchmarks", "VAPT", "ISO 27001", "SELinux"],
@@ -377,28 +318,6 @@ const HELP_TOPICS = [
   },
 ];
 
-const TESTIMONIALS = [
-  {
-    name: "Rajesh Mehta", title: "IT Manager", company: "Mehta Textiles Pvt. Ltd., Surat",
-    body: "We had AD sync failures every other week. ResolveHQ assigned an engineer who fixed the Windows Server issue in under 3 hours. Worth every rupee — and the GST invoice made reimbursement easy.",
-    rating: 5, initials: "RM", gradient: "from-indigo-600 to-violet-600",
-  },
-  {
-    name: "Priya Nair", title: "Founder & CA", company: "Nair & Associates, Chennai",
-    body: "Our Tally server kept crashing before month-end closing. I created a ticket at 11 PM and an engineer was on it within the hour. No subscriptions, no surprises. Exactly what a small firm needs.",
-    rating: 5, initials: "PN", gradient: "from-violet-600 to-purple-700",
-  },
-  {
-    name: "Suresh Joshi", title: "Operations Head", company: "Joshi Auto Parts, Pune",
-    body: "Finally an IT support service that's transparent about pricing. You know the fee before you start. We've resolved 12 tickets — Linux, security, VMware — all done on time with a proper invoice.",
-    rating: 5, initials: "SJ", gradient: "from-emerald-600 to-teal-600",
-  },
-  {
-    name: "Kavita Reddy", title: "CEO", company: "Reddy Pharma Distributors, Hyderabad",
-    body: "Our ERP went down on a Friday evening. ResolveHQ had a SAP Basis engineer on the call within 90 minutes. We were back up before 9 PM. I would not trust anyone else for critical infrastructure.",
-    rating: 5, initials: "KR", gradient: "from-rose-600 to-pink-600",
-  },
-];
 
 const FAQ_ITEMS = [
   {
@@ -634,15 +553,7 @@ function HeroSection() {
               </div>
 
               <div className="border-t border-white/8 pt-5 mb-5">
-                <div className="flex items-center gap-1 mb-1">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <svg key={i} className="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                  <span className="text-white font-black text-sm ml-1.5">4.9 / 5.0</span>
-                </div>
-                <p className="text-slate-400 text-xs">Issues resolved — pay only when fixed</p>
+                <p className="text-slate-400 text-xs">Pay only after your issue is fixed</p>
               </div>
 
               <Link to="/register/customer"
@@ -1029,53 +940,7 @@ function PopularProblemsSection() {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// SECTION 4: ANIMATED STATS
-// ══════════════════════════════════════════════════════════════════
-function StatsCounter({ stat, inView }) {
-  const count = useCountUp(stat.value, 2.2, inView);
-  return (
-    <div className="text-center px-4">
-      <p className="text-5xl sm:text-6xl font-black text-white leading-none">
-        {stat.prefix}{count}{stat.suffix}
-      </p>
-      <p className="text-lg font-semibold text-indigo-200 mt-3">{stat.label}</p>
-      <p className="text-sm text-indigo-300/70 mt-1">{stat.sub}</p>
-    </div>
-  );
-}
-
-function StatsSection() {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, amount: 0.4 });
-  return (
-    <section ref={ref} className="py-16 px-4 sm:px-6 relative overflow-hidden"
-      style={{ background: "linear-gradient(135deg, #4338ca 0%, #6d28d9 50%, #7c3aed 100%)" }}>
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/5 blur-3xl" />
-        <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-black/10 blur-3xl" />
-      </div>
-      <div className="relative max-w-5xl mx-auto">
-        <Reveal className="text-center mb-10">
-          <SectionBadge light>Platform Metrics</SectionBadge>
-          <h2 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-tight">
-            Numbers that speak for themselves
-          </h2>
-        </Reveal>
-        <motion.div className="grid grid-cols-2 lg:grid-cols-4 gap-10"
-          variants={stagger} initial="hidden" animate={inView ? "show" : "hidden"}>
-          {STATS.map((stat) => (
-            <motion.div key={stat.label} variants={fadeUp}>
-              <StatsCounter stat={stat} inView={inView} />
-            </motion.div>
-          ))}
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════
-// SECTION 5: HOW RESOLVEHQ WORKS (4 steps)
+// SECTION 4: HOW RESOLVEHQ WORKS (4 steps)
 // ══════════════════════════════════════════════════════════════════
 function HowItWorksSection() {
   return (
@@ -1539,34 +1404,10 @@ function EngineerSection() {
 
               {/* Info */}
               <p className="font-black text-slate-900 text-sm mb-0.5">{eng.name}</p>
-              <div className="flex items-center justify-center gap-1 mb-1">
+              <div className="flex items-center justify-center gap-1 mb-3">
                 <svg className="w-3 h-3 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
                 <p className="text-[11px] font-semibold text-indigo-600">{eng.spec}</p>
-              </div>
-
-              {/* Rating */}
-              <div className="flex items-center justify-center gap-1 mb-3">
-                <svg className="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-                <span className="text-xs font-bold text-slate-700">{eng.rating}</span>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-1 mb-3 text-center">
-                <div>
-                  <p className="text-xs font-black text-slate-900">{eng.exp}</p>
-                  <p className="text-[9px] text-slate-400 leading-tight">Exp.</p>
-                </div>
-                <div>
-                  <p className="text-xs font-black text-slate-900">{eng.tickets}</p>
-                  <p className="text-[9px] text-slate-400 leading-tight">Tickets</p>
-                </div>
-                <div>
-                  <p className="text-xs font-black text-slate-900">{eng.response}</p>
-                  <p className="text-[9px] text-slate-400 leading-tight">Response</p>
-                </div>
               </div>
 
               {/* Skills */}
@@ -1592,85 +1433,7 @@ function EngineerSection() {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// SECTION 11: TESTIMONIALS
-// ══════════════════════════════════════════════════════════════════
-function TestimonialsSection() {
-  const [active, setActive] = useState(0);
-  const total = TESTIMONIALS.length;
-
-  useEffect(() => {
-    const t = setInterval(() => setActive((a) => (a + 1) % total), 5500);
-    return () => clearInterval(t);
-  }, [total]);
-
-  return (
-    <section className="py-16 px-4 sm:px-6 bg-white">
-      <div className="max-w-5xl mx-auto">
-        <Reveal className="text-center mb-10">
-          <SectionBadge>Customer Stories</SectionBadge>
-          <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
-            Trusted by real businesses
-          </h2>
-          <p className="text-lg text-slate-500 max-w-xl mx-auto">
-            IT teams and founders across India rely on ResolveHQ for critical infrastructure support.
-          </p>
-        </Reveal>
-
-        <div className="relative">
-          <div className="overflow-hidden rounded-3xl">
-            <AnimatePresence mode="wait">
-              <motion.div key={active}
-                initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                className="bg-slate-50 border border-slate-100 rounded-3xl p-8 sm:p-12"
-                style={{ boxShadow: "0 2px 12px 0 rgb(0 0 0 / 0.05)" }}>
-                <StarRow count={TESTIMONIALS[active].rating} />
-                <p className="text-xl sm:text-2xl font-medium text-slate-800 leading-relaxed mt-6 mb-8 max-w-3xl">
-                  &ldquo;{TESTIMONIALS[active].body}&rdquo;
-                </p>
-                <div className="flex items-center gap-4 pt-6 border-t border-slate-200">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 bg-gradient-to-br ${TESTIMONIALS[active].gradient}`}>
-                    {TESTIMONIALS[active].initials}
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-900">{TESTIMONIALS[active].name}</p>
-                    <p className="text-sm text-slate-500">{TESTIMONIALS[active].title} · {TESTIMONIALS[active].company}</p>
-                  </div>
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-          <div className="flex items-center justify-between mt-6">
-            <div className="flex gap-2">
-              {TESTIMONIALS.map((_, i) => (
-                <button key={i} onClick={() => setActive(i)}
-                  className={`h-2 rounded-full transition-all duration-300 ${i === active ? "w-6 bg-indigo-600" : "w-2 bg-slate-200 hover:bg-slate-300"}`}
-                  aria-label={`Go to testimonial ${i + 1}`} />
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => setActive((a) => (a - 1 + total) % total)}
-                className="w-10 h-10 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center transition-colors" aria-label="Previous">
-                <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                </svg>
-              </button>
-              <button onClick={() => setActive((a) => (a + 1) % total)}
-                className="w-10 h-10 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center transition-colors" aria-label="Next">
-                <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════
-// SECTION 12: HELP CENTER PREVIEW
+// SECTION 11: HELP CENTER PREVIEW
 // ══════════════════════════════════════════════════════════════════
 function HelpCenterPreviewSection() {
   return (
@@ -1891,9 +1654,7 @@ export default function Landing() {
         <RecentActivitySection />
         {/* 11. Engineer Profiles */}
         <EngineerSection />
-        {/* 12. Testimonials */}
-        <TestimonialsSection />
-        {/* 13. Help Center */}
+        {/* 12. Help Center */}
         <HelpCenterPreviewSection />
         {/* 14. Freelancer CTA */}
         <FreelancerCTASection />

@@ -126,7 +126,7 @@ export default function Login() {
               ))}
             </div>
             <p className="text-xs text-indigo-300">
-              <span className="text-white font-semibold">500+</span> Indian SMBs trust us
+              Verified engineers · GST invoice on every ticket
             </p>
           </div>
         </div>

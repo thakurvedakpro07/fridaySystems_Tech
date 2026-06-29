@@ -111,7 +111,7 @@ export default function Register() {
               IT support that<br />works like magic.
             </h2>
             <p className="text-indigo-200 text-[15px] leading-relaxed mb-10 max-w-[290px]">
-              Join 500+ Indian SMBs who rely on ResolveHQ for fast, affordable IT help.
+              Get expert IT support for your business — no contracts, no retainers.
             </p>
 
             {/* Perks */}
@@ -144,7 +144,7 @@ export default function Register() {
               ))}
             </div>
             <p className="text-xs text-indigo-300">
-              <span className="text-white font-semibold">500+</span> Indian SMBs trust us
+              Verified engineers · GST invoice on every ticket
             </p>
           </div>
         </div>
