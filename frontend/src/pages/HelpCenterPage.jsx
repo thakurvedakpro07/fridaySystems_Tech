@@ -110,7 +110,7 @@ export default function HelpCenterPage() {
           How can we help you?
         </h1>
         <p className="text-base text-slate-500 mt-2 max-w-xl">
-          Everything you need to know about using ResolveHQ — from raising your first ticket to understanding your invoice.
+          Everything you need to know about using ResolveHQ — from raising your first ticket to tracking its resolution.
         </p>
       </div>
 
@@ -135,7 +135,7 @@ export default function HelpCenterPage() {
                 Takes under 2 minutes.
               </Step>
               <Step n={2} title="Pay the consulting fee">
-                A flat ₹299 consulting fee is charged upfront via Razorpay. This is refunded automatically if no engineer accepts your ticket.
+                A flat ₹299 consulting fee is charged upfront. This is refunded automatically if no engineer accepts your ticket.
               </Step>
               <Step n={3} title="Get matched with a specialist">
                 Our platform routes your ticket to a verified engineer whose skills match your issue.
@@ -144,8 +144,8 @@ export default function HelpCenterPage() {
               <Step n={4} title="Track and collaborate">
                 Chat with your engineer, share screenshots, and track progress in real time from your dashboard.
               </Step>
-              <Step n={5} title="Confirm resolution + get your invoice">
-                Mark the ticket resolved when your issue is fixed. A GST-compliant PDF invoice is generated automatically.
+              <Step n={5} title="Confirm resolution & close your ticket">
+                Mark the ticket resolved when your issue is fixed. Your payment history and billing records are available from the Billing page.
               </Step>
             </div>
           </HelpSection>
@@ -188,12 +188,12 @@ export default function HelpCenterPage() {
               <LifecycleStep
                 status="resolved"
                 label="Resolved"
-                description="Issue is fixed. Please confirm and rate your experience. Your PDF invoice is ready."
+                description="Issue is fixed. Please confirm resolution and rate your experience."
               />
               <LifecycleStep
                 status="closed"
                 label="Closed"
-                description="Ticket is fully closed. View your invoice from the Billing page."
+                description="Ticket is fully closed. View your billing history from the Billing page."
               />
             </div>
           </HelpSection>
@@ -209,7 +209,7 @@ export default function HelpCenterPage() {
               <div>
                 <p className="text-sm font-semibold text-slate-800 mb-1">Consulting Fee — ₹299</p>
                 <P>
-                  Charged once per ticket when you submit it. Processed securely via Razorpay — India's leading payment gateway.
+                  Charged once per ticket when you submit it. Processed through our secure payment infrastructure.
                   Supports UPI, credit/debit cards, and net banking.
                 </P>
               </div>
@@ -232,11 +232,11 @@ export default function HelpCenterPage() {
                   <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                   </svg>
-                  <p className="text-xs font-bold text-emerald-700">Secure Payments via Razorpay</p>
+                  <p className="text-xs font-bold text-emerald-700">Secure Payment Processing</p>
                 </div>
                 <p className="text-xs text-emerald-600 leading-relaxed">
                   Your card details are never stored on ResolveHQ servers. All transactions are handled by
-                  Razorpay's PCI-DSS Level 1 compliant infrastructure.
+                  PCI-DSS Level 1 compliant payment infrastructure.
                 </p>
               </div>
             </div>
@@ -342,15 +342,15 @@ export default function HelpCenterPage() {
               />
               <FaqItem
                 q="What payment methods are accepted?"
-                a="UPI, credit cards (Visa, Mastercard, RuPay), debit cards, and net banking via Razorpay. EMI options may be available on select cards."
+                a="UPI, credit cards (Visa, Mastercard, RuPay), debit cards, and net banking. EMI options may be available on select cards."
               />
               <FaqItem
                 q="I paid but my ticket is still showing Pending Payment."
-                a="Payment confirmation can take up to 5 minutes. If your ticket hasn't updated after 10 minutes, contact support with your Razorpay payment ID."
+                a="Payment confirmation can take up to 5 minutes. If your ticket hasn't updated after 10 minutes, contact support with your payment transaction ID."
               />
               <FaqItem
-                q="How do I get my GST invoice?"
-                a="Go to Billing in the sidebar. Every completed payment has a PDF Invoice download button. Make sure your GSTIN is saved in Settings → Business Details for B2B invoices."
+                q="How do I access my payment records and billing history?"
+                a="Go to Billing in the sidebar. Every completed payment has a PDF download button for your records. If your company is GST-registered, add your GSTIN in Settings → Business Details to include it on all billing documents."
               />
               <FaqItem
                 q="What are the business hours for support?"

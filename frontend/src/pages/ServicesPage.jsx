@@ -290,7 +290,7 @@ export default function ServicesPage() {
           </h1>
           <p className="text-lg text-slate-400 leading-relaxed max-w-2xl mx-auto mb-8">
             10 specialisations. Verified engineers. Pay only when your problem is resolved.
-            GST-compliant invoice on every ticket.
+            Transparent fixed pricing on every ticket.
           </p>
 
           {/* Hero stats */}
@@ -299,7 +299,7 @@ export default function ServicesPage() {
               { value: "10+",  label: "IT Specialisations" },
               { value: "< 2h", label: "First Response SLA" },
               { value: "₹299", label: "Consulting Fee" },
-              { value: "GST",  label: "Invoice Included" },
+              { value: "0",    label: "Hidden Fees" },
             ].map(({ value, label }) => (
               <div key={label} className="text-center">
                 <p className="text-2xl font-black text-white">{value}</p>
@@ -388,7 +388,7 @@ export default function ServicesPage() {
               {
                 step: "03",
                 title: "Problem resolved",
-                desc: "Once you confirm the resolution, the remaining fee is charged. GST invoice sent automatically.",
+                desc: "Once you confirm the resolution, the remaining fee is charged. Your billing history is available from the dashboard.",
                 color: "text-emerald-600",
               },
             ].map(({ step, title, desc, color }) => (

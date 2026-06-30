@@ -72,7 +72,7 @@ export default function LandingFooter() {
 
             <p className="text-sm text-slate-400 leading-relaxed mb-6 max-w-xs">
               Expert IT support for Indian SMBs. Pay only when your problem is resolved.
-              GST invoices on every transaction.
+              Verified engineers, transparent pricing.
             </p>
 
             {/* Contact info block */}
@@ -143,10 +143,10 @@ export default function LandingFooter() {
           </p>
           <div className="flex items-center gap-2.5 flex-wrap justify-center sm:justify-end">
             <span className="text-xs text-slate-500 bg-white/5 border border-white/10 px-2.5 py-1 rounded-md">
-              PCI DSS via Razorpay
+              Secure Remote Access
             </span>
             <span className="text-xs text-slate-500 bg-white/5 border border-white/10 px-2.5 py-1 rounded-md">
-              GST-compliant invoicing
+              Verified Engineers
             </span>
             <span className="text-xs text-slate-500 bg-white/5 border border-white/10 px-2.5 py-1 rounded-md">
               Made in India 🇮🇳

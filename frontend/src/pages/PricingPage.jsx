@@ -15,7 +15,7 @@ const PLANS = [
       { text: "2-hour first response SLA",            included: true },
       { text: "Verified specialist assigned",          included: true },
       { text: "Real-time ticket tracking",             included: true },
-      { text: "GST-compliant PDF invoice",             included: true },
+      { text: "Payment record for every transaction",   included: true },
       { text: "Automatic refund if unaccepted",        included: true },
       { text: "Resolution fee: ₹499–₹1,999",          included: true, note: "charged only after fix" },
       { text: "Comments & file attachments",           included: true },
@@ -38,7 +38,7 @@ const PLANS = [
       { text: "2-hour first response SLA",            included: true },
       { text: "Verified specialist assigned",          included: true },
       { text: "Real-time ticket tracking",             included: true },
-      { text: "GST-compliant PDF invoice",             included: true },
+      { text: "Payment record for every transaction",   included: true },
       { text: "Automatic refund if unaccepted",        included: true },
       { text: "Volume-discounted resolution fees",     included: true },
       { text: "Comments & file attachments",           included: true },
@@ -66,8 +66,8 @@ const FAQS = [
     a: "If no engineer accepts within 24 hours, the ₹299 consulting fee is automatically refunded to your original payment method within 5–7 business days. No action required.",
   },
   {
-    q: "Are all prices GST-inclusive?",
-    a: "Yes. All prices shown are GST-inclusive (18% GST). A GST-compliant PDF invoice is generated for every payment and available from your Billing page.",
+    q: "Are the listed prices final?",
+    a: "Yes. All prices shown are final and all-inclusive. Detailed payment records are available from your Billing dashboard after each transaction.",
   },
   {
     q: "How does Enterprise pricing work?",
@@ -219,7 +219,7 @@ export default function PricingPage() {
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Issue Type</th>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Examples</th>
-                  <th className="px-5 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Fee (incl. GST)</th>
+                  <th className="px-5 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Fee (all-inclusive)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -239,7 +239,7 @@ export default function PricingPage() {
             </table>
           </div>
           <p className="text-xs text-slate-400 mt-3 text-center">
-            All fees include 18% GST. Charged only after you confirm issue resolution.
+            All prices shown are final and all-inclusive. Charged only after you confirm issue resolution.
           </p>
         </div>
       </section>

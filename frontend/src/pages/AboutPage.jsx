@@ -24,7 +24,7 @@ const TEAM = [
 const VALUES = [
   {
     title: "Transparency First",
-    desc: "You always know the price before work starts. No hidden fees, no surprise invoices. ₹299 upfront — that's it until resolution.",
+    desc: "You always know the price before work starts. No hidden fees, no surprise charges. ₹299 upfront — that's it until resolution.",
     color: "text-indigo-600", bg: "bg-indigo-50",
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -45,7 +45,7 @@ const VALUES = [
   },
   {
     title: "SMB-First Design",
-    desc: "Every feature is built around the reality of running a small business: limited IT budget, no in-house team, and the need for GST-compliant invoices.",
+    desc: "Every feature is built around the reality of running a small business: limited IT budget, no in-house team, and the need for fast, dependable IT support without long-term contracts.",
     color: "text-amber-600", bg: "bg-amber-50",
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -68,7 +68,7 @@ const VALUES = [
 const MILESTONES = [
   { year: "2023", label: "Founded", desc: "Started as a tool to solve our own IT support problem at a 30-person startup." },
   { year: "2024 Q1", label: "First 100 Tickets", desc: "Reached our first 100 resolved tickets. Started formalising the engineer vetting process." },
-  { year: "2024 Q3", label: "Razorpay Integration", desc: "Automated billing and GST invoice generation — the feature SMBs asked for most." },
+  { year: "2024 Q3", label: "Automated Billing", desc: "Streamlined payment processing and billing records — making expense tracking and reimbursement seamless for business users." },
   { year: "2025", label: "Beta Launch", desc: "Public beta opens to Indian SMBs across manufacturing, pharma, logistics, and services sectors." },
 ];
 
@@ -119,8 +119,7 @@ export default function AboutPage() {
               </p>
               <p className="text-slate-500 text-base leading-relaxed">
                 ResolveHQ changes that. A verified engineer is assigned within 2 hours,
-                you pay a known flat fee, and you get a GST invoice automatically.
-                No retainers, no subscriptions, no surprises.
+                you pay a known flat fee — no retainers, no subscriptions, no surprises.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -128,7 +127,7 @@ export default function AboutPage() {
                 { num: "< 2h", label: "First Response SLA", color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
                 { num: "₹299", label: "Flat Consulting Fee", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
                 { num: "7",    label: "Ticket Stages",       color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
-                { num: "GST",  label: "Invoice Included",    color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-100" },
+                { num: "24/7", label: "Dashboard Access",    color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-100" },
               ].map((s) => (
                 <div key={s.label} className={`${s.bg} border ${s.border} rounded-2xl p-5 text-center`}>
                   <p className={`text-3xl font-black ${s.color} mb-1`}>{s.num}</p>

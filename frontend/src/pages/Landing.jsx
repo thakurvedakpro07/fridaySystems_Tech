@@ -84,7 +84,7 @@ function FaqItem({ q, a }) {
 
 const TRUST_BAR = [
   { label: "Verified IT Specialists" },
-  { label: "Secure Payments via Razorpay" },
+  { label: "Transparent Fixed Pricing" },
   { label: "2-Hour Response SLA" },
   { label: "Real-Time Ticket Tracking" },
   { label: "Enterprise Grade Security" },
@@ -184,8 +184,8 @@ const PROCESS_STEPS = [
     icon: <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>,
   },
   {
-    step: "04", title: "Pay Securely",
-    body: "Confirm the fix and pay via Razorpay — only after your issue is resolved. GST-compliant PDF invoice auto-generated instantly.",
+    step: "04", title: "Confirm & Close",
+    body: "Confirm the fix and complete payment — only after your issue is fully resolved. Full payment history and billing records are available from your dashboard.",
     color: "bg-amber-500", ring: "ring-amber-200",
     icon: <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" /></svg>,
   },
@@ -199,10 +199,10 @@ const TRUST_CARDS = [
     icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>,
   },
   {
-    title: "Secure Payments",
-    desc: "All transactions via Razorpay with PCI DSS compliance. No card data stored.",
+    title: "SLA-Backed Response",
+    desc: "2-hour first response guaranteed. If the SLA is breached, your consulting fee is automatically refunded — no questions asked.",
     color: "text-emerald-600", bg: "bg-emerald-50",
-    icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" /></svg>,
+    icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
   },
   {
     title: "Real-Time Tracking",
@@ -211,10 +211,10 @@ const TRUST_CARDS = [
     icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" /></svg>,
   },
   {
-    title: "Invoice Transparency",
-    desc: "GST-compliant PDF invoice generated automatically for every payment.",
+    title: "Business-First Billing",
+    desc: "Transparent pricing with no hidden charges. Full payment history and billing records available from your dashboard at any time.",
     color: "text-amber-600", bg: "bg-amber-50",
-    icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" /></svg>,
+    icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
   },
   {
     title: "Escalation Support",
@@ -306,7 +306,7 @@ const HELP_TOPICS = [
   },
   {
     title: "Ticket Lifecycle",
-    desc: "7 stages from creation to invoice — what to expect",
+    desc: "7 stages from creation to resolution — what to expect",
     icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" /></svg>,
     color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100",
   },
@@ -333,8 +333,8 @@ const FAQ_ITEMS = [
     a: "Most tickets receive an engineer assignment within 2 hours during business hours (9 AM–8 PM IST). You get notifications at every status change. If the SLA is breached, the consulting fee is automatically refunded.",
   },
   {
-    q: "Do I get a GST invoice?",
-    a: "Yes. Every transaction — consulting fee and resolution fee — generates a proper GST-compliant PDF invoice automatically. Perfect for business accounts, audits, and tax filings.",
+    q: "Can I specify which type of engineer I need?",
+    a: "Yes. When raising a ticket, you select the service type — Linux, Windows, VMware, SAP Basis, Security, Desktop Support, and others. ResolveHQ routes your ticket to a specialist with proven expertise in that area.",
   },
   {
     q: "What if my issue isn't resolved?",
@@ -511,7 +511,7 @@ function HeroSection() {
               transition={{ duration: 0.6, delay: 0.5 }}
               className="flex flex-wrap items-center gap-x-5 gap-y-2"
             >
-              {["₹299 Flat Consulting Fee", "No Contracts", "GST Invoice Included"].map((item) => (
+              {["₹299 Flat Consulting Fee", "No Contracts", "SLA-Backed Refunds"].map((item) => (
                 <span key={item} className="flex items-center gap-1.5 text-sm text-slate-400">
                   <svg className="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
@@ -803,12 +803,12 @@ const WHY_CHOOSE = [
     ),
   },
   {
-    title: "GST Invoice Included",
-    desc: "Every payment auto-generates a GST-compliant PDF invoice — ready for business reimbursement, audits, and tax filing.",
+    title: "24/7 Dashboard Access",
+    desc: "Track every ticket, engineer assignment, and payment in real time. Full account visibility from any device, at any time.",
     color: "text-amber-600", bg: "bg-amber-50",
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
       </svg>
     ),
   },
@@ -1022,7 +1022,7 @@ function PlatformPreviewSection() {
             See ResolveHQ In Action
           </h2>
           <p className="text-lg text-slate-500 max-w-xl mx-auto">
-            Tickets, engineer assignments, notifications, invoices — all from a unified dashboard.
+            Tickets, engineer assignments, status updates, and billing history — all from a unified dashboard.
           </p>
         </Reveal>
 
@@ -1079,7 +1079,7 @@ function PlatformPreviewSection() {
                   <div className="h-2.5 w-36 bg-slate-300 rounded-full" />
                 </div>
                 <div className="flex gap-3 mb-5 overflow-hidden">
-                  {["Verified Engineers", "Razorpay Secure", "2-hr SLA"].map((label) => (
+                  {["Verified Engineers", "SLA Guaranteed", "2-hr SLA"].map((label) => (
                     <div key={label} className="flex items-center gap-1.5 bg-white border border-slate-100 rounded-xl px-3 py-1.5 shrink-0">
                       <div className="w-3 h-3 rounded-full bg-emerald-400 shrink-0" />
                       <div className="h-2 w-20 bg-slate-300 rounded-full" />
@@ -1145,14 +1145,14 @@ function PlatformPreviewSection() {
                     <div className="h-2 w-24 bg-slate-800 rounded-full" />
                     <div className="h-4 w-4 rounded-full bg-rose-100 ml-auto" />
                   </div>
-                  {["Engineer assigned", "Ticket updated", "Invoice ready"].map((s) => (
+                  {["Engineer assigned", "Ticket updated", "Ticket resolved"].map((s) => (
                     <div key={s} className="flex items-center gap-2 py-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
                       <div className="h-1.5 w-full bg-slate-100 rounded-full" />
                     </div>
                   ))}
                 </div>
-                {/* Invoice status */}
+                {/* Resolution status */}
                 <div className="bg-white border border-emerald-100 rounded-xl p-3">
                   <div className="flex items-center gap-1.5 mb-2">
                     <svg className="w-3 h-3 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -1185,7 +1185,7 @@ function PlatformPreviewSection() {
           {[
             { title: "Active Ticket View", desc: "Live engineer assignment with real-time status tracker" },
             { title: "Notification Center", desc: "Instant alerts for every ticket status change" },
-            { title: "Invoice & Billing", desc: "GST-compliant PDF invoices auto-generated on payment" },
+            { title: "Billing History", desc: "Full payment history and billing records accessible at any time" },
           ].map((f) => (
             <motion.div key={f.title} variants={fadeUp}
               className="flex items-start gap-4 bg-white border border-slate-100 rounded-2xl p-5"
@@ -1599,7 +1599,7 @@ function BottomCTASection() {
             First response in under 2 hours — guaranteed.
           </p>
           <p className="text-slate-500 text-sm mb-10">
-            ₹299 consulting fee · Resolution fee only after the issue is fixed · GST invoice included
+            ₹299 consulting fee · Pay only when your issue is resolved · SLA-backed 2-hour response
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>

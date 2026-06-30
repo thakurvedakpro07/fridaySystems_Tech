@@ -9,7 +9,7 @@ import { CONTACT } from "../config/contact";
 const TRUST_POINTS = [
   "Bank-grade encryption on all data",
   "Average 2-hour first response",
-  "GST invoice on every transaction",
+  "Transparent fixed pricing, no hidden fees",
 ];
 
 const AVATARS = [
@@ -126,7 +126,7 @@ export default function Login() {
               ))}
             </div>
             <p className="text-xs text-indigo-300">
-              Verified engineers · GST invoice on every ticket
+              Verified engineers · Transparent fixed pricing · 2-hr SLA
             </p>
           </div>
         </div>

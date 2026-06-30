@@ -32,7 +32,7 @@ const PERKS = [
       </svg>
     ),
     title: "Secure payments",
-    body: "Pay only when your issue is fully resolved. GST invoice included.",
+    body: "Pay only when your issue is fully resolved. No hidden fees, no surprises.",
   },
   {
     icon: (
@@ -158,7 +158,7 @@ export default function RegisterCustomer() {
               ))}
             </div>
             <p className="text-xs text-indigo-300">
-              Verified engineers · GST invoice on every ticket
+              Verified engineers · Transparent fixed pricing · 2-hr SLA
             </p>
           </div>
         </div>
