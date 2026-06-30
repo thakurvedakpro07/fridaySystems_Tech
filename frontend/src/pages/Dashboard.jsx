@@ -8,6 +8,8 @@ import { SkeletonCard } from "../components/ui/Spinner";
 import { useAuthStore } from "../store/authStore";
 import { useTickets } from "../hooks/useTickets";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useIsMobile } from "../hooks/useIsMobile";
+import { useToast } from "../context/ToastContext";
 import { getDisplayName } from "../utils/displayName";
 import { CONTACT } from "../config/contact";
 
@@ -170,17 +172,47 @@ function InfoPanel() {
             </svg>
             {CONTACT.supportEmail}
           </a>
-          <a
-            href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
-            className="flex items-center gap-2.5 text-xs font-medium text-slate-700
-                       hover:text-indigo-600 transition-colors"
-          >
-            <svg className="w-4 h-4 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-            </svg>
-            {CONTACT.tollFree}
-          </a>
+          {isMobile ? (
+            <a
+              href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
+              aria-label={`Call support: ${CONTACT.tollFree}`}
+              className="flex items-center gap-2.5 text-xs font-medium text-slate-700
+                         hover:text-indigo-600 transition-colors focus:outline-none
+                         focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 rounded"
+            >
+              <svg className="w-4 h-4 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+              </svg>
+              {CONTACT.tollFree}
+            </a>
+          ) : (
+            <div className="flex items-start gap-2.5">
+              <svg className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+              </svg>
+              <div>
+                <span className="text-xs font-medium text-slate-700">{CONTACT.tollFree}</span>
+                <button
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(CONTACT.tollFree);
+                      addToast("Phone number copied.", "success");
+                    } catch {
+                      addToast("Could not copy — please dial manually.", "warning");
+                    }
+                  }}
+                  aria-label="Copy phone number to clipboard"
+                  className="ml-2 text-[10px] font-semibold text-indigo-600 hover:text-indigo-800
+                             underline-offset-2 hover:underline transition-colors
+                             focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 rounded"
+                >
+                  Copy Number
+                </button>
+              </div>
+            </div>
+          )}
           <p className="text-[11px] text-slate-400 pl-[1.625rem]">{CONTACT.businessHours}</p>
         </div>
       </div>
@@ -402,7 +434,9 @@ export default function Dashboard() {
 // ── Customer Dashboard ────────────────────────────────────────────
 function CustomerDashboard() {
   usePageTitle("Dashboard");
-  const user = useAuthStore((s) => s.user);
+  const user    = useAuthStore((s) => s.user);
+  const isMobile = useIsMobile();
+  const addToast = useToast();
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch]           = useState("");

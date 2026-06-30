@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useAuthStore } from "../../store/authStore";
+import { useIsMobile } from "../../hooks/useIsMobile";
+import { useToast } from "../../context/ToastContext";
 import NotificationBell from "../ui/NotificationBell";
 import { getDisplayName } from "../../utils/displayName";
 import { CONTACT } from "../../config/contact";
@@ -42,6 +44,52 @@ function NavLink({ to, children, onClick }) {
     >
       {children}
     </Link>
+  );
+}
+
+function PhoneNavButton() {
+  const isMobile = useIsMobile();
+  const addToast = useToast();
+
+  async function copyNumber() {
+    try {
+      await navigator.clipboard.writeText(CONTACT.tollFree);
+      addToast("Phone number copied.", "success");
+    } catch {
+      addToast("Could not copy — please dial manually.", "warning");
+    }
+  }
+
+  if (isMobile) {
+    return (
+      <a
+        href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
+        aria-label={`Call support: ${CONTACT.tollFree}`}
+        title={`Call ${CONTACT.tollFree}`}
+        className="p-2.5 rounded-xl hover:bg-emerald-50 transition-colors
+                   text-slate-400 hover:text-emerald-600 border border-transparent hover:border-emerald-100
+                   focus:outline-none focus:ring-2 focus:ring-emerald-500"
+      >
+        <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+        </svg>
+      </a>
+    );
+  }
+
+  return (
+    <button
+      onClick={copyNumber}
+      aria-label={`Copy phone number ${CONTACT.tollFree} to clipboard`}
+      title={`${CONTACT.tollFree} — click to copy`}
+      className="p-2.5 rounded-xl hover:bg-emerald-50 transition-colors
+                 text-slate-400 hover:text-emerald-600 border border-transparent hover:border-emerald-100
+                 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+    >
+      <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+      </svg>
+    </button>
   );
 }
 
@@ -148,16 +196,7 @@ export default function Header() {
               >
                 Sign In
               </Link>
-              <a
-                href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
-                title={`Call ${CONTACT.tollFree}`}
-                className="p-2.5 rounded-xl hover:bg-emerald-50 transition-colors
-                           text-slate-400 hover:text-emerald-600 border border-transparent hover:border-emerald-100"
-              >
-                <svg className="w-4.5 h-4.5 w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-                </svg>
-              </a>
+              <PhoneNavButton />
               <Link
                 to="/register"
                 className="bg-indigo-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl

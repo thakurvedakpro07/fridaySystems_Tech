@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import Header from "../components/layout/Header";
 import LandingFooter from "../components/layout/LandingFooter";
+import { useIsMobile } from "../hooks/useIsMobile";
+import { useToast } from "../context/ToastContext";
 import { CONTACT } from "../config/contact";
 
 const CONTACT_CHANNELS = [
@@ -41,23 +43,22 @@ const CONTACT_CHANNELS = [
       </svg>
     ),
   },
-  {
-    title: "Toll-Free",
-    value: `${CONTACT.tollFree} (Toll-free)`,
-    href: `tel:${CONTACT.tollFree.replace(/-/g, "")}`,
-    desc: CONTACT.businessHours,
-    color: "text-sky-600", bg: "bg-sky-50", border: "border-sky-100",
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-      </svg>
-    ),
-  },
 ];
 
 export default function ContactPage() {
   const [form, setForm] = useState({ name: "", email: "", company: "", subject: "", message: "" });
   const [sent, setSent] = useState(false);
+  const isMobile = useIsMobile();
+  const addToast = useToast();
+
+  async function copyPhoneNumber() {
+    try {
+      await navigator.clipboard.writeText(CONTACT.tollFree);
+      addToast("Phone number copied.", "success");
+    } catch {
+      addToast("Could not copy — please dial manually.", "warning");
+    }
+  }
 
   const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -123,6 +124,57 @@ export default function ContactPage() {
                 <p className="text-xs text-slate-400 leading-relaxed">{ch.desc}</p>
               </a>
             ))}
+
+            {/* Toll-Free phone card — mobile-aware */}
+            {isMobile ? (
+              <a
+                href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
+                aria-label={`Call toll-free support: ${CONTACT.tollFree}`}
+                className="bg-white border border-sky-100 rounded-2xl p-5 hover:shadow-md
+                           transition-all duration-200 hover:-translate-y-0.5 group block
+                           focus:outline-none focus:ring-2 focus:ring-sky-500"
+                style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}
+              >
+                <div className="w-12 h-12 bg-sky-50 text-sky-600 rounded-xl flex items-center justify-center mb-4
+                                group-hover:scale-110 transition-transform duration-200">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                  </svg>
+                </div>
+                <p className="text-sm font-bold text-slate-900 mb-1">Toll-Free</p>
+                <p className="text-sm font-semibold text-sky-600 mb-2">{CONTACT.tollFree}</p>
+                <p className="text-xs text-slate-400 leading-relaxed">{CONTACT.businessHours}</p>
+              </a>
+            ) : (
+              <div
+                className="bg-white border border-sky-100 rounded-2xl p-5"
+                style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}
+              >
+                <div className="w-12 h-12 bg-sky-50 text-sky-400 rounded-xl flex items-center justify-center mb-4">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                  </svg>
+                </div>
+                <p className="text-sm font-bold text-slate-900 mb-1">Toll-Free</p>
+                <p className="text-xs text-slate-500 mb-3">
+                  Need immediate assistance?<br />Please dial from your phone:
+                </p>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-semibold text-slate-800">{CONTACT.tollFree}</span>
+                  <button
+                    onClick={copyPhoneNumber}
+                    aria-label="Copy phone number to clipboard"
+                    className="text-[10px] font-bold text-sky-600 hover:text-sky-800
+                               border border-sky-200 hover:border-sky-400 px-2 py-0.5 rounded-lg
+                               transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500
+                               focus:ring-offset-1"
+                  >
+                    Copy Number
+                  </button>
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed">{CONTACT.businessHours}</p>
+              </div>
+            )}
           </div>
         </div>
       </section>

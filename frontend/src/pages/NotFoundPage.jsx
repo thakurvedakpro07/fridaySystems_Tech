@@ -1,11 +1,24 @@
 // Temporary placeholder contact information. Replace before production launch.
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import { useIsMobile } from "../hooks/useIsMobile";
+import { useToast } from "../context/ToastContext";
 import { CONTACT } from "../config/contact";
 
 export default function NotFoundPage() {
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isMobile = useIsMobile();
+  const addToast = useToast();
+
+  async function copyNumber() {
+    try {
+      await navigator.clipboard.writeText(CONTACT.tollFree);
+      addToast("Phone number copied.", "success");
+    } catch {
+      addToast("Could not copy — please dial manually.", "warning");
+    }
+  }
 
   const homeHref = isAuthenticated
     ? user?.is_staff ? "/admin" : user?.role === "freelancer" ? "/freelancer" : "/dashboard"
@@ -44,9 +57,20 @@ export default function NotFoundPage() {
             {CONTACT.supportEmail}
           </a>
           {" "}·{" "}
-          <a href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`} className="hover:text-slate-600">
-            {CONTACT.tollFree}
-          </a>
+          {isMobile ? (
+            <a href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
+               aria-label={`Call support: ${CONTACT.tollFree}`}
+               className="hover:text-slate-600">
+              {CONTACT.tollFree}
+            </a>
+          ) : (
+            <button onClick={copyNumber}
+                    aria-label="Copy phone number to clipboard"
+                    title={`${CONTACT.tollFree} — click to copy`}
+                    className="hover:text-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-400 rounded">
+              {CONTACT.tollFree}
+            </button>
+          )}
         </p>
       </div>
     </div>

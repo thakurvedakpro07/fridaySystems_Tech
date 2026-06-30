@@ -1,6 +1,8 @@
 // Temporary placeholder contact information. Replace before production launch.
 import { Link } from "react-router-dom";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useIsMobile } from "../hooks/useIsMobile";
+import { useToast } from "../context/ToastContext";
 import { CONTACT } from "../config/contact";
 
 const CUSTOMER_BENEFITS = [
@@ -19,6 +21,17 @@ const FREELANCER_BENEFITS = [
 
 export default function RegisterRole() {
   usePageTitle("Get Started — ResolveHQ");
+  const isMobile = useIsMobile();
+  const addToast = useToast();
+
+  async function copyNumber() {
+    try {
+      await navigator.clipboard.writeText(CONTACT.tollFree);
+      addToast("Phone number copied.", "success");
+    } catch {
+      addToast("Could not copy — please dial manually.", "warning");
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 flex flex-col">
@@ -202,9 +215,20 @@ export default function RegisterRole() {
               {CONTACT.supportEmail}
             </a>
             {" "}·{" "}
-            <a href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`} className="hover:text-slate-600 transition-colors">
-              {CONTACT.tollFree}
-            </a>
+            {isMobile ? (
+              <a href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
+                 aria-label={`Call support: ${CONTACT.tollFree}`}
+                 className="hover:text-slate-600 transition-colors">
+                {CONTACT.tollFree}
+              </a>
+            ) : (
+              <button onClick={copyNumber}
+                      aria-label="Copy phone number to clipboard"
+                      title={`${CONTACT.tollFree} — click to copy`}
+                      className="hover:text-slate-600 transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 rounded">
+                {CONTACT.tollFree}
+              </button>
+            )}
           </p>
 
         </div>

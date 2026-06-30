@@ -4,6 +4,8 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Button from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useIsMobile } from "../hooks/useIsMobile";
+import { useToast } from "../context/ToastContext";
 import { CONTACT } from "../config/contact";
 
 const TRUST_POINTS = [
@@ -20,10 +22,21 @@ const AVATARS = [
 
 export default function Login() {
   usePageTitle("Sign In");
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
   const { loginUser, loading } = useAuth();
+  const isMobile  = useIsMobile();
+  const addToast  = useToast();
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
+
+  async function copyNumber() {
+    try {
+      await navigator.clipboard.writeText(CONTACT.tollFree);
+      addToast("Phone number copied.", "success");
+    } catch {
+      addToast("Could not copy — please dial manually.", "warning");
+    }
+  }
   const [searchParams] = useSearchParams();
   const sessionExpired = searchParams.get("session_expired") === "1";
 
@@ -241,9 +254,20 @@ export default function Login() {
               {CONTACT.supportEmail}
             </a>
             {" "}·{" "}
-            <a href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`} className="hover:text-slate-600 transition-colors">
-              {CONTACT.tollFree}
-            </a>
+            {isMobile ? (
+              <a href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
+                 aria-label={`Call support: ${CONTACT.tollFree}`}
+                 className="hover:text-slate-600 transition-colors">
+                {CONTACT.tollFree}
+              </a>
+            ) : (
+              <button onClick={copyNumber}
+                      aria-label="Copy phone number to clipboard"
+                      title={`${CONTACT.tollFree} — click to copy`}
+                      className="hover:text-slate-600 transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 rounded">
+                {CONTACT.tollFree}
+              </button>
+            )}
           </p>
 
         </div>

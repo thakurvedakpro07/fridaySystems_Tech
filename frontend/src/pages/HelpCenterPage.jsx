@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import MainLayout from "../components/layouts/MainLayout";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useIsMobile } from "../hooks/useIsMobile";
+import { useToast } from "../context/ToastContext";
 import { CONTACT } from "../config/contact";
 
 // ── Section card ──────────────────────────────────────────────────
@@ -95,6 +97,17 @@ const SECTIONS = [
 
 export default function HelpCenterPage() {
   usePageTitle("Help Center");
+  const isMobile = useIsMobile();
+  const addToast = useToast();
+
+  async function copyPhoneNumber() {
+    try {
+      await navigator.clipboard.writeText(CONTACT.tollFree);
+      addToast("Phone number copied.", "success");
+    } catch {
+      addToast("Could not copy — please dial manually.", "warning");
+    }
+  }
 
   return (
     <MainLayout maxWidth="max-w-4xl">
@@ -383,21 +396,51 @@ export default function HelpCenterPage() {
                 </div>
               </a>
 
-              <a
-                href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
-                className="flex flex-col gap-2 bg-slate-50 border border-slate-200 rounded-xl p-4
-                           hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-150 group"
-              >
-                <svg className="w-5 h-5 text-indigo-500 group-hover:text-indigo-700 transition-colors"
-                     fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round"
-                    d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-                </svg>
-                <div>
-                  <p className="text-xs font-bold text-slate-700 group-hover:text-indigo-700">Toll Free</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{CONTACT.tollFree}</p>
+              {isMobile ? (
+                <a
+                  href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
+                  aria-label={`Call toll-free support: ${CONTACT.tollFree}`}
+                  className="flex flex-col gap-2 bg-slate-50 border border-slate-200 rounded-xl p-4
+                             hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-150 group
+                             focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <svg className="w-5 h-5 text-indigo-500 group-hover:text-indigo-700 transition-colors"
+                       fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                  </svg>
+                  <div>
+                    <p className="text-xs font-bold text-slate-700 group-hover:text-indigo-700">Toll Free</p>
+                    <p className="text-xs text-indigo-600 font-semibold mt-0.5">{CONTACT.tollFree}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Tap to call</p>
+                  </div>
+                </a>
+              ) : (
+                <div className="flex flex-col gap-2 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                  <svg className="w-5 h-5 text-indigo-400"
+                       fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                  </svg>
+                  <div>
+                    <p className="text-xs font-bold text-slate-700">Toll Free</p>
+                    <p className="text-xs text-slate-500 mt-1">Please dial from your phone:</p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span className="text-xs font-semibold text-slate-800">{CONTACT.tollFree}</span>
+                      <button
+                        onClick={copyPhoneNumber}
+                        aria-label="Copy phone number to clipboard"
+                        className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800
+                                   border border-indigo-200 hover:border-indigo-400 px-1.5 py-0.5
+                                   rounded-md transition-colors focus:outline-none focus:ring-2
+                                   focus:ring-indigo-500 focus:ring-offset-1"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </a>
+              )}
 
               <div className="flex flex-col gap-2 bg-slate-50 border border-slate-200 rounded-xl p-4">
                 <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24"

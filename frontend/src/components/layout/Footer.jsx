@@ -1,7 +1,21 @@
 // Temporary placeholder contact information. Replace before production launch.
+import { useIsMobile } from "../../hooks/useIsMobile";
+import { useToast } from "../../context/ToastContext";
 import { CONTACT } from "../../config/contact";
 
 export default function Footer() {
+  const isMobile = useIsMobile();
+  const addToast  = useToast();
+
+  async function copyNumber() {
+    try {
+      await navigator.clipboard.writeText(CONTACT.tollFree);
+      addToast("Phone number copied.", "success");
+    } catch {
+      addToast("Could not copy — please dial manually.", "warning");
+    }
+  }
+
   return (
     <footer className="border-t border-slate-200 bg-white mt-auto">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
@@ -27,12 +41,26 @@ export default function Footer() {
               {CONTACT.supportEmail}
             </a>
             <span className="text-slate-200 hidden sm:inline">·</span>
-            <a
-              href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
-              className="text-xs text-slate-400 hover:text-slate-700 transition-colors"
-            >
-              {CONTACT.tollFree}
-            </a>
+            {isMobile ? (
+              <a
+                href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
+                aria-label={`Call support: ${CONTACT.tollFree}`}
+                className="text-xs text-slate-400 hover:text-slate-700 transition-colors
+                           focus:outline-none focus:ring-1 focus:ring-slate-400 rounded"
+              >
+                {CONTACT.tollFree}
+              </a>
+            ) : (
+              <button
+                onClick={copyNumber}
+                aria-label="Copy phone number to clipboard"
+                title={`${CONTACT.tollFree} — click to copy`}
+                className="text-xs text-slate-400 hover:text-slate-700 transition-colors
+                           focus:outline-none focus:ring-1 focus:ring-slate-400 rounded"
+              >
+                {CONTACT.tollFree}
+              </button>
+            )}
             <span className="text-slate-200 hidden sm:inline">·</span>
             <span className="text-xs text-slate-400">{CONTACT.businessHours}</span>
           </div>

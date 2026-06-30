@@ -56,7 +56,7 @@ const ServicesPage = lazy(() => import("./pages/ServicesPage"));
 import { ToastProvider } from "./context/ToastContext";
 import { useAuthStore } from "./store/authStore";
 import StickyTicketCTA from "./components/ui/StickyTicketCTA";
-import FloatingCallButton from "./components/ui/FloatingCallButton";
+import FloatingCallButton, { PhoneSupportWidget } from "./components/ui/FloatingCallButton";
 
 function PageLoader() {
   return (
@@ -187,8 +187,15 @@ export default function App() {
     <ErrorBoundary>
     <BrowserRouter>
       <OfflineBanner />
+      {/* Mobile call bar — full-width, only visible below sm breakpoint */}
       <FloatingCallButton />
-      <StickyTicketCTA />
+      {/* Desktop floating column — phone widget pinned to bottom-right, ticket CTA
+          stacks above it via flex-col-reverse. No hardcoded offsets means no overlap
+          regardless of widget height. Hidden on mobile (mobile bar handles that). */}
+      <div className="fixed bottom-6 right-6 z-50 hidden sm:flex flex-col-reverse gap-3 items-end">
+        <PhoneSupportWidget />
+        <StickyTicketCTA />
+      </div>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public pages */}

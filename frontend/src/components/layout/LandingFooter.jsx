@@ -1,5 +1,7 @@
 // Temporary placeholder contact information. Replace before production launch.
 import { Link } from "react-router-dom";
+import { useIsMobile } from "../../hooks/useIsMobile";
+import { useToast } from "../../context/ToastContext";
 import { CONTACT } from "../../config/contact";
 
 const YEAR = new Date().getFullYear();
@@ -48,6 +50,18 @@ function FooterLink({ label, href, internal }) {
 }
 
 export default function LandingFooter() {
+  const isMobile = useIsMobile();
+  const addToast  = useToast();
+
+  async function copyNumber() {
+    try {
+      await navigator.clipboard.writeText(CONTACT.tollFree);
+      addToast("Phone number copied.", "success");
+    } catch {
+      addToast("Could not copy — please dial manually.", "warning");
+    }
+  }
+
   return (
     <footer className="bg-slate-900 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-16 pb-10">
@@ -89,9 +103,26 @@ export default function LandingFooter() {
                 <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
                 </svg>
-                <a href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`} className="text-sm text-slate-400 hover:text-slate-300 transition-colors">
-                  {CONTACT.tollFree} (Toll-free)
-                </a>
+                {isMobile ? (
+                  <a
+                    href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
+                    aria-label={`Call support: ${CONTACT.tollFree}`}
+                    className="text-sm text-slate-400 hover:text-slate-300 transition-colors
+                               focus:outline-none focus:ring-1 focus:ring-slate-400 rounded"
+                  >
+                    {CONTACT.tollFree} (Toll-free)
+                  </a>
+                ) : (
+                  <button
+                    onClick={copyNumber}
+                    aria-label="Copy phone number to clipboard"
+                    title={`${CONTACT.tollFree} — click to copy`}
+                    className="text-sm text-slate-400 hover:text-slate-300 transition-colors
+                               focus:outline-none focus:ring-1 focus:ring-slate-400 rounded"
+                  >
+                    {CONTACT.tollFree} (Toll-free)
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-2.5">
                 <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
