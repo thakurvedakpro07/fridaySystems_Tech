@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import LandingFooter from "../components/layout/LandingFooter";
 import Header from "../components/layout/Header";
+import { SERVICES, ACCENTS } from "../data/services";
 
 // ── Animation variants ────────────────────────────────────────────
 const fadeUp = {
@@ -90,78 +91,7 @@ const TRUST_BAR = [
   { label: "Enterprise Grade Security" },
 ];
 
-const POPULAR_PROBLEMS = [
-  {
-    title: "Desktop / Laptop Support",
-    desc: "Remote troubleshooting, driver issues, antivirus, connectivity",
-    color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100", glow: "shadow-orange-100",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3" />
-      </svg>
-    ),
-  },
-  {
-    title: "Linux Provisioning",
-    desc: "Server setup, package management, systemd, automation",
-    color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100", glow: "shadow-amber-100",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
-      </svg>
-    ),
-  },
-  {
-    title: "Windows Provisioning",
-    desc: "Windows Server, Active Directory, DNS, DHCP, GPO",
-    color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100", glow: "shadow-blue-100",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-      </svg>
-    ),
-  },
-  {
-    title: "OS Patching",
-    desc: "Managed patching for Windows and Linux nodes",
-    color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-100", glow: "shadow-teal-100",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-      </svg>
-    ),
-  },
-  {
-    title: "Security Hardening",
-    desc: "CIS baseline hardening, access controls, vulnerability remediation",
-    color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100", glow: "shadow-rose-100",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-      </svg>
-    ),
-  },
-  {
-    title: "VMware / Hypervisor",
-    desc: "ESXi host management, VM provisioning, storage troubleshooting",
-    color: "text-sky-600", bg: "bg-sky-50", border: "border-sky-100", glow: "shadow-sky-100",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 17.25v2.25a2.25 2.25 0 01-2.25 2.25H4.5a2.25 2.25 0 01-2.25-2.25V4.5A2.25 2.25 0 014.5 2.25h10.5m5.25 5.25V2.25m0 5.25h-5.25m5.25 0L12 12" />
-      </svg>
-    ),
-  },
-  {
-    title: "SAP Basis Lite",
-    desc: "Transport management, system health checks, user administration",
-    color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", glow: "shadow-indigo-100",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0l-5.571 3-5.571-3" />
-      </svg>
-    ),
-  },
-];
+const FEATURED = SERVICES.filter((s) => s.featured);
 
 
 const PROCESS_STEPS = [
@@ -575,121 +505,6 @@ function HeroSection() {
 // ══════════════════════════════════════════════════════════════════
 // SECTION 1B: PREMIUM SERVICES (immediately below how-it-works)
 // ══════════════════════════════════════════════════════════════════
-const PREMIUM_SERVICES = [
-  {
-    name: "SAP Basis Lite",
-    desc: "Expert SAP Basis support for Indian SMBs — transport management, system health checks, and user administration tasks.",
-    issues: [
-      "Transport request failures & Basis errors",
-      "System health checks & performance alerts",
-      "User administration & role assignment",
-      "Background job scheduling & monitoring",
-    ],
-    color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100", glow: "hover:border-blue-200", shadow: "hover:shadow-blue-50",
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0l-5.571 3-5.571-3" />
-      </svg>
-    ),
-  },
-  {
-    name: "Linux Provisioning",
-    desc: "Server setup and configuration for Ubuntu, RHEL, and CentOS — from bare-metal to production-ready in one engagement.",
-    issues: [
-      "Server crashes, OOM kills & kernel panics",
-      "Package management & dependency conflicts",
-      "systemd service failures & boot issues",
-      "Shell automation, cron jobs & log management",
-    ],
-    color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100", glow: "hover:border-amber-200", shadow: "hover:shadow-amber-50",
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
-      </svg>
-    ),
-  },
-  {
-    name: "Windows Provisioning",
-    desc: "Windows Server, Active Directory, and desktop infrastructure setup — domain, DNS, DHCP, Group Policy, and role configuration.",
-    issues: [
-      "Active Directory replication & account lockouts",
-      "Group Policy failures & GPO mis-application",
-      "DNS / DHCP misconfiguration & resolution errors",
-      "Windows Server roles — IIS, RDS, File Server",
-    ],
-    color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", glow: "hover:border-indigo-200", shadow: "hover:shadow-indigo-50",
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-      </svg>
-    ),
-  },
-  {
-    name: "OS Patching",
-    desc: "Structured patch management for Windows and Linux fleets — assess, test, deploy, and verify with a full audit trail.",
-    issues: [
-      "Patch scheduling & maintenance windows",
-      "Failed Windows Update & WSUS errors",
-      "Linux apt / yum / dnf upgrade failures",
-      "Post-patch regression testing & rollback",
-    ],
-    color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-100", glow: "hover:border-teal-200", shadow: "hover:shadow-teal-50",
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-      </svg>
-    ),
-  },
-  {
-    name: "VMware / Hypervisor",
-    desc: "ESXi host management, VM lifecycle, storage and network troubleshooting for on-premise virtualisation environments.",
-    issues: [
-      "ESXi PSOD & host stability failures",
-      "VM provisioning & snapshot management",
-      "vSAN storage degradation & datastore issues",
-      "vMotion failures & cluster resource contention",
-    ],
-    color: "text-sky-600", bg: "bg-sky-50", border: "border-sky-100", glow: "hover:border-sky-200", shadow: "hover:shadow-sky-50",
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 17.25v2.25a2.25 2.25 0 01-2.25 2.25H4.5a2.25 2.25 0 01-2.25-2.25V4.5A2.25 2.25 0 014.5 2.25h10.5m5.25 5.25V2.25m0 5.25h-5.25m5.25 0L12 12" />
-      </svg>
-    ),
-  },
-  {
-    name: "Security Hardening",
-    desc: "CIS baseline hardening, access control reviews, and vulnerability remediation for Linux, Windows, and virtualised environments.",
-    issues: [
-      "Ransomware response & malware removal",
-      "CIS Level 1 & 2 baseline hardening",
-      "Access control audits & privilege review",
-      "Vulnerability scanning & patch remediation",
-    ],
-    color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100", glow: "hover:border-rose-200", shadow: "hover:shadow-rose-50",
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-      </svg>
-    ),
-  },
-  {
-    name: "Desktop / Laptop Support",
-    desc: "Remote diagnosis and resolution for end-user workstations — drivers, connectivity, antivirus, and software issues.",
-    issues: [
-      "Driver conflicts & hardware detection failures",
-      "Antivirus & endpoint security issues",
-      "Network connectivity & Wi-Fi troubleshooting",
-      "OS performance, startup errors & crashes",
-    ],
-    color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100", glow: "hover:border-orange-200", shadow: "hover:shadow-orange-50",
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3" />
-      </svg>
-    ),
-  },
-];
-
 function PremiumServicesSection() {
   return (
     <section className="py-16 sm:py-20 px-4 sm:px-6 bg-slate-50">
@@ -708,40 +523,43 @@ function PremiumServicesSection() {
           className="grid grid-cols-1 md:grid-cols-2 gap-6"
           variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.05 }}
         >
-          {PREMIUM_SERVICES.map((svc) => (
-            <motion.div
-              key={svc.name} variants={fadeUp}
-              whileHover={{ y: -6, transition: { duration: 0.2 } }}
-              className={`group bg-white border ${svc.border} ${svc.glow} rounded-2xl p-6 flex flex-col
-                          hover:shadow-xl ${svc.shadow} transition-all duration-300`}
-              style={{ boxShadow: "0 2px 12px 0 rgb(0 0 0 / 0.06)" }}
-            >
-              <div className={`w-12 h-12 ${svc.bg} rounded-xl flex items-center justify-center mb-5
-                               ${svc.color} group-hover:scale-110 transition-transform duration-200 shrink-0`}>
-                {svc.icon}
-              </div>
-              <h3 className="text-lg font-black text-slate-900 mb-2 leading-tight">{svc.name}</h3>
-              <p className="text-sm text-slate-500 leading-relaxed mb-4">{svc.desc}</p>
-              <ul className="space-y-1.5 mb-5 flex-1">
-                {svc.issues.slice(0, 3).map((issue) => (
-                  <li key={issue} className="flex items-start gap-2">
-                    <svg className={`w-3.5 h-3.5 ${svc.color} shrink-0 mt-0.5`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                    <span className="text-xs text-slate-600 leading-relaxed">{issue}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link to="/register/customer"
-                className={`mt-auto inline-flex items-center gap-1.5 text-sm font-semibold ${svc.color}
-                            group-hover:gap-2.5 transition-all duration-200`}>
-                Get Help
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                </svg>
-              </Link>
-            </motion.div>
-          ))}
+          {FEATURED.map((svc) => {
+            const a = ACCENTS[svc.accent] ?? ACCENTS.indigo;
+            return (
+              <motion.div
+                key={svc.id} variants={fadeUp}
+                whileHover={{ y: -6, transition: { duration: 0.2 } }}
+                className={`group bg-white border ${a.border} ${a.ring} rounded-2xl p-6 flex flex-col
+                            hover:shadow-xl ${a.shadow} transition-all duration-300`}
+                style={{ boxShadow: "0 2px 12px 0 rgb(0 0 0 / 0.06)" }}
+              >
+                <div className={`w-12 h-12 ${a.bg} rounded-xl flex items-center justify-center mb-5
+                                 ${a.text} group-hover:scale-110 transition-transform duration-200 shrink-0`}>
+                  {svc.icon}
+                </div>
+                <h3 className="text-lg font-black text-slate-900 mb-2 leading-tight">{svc.name}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed mb-4">{svc.desc}</p>
+                <ul className="space-y-1.5 mb-5 flex-1">
+                  {svc.issues.slice(0, 3).map((issue) => (
+                    <li key={issue} className="flex items-start gap-2">
+                      <svg className={`w-3.5 h-3.5 ${a.text} shrink-0 mt-0.5`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                      <span className="text-xs text-slate-600 leading-relaxed">{issue}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link to="/register/customer"
+                  className={`mt-auto inline-flex items-center gap-1.5 text-sm font-semibold ${a.text}
+                              group-hover:gap-2.5 transition-all duration-200`}>
+                  Get Help
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </Link>
+              </motion.div>
+            );
+          })}
         </motion.div>
 
         <Reveal delay={0.2} className="mt-10 text-center">
@@ -903,24 +721,27 @@ function PopularProblemsSection() {
 
         <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.05 }}>
-          {POPULAR_PROBLEMS.map((p) => (
-            <motion.div key={p.title} variants={fadeUp}
-              whileHover={{ y: -6, transition: { duration: 0.2 } }}
-              className={`group bg-white border ${p.border} rounded-2xl p-5 cursor-default
-                         hover:shadow-xl ${p.glow} transition-all duration-300`}
-              style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-              <div className={`w-12 h-12 ${p.bg} rounded-xl flex items-center justify-center mb-4
-                               ${p.color} group-hover:scale-110 transition-transform duration-200`}>
-                {p.icon}
-              </div>
-              <h3 className="font-bold text-slate-900 mb-1.5 text-sm leading-snug">{p.title}</h3>
-              <p className="text-xs text-slate-500 leading-relaxed mb-3">{p.desc}</p>
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Engineers Available</span>
-              </div>
-            </motion.div>
-          ))}
+          {FEATURED.map((p) => {
+            const a = ACCENTS[p.accent] ?? ACCENTS.indigo;
+            return (
+              <motion.div key={p.id} variants={fadeUp}
+                whileHover={{ y: -6, transition: { duration: 0.2 } }}
+                className={`group bg-white border ${a.border} rounded-2xl p-5 cursor-default
+                           hover:shadow-xl ${a.glow} transition-all duration-300`}
+                style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
+                <div className={`w-12 h-12 ${a.bg} rounded-xl flex items-center justify-center mb-4
+                                 ${a.text} group-hover:scale-110 transition-transform duration-200`}>
+                  {p.icon}
+                </div>
+                <h3 className="font-bold text-slate-900 mb-1.5 text-sm leading-snug">{p.name}</h3>
+                <p className="text-xs text-slate-500 leading-relaxed mb-3">{p.shortDesc}</p>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Engineers Available</span>
+                </div>
+              </motion.div>
+            );
+          })}
         </motion.div>
 
         <Reveal delay={0.2} className="mt-10 text-center">
