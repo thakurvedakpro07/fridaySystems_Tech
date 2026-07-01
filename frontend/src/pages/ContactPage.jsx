@@ -88,7 +88,7 @@ export default function ContactPage() {
             We&apos;re here to help
           </h1>
           <p className="text-slate-500 text-lg max-w-xl mx-auto leading-relaxed">
-            Reach our team via email or phone. For immediate IT support, open a ticket and a verified engineer will respond within 2 hours.
+            Reach our team via email or phone. For immediate IT support, open a ticket and a Support Agent will contact you within your chosen response window.
           </p>
           <div className="mt-6">
             <Link to="/register/customer"
@@ -324,7 +324,7 @@ export default function ContactPage() {
             <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
               <p className="text-sm font-bold text-indigo-900 mb-2">Need IT help right now?</p>
               <p className="text-xs text-indigo-700 leading-relaxed mb-4">
-                Skip the form — open a support ticket and a verified engineer responds within 2 hours.
+                Skip the form — open a support ticket and a Support Agent will contact you within your chosen response window.
               </p>
               <Link to="/register/customer"
                     className="block w-full text-center bg-indigo-600 text-white font-bold

@@ -10,7 +10,7 @@ import { CONTACT } from "../config/contact";
 
 const TRUST_POINTS = [
   "Bank-grade encryption on all data",
-  "Average 2-hour first response",
+  "Priority consultation response (30 min – 4 hrs)",
   "Transparent fixed pricing, no hidden fees",
 ];
 
@@ -139,7 +139,7 @@ export default function Login() {
               ))}
             </div>
             <p className="text-xs text-indigo-300">
-              Verified engineers · Transparent fixed pricing · 2-hr SLA
+              Verified engineers · Transparent fixed pricing · Priority consultation (30 min – 4 hrs)
             </p>
           </div>
         </div>

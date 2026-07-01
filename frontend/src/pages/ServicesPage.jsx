@@ -39,12 +39,12 @@ function ServiceCard({ service }) {
       {/* Time stats */}
       <div className="grid grid-cols-2 gap-3 mb-5">
         <div className="bg-slate-50 rounded-xl px-3 py-2.5">
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5">First Response</p>
-          <p className="text-sm font-black text-slate-800">{service.responseTime}</p>
+          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Consultation</p>
+          <p className="text-sm font-black text-slate-800">30 min – 4 hrs</p>
         </div>
         <div className="bg-slate-50 rounded-xl px-3 py-2.5">
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Resolution</p>
-          <p className="text-sm font-black text-slate-800">{service.resolutionTime}</p>
+          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Completion</p>
+          <p className="text-sm font-black text-slate-800">Varies by issue</p>
         </div>
       </div>
 
@@ -99,7 +99,7 @@ export default function ServicesPage() {
           <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
             {[
               { value: `${SERVICES.length}`, label: "IT Specialisations" },
-              { value: "< 2h", label: "First Response SLA" },
+              { value: "30 min – 4 hrs", label: "Consultation Response" },
               { value: "₹299", label: "Consulting Fee" },
               { value: "0",    label: "Hidden Fees" },
             ].map(({ value, label }) => (
@@ -178,13 +178,13 @@ export default function ServicesPage() {
               {
                 step: "01",
                 title: "Submit a ticket",
-                desc: "Describe your issue and pay the ₹299 consulting fee to activate your ticket and SLA.",
+                desc: "Describe your issue and pay the ₹299 consulting fee. A Support Agent contacts you within your chosen response window.",
                 color: "text-indigo-600",
               },
               {
                 step: "02",
                 title: "Engineer assigned",
-                desc: "A verified specialist picks up your ticket within 2 hours and starts working on a resolution.",
+                desc: "Your Support Agent understands the issue and assigns the right engineer. The engineer begins working toward a resolution.",
                 color: "text-violet-600",
               },
               {

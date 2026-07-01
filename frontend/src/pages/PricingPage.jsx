@@ -8,21 +8,21 @@ const HOW_IT_WORKS = [
   {
     step:  "01",
     title: "Pay ₹299 + GST to open a ticket",
-    desc:  "Activates your SLA and guarantees a first response from a verified engineer. Refunded automatically if no engineer accepts within 24 hours.",
+    desc:  "Secures your Support Agent consultation. Refunded automatically if the consultation doesn't begin within 4 hours.",
     color: "text-indigo-600",
     badge: "due now",
   },
   {
     step:  "02",
-    title: "Engineer assigned & resolves your issue",
-    desc:  "A verified specialist picks up your ticket within the SLA window, diagnoses the problem, and works to resolution.",
+    title: "Support Agent contacts you",
+    desc:  "A Support Agent contacts you within your chosen response window, understands your issue, and assigns the right engineer.",
     color: "text-violet-600",
-    badge: "in progress",
+    badge: "consultation",
   },
   {
     step:  "03",
-    title: "Confirm resolution — pay the resolution fee",
-    desc:  "You confirm the issue is fixed. Only then is the resolution fee charged. You are never billed for unresolved work.",
+    title: "Issue resolved — confirm & pay",
+    desc:  "The assigned engineer works to fix your issue. You confirm the fix and pay the resolution fee. Completion time depends on issue complexity.",
     color: "text-emerald-600",
     badge: "on resolution",
   },
@@ -31,23 +31,23 @@ const HOW_IT_WORKS = [
 const FAQS = [
   {
     q: "What does the consultation fee cover?",
-    a: `The ₹${CONSULTING_FEE} consultation fee (plus 18% GST, calculated and shown at checkout) activates your ticket and guarantees a first response from a verified engineer within the SLA window for your chosen priority. It covers initial ticket intake and diagnostic handoff.`,
+    a: `The ₹${CONSULTING_FEE} consultation fee (plus 18% GST, shown at checkout) covers: ticket creation, Support Agent review, a phone or online consultation, issue diagnosis, selection of the right engineer, and engineer assignment. It does NOT cover issue resolution — that is billed separately after your issue is fixed.`,
   },
   {
     q: "When is the resolution fee charged?",
     a: "The resolution fee is charged only after your issue is fully resolved and you confirm it. If you reject the resolution, no resolution fee is charged. You are never billed for incomplete work.",
   },
   {
-    q: "What if no engineer accepts my ticket?",
-    a: `If no engineer accepts within 24 hours, the ₹${CONSULTING_FEE} consultation fee (including GST) is automatically refunded to your original payment method within 5–7 business days. No action required on your part.`,
+    q: "What if the consultation doesn't begin in time?",
+    a: `If no Support Agent begins your consultation within 4 hours of ticket creation, the ₹${CONSULTING_FEE} consultation fee (including GST) is automatically refunded to your original payment method within 5–7 business days. No action required on your part.`,
   },
   {
     q: "What determines the final resolution fee?",
-    a: "The base resolution fee depends on the service you select. When creating your ticket you also choose a priority level — higher priority adds a surcharge for a faster response SLA. The full fee breakdown is shown before you confirm payment.",
+    a: "The base resolution fee depends on the service you select. When creating your ticket you also choose a priority level — higher priority adds a surcharge for a faster consultation response. The full fee breakdown is shown before you confirm payment. Resolution time depends entirely on issue complexity and is not affected by priority.",
   },
   {
     q: "Are the displayed prices final?",
-    a: "Yes. All prices shown include 18% GST and are all-inclusive. The resolution fee shown in the estimator is the base (lowest severity) price — no hidden fees, no upcharge beyond the priority surcharge you choose at ticket creation.",
+    a: "Yes. All prices shown include 18% GST and are all-inclusive. The resolution fee shown in the estimator is the base (lowest priority) price — no hidden fees, no upcharge beyond the priority surcharge you choose at ticket creation.",
   },
   {
     q: "How does Enterprise pricing work?",
@@ -153,7 +153,7 @@ export default function PricingPage() {
                 `₹${CONSULTING_FEE} consultation fee`,
                 "GST added during payment",
                 "Paid when ticket is created",
-                "Refunded if no engineer accepts within SLA",
+                "Refunded if consultation doesn't begin within 4 hours",
                 "Separate from the final resolution fee",
               ].map((text) => (
                 <li key={text} className="flex items-start gap-3">
@@ -223,21 +223,22 @@ export default function PricingPage() {
             </div>
             <div className="flex items-center gap-2">
               <CheckIcon className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <p className="text-xs text-slate-500">Charged only after you confirm resolution</p>
+              <p className="text-xs text-slate-500">Charged only after you confirm the issue is resolved</p>
             </div>
           </div>
 
           {/* Priority info box */}
           <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
-            <p className="text-sm font-bold text-amber-900 mb-2">Need faster resolution?</p>
+            <p className="text-sm font-bold text-amber-900 mb-2">Need faster consultation?</p>
             <p className="text-sm text-amber-800 mb-3">
-              The final resolution fee may increase depending on:
+              Choose a higher priority when creating your ticket:
             </p>
             <ul className="space-y-1.5 mb-4">
               {[
-                "Issue severity",
-                "Required response time",
-                "Complexity of the work",
+                "Critical — Support Agent contacts you within 30 minutes",
+                "High — consultation within 1 hour",
+                "Medium — consultation within 2 hours",
+                "Low — consultation within 4 hours",
               ].map((item) => (
                 <li key={item} className="flex items-center gap-2 text-sm text-amber-800">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
@@ -246,8 +247,8 @@ export default function PricingPage() {
               ))}
             </ul>
             <p className="text-sm text-amber-700 leading-relaxed">
-              During ticket creation you can choose the priority that best matches your business needs.
-              Higher priority receives faster engineer assignment and response.
+              Priority only controls how quickly a Support Agent contacts you.
+              Resolution time depends on issue complexity and is estimated by the engineer after the consultation.
             </p>
           </div>
         </div>

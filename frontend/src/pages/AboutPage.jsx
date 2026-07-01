@@ -55,7 +55,7 @@ const VALUES = [
   },
   {
     title: "Speed with Accountability",
-    desc: "A 2-hour first response SLA is a genuine commitment backed by automatic refunds. We don't sell promises — we enforce them with our own billing system.",
+    desc: "Priority consultation response (30 min – 4 hrs) is a genuine commitment backed by automatic refunds. We don't sell promises — we enforce them with our own billing system.",
     color: "text-rose-600", bg: "bg-rose-50",
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -118,13 +118,13 @@ export default function AboutPage() {
                 expensive consultants with unclear pricing and no accountability.
               </p>
               <p className="text-slate-500 text-base leading-relaxed">
-                ResolveHQ changes that. A verified engineer is assigned within 2 hours,
+                ResolveHQ changes that. A Support Agent contacts you within your chosen response window,
                 you pay a known flat fee — no retainers, no subscriptions, no surprises.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               {[
-                { num: "< 2h", label: "First Response SLA", color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
+                { num: "30m – 4h", label: "Consultation Response", color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
                 { num: "₹299", label: "Flat Consulting Fee", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
                 { num: "7",    label: "Ticket Stages",       color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
                 { num: "24/7", label: "Dashboard Access",    color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-100" },
@@ -239,7 +239,7 @@ export default function AboutPage() {
             Ready to try ResolveHQ?
           </h2>
           <p className="text-slate-400 text-base mb-8 leading-relaxed">
-            Create your first ticket in under 2 minutes. Pay ₹299 consulting fee — refunded automatically if no engineer accepts.
+            Create your first ticket in under 2 minutes. Pay ₹299 consulting fee — refunded automatically if the consultation doesn't begin within 4 hours.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/register/customer"

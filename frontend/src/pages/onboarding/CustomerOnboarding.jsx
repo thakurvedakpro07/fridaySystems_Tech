@@ -256,7 +256,7 @@ export default function CustomerOnboarding() {
                 })()}
               </h2>
               <p className="text-slate-500 text-sm leading-relaxed mb-8 max-w-sm mx-auto">
-                Your customer account is ready. Create your first support ticket and a vetted engineer will be assigned within 2 hours.
+                Your customer account is ready. Create your first support ticket and a Support Agent will contact you within your chosen response window to begin the consultation.
               </p>
 
               <div className="space-y-3 text-left mb-8">

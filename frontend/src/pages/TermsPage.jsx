@@ -90,9 +90,9 @@ export default function TermsPage() {
             </Section>
 
             <Section id="payments" title="4. Payments & Refunds">
-              <p><strong className="font-semibold text-slate-800">Consulting fee:</strong> A flat ₹299 (GST-inclusive) consulting fee is charged when you submit a ticket. This fee activates your ticket and guarantees a 2-hour first response SLA.</p>
+              <p><strong className="font-semibold text-slate-800">Consulting fee:</strong> A flat ₹299 (plus 18% GST) consulting fee is charged when you submit a ticket. This fee covers ticket creation, Support Agent consultation, issue diagnosis, and engineer assignment. It does not cover issue resolution.</p>
               <p><strong className="font-semibold text-slate-800">Resolution fee:</strong> An additional resolution fee (₹499–₹1,999 depending on complexity) is charged only after your issue is confirmed as resolved. The exact amount is disclosed before billing.</p>
-              <p><strong className="font-semibold text-slate-800">Automatic refund:</strong> If no engineer accepts your ticket within 24 hours, the consulting fee is automatically refunded to your original payment method within 5–7 business days.</p>
+              <p><strong className="font-semibold text-slate-800">Automatic refund:</strong> If no Support Agent begins the consultation within 4 hours of ticket creation, the consulting fee is automatically refunded to your original payment method within 5–7 business days.</p>
               <p><strong className="font-semibold text-slate-800">Disputed resolution:</strong> If you dispute the resolution, contact billing within 48 hours. We review all disputes and issue refunds when the engineer's work is found to be unsatisfactory.</p>
               <p><strong className="font-semibold text-slate-800">Non-refundable cases:</strong> The consulting fee is non-refundable if an engineer has spent 30+ minutes on your ticket, unless the resolution is disputed and upheld by our team.</p>
               <p><strong className="font-semibold text-slate-800">Payment processor:</strong> All payments are processed by Razorpay. Razorpay's Terms and Privacy Policy apply to payment data. We do not store card numbers.</p>
@@ -103,7 +103,7 @@ export default function TermsPage() {
               <ul className="list-disc pl-5 space-y-1.5">
                 <li>Provide only accurate information about their skills and certifications</li>
                 <li>Maintain the confidentiality of customer data accessed during ticket resolution</li>
-                <li>Respond within the 2-hour SLA after accepting a ticket</li>
+                <li>Begin the consultation within the response window defined by the ticket's severity tier</li>
                 <li>Not solicit customers to engage outside the platform to avoid platform fees</li>
                 <li>Comply with the ResolveHQ Code of Conduct, which is provided during onboarding</li>
               </ul>

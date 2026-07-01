@@ -43,7 +43,7 @@ const PERKS = [
       </svg>
     ),
     title: "Dedicated support experts",
-    body: "Vetted engineers assigned to your tickets within 2 hours.",
+    body: "A Support Agent contacts you within your chosen response window (30 min – 4 hrs).",
   },
 ];
 
@@ -171,7 +171,7 @@ export default function RegisterCustomer() {
               ))}
             </div>
             <p className="text-xs text-indigo-300">
-              Verified engineers · Transparent fixed pricing · 2-hr SLA
+              Verified engineers · Transparent fixed pricing · Priority consultation (30 min – 4 hrs)
             </p>
           </div>
         </div>

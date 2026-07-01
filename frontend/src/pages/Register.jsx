@@ -20,8 +20,8 @@ const PERKS = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
       </svg>
     ),
-    title: "Fast SLA",
-    body: "Vetted engineers respond within 2 hours, guaranteed.",
+    title: "Priority Consultation",
+    body: "A Support Agent contacts you within your chosen response window (30 min – 4 hrs).",
   },
   {
     icon: (
@@ -144,7 +144,7 @@ export default function Register() {
               ))}
             </div>
             <p className="text-xs text-indigo-300">
-              Verified engineers · Transparent fixed pricing · 2-hr SLA
+              Verified engineers · Transparent fixed pricing · Priority consultation (30 min – 4 hrs)
             </p>
           </div>
         </div>

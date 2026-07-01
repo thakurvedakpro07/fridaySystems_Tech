@@ -89,16 +89,18 @@ function InfoPanel() {
         </div>
       </div>
 
-      {/* Response SLA */}
+      {/* Consultation response */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5"
            style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">
-          Response Guarantee
+          Consultation Response
         </p>
         <div className="space-y-3.5">
           {[
-            { label: "First response", value: "≤ 2 hrs",  pct: 100, color: "bg-indigo-500" },
-            { label: "Resolution",     value: "≤ 48 hrs", pct: 85,  color: "bg-emerald-500" },
+            { label: "Critical",  value: "30 min", pct: 100, color: "bg-rose-500" },
+            { label: "High",      value: "1 hr",   pct: 100, color: "bg-amber-500" },
+            { label: "Medium",    value: "2 hrs",  pct: 100, color: "bg-indigo-500" },
+            { label: "Low",       value: "4 hrs",  pct: 100, color: "bg-slate-400" },
           ].map(({ label, value, pct, color }) => (
             <div key={label}>
               <div className="flex items-center justify-between mb-1.5">
@@ -111,6 +113,9 @@ function InfoPanel() {
             </div>
           ))}
         </div>
+        <p className="text-[10px] text-slate-400 mt-3 leading-snug">
+          Priority sets how quickly a Support Agent contacts you — not resolution speed.
+        </p>
       </div>
 
       {/* Quick actions */}
@@ -237,7 +242,7 @@ function TrustBar() {
         <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-      ), label: "2-Hour Response SLA" },
+      ), label: "Priority Consultation" },
     { icon: (
         <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
@@ -338,8 +343,8 @@ function GettingStarted() {
             Ready to resolve your first IT issue?
           </h3>
           <p className="text-sm text-indigo-200 leading-relaxed max-w-md">
-            Describe your problem and a vetted engineer is assigned within 2 hours.
-            Pay ₹299 consulting fee upfront — refunded if unaccepted.
+            Describe your problem and a Support Agent contacts you within your chosen response window.
+            Pay ₹299 consulting fee upfront — refunded if consultation doesn't begin within 4 hours.
           </p>
         </div>
         <div className="flex flex-wrap gap-2.5 shrink-0">
@@ -403,7 +408,7 @@ function TicketsEmptyState({ hasFilters }) {
       </div>
       <p className="text-slate-900 font-bold text-lg mb-2">No support tickets yet</p>
       <p className="text-slate-400 text-sm max-w-sm mb-6 leading-relaxed">
-        When you need IT help, create a ticket and a vetted engineer will be assigned within 2 hours.
+        When you need IT help, create a ticket and a Support Agent will contact you within your chosen response window.
       </p>
       <Link
         to="/tickets/new"
@@ -416,7 +421,7 @@ function TicketsEmptyState({ hasFilters }) {
         Open your first ticket
       </Link>
       <p className="text-xs text-slate-400 mt-4">
-        ₹299 consulting fee · 2-hr first response · 48-hr resolution target
+        ₹299 consulting fee · Priority consultation response · No resolution fee until your issue is fixed
       </p>
     </div>
   );

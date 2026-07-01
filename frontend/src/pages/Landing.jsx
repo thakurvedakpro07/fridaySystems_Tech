@@ -86,7 +86,7 @@ function FaqItem({ q, a }) {
 const TRUST_BAR = [
   { label: "Verified IT Specialists" },
   { label: "Transparent Fixed Pricing" },
-  { label: "2-Hour Response SLA" },
+  { label: "Priority Consultation Response" },
   { label: "Real-Time Ticket Tracking" },
   { label: "Enterprise Grade Security" },
 ];
@@ -102,8 +102,8 @@ const PROCESS_STEPS = [
     icon: <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" /></svg>,
   },
   {
-    step: "02", title: "Engineer Assigned",
-    body: "A vetted specialist matching your exact service type is assigned within 2 hours — with instant email and notification.",
+    step: "02", title: "Support Agent Contacts You",
+    body: "A Support Agent contacts you within your chosen response window, understands your issue, and assigns the right engineer.",
     color: "bg-violet-600", ring: "ring-violet-200",
     icon: <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>,
   },
@@ -129,8 +129,8 @@ const TRUST_CARDS = [
     icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>,
   },
   {
-    title: "SLA-Backed Response",
-    desc: "2-hour first response guaranteed. If the SLA is breached, your consulting fee is automatically refunded — no questions asked.",
+    title: "Priority Consultation Response",
+    desc: "Your Support Agent contacts you within your chosen response window (30 min – 4 hrs). If the consultation doesn't begin in time, your consulting fee is automatically refunded.",
     color: "text-emerald-600", bg: "bg-emerald-50",
     icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
   },
@@ -161,10 +161,10 @@ const TRUST_CARDS = [
 ];
 
 const SLA_METRICS = [
-  { label: "First Response", value: "< 2 Hours", sub: "Guaranteed or money back", color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
-  { label: "Resolution Updates", value: "Real-Time", sub: "Notifications at every step", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+  { label: "Consultation Response", value: "30 min – 4 hrs", sub: "Based on your priority — refunded if missed", color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
+  { label: "Status Updates", value: "Real-Time", sub: "Notifications at every step", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
   { label: "Ticket Tracking", value: "24/7 Access", sub: "Dashboard always available", color: "text-sky-600", bg: "bg-sky-50", border: "border-sky-100" },
-  { label: "Payment Protection", value: "Transparent", sub: "Pay only for resolution", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
+  { label: "Payment Protection", value: "Transparent", sub: "Pay resolution fee only after fix confirmed", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
 ];
 
 const RECENT_ACTIVITY = [
@@ -252,15 +252,15 @@ const HELP_TOPICS = [
 const FAQ_ITEMS = [
   {
     q: "How does the pricing work?",
-    a: "You pay a flat ₹299 consulting fee when opening a ticket. This is fully refunded if no engineer accepts within 2 hours. The resolution fee (₹499–₹1,999) is only charged after your issue is completely fixed.",
+    a: "You pay a flat ₹299 consulting fee when opening a ticket. This covers the Support Agent consultation, diagnosis, and engineer assignment. It is fully refunded if the consultation doesn't begin within 4 hours. The resolution fee (₹499–₹1,999) is only charged after your issue is completely fixed.",
   },
   {
     q: "How are engineers verified?",
     a: "All freelancers complete a skills assessment, identity check, and supervised trial before listing. Their ratings, completion history, and response times are monitored continuously.",
   },
   {
-    q: "What is the response time SLA?",
-    a: "Most tickets receive an engineer assignment within 2 hours during business hours (9 AM–8 PM IST). You get notifications at every status change. If the SLA is breached, the consulting fee is automatically refunded.",
+    q: "How fast will a Support Agent contact me?",
+    a: "Your Support Agent contacts you within your chosen response window: Critical (30 min), High (1 hr), Medium (2 hrs), Low (4 hrs). You get notifications at every status change. If the consultation doesn't begin within your window, the consulting fee is automatically refunded.",
   },
   {
     q: "Can I specify which type of engineer I need?",
@@ -404,7 +404,7 @@ function HeroSection() {
             >
               When your Linux server goes down, Windows AD breaks, or VMware
               throws a PSOD — get a verified IT engineer on the problem
-              in under 2 hours. No retainers. No contracts. Pay only when your issue is fixed.
+              Priority IT consultation in as little as 30 minutes. No retainers. No contracts. Pay only when your issue is fixed.
             </motion.p>
 
             <motion.div
@@ -441,7 +441,7 @@ function HeroSection() {
               transition={{ duration: 0.6, delay: 0.5 }}
               className="flex flex-wrap items-center gap-x-5 gap-y-2"
             >
-              {["₹299 Flat Consulting Fee", "No Contracts", "SLA-Backed Refunds"].map((item) => (
+              {["₹299 Flat Consulting Fee", "No Contracts", "4-Hour Refund Guarantee"].map((item) => (
                 <span key={item} className="flex items-center gap-1.5 text-sm text-slate-400">
                   <svg className="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
@@ -611,8 +611,8 @@ const WHY_CHOOSE = [
     ),
   },
   {
-    title: "Fast Response SLA",
-    desc: "First engineer assigned within 2 hours of ticket creation. If the SLA is breached, your consulting fee is automatically refunded.",
+    title: "Priority Consultation",
+    desc: "Your Support Agent contacts you within your chosen response window (30 min – 4 hrs). If the consultation doesn't begin in time, your consulting fee is refunded.",
     color: "text-sky-600", bg: "bg-sky-50",
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -900,7 +900,7 @@ function PlatformPreviewSection() {
                   <div className="h-2.5 w-36 bg-slate-300 rounded-full" />
                 </div>
                 <div className="flex gap-3 mb-5 overflow-hidden">
-                  {["Verified Engineers", "SLA Guaranteed", "2-hr SLA"].map((label) => (
+                  {["Verified Engineers", "Priority Consultation", "Refund Guarantee"].map((label) => (
                     <div key={label} className="flex items-center gap-1.5 bg-white border border-slate-100 rounded-xl px-3 py-1.5 shrink-0">
                       <div className="w-3 h-3 rounded-full bg-emerald-400 shrink-0" />
                       <div className="h-2 w-20 bg-slate-300 rounded-full" />
@@ -1417,10 +1417,10 @@ function BottomCTASection() {
           </h2>
           <p className="text-slate-400 text-xl mb-4 leading-relaxed max-w-xl mx-auto">
             Create a ticket and get connected with a verified IT specialist.
-            First response in under 2 hours — guaranteed.
+            Your Support Agent consultation begins within your chosen response window.
           </p>
           <p className="text-slate-500 text-sm mb-10">
-            ₹299 consulting fee · Pay only when your issue is resolved · SLA-backed 2-hour response
+            ₹299 consulting fee · Pay only when your issue is resolved · Consultation starts within your priority window
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>

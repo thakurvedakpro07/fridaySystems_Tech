@@ -4,11 +4,12 @@ import Button from "../ui/Button";
 
 const GST_RATE = 0.18;
 
+// sla = how quickly a Support Agent contacts you for a consultation (NOT resolution speed)
 const SEVERITY_OPTIONS = [
-  { value: "low",      label: "Low",      hint: "Non-urgent — can wait",                   sla: "Response within 8 hours" },
-  { value: "medium",   label: "Medium",   hint: "Work affected but partially accessible",   sla: "Response within 4 hours" },
-  { value: "high",     label: "High",     hint: "System down, blocking your team",          sla: "Response within 2 hours" },
-  { value: "critical", label: "Critical", hint: "Complete outage — urgent response needed", sla: "Response within 1 hour"  },
+  { value: "low",      label: "Low",      hint: "Non-urgent — can wait",                   sla: "Consultation within 4 hours" },
+  { value: "medium",   label: "Medium",   hint: "Work affected but partially accessible",   sla: "Consultation within 2 hours" },
+  { value: "high",     label: "High",     hint: "System down, blocking your team",          sla: "Consultation within 1 hour"  },
+  { value: "critical", label: "Critical", hint: "Complete outage — urgent response needed", sla: "Consultation within 30 minutes" },
 ];
 
 const SEVERITY_LABELS = Object.fromEntries(SEVERITY_OPTIONS.map((o) => [o.value, o.label]));
@@ -91,7 +92,7 @@ function PricingPreview({ service, severity, severitySurcharges, consultingFee }
           <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
         </svg>
         <p className="text-[11px] text-slate-500 leading-snug">
-          Today's {fmt(consultingFee)} consulting fee is refunded if no engineer accepts your ticket.
+          Refunded automatically if your Support Agent consultation doesn't begin within 4 hours.
         </p>
       </div>
     </div>
@@ -169,6 +170,9 @@ export default function TicketForm({ onSubmit, loading }) {
         <label className="block text-sm font-semibold text-slate-700 mb-2">
           How urgent is this? <span className="text-rose-500">*</span>
         </label>
+        <p className="text-xs text-slate-400 mb-2.5">
+          Priority determines how quickly a Support Agent contacts you — it does not affect resolution speed.
+        </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {SEVERITY_OPTIONS.map((opt) => {
             const selected = form.severity === opt.value;

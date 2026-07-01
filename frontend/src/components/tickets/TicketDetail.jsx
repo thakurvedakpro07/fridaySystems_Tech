@@ -393,7 +393,7 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
             )}
             {ticket.due_at && (
               <div>
-                <dt className="text-xs font-medium text-slate-400 mb-0.5">SLA due</dt>
+                <dt className="text-xs font-medium text-slate-400 mb-0.5">Consultation deadline</dt>
                 <dd className={`text-sm font-medium ${
                   new Date(ticket.due_at) < new Date() && !["resolved", "closed"].includes(ticket.status)
                     ? "text-rose-600"

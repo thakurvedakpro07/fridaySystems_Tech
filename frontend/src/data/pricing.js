@@ -4,11 +4,13 @@
 export const CONSULTING_FEE = 299;
 export const GST_RATE       = 0.18;
 
+// consultationResponse = how quickly a Support Agent contacts the customer for the initial consultation.
+// Severity does NOT guarantee resolution speed — completion time depends on issue complexity.
 export const SEVERITY_TIERS = [
-  { key: "low",      label: "Low",      surcharge:    0, slaResponse: "8h",  slaResolution: "48h", desc: "Minor issue, no urgency" },
-  { key: "medium",   label: "Medium",   surcharge:  200, slaResponse: "4h",  slaResolution: "24h", desc: "Service degraded" },
-  { key: "high",     label: "High",     surcharge:  500, slaResponse: "2h",  slaResolution: "8h",  desc: "Service down" },
-  { key: "critical", label: "Critical", surcharge: 1000, slaResponse: "1h",  slaResolution: "4h",  desc: "Production outage" },
+  { key: "low",      label: "Low",      surcharge:    0, consultationResponse: "4h",   desc: "Non-urgent — can wait" },
+  { key: "medium",   label: "Medium",   surcharge:  200, consultationResponse: "2h",   desc: "Work affected" },
+  { key: "high",     label: "High",     surcharge:  500, consultationResponse: "1h",   desc: "System down, blocking work" },
+  { key: "critical", label: "Critical", surcharge: 1000, consultationResponse: "30m",  desc: "Complete outage" },
 ];
 
 export const SERVICE_FEES = [

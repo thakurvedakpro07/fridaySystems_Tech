@@ -53,7 +53,7 @@ export default function NewTicket() {
       <div className="mb-6">
         <h1 className="text-xl font-bold text-slate-900 mb-1">Open a Support Ticket</h1>
         <p className="text-sm text-slate-500">
-          Describe your issue and a vetted engineer will be assigned within 2 hours.
+          Describe your issue and a Support Agent will contact you within your chosen response window.
         </p>
       </div>
 

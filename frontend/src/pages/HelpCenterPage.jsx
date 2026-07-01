@@ -140,7 +140,7 @@ export default function HelpCenterPage() {
           }>
             <P>
               ResolveHQ is an enterprise IT support marketplace that connects Indian SMBs with vetted IT engineers.
-              Instead of hiring in-house or relying on ad-hoc freelancers, you get expert help within 2 hours — guaranteed.
+              Instead of hiring in-house or relying on ad-hoc freelancers, you get a Support Agent consultation within your chosen response window.
             </P>
             <div className="space-y-4 mt-2">
               <Step n={1} title="Create a support ticket">
@@ -148,11 +148,11 @@ export default function HelpCenterPage() {
                 Takes under 2 minutes.
               </Step>
               <Step n={2} title="Pay the consulting fee">
-                A flat ₹299 consulting fee is charged upfront. This is refunded automatically if no engineer accepts your ticket.
+                A flat ₹299 + GST consulting fee is charged upfront. This covers the consultation, diagnosis, and engineer assignment. Refunded automatically if the consultation doesn't begin within 4 hours.
               </Step>
               <Step n={3} title="Get matched with a specialist">
                 Our platform routes your ticket to a verified engineer whose skills match your issue.
-                First response within 2 hours, resolution target 48 hours.
+                A Support Agent contacts you within your chosen response window (Critical 30 min, High 1 hr, Medium 2 hrs, Low 4 hrs). Resolution time depends on issue complexity.
               </Step>
               <Step n={4} title="Track and collaborate">
                 Chat with your engineer, share screenshots, and track progress in real time from your dashboard.
@@ -280,7 +280,7 @@ export default function HelpCenterPage() {
                 ))}
               </div>
               <P>
-                If your ticket is not accepted within 2 hours of payment, our operations team escalates it manually.
+                If the consultation doesn't begin within your chosen response window, our operations team escalates the ticket manually.
                 You will be notified of any delay via email and in-platform notification.
               </P>
             </div>
@@ -297,7 +297,7 @@ export default function HelpCenterPage() {
               <div>
                 <p className="text-sm font-semibold text-slate-800 mb-1">Automatic Refund — Unaccepted Ticket</p>
                 <P>
-                  If no engineer accepts your ticket within 24 hours of payment, the ₹299 consulting fee is
+                  If no Support Agent begins the consultation within 4 hours of ticket creation, the ₹299 consulting fee is
                   automatically refunded to your original payment method within 5–7 business days.
                   No action required from your side.
                 </P>

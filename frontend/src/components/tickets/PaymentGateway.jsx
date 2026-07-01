@@ -146,7 +146,7 @@ export default function PaymentGateway({ ticket, onPaymentSuccess }) {
         <div>
           <p className="text-sm font-semibold text-emerald-800">Payment confirmed!</p>
           <p className="text-xs text-emerald-600 mt-0.5 leading-relaxed">
-            Your ticket is now open. An engineer will be assigned and will reach out shortly to begin troubleshooting.
+            Your ticket is now open. A Support Agent will contact you within your chosen response window to begin the consultation.
           </p>
         </div>
       </div>
@@ -167,7 +167,7 @@ export default function PaymentGateway({ ticket, onPaymentSuccess }) {
         <div>
           <h3 className="text-sm font-semibold text-amber-900">Payment required to open your ticket</h3>
           <p className="text-xs text-amber-700 mt-0.5 leading-snug">
-            A one-time consulting fee confirms your support request and secures your place in the queue.
+            A one-time consulting fee confirms your support request and secures your Support Agent consultation.
           </p>
         </div>
       </div>
