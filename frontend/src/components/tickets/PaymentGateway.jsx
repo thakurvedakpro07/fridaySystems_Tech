@@ -137,11 +137,17 @@ export default function PaymentGateway({ ticket, onPaymentSuccess }) {
   // ── Success state ────────────────────────────────────────────────
   if (succeeded) {
     return (
-      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-center gap-3">
-        <span className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 text-lg">✅</span>
+      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-start gap-3">
+        <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+          <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        </div>
         <div>
           <p className="text-sm font-semibold text-emerald-800">Payment confirmed!</p>
-          <p className="text-xs text-emerald-600 mt-0.5">Your ticket is now open and in our queue.</p>
+          <p className="text-xs text-emerald-600 mt-0.5 leading-relaxed">
+            Your ticket is now open. An engineer will be assigned and will reach out shortly to begin troubleshooting.
+          </p>
         </div>
       </div>
     );
@@ -152,7 +158,12 @@ export default function PaymentGateway({ ticket, onPaymentSuccess }) {
 
       {/* ── Header ──────────────────────────────────────────── */}
       <div className="flex items-start gap-3">
-        <span className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center text-lg shrink-0">💳</span>
+        <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+          <svg className="w-5 h-5 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+          </svg>
+        </div>
         <div>
           <h3 className="text-sm font-semibold text-amber-900">Payment required to open your ticket</h3>
           <p className="text-xs text-amber-700 mt-0.5 leading-snug">
