@@ -38,7 +38,7 @@ function SummaryCard({ label, value }) {
 export default function OpsPayments() {
   usePageTitle("Payments — ResolveHQ");
   const { isSuperAdmin, isFinanceManager } = useRoles();
-  const { showToast } = useToast();
+  const showToast = useToast();
   const canWrite = isSuperAdmin || isFinanceManager;
 
   const [payments, setPayments] = useState([]);

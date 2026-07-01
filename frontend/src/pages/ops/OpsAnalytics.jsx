@@ -42,7 +42,7 @@ function SectionHeader({ title, description }) {
 export default function OpsAnalytics() {
   usePageTitle("Analytics — ResolveHQ");
   const { isSuperAdmin, isOpsManager, isFinanceManager } = useRoles();
-  const { showToast } = useToast();
+  const showToast = useToast();
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);

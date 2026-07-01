@@ -60,6 +60,8 @@ function KpiCard({ label, value, sub, color = "indigo", loading }) {
 
 // ── Right info panel ──────────────────────────────────────────────
 function InfoPanel() {
+  const isMobile = useIsMobile();
+  const addToast = useToast();
   return (
     <div className="space-y-4">
       {/* System status */}
