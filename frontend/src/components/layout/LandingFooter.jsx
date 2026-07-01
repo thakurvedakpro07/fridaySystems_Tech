@@ -8,11 +8,12 @@ const YEAR = new Date().getFullYear();
 
 const NAV = {
   Product: [
-    { label: "How It Works",  href: "/#how-it-works" },
-    { label: "Services",      href: "/services",      internal: true },
-    { label: "Pricing",       href: "/pricing",       internal: true },
-    { label: "About Us",      href: "/about",         internal: true },
-    { label: "Contact",       href: "/contact",       internal: true },
+    { label: "How It Works",      href: "/#how-it-works" },
+    { label: "Services",          href: "/services",              internal: true },
+    { label: "Pricing",           href: "/pricing",               internal: true },
+    { label: "About Us",          href: "/about",                 internal: true },
+    { label: "Join as Engineer",  href: "/register/freelancer",   internal: true },
+    { label: "Contact",           href: "/contact",               internal: true },
   ],
   Platform: [
     { label: "Dashboard",     href: "/dashboard",     internal: true },

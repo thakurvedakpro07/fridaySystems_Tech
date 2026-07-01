@@ -188,6 +188,7 @@ export default function Header() {
               <NavLink to="/services">Services</NavLink>
               <NavLink to="/about">About</NavLink>
               <NavLink to="/pricing">Pricing</NavLink>
+              <NavLink to="/register/freelancer">Join as Engineer</NavLink>
               <NavLink to="/contact">Contact</NavLink>
               <Link
                 to="/login"
@@ -303,6 +304,7 @@ export default function Header() {
               <NavLink to="/services" onClick={closeMenu}>Services</NavLink>
               <NavLink to="/about" onClick={closeMenu}>About</NavLink>
               <NavLink to="/pricing" onClick={closeMenu}>Pricing</NavLink>
+              <NavLink to="/register/freelancer" onClick={closeMenu}>Join as Engineer</NavLink>
               <NavLink to="/contact" onClick={closeMenu}>Contact</NavLink>
               <Link
                 to="/login"
