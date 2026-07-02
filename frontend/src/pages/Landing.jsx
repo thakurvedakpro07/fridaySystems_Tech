@@ -278,13 +278,13 @@ const FAQ_ITEMS = [
 
 const HERO_TRUST = [
   {
-    label: "SAP Basis",
-    value: "Transport management, system health, user admin",
-    bg: "bg-blue-500/15",
-    color: "text-blue-300",
+    label: "Windows Provisioning",
+    value: "Windows Server, Active Directory, DNS, GPO",
+    bg: "bg-indigo-500/15",
+    color: "text-indigo-300",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0l-5.571 3-5.571-3" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
       </svg>
     ),
   },
@@ -300,13 +300,13 @@ const HERO_TRUST = [
     ),
   },
   {
-    label: "OS Patching",
-    value: "Managed patching for Windows and Linux nodes",
-    bg: "bg-teal-500/15",
-    color: "text-teal-300",
+    label: "Desktop Support",
+    value: "Remote troubleshooting, drivers, antivirus",
+    bg: "bg-orange-500/15",
+    color: "text-orange-300",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3" />
       </svg>
     ),
   },
@@ -322,13 +322,13 @@ const HERO_TRUST = [
     ),
   },
   {
-    label: "Desktop Support",
-    value: "Remote troubleshooting, drivers, antivirus",
-    bg: "bg-orange-500/15",
-    color: "text-orange-300",
+    label: "OS Patching",
+    value: "Managed patching for Windows and Linux nodes",
+    bg: "bg-teal-500/15",
+    color: "text-teal-300",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
       </svg>
     ),
   },
@@ -379,7 +379,7 @@ function HeroSection() {
                 <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-60" />
                 <span className="relative w-2.5 h-2.5 rounded-full bg-emerald-400 block" />
               </span>
-              India's Enterprise IT Support Marketplace · Engineers Online
+              Verified IT Engineers · 30-Min Support Consultation
             </motion.div>
 
             <motion.h1
@@ -402,9 +402,12 @@ function HeroSection() {
               transition={{ duration: 0.7, delay: 0.22 }}
               className="text-slate-300 text-lg sm:text-xl leading-relaxed mb-8 max-w-xl"
             >
-              When your Linux server goes down, Windows AD breaks, or VMware
-              throws a PSOD — get a verified IT engineer on the problem
-              Priority IT consultation in as little as 30 minutes. No retainers. No contracts. Pay only when your issue is fixed.
+              When your server goes down, Windows systems stop working, office
+              computers have issues, or your IT infrastructure needs expert
+              support — we connect you with a verified IT engineer for fast
+              remote troubleshooting.{" "}
+              Speak with our support team in as little as 30 minutes. No
+              retainers. No annual contracts. Pay only after your issue is resolved.
             </motion.p>
 
             <motion.div
@@ -420,7 +423,7 @@ function HeroSection() {
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                   </svg>
-                  Create Ticket — Free to Start
+                  Create Support Ticket
                 </Link>
               </motion.div>
               <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
