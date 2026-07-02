@@ -388,12 +388,12 @@ function HeroSection() {
               className="text-5xl sm:text-6xl lg:text-[3.75rem] xl:text-[4.5rem] font-black text-white
                          leading-[1.04] tracking-tight mb-5"
             >
-              Expert IT Support —<br />
+              Need Expert IT Support?<br />
               <span
                 className="text-transparent bg-clip-text"
                 style={{ backgroundImage: "linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #38bdf8 100%)" }}
               >
-                No Full-Time Hire Needed.
+                No Full-Time Hire Required.
               </span>
             </motion.h1>
 
