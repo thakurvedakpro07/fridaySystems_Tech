@@ -28,18 +28,20 @@ export default function TicketDetailPage() {
   const [error, setError] = useState("");
   usePageTitle(ticket ? ticket.ticket_number : "Ticket");
 
-  const loadTicket = useCallback(() => {
-    setLoading(true);
+  const loadTicket = useCallback((silent = false) => {
+    if (!silent) setLoading(true);
     fetchFn()
       .then(({ data }) => setTicket(data))
       .catch((err) => {
-        if (err.response?.status === 404) {
-          setError("Ticket not found.");
-        } else {
-          setError("Could not load ticket. Please try again.");
+        if (!silent) {
+          if (err.response?.status === 404) {
+            setError("Ticket not found.");
+          } else {
+            setError("Could not load ticket. Please try again.");
+          }
         }
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!silent) setLoading(false); });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -54,6 +56,13 @@ export default function TicketDetailPage() {
   }, [loadTicket]);
 
   useEffect(() => { loadTicket(); }, [loadTicket]);
+
+  // Silently poll every 30 s while the customer is waiting for engineer assignment
+  useEffect(() => {
+    if (!ticket || ticket.status !== "open" || role !== "customer") return;
+    const timer = setInterval(() => loadTicket(true), 30_000);
+    return () => clearInterval(timer);
+  }, [ticket?.status, role, loadTicket]);
 
   return (
     <MainLayout maxWidth="max-w-3xl">

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { freelancerListTickets } from "../../api/tickets";
 import { getAnalytics } from "../../api/analytics";
@@ -225,6 +225,8 @@ export default function FreelancerDashboard() {
 
   const [stats, setStats]               = useState({ total: 0, active: 0, resolved: 0, csatAvg: null, avgHours: null });
   const [statsLoading, setStatsLoading] = useState(true);
+  const [newAssignmentBanner, setNewAssignmentBanner] = useState(false);
+  const prevCountRef = useRef(null);
 
   const handleSearchChange = (e) => {
     const val = e.target.value;
@@ -247,19 +249,38 @@ export default function FreelancerDashboard() {
       .finally(() => setStatsLoading(false));
   }, []);
 
+  const loadTickets = useCallback((params, silent = false) => {
+    if (!silent) setLoading(true);
+    return freelancerListTickets(params)
+      .then(({ data }) => {
+        const list = data.results ?? data;
+        const currentCount = data.count ?? list.length;
+        if (prevCountRef.current !== null && currentCount > prevCountRef.current) {
+          setNewAssignmentBanner(true);
+        }
+        prevCountRef.current = currentCount;
+        setTickets(list);
+        setCount(currentCount);
+      })
+      .catch(() => { if (!silent) setError("Could not load tickets. Please refresh."); })
+      .finally(() => { if (!silent) setLoading(false); });
+  }, []);
+
   useEffect(() => {
-    setLoading(true);
     const params = {};
     if (search) params.search = search;
     if (status) params.status = status;
+    loadTickets(params);
+  }, [search, status, loadTickets]);
 
-    freelancerListTickets(params)
-      .then(({ data }) => {
-        setTickets(data.results ?? data);
-        setCount(data.count ?? (data.results ?? data).length);
-      })
-      .catch(() => setError("Could not load tickets. Please refresh."))
-      .finally(() => setLoading(false));
+  // Poll every 30 s for new assignments
+  useEffect(() => {
+    const params = {};
+    if (search) params.search = search;
+    if (status) params.status = status;
+    const id = setInterval(() => loadTickets(params, true), 30_000);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, status]);
 
   const name = getDisplayName(user);
@@ -267,6 +288,28 @@ export default function FreelancerDashboard() {
 
   return (
     <AppShell>
+      {/* ── New assignment banner ─────────────────────────────── */}
+      {newAssignmentBanner && (
+        <div className="mb-4 flex items-center justify-between gap-3 bg-indigo-600 text-white text-sm font-medium
+                        rounded-2xl px-5 py-3.5 shadow-md animate-fade-in">
+          <div className="flex items-center gap-2.5">
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+            </svg>
+            New ticket assigned to you!
+          </div>
+          <button
+            onClick={() => setNewAssignmentBanner(false)}
+            className="shrink-0 hover:opacity-75 transition-opacity"
+            aria-label="Dismiss"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* ── Greeting ─────────────────────────────────────────── */}
       <div className="mb-8">
         <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">

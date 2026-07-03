@@ -15,6 +15,17 @@ const STATUS_BADGE = {
   pending_payment:  "bg-rose-100 text-rose-700",
 };
 
+const AVAIL_LABEL = {
+  full_time: "Full Time",
+  part_time: "Part Time",
+  ad_hoc:    "Ad Hoc",
+};
+const AVAIL_COLOR = {
+  full_time: "bg-emerald-100 text-emerald-700",
+  part_time: "bg-amber-100 text-amber-700",
+  ad_hoc:    "bg-slate-100 text-slate-500",
+};
+
 function Badge({ label, colorClass }) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold capitalize ${colorClass}`}>
@@ -26,6 +37,11 @@ function Badge({ label, colorClass }) {
 function fmtDate(iso) {
   if (!iso) return "—";
   return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+}
+
+function engineerInitials(name, email) {
+  if (name) return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  return (email ?? "?")[0].toUpperCase();
 }
 
 // ── Activity log icon by action ───────────────────────────────────
@@ -67,15 +83,253 @@ function ActivityIcon({ action }) {
   );
 }
 
+// ── Assign Engineer Modal ─────────────────────────────────────────
+function AssignEngineerModal({ ticket, onClose, onAssigned }) {
+  const [engineers, setEngineers]   = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [assigningId, setAssigningId] = useState(null);
+  const [successId, setSuccessId]   = useState(null);
+  const [error, setError]           = useState("");
+  const [unassignNote, setUnassignNote] = useState("");
+  const [confirmUnassign, setConfirmUnassign] = useState(false);
+  const [unassigning, setUnassigning] = useState(false);
+
+  const serviceType = (ticket.service_type ?? "").toLowerCase();
+
+  useEffect(() => {
+    getOpsFreelancers()
+      .then((r) => {
+        const all = r.data?.results ?? r.data ?? [];
+        // Matching engineers (by service type in skills) first, then sorted by active ticket count
+        const match  = all.filter((e) => e.skills?.toLowerCase().includes(serviceType));
+        const others = all.filter((e) => !e.skills?.toLowerCase().includes(serviceType));
+        setEngineers([...match, ...others]);
+      })
+      .catch(() => setError("Could not load engineers."))
+      .finally(() => setLoading(false));
+  }, [serviceType]);
+
+  async function doAssign(engineerId) {
+    setAssigningId(engineerId);
+    setError("");
+    try {
+      await opsAssignTicket(ticket.id, engineerId);
+      setSuccessId(engineerId);
+      setTimeout(() => { onAssigned(); onClose(); }, 800);
+    } catch (e) {
+      setError(e?.response?.data?.error ?? e?.response?.data?.detail ?? "Assignment failed.");
+      setAssigningId(null);
+    }
+  }
+
+  async function doUnassign() {
+    setUnassigning(true);
+    setError("");
+    try {
+      await opsUnassignTicket(ticket.id, unassignNote);
+      onAssigned();
+      onClose();
+    } catch (e) {
+      setError(e?.response?.data?.error ?? e?.response?.data?.detail ?? "Unassign failed.");
+      setUnassigning(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.96 }}
+        transition={{ type: "spring", stiffness: 320, damping: 26 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden"
+      >
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-slate-100 shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="font-bold text-slate-900 text-base">
+                {ticket.freelancer ? "Reassign Engineer" : "Assign Engineer"}
+              </h2>
+              <p className="text-[11px] font-mono text-slate-500 mt-0.5">{ticket.ticket_number}</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors shrink-0"
+            >
+              <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <p className="text-sm font-semibold text-slate-800 mt-2 truncate">{ticket.title}</p>
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            <span className="text-[11px] text-slate-500 capitalize">
+              {String(ticket.service_type ?? "").replace(/_/g, " ")}
+            </span>
+            {ticket.severity && (
+              <span className="text-[11px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded capitalize">
+                {ticket.severity}
+              </span>
+            )}
+            {ticket.freelancer && (
+              <span className="text-[11px] text-violet-600 font-medium">
+                Current: {ticket.freelancer.name ?? ticket.freelancer.email}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Body — engineer list */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((n) => <div key={n} className="h-20 bg-slate-50 animate-pulse rounded-xl" />)}
+            </div>
+          ) : error && engineers.length === 0 ? (
+            <p className="text-sm text-rose-600 text-center py-8">{error}</p>
+          ) : engineers.length === 0 ? (
+            <div className="text-center py-10">
+              <p className="text-sm font-semibold text-slate-700">No engineers available</p>
+              <p className="text-xs text-slate-500 mt-1">Approve engineers in the user management panel first.</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {engineers.map((eng) => {
+                const isMatch   = !!eng.skills?.toLowerCase().includes(serviceType);
+                const skills    = eng.skills
+                  ? eng.skills.split(",").map((s) => s.trim()).filter(Boolean)
+                  : [];
+                const initials  = engineerInitials(eng.name, eng.email);
+                const isAssigning = assigningId === eng.id;
+                const isSuccess   = successId === eng.id;
+
+                return (
+                  <div
+                    key={eng.id}
+                    className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
+                      isSuccess
+                        ? "border-emerald-200 bg-emerald-50"
+                        : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50/70"
+                    }`}
+                  >
+                    {/* Avatar */}
+                    <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                      <span className="text-sm font-bold text-indigo-700">{initials}</span>
+                    </div>
+
+                    {/* Info */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-slate-900">{eng.name}</span>
+                        {isMatch && (
+                          <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">
+                            ★ Recommended
+                          </span>
+                        )}
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded capitalize ${AVAIL_COLOR[eng.availability] ?? "bg-slate-100 text-slate-500"}`}>
+                          {AVAIL_LABEL[eng.availability] ?? eng.availability ?? "—"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[11px] text-slate-500">
+                          {eng.active_tickets ?? 0} active ticket{(eng.active_tickets ?? 0) !== 1 ? "s" : ""}
+                        </span>
+                        {eng.rating && parseFloat(eng.rating) > 0 && (
+                          <span className="text-[11px] text-amber-600 font-medium">
+                            ⭐ {parseFloat(eng.rating).toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                      {skills.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {skills.slice(0, 4).map((skill) => (
+                            <span
+                              key={skill}
+                              className="text-[10px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded capitalize"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                          {skills.length > 4 && (
+                            <span className="text-[10px] text-slate-400">+{skills.length - 4}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Assign button */}
+                    <button
+                      disabled={!!assigningId || !!successId}
+                      onClick={() => doAssign(eng.id)}
+                      className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                        isSuccess
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                      }`}
+                    >
+                      {isSuccess ? "✓ Assigned" : isAssigning ? "Assigning…" : "Assign"}
+                    </button>
+                  </div>
+                );
+              })}
+              {error && <p className="text-xs text-rose-600 mt-2">{error}</p>}
+            </div>
+          )}
+        </div>
+
+        {/* Unassign section (only for already-assigned tickets) */}
+        {ticket.freelancer && (
+          <div className="px-6 pb-5 pt-3 border-t border-slate-100 shrink-0">
+            {!confirmUnassign ? (
+              <button
+                onClick={() => setConfirmUnassign(true)}
+                className="text-xs font-semibold text-rose-600 hover:text-rose-800 transition-colors"
+              >
+                Unassign current engineer…
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <input
+                  value={unassignNote}
+                  onChange={(e) => setUnassignNote(e.target.value)}
+                  placeholder="Reason for unassigning (optional)"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-800
+                             focus:outline-none focus:ring-2 focus:ring-rose-400/60 transition"
+                />
+                {error && <p className="text-xs text-rose-600">{error}</p>}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={doUnassign}
+                    disabled={unassigning}
+                    className="text-xs font-semibold bg-rose-600 text-white px-3 py-1.5 rounded-lg
+                               hover:bg-rose-700 transition-colors disabled:opacity-50"
+                  >
+                    {unassigning ? "Unassigning…" : "Confirm Unassign"}
+                  </button>
+                  <button
+                    onClick={() => { setConfirmUnassign(false); setError(""); }}
+                    className="text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
 // ── History drawer ────────────────────────────────────────────────
-function HistoryDrawer({ ticket, onClose, freelancers, onReassign }) {
+function HistoryDrawer({ ticket, onClose, onOpenAssignModal }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showReassign, setShowReassign] = useState(false);
-  const [selectedFl, setSelectedFl] = useState("");
-  const [reassigning, setReassigning] = useState(false);
-  const [note, setNote] = useState("");
-  const [err, setErr] = useState("");
 
   useEffect(() => {
     setLoading(true);
@@ -84,25 +338,6 @@ function HistoryDrawer({ ticket, onClose, freelancers, onReassign }) {
       .catch(() => setHistory([]))
       .finally(() => setLoading(false));
   }, [ticket.id]);
-
-  async function doReassign() {
-    setErr("");
-    setReassigning(true);
-    try {
-      if (selectedFl) {
-        await opsAssignTicket(ticket.id, selectedFl);
-      } else {
-        await opsUnassignTicket(ticket.id, note);
-      }
-      setShowReassign(false);
-      onReassign();
-      onClose();
-    } catch (e) {
-      setErr(e?.response?.data?.error ?? e?.response?.data?.detail ?? "Action failed.");
-    } finally {
-      setReassigning(false);
-    }
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/40 backdrop-blur-sm"
@@ -140,45 +375,13 @@ function HistoryDrawer({ ticket, onClose, freelancers, onReassign }) {
             )}
           </div>
 
-          {/* Reassign CTA */}
-          {!showReassign ? (
-            <button onClick={() => setShowReassign(true)}
-              className="mt-3 text-xs font-semibold text-indigo-600 hover:text-indigo-800 border border-indigo-200
-                         hover:border-indigo-400 px-3 py-1.5 rounded-lg transition-colors">
-              {ticket.freelancer ? "Reassign Engineer →" : "Assign Engineer →"}
-            </button>
-          ) : (
-            <div className="mt-3 space-y-2">
-              <select value={selectedFl} onChange={(e) => setSelectedFl(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-800
-                           focus:outline-none focus:ring-2 focus:ring-indigo-400/60 transition">
-                <option value="">{ticket.freelancer ? "— Unassign —" : "Select an engineer"}</option>
-                {freelancers.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name ?? f.user?.email}
-                    {f.active_ticket_count != null ? ` (${f.active_ticket_count} active)` : ""}
-                  </option>
-                ))}
-              </select>
-              {!selectedFl && ticket.freelancer && (
-                <input value={note} onChange={(e) => setNote(e.target.value)}
-                  placeholder="Reason for unassigning…"
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white text-slate-800
-                             focus:outline-none focus:ring-2 focus:ring-indigo-400/60 transition" />
-              )}
-              {err && <p className="text-xs text-rose-600">{err}</p>}
-              <div className="flex items-center gap-2">
-                <button onClick={doReassign} disabled={reassigning || (!selectedFl && !ticket.freelancer)}
-                  className="text-xs font-semibold bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50">
-                  {reassigning ? "Saving…" : ticket.freelancer && !selectedFl ? "Unassign" : "Confirm"}
-                </button>
-                <button onClick={() => { setShowReassign(false); setErr(""); }}
-                  className="text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors">
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
+          <button
+            onClick={() => { onOpenAssignModal(ticket); onClose(); }}
+            className="mt-3 text-xs font-semibold text-indigo-600 hover:text-indigo-800 border border-indigo-200
+                       hover:border-indigo-400 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            {ticket.freelancer ? "Reassign Engineer →" : "Assign Engineer →"}
+          </button>
         </div>
 
         {/* Activity log */}
@@ -196,7 +399,6 @@ function HistoryDrawer({ ticket, onClose, freelancers, onReassign }) {
             </div>
           ) : (
             <div className="relative">
-              {/* Vertical line */}
               <div className="absolute left-3.5 top-0 bottom-4 w-px bg-slate-100" />
               <div className="space-y-5">
                 {history.map((entry) => (
@@ -231,23 +433,24 @@ function HistoryDrawer({ ticket, onClose, freelancers, onReassign }) {
 export default function OpsAssignments() {
   usePageTitle("Assignments — ResolveHQ Ops");
 
-  const [tickets, setTickets] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [freelancers, setFreelancers] = useState([]);
-  const [activeTicket, setActiveTicket] = useState(null);
-  const [error, setError] = useState(null);
+  const [tickets, setTickets]             = useState([]);
+  const [loading, setLoading]             = useState(true);
+  const [engineerCount, setEngineerCount] = useState(0);
+  const [activeTicket, setActiveTicket]   = useState(null);
+  const [assigningTicket, setAssigningTicket] = useState(null);
+  const [error, setError]                 = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const [ticketsRes, flRes] = await Promise.all([
-        // assigned + in_progress tickets — those have engineer assignments
         getOpsTickets({ ordering: "-updated_at" }),
         getOpsFreelancers(),
       ]);
       setTickets(ticketsRes.data?.results ?? ticketsRes.data ?? []);
-      setFreelancers(flRes.data?.results ?? flRes.data ?? []);
+      const fl = flRes.data?.results ?? flRes.data ?? [];
+      setEngineerCount(fl.length);
     } catch (e) {
       setError(e?.response?.data?.detail ?? "Failed to load assignments.");
     } finally {
@@ -257,9 +460,13 @@ export default function OpsAssignments() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Split tickets into assigned vs unassigned
   const assigned   = tickets.filter((t) => t.freelancer);
   const unassigned = tickets.filter((t) => !t.freelancer && t.status === "open");
+
+  function openAssignModal(ticket) {
+    setActiveTicket(null);
+    setAssigningTicket(ticket);
+  }
 
   return (
     <AppShell>
@@ -281,10 +488,10 @@ export default function OpsAssignments() {
         {!loading && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { label: "Assigned",   value: assigned.length,   color: "text-violet-600" },
-              { label: "Unassigned", value: unassigned.length, color: "text-rose-600" },
+              { label: "Assigned",     value: assigned.length,   color: "text-violet-600" },
+              { label: "Unassigned",   value: unassigned.length, color: "text-rose-600" },
               { label: "Total Active", value: tickets.filter((t) => !["resolved","closed"].includes(t.status)).length, color: "text-indigo-600" },
-              { label: "Engineers",  value: freelancers.length, color: "text-emerald-600" },
+              { label: "Engineers",    value: engineerCount,     color: "text-emerald-600" },
             ].map((s) => (
               <div key={s.label} className="bg-white border border-slate-200 rounded-2xl px-5 py-4"
                    style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
@@ -363,19 +570,25 @@ export default function OpsAssignments() {
               <div className="divide-y divide-slate-50 max-h-[520px] overflow-y-auto">
                 {unassigned.map((t) => (
                   <div key={t.id}
-                       className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors cursor-pointer"
-                       onClick={() => setActiveTicket(t)}>
-                    <div className="min-w-0 flex-1">
+                       className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors">
+                    <button
+                      onClick={() => setActiveTicket(t)}
+                      className="min-w-0 flex-1 text-left"
+                    >
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-[11px] font-mono text-slate-500">{t.ticket_number}</span>
                         {t.severity && <Badge label={t.severity} colorClass="bg-slate-100 text-slate-600" />}
                       </div>
                       <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
                       <p className="text-[11px] text-slate-500 mt-0.5">{fmtDate(t.created_at)}</p>
-                    </div>
-                    <span className="shrink-0 text-xs font-semibold text-indigo-600 border border-indigo-200 px-2.5 py-1 rounded-lg hover:bg-indigo-50 transition-colors">
+                    </button>
+                    <button
+                      onClick={() => openAssignModal(t)}
+                      className="shrink-0 text-xs font-semibold text-indigo-600 border border-indigo-200 px-2.5 py-1 rounded-lg
+                                 hover:bg-indigo-50 hover:border-indigo-400 transition-colors"
+                    >
                       Assign →
-                    </span>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -384,14 +597,25 @@ export default function OpsAssignments() {
         </div>
       </div>
 
-      {/* Drawer */}
+      {/* History drawer */}
       <AnimatePresence>
         {activeTicket && (
           <HistoryDrawer
             ticket={activeTicket}
-            freelancers={freelancers}
             onClose={() => setActiveTicket(null)}
-            onReassign={() => { load(); setActiveTicket(null); }} />
+            onOpenAssignModal={openAssignModal}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Assign engineer modal */}
+      <AnimatePresence>
+        {assigningTicket && (
+          <AssignEngineerModal
+            ticket={assigningTicket}
+            onClose={() => setAssigningTicket(null)}
+            onAssigned={() => { load(); setAssigningTicket(null); }}
+          />
         )}
       </AnimatePresence>
     </AppShell>

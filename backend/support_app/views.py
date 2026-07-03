@@ -2203,6 +2203,17 @@ def ops_assign_ticket(request, ticket_id):
         body="A verified support engineer has been assigned to your ticket.",
         ticket=ticket,
     )
+    for staff in User.objects.filter(
+        role__in=["support_agent", "operations_manager"],
+        is_active=True,
+    ).exclude(pk=request.user.pk):
+        create_notification(
+            recipient=staff,
+            category="ticket_assigned",
+            title=f"Engineer assigned: {ticket.ticket_number}",
+            body=f"{ticket.title} → {freelancer.user.get_full_name() or freelancer.user.email}",
+            ticket=ticket,
+        )
 
     ticket.refresh_from_db()
     return Response(TicketDetailSerializer(ticket).data, status=status.HTTP_200_OK)
