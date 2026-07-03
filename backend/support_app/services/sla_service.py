@@ -17,11 +17,14 @@ logger = logging.getLogger(__name__)
 
 # Default SLA windows (seconds) used when no matching SLAPolicy row exists.
 # Keyed by severity. Values: (first_response_seconds, resolution_seconds)
+# first_response_seconds: how long until the engineer first contacts the customer.
+# This must match the SLA_MESSAGE / SLA_TIME constants in the frontend
+# (TicketDetail.jsx) and the "consultation deadline" shown to customers.
 _DEFAULTS = {
-    "critical": (4 * 3600, 8 * 3600),
-    "high": (8 * 3600, 24 * 3600),
-    "medium": (24 * 3600, 48 * 3600),
-    "low": (48 * 3600, 72 * 3600),
+    "critical": (30 * 60,   8 * 3600),   # 30 min first contact, 8 h resolution
+    "high":     (1 * 3600, 24 * 3600),   # 1 h first contact,  24 h resolution
+    "medium":   (2 * 3600, 48 * 3600),   # 2 h first contact,  48 h resolution
+    "low":      (4 * 3600, 72 * 3600),   # 4 h first contact,  72 h resolution
 }
 
 

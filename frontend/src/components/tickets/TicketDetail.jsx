@@ -869,15 +869,15 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
                 })}
               </MetaItem>
             )}
-            {ticket.due_at && (
+            {ticket.first_response_due_at && (
               <div>
                 <dt className="text-xs font-medium text-slate-500 mb-0.5">Consultation deadline</dt>
                 <dd className={`text-sm font-medium ${
-                  new Date(ticket.due_at) < new Date() && !["resolved", "closed"].includes(ticket.status)
+                  new Date(ticket.first_response_due_at) < new Date() && !["resolved", "closed"].includes(ticket.status)
                     ? "text-rose-600"
                     : "text-slate-800"
                 }`}>
-                  {new Date(ticket.due_at).toLocaleString("en-IN", {
+                  {new Date(ticket.first_response_due_at).toLocaleString("en-IN", {
                     day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
                   })}
                 </dd>

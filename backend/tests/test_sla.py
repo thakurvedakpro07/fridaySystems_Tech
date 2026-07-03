@@ -374,6 +374,64 @@ def test_payment_verified_initializes_sla():
     assert ticket.first_response_due_at < ticket.due_at
 
 
+# ── Exact first-response timing tests ────────────────────────────────────────
+# Verify consultation_deadline = open_time + advertised_response_time for every severity.
+# Reference: ticket opened at 2026-07-03 11:17:00 IST (= 05:47:00 UTC).
+#   Critical  →  11:47 IST  (+30 min)
+#   High      →  12:17 IST  (+1 h)
+#   Medium    →  13:17 IST  (+2 h)
+#   Low       →  15:17 IST  (+4 h)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("severity,expected_minutes,expected_ist", [
+    ("critical",  30, "11:47"),
+    ("high",      60, "12:17"),
+    ("medium",   120, "13:17"),
+    ("low",      240, "15:17"),
+])
+def test_first_response_due_at_exact_timing(severity, expected_minutes, expected_ist):
+    """
+    first_response_due_at must equal open_time + advertised SLA window.
+    Frozen now = 2026-07-03 05:47:00 UTC (= 11:17 IST).
+    """
+    from django.contrib.auth import get_user_model
+    from support_app.models import Customer, Ticket
+    from support_app.services.sla_service import set_ticket_due_at
+
+    # 2026-07-03 11:17:00 IST = 05:47:00 UTC
+    frozen_now = datetime.datetime(2026, 7, 3, 5, 47, 0, tzinfo=datetime.timezone.utc)
+
+    User = get_user_model()
+    user = User.objects.create_user(
+        email=f"sla_timing_{severity}@example.com",
+        password="StrongPass123!",
+        role="customer",
+    )
+    customer = Customer.objects.create(user=user, company="TimingCo")
+    ticket = Ticket.objects.create(
+        customer=customer,
+        title=f"SLA timing test — {severity}",
+        service_type="linux",
+        severity=severity,
+        status="open",
+    )
+
+    with patch("support_app.services.sla_service.timezone.now", return_value=frozen_now):
+        set_ticket_due_at(ticket)
+
+    ticket.refresh_from_db()
+    assert ticket.first_response_due_at is not None, (
+        f"{severity}: first_response_due_at must be set after set_ticket_due_at()"
+    )
+
+    expected_dt = frozen_now + datetime.timedelta(minutes=expected_minutes)
+    assert ticket.first_response_due_at == expected_dt, (
+        f"{severity}: expected {expected_dt.isoformat()} ({expected_ist} IST), "
+        f"got {ticket.first_response_due_at.isoformat()}"
+    )
+
+
 @pytest.mark.django_db
 def test_closed_ticket_excluded_from_sla_check():
     """
