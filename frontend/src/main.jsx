@@ -4,13 +4,23 @@
  */
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import App from "./App";
 import "./index.css"; // Tailwind base styles
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  // StrictMode runs each component twice in development to surface bugs early.
-  // This is automatically disabled in the production build.
-  <React.StrictMode>
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+
+// GoogleOAuthProvider is only mounted when a real client ID is configured.
+// When VITE_GOOGLE_CLIENT_ID is absent, the provider is never mounted and
+// GoogleLoginButton (which calls useGoogleLogin) is never rendered — no crash.
+const root = GOOGLE_CLIENT_ID ? (
+  <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
     <App />
-  </React.StrictMode>
+  </GoogleOAuthProvider>
+) : (
+  <App />
+);
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <React.StrictMode>{root}</React.StrictMode>
 );

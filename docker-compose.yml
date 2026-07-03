@@ -120,6 +120,10 @@ services:
       # vite.config.js reads this via process.env.VITE_API_TARGET and
       # falls back to http://localhost:8000 when running without Docker.
       VITE_API_TARGET: http://backend:8000
+      # Google OAuth — passed at Vite serve time so import.meta.env.VITE_GOOGLE_CLIENT_ID
+      # is defined in the browser bundle. The value here must match the one in
+      # frontend/.env so local (non-Docker) npm run dev also works.
+      VITE_GOOGLE_CLIENT_ID: "1036476300436-0a9n8v77uao0g8beum2utsscti7e412c.apps.googleusercontent.com"
     ports:
       - "5173:5173"
     volumes:

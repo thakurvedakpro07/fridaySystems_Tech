@@ -7,6 +7,12 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useToast } from "../context/ToastContext";
 import { CONTACT } from "../config/contact";
+import { googleLogin as googleLoginApi } from "../api/auth";
+import { useAuthStore } from "../store/authStore";
+import { GoogleLoginButton } from "../components/auth/GoogleLoginButton";
+
+// True only when a real Client ID is present AND GoogleOAuthProvider is mounted.
+const GOOGLE_ENABLED = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const TRUST_POINTS = [
   "Bank-grade encryption on all data",
@@ -24,10 +30,37 @@ export default function Login() {
   usePageTitle("Sign In");
   const navigate  = useNavigate();
   const { loginUser, loading } = useAuth();
+  const { setTokens, setUser } = useAuthStore();
   const isMobile  = useIsMobile();
   const addToast  = useToast();
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogleSuccess = async (tokenResponse) => {
+    setGoogleLoading(true);
+    setError("");
+    try {
+      const { data } = await googleLoginApi(tokenResponse.access_token);
+      setTokens(data.access, data.refresh);
+      setUser(data.user);
+      const staffRoles = ["admin", "operations_manager", "finance_manager", "support_agent"];
+      if (staffRoles.includes(data.user.role)) {
+        navigate("/operations");
+      } else if (data.user.role === "freelancer") {
+        navigate("/freelancer");
+      } else {
+        addToast("Welcome back!", "success");
+        navigate("/dashboard");
+      }
+    } catch (err) {
+      const msg = err.response?.data?.detail || "Google sign-in failed. Please try again.";
+      setError(msg);
+      addToast(msg, "error");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   async function copyNumber() {
     try {
@@ -169,6 +202,22 @@ export default function Login() {
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-1">Welcome back</h1>
               <p className="text-sm text-slate-500">Sign in to your ResolveHQ account</p>
             </div>
+
+            {/* Google sign-in — only rendered when VITE_GOOGLE_CLIENT_ID is set */}
+            {GOOGLE_ENABLED && (
+              <div className="mb-6">
+                <GoogleLoginButton
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => addToast("Google sign-in was cancelled or failed.", "warning")}
+                  loading={googleLoading}
+                />
+                <div className="flex items-center gap-3 mt-5">
+                  <div className="flex-1 h-px bg-slate-200" />
+                  <span className="text-xs text-slate-400 font-medium">OR</span>
+                  <div className="flex-1 h-px bg-slate-200" />
+                </div>
+              </div>
+            )}
 
             {sessionExpired && !error && (
               <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3 mb-5">

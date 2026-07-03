@@ -7,6 +7,9 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useToast } from "../context/ToastContext";
 import { CONTACT } from "../config/contact";
+import { googleLogin as googleLoginApi, updateMyProfile } from "../api/auth";
+import { useAuthStore } from "../store/authStore";
+import { GoogleLoginButton } from "../components/auth/GoogleLoginButton";
 
 const PERKS = [
   {
@@ -53,16 +56,63 @@ const AVATARS = [
   { initials: "S", bg: "#60a5fa" },
 ];
 
+const GOOGLE_ENABLED = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
 export default function RegisterCustomer() {
   usePageTitle("Create Customer Account");
   const navigate  = useNavigate();
   const { registerUser, loading } = useAuth();
+  const { setTokens, setUser } = useAuthStore();
   const isMobile  = useIsMobile();
   const addToast  = useToast();
   const [form, setForm] = useState({
     name: "", email: "", company: "", password: "", password2: "",
   });
   const [errors, setErrors] = useState([]);
+
+  // Google OAuth state
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [companyStep, setCompanyStep] = useState(false);
+  const [googleCompany, setGoogleCompany] = useState("");
+  const [companyLoading, setCompanyLoading] = useState(false);
+
+  const handleGoogleSuccess = async (tokenResponse) => {
+    setGoogleLoading(true);
+    setErrors([]);
+    try {
+      const { data } = await googleLoginApi(tokenResponse.access_token);
+      setTokens(data.access, data.refresh);
+      setUser(data.user);
+      if (data.needs_company) {
+        setCompanyStep(true);
+      } else {
+        addToast("Account created! Welcome to ResolveHQ.", "success");
+        navigate("/onboarding/customer");
+      }
+    } catch (err) {
+      const msg = err.response?.data?.detail || "Google sign-in failed. Please try again.";
+      setErrors([msg]);
+      addToast(msg, "error");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleCompanySubmit = async (e) => {
+    e.preventDefault();
+    setCompanyLoading(true);
+    try {
+      if (googleCompany.trim()) {
+        await updateMyProfile({ company: googleCompany.trim() });
+      }
+    } catch {
+      // Non-fatal — user can update company later
+    } finally {
+      setCompanyLoading(false);
+    }
+    addToast("Account created! Welcome to ResolveHQ.", "success");
+    navigate("/onboarding/customer");
+  };
 
   async function copyNumber() {
     try {
@@ -206,6 +256,49 @@ export default function RegisterCustomer() {
             className="bg-white border border-slate-200/80 rounded-2xl p-8 animate-fade-in"
             style={{ boxShadow: "0 8px 40px -8px rgba(0,0,0,0.12), 0 2px 8px -2px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)" }}
           >
+            {/* Company name step — shown after Google sign-in for new users */}
+            {companyStep ? (
+              <div>
+                <div className="mb-6">
+                  <div className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-full mb-3">
+                    ✓ Google account connected
+                  </div>
+                  <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-1.5">One last thing</h1>
+                  <p className="text-sm text-slate-500 leading-relaxed">
+                    What company or organisation are you raising support tickets for?
+                  </p>
+                </div>
+                <form onSubmit={handleCompanySubmit} className="space-y-4">
+                  <div>
+                    <label htmlFor="google-company" className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Company Name
+                    </label>
+                    <input
+                      id="google-company"
+                      type="text"
+                      value={googleCompany}
+                      onChange={(e) => setGoogleCompany(e.target.value)}
+                      placeholder="Acme Technologies"
+                      className="input-auth"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="pt-1 flex gap-3">
+                    <Button type="submit" disabled={companyLoading} className="flex-1" size="lg">
+                      {companyLoading ? "Saving…" : "Continue →"}
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => { addToast("Welcome to ResolveHQ.", "success"); navigate("/onboarding/customer"); }}
+                      className="text-sm text-slate-400 hover:text-slate-600 transition-colors px-2"
+                    >
+                      Skip
+                    </button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <>
             <div className="mb-6">
               <div className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 text-xs font-semibold px-2.5 py-1 rounded-full mb-3">
                 🏢 Customer Account
@@ -215,6 +308,22 @@ export default function RegisterCustomer() {
                 You'll be able to create support tickets and manage your company's support requests.
               </p>
             </div>
+
+            {/* Google sign-in — only rendered when VITE_GOOGLE_CLIENT_ID is set */}
+            {GOOGLE_ENABLED && (
+              <div className="mb-5">
+                <GoogleLoginButton
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => addToast("Google sign-in was cancelled or failed.", "warning")}
+                  loading={googleLoading}
+                />
+                <div className="flex items-center gap-3 mt-5">
+                  <div className="flex-1 h-px bg-slate-200" />
+                  <span className="text-xs text-slate-400 font-medium">OR</span>
+                  <div className="flex-1 h-px bg-slate-200" />
+                </div>
+              </div>
+            )}
 
             {errors.length > 0 && (
               <div className="flex items-start gap-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl px-4 py-3 mb-5">
@@ -327,6 +436,8 @@ export default function RegisterCustomer() {
                 Sign in
               </Link>
             </p>
+            </>
+            )}
           </div>
 
           <div className="flex items-center justify-center gap-1.5 mt-5">

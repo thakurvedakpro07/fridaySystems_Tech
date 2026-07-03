@@ -34,6 +34,7 @@ urlpatterns = [
     path("auth/register/", views.RegisterView.as_view(), name="auth-register"),
     path("auth/login/", views.CustomTokenObtainPairView.as_view(), name="auth-login"),
     path("auth/logout/", views.logout_view, name="auth-logout"),
+    path("auth/google/", views.google_auth_view, name="auth-google"),
     # Two URLs for token refresh — keep /token/refresh/ because the Axios
     # interceptor in client.js uses it; /refresh/ is the cleaner public alias.
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="auth-token-refresh"),

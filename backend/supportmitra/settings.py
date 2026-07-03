@@ -317,6 +317,11 @@ BUSINESS_SUPPORT_EMAIL = os.getenv("BUSINESS_SUPPORT_EMAIL", "")
 BUSINESS_SUPPORT_PHONE = os.getenv("BUSINESS_SUPPORT_PHONE", "")
 APP_URL = os.getenv("APP_URL", "http://localhost:5173")
 
+# ── Google OAuth ─────────────────────────────────────────────────
+# Set GOOGLE_OAUTH_CLIENT_ID in backend/.env to enable "Sign in with Google".
+# Get one at: https://console.cloud.google.com → APIs & Services → Credentials.
+GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
+
 # ── Razorpay ─────────────────────────────────────────────────────
 RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "")
 RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "")

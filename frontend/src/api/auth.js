@@ -15,6 +15,9 @@ export const refreshToken = (refresh) =>
 export const logout = (refresh) =>
   apiClient.post("/auth/logout/", { refresh });
 
+export const googleLogin = (accessToken) =>
+  apiClient.post("/auth/google/", { access_token: accessToken });
+
 // Universal current-user endpoint — works for ALL roles.
 // Use this in initializeAuth() so admins and freelancers are not
 // accidentally logged out on page refresh (unlike /customers/me/).

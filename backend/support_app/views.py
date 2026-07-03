@@ -253,6 +253,112 @@ def logout_view(request):
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+# ── Google OAuth Login ────────────────────────────────────────────
+
+@api_view(["POST"])
+@permission_classes([permissions.AllowAny])
+@throttle_classes_dec([AuthRateThrottle])
+def google_auth_view(request):
+    """
+    POST /api/auth/google/
+    Body: { "access_token": "<Google OAuth2 access token>" }
+
+    Verifies the token with Google's userinfo endpoint, then gets-or-creates
+    a customer account. Returns the same JWT response shape as /auth/login/.
+
+    Additional field:
+      needs_company: true  — new user, Customer profile has no company yet
+      needs_company: false — existing user or company already on file
+    """
+    import requests as _http
+    from django.conf import settings as _settings
+
+    access_token = request.data.get("access_token")
+    if not access_token:
+        return Response({"detail": "access_token is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Step 1 — verify the token belongs to our app by checking its azp
+        # (authorized party). This prevents a valid Google token issued to a
+        # different OAuth app from being replayed here.
+        tokeninfo_resp = _http.get(
+            "https://oauth2.googleapis.com/tokeninfo",
+            params={"access_token": access_token},
+            timeout=10,
+        )
+        tokeninfo_resp.raise_for_status()
+        tokeninfo = tokeninfo_resp.json()
+    except Exception:
+        return Response({"detail": "Could not verify Google token."}, status=status.HTTP_401_UNAUTHORIZED)
+
+    expected_client_id = _settings.GOOGLE_OAUTH_CLIENT_ID
+    if expected_client_id and tokeninfo.get("azp") != expected_client_id:
+        return Response(
+            {"detail": "Google token was not issued for this application."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    try:
+        # Step 2 — fetch the full user profile (name, email, email_verified)
+        userinfo_resp = _http.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10,
+        )
+        userinfo_resp.raise_for_status()
+        google_data = userinfo_resp.json()
+    except Exception:
+        return Response({"detail": "Could not retrieve Google profile."}, status=status.HTTP_401_UNAUTHORIZED)
+
+    email = google_data.get("email")
+    if not email:
+        return Response({"detail": "No email in Google profile."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not google_data.get("email_verified"):
+        return Response({"detail": "Google email address is not verified."}, status=status.HTTP_400_BAD_REQUEST)
+
+    first_name = google_data.get("given_name", "")
+    last_name = google_data.get("family_name", "")
+
+    with transaction.atomic():
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={
+                "first_name": first_name,
+                "last_name": last_name,
+                "role": "customer",
+                "is_active": True,
+                "is_verified": True,
+            },
+        )
+        if created:
+            user.set_unusable_password()
+            user.save(update_fields=["password"])
+            Customer.objects.get_or_create(user=user)
+
+    profile = getattr(user, "customer_profile", None)
+    needs_company = not (profile and profile.company)
+
+    refresh = RefreshToken.for_user(user)
+    return Response(
+        {
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "needs_company": needs_company,
+            "user": {
+                "id": str(user.id),
+                "email": user.email,
+                "is_staff": user.is_staff,
+                "role": user.role,
+                "is_verified": user.is_verified,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+            },
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
 # ── Current User ─────────────────────────────────────────────────
 
 @api_view(["GET"])
