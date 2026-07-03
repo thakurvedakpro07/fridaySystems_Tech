@@ -57,6 +57,13 @@ export default function PaymentGateway({ ticket, onPaymentSuccess }) {
   const gst   = Math.round(base * 0.18);   // 18% GST
   const total = base + gst;                 // ₹353
 
+  const CARD_ICON = (
+    <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+    </svg>
+  );
+
   // ── Verify payment with backend after gateway success ────────────
   const handleVerify = async (verifyData) => {
     const { data: updatedTicket } = await verifyPayment(ticket.id, verifyData);
@@ -154,110 +161,152 @@ export default function PaymentGateway({ ticket, onPaymentSuccess }) {
   }
 
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 space-y-4">
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
+         style={{ boxShadow: "0 2px 12px 0 rgb(0 0 0 / 0.08)" }}>
 
-      {/* ── Header ──────────────────────────────────────────── */}
-      <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-          <svg className="w-5 h-5 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round"
-              d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
-          </svg>
+      {/* ── Amber accent bar ─────────────────────────────────── */}
+      <div className="h-1.5 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500" />
+
+      <div className="p-5 space-y-4">
+
+        {/* ── Ticket identity + amount ─────────────────────────── */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            {/* Pending Payment badge */}
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs
+                             font-bold bg-amber-100 text-amber-800 border border-amber-200 mb-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+              Pending Payment
+            </span>
+            <p className="text-[11px] font-mono font-medium text-slate-500 leading-none">
+              {ticket.ticket_number}
+            </p>
+            <p className="text-sm font-semibold text-slate-800 mt-1 leading-snug line-clamp-1">
+              {ticket.title}
+            </p>
+          </div>
+
+          {/* Amount callout */}
+          <div className="shrink-0 text-right">
+            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-0.5">
+              Amount due today
+            </p>
+            <p className="text-3xl font-black text-slate-900 leading-none">₹{total}</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">incl. 18% GST</p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-sm font-semibold text-amber-900">Payment required to open your ticket</h3>
-          <p className="text-xs text-amber-700 mt-0.5 leading-snug">
-            A one-time consulting fee confirms your support request and secures your Support Agent consultation.
+
+        {/* ── Explanation banner ───────────────────────────────── */}
+        <div className="flex items-start gap-2.5 bg-indigo-50 border border-indigo-100
+                        rounded-xl px-3.5 py-3">
+          <svg className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+          </svg>
+          <p className="text-xs text-indigo-800 leading-relaxed">
+            Your ticket is submitted. Complete payment to activate your support request —
+            a verified engineer will be assigned and your consultation will begin within your
+            chosen response window.
           </p>
         </div>
-      </div>
 
-      {/* ── Invoice breakdown ────────────────────────────────── */}
-      <div className="bg-white/80 border border-amber-100 rounded-xl p-4 space-y-1.5">
-        <InvoiceRow label="Consulting fee" amount={base} />
-        <InvoiceRow label="GST (18%)"      amount={gst} />
-        <InvoiceRow label={`Total due`}    amount={total} bold border />
-        <p className="text-[11px] text-slate-500 pt-0.5">
-          Invoice {orderData?.invoice_number ?? "will be generated on payment"}
+        {/* ── Invoice breakdown ────────────────────────────────── */}
+        <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-1.5">
+          <InvoiceRow label="Consulting fee" amount={base} />
+          <InvoiceRow label="GST (18%)"      amount={gst} />
+          <InvoiceRow label="Total due"      amount={total} bold border />
+          <p className="text-[11px] text-slate-500 pt-0.5">
+            Invoice {orderData?.invoice_number ?? "will be generated on payment"}
+          </p>
+        </div>
+
+        {/* ── Sandbox notice ───────────────────────────────────── */}
+        {orderData?.mode === "sandbox" && (
+          <div className="flex items-start gap-2 bg-violet-50 border border-violet-100 rounded-xl
+                          px-3 py-2.5 text-xs text-violet-700">
+            <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+            </svg>
+            <span>
+              <strong>Sandbox mode</strong> — Razorpay keys not configured. Click below to
+              simulate a payment without any real charge.
+            </span>
+          </div>
+        )}
+
+        {/* ── Error ────────────────────────────────────────────── */}
+        {error && (
+          <div className="flex items-center gap-2 bg-rose-50 border border-rose-100 rounded-xl
+                          px-3 py-2.5 text-xs text-rose-700">
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+            {error}
+          </div>
+        )}
+
+        {/* ── Primary CTA ──────────────────────────────────────── */}
+        {!orderData ? (
+          <button
+            onClick={handleInitiate}
+            disabled={loading}
+            className="w-full bg-indigo-600 text-white font-semibold text-sm py-3 rounded-xl
+                       hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50
+                       transition-colors flex items-center justify-center gap-2 shadow-sm
+                       shadow-indigo-200"
+          >
+            {loading ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+                Loading payment…
+              </>
+            ) : (
+              <>
+                {CARD_ICON}
+                Proceed to Payment · ₹{total}
+              </>
+            )}
+          </button>
+        ) : orderData.mode === "sandbox" ? (
+          <button
+            onClick={handleSimulate}
+            disabled={loading}
+            className="w-full bg-indigo-600 text-white font-semibold text-sm py-3 rounded-xl
+                       hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50
+                       transition-colors flex items-center justify-center gap-2 shadow-sm
+                       shadow-indigo-200"
+          >
+            {loading ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+                Processing…
+              </>
+            ) : (
+              "Simulate Payment (Sandbox)"
+            )}
+          </button>
+        ) : null}
+
+        {/* ── Trust footer ─────────────────────────────────────── */}
+        <p className="text-[11px] text-slate-500 text-center flex items-center justify-center gap-1">
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+          </svg>
+          Secured by Razorpay · 256-bit SSL · PCI DSS compliant
         </p>
       </div>
-
-      {/* ── Sandbox notice ───────────────────────────────────── */}
-      {orderData?.mode === "sandbox" && (
-        <div className="flex items-start gap-2 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2.5 text-xs text-indigo-700">
-          <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-          </svg>
-          <span><strong>Sandbox mode</strong> — Razorpay keys not configured. Click below to simulate a payment without any real charge.</span>
-        </div>
-      )}
-
-      {/* ── Error ────────────────────────────────────────────── */}
-      {error && (
-        <div className="flex items-center gap-2 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2.5 text-xs text-rose-700">
-          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-          </svg>
-          {error}
-        </div>
-      )}
-
-      {/* ── CTA button ───────────────────────────────────────── */}
-      {!orderData ? (
-        <button
-          onClick={handleInitiate}
-          disabled={loading}
-          className="w-full bg-indigo-600 text-white font-semibold text-sm py-2.5 rounded-xl
-                     hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 transition-colors
-                     flex items-center justify-center gap-2"
-        >
-          {loading ? (
-            <>
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-              </svg>
-              Loading payment…
-            </>
-          ) : (
-            <>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round"
-                  d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
-              </svg>
-              Pay ₹{total}
-            </>
-          )}
-        </button>
-      ) : orderData.mode === "sandbox" ? (
-        <button
-          onClick={handleSimulate}
-          disabled={loading}
-          className="w-full bg-indigo-600 text-white font-semibold text-sm py-2.5 rounded-xl
-                     hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 transition-colors
-                     flex items-center justify-center gap-2"
-        >
-          {loading ? (
-            <>
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-              </svg>
-              Processing…
-            </>
-          ) : (
-            "Simulate Payment (Sandbox)"
-          )}
-        </button>
-      ) : null}
-
-      {/* ── Trust footer ─────────────────────────────────────── */}
-      <p className="text-[11px] text-amber-600 text-center flex items-center justify-center gap-1">
-        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-        </svg>
-        Secured by Razorpay · 256-bit SSL · PCI DSS compliant
-      </p>
     </div>
   );
 }

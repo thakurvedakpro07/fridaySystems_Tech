@@ -117,7 +117,7 @@ function formatShortDate(dateStr) {
   });
 }
 
-function TicketStatusTracker({ status, ticket, role }) {
+function TicketStatusTracker({ status, ticket, role, isPendingPayment = false }) {
   const lifecycle = getLifecycle(role);
   const currentIdx = lifecycle.findIndex((s) => s.status === status);
 
@@ -159,12 +159,16 @@ function TicketStatusTracker({ status, ticket, role }) {
         {lifecycle.map((step, idx) => {
           const done    = idx < currentIdx;
           const current = idx === currentIdx;
-          const future  = idx > currentIdx;
           const isLast  = idx === lifecycle.length - 1;
           const ts      = timestamps[step.status];
+          // In pending-payment state: step 1 is "next up", steps 2+ are locked/far future
+          const isNextStep = isPendingPayment && idx === 1;
+          const isLocked   = isPendingPayment && idx > 1;
 
           return (
-            <div key={step.status} className="flex gap-3">
+            <div key={step.status}
+                 className={`flex gap-3 transition-opacity duration-200
+                   ${isLocked ? "opacity-40" : ""}`}>
               {/* Icon column */}
               <div className="flex flex-col items-center shrink-0">
                 <div
@@ -223,6 +227,11 @@ function TicketStatusTracker({ status, ticket, role }) {
                     </span>
                     <span className="text-[11px] font-semibold text-indigo-600">Active now</span>
                   </div>
+                )}
+                {isNextStep && (
+                  <p className="text-[10px] font-medium text-amber-600 mt-1 leading-snug">
+                    Unlocks after payment above
+                  </p>
                 )}
               </div>
             </div>
@@ -321,10 +330,22 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
 
   if (!ticket) return null;
 
+  const isPendingPayment = role === "customer" && ticket.status === "pending_payment";
+
   return (
     <div className="space-y-4">
+      {/* ── Payment card — FIRST when pending (primary next action) ── */}
+      {isPendingPayment && (
+        <PaymentGateway ticket={ticket} onPaymentSuccess={handleUpdate} />
+      )}
+
       {/* ── Status tracker ────────────────────────────────── */}
-      <TicketStatusTracker status={ticket.status} ticket={ticket} role={role} />
+      <TicketStatusTracker
+        status={ticket.status}
+        ticket={ticket}
+        role={role}
+        isPendingPayment={isPendingPayment}
+      />
 
       {/* ── Ticket header card ─────────────────────────────── */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
@@ -426,11 +447,6 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
       {/* ── Engineer trust card ───────────────────────────── */}
       {ticket.assigned_to && role !== "freelancer" && (
         <EngineerTrustCard assignedTo={ticket.assigned_to} />
-      )}
-
-      {/* ── Payment gateway (customer, pending_payment only) ─ */}
-      {role === "customer" && ticket.status === "pending_payment" && (
-        <PaymentGateway ticket={ticket} onPaymentSuccess={handleUpdate} />
       )}
 
       {/* ── Role-specific action panels ──────────────────── */}
