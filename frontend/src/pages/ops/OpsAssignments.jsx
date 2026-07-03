@@ -25,10 +25,15 @@ const AVAIL_COLOR = {
   ad_hoc:    "bg-slate-100 text-slate-500",
 };
 
+const STATUS_LABEL = {
+  assigned:    "Ready to Start",
+  in_progress: "Work Started",
+};
+
 function Badge({ label, colorClass }) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold capitalize ${colorClass}`}>
-      {String(label).replace(/_/g, " ")}
+      {STATUS_LABEL[label] ?? String(label).replace(/_/g, " ")}
     </span>
   );
 }

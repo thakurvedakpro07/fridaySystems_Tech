@@ -2,8 +2,8 @@
  * FreelancerTicketActions — action bar for the engineer working a ticket.
  *
  * Freelancers can only advance the ticket through their allowed transitions:
- *   assigned    → in_progress
- *   in_progress → resolved
+ *   assigned ("Ready to Start") → in_progress ("Work Started")
+ *   in_progress                → resolved
  *
  * There is no "waiting for customer" status — the ticket stays "in_progress"
  * for the entire time the engineer and customer communicate. Requesting
@@ -36,10 +36,15 @@ const FREELANCER_TRANSITIONS = {
 // Transitions to these statuses apply instantly — no modal.
 const INSTANT_STATUSES = new Set(["in_progress"]);
 
-function labelFor(currentStatus, targetStatus) {
-  if (targetStatus === "in_progress") {
-    return currentStatus === "assigned" ? "Accept Ticket" : "Mark In Progress";
-  }
+// Same wording customers and admins see for these statuses (Badge, timeline, queues) —
+// keeps "Ready to Start" / "Work Started" consistent everywhere in the product.
+const STATUS_LABEL = {
+  in_progress: "Work Started",
+  resolved:    "Resolved",
+};
+
+function labelFor(targetStatus) {
+  if (targetStatus === "in_progress") return "Start Working";
   if (targetStatus === "resolved") return "Mark Resolved";
   return targetStatus.replaceAll("_", " ");
 }
@@ -90,7 +95,7 @@ export default function FreelancerTicketActions({
     setSaving(true);
     try {
       await applyStatus(targetStatus, "");
-      toast(`Status updated to ${targetStatus.replaceAll("_", " ")}.`, "success");
+      toast(`${STATUS_LABEL[targetStatus] ?? targetStatus}.`, "success");
     } catch (err) {
       toast(err.response?.data?.detail ?? "Failed to update status.", "error");
     } finally {
@@ -172,7 +177,7 @@ export default function FreelancerTicketActions({
                 : setShowResolveModal(true)
             )}
           >
-            {labelFor(ticket.status, targetStatus)}
+            {labelFor(targetStatus)}
           </Button>
         ))}
 

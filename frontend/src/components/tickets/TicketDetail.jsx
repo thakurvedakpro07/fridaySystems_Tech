@@ -36,8 +36,8 @@ const LIFECYCLE = [
   },
   {
     status: "assigned",
-    label: "Engineer Assigned",
-    desc: "A verified specialist has accepted your ticket",
+    label: "Ready to Start",
+    desc: "A verified engineer has been assigned — they haven't started work yet",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
@@ -76,15 +76,16 @@ const LIFECYCLE = [
   },
 ];
 
-// Role-aware overrides for the 3 ambiguous steps
+// Role-aware description overrides — label stays "Ready to Start" / "Work Started"
+// for every role so the badges, timeline, and queues all read the same way.
 const ROLE_LABEL_OVERRIDES = {
   assigned: {
-    freelancer: { label: "Assigned to You",                    desc: "This ticket has been assigned to you" },
-    admin:      { label: "Engineer Assigned",                   desc: "A specialist has been assigned to this ticket" },
+    freelancer: { desc: "This ticket is ready for you — click Start Working when you begin" },
+    admin:      { desc: "An engineer has been assigned but hasn't started work yet" },
   },
   in_progress: {
-    customer:   { label: "Engineer Working",                    desc: "Your engineer is actively resolving the issue — see the conversation below" },
-    admin:      { label: "In Progress",                         desc: "Engineer is actively working on this issue" },
+    customer:   { desc: "Your engineer is actively resolving the issue — see the conversation below" },
+    admin:      { desc: "Engineer is actively working on this issue" },
   },
 };
 
@@ -668,7 +669,7 @@ function EngineerAssignedInfoCard({ ticket, onOpenChat }) {
 
       <div className="p-5">
         <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-4">
-          Engineer Assigned
+          Your Engineer
         </p>
 
         {/* ── Engineer identity ────────────────────────────── */}

@@ -20,6 +20,11 @@ const SEVERITY_LABELS = {
   critical: "Critical",
 };
 
+const TICKET_STATUS_LABELS = {
+  assigned:    "Ready to Start",
+  in_progress: "Work Started",
+};
+
 function StatCard({ label, value, sub }) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -82,10 +87,11 @@ export default function OpsAnalytics() {
         {showOperational && ops && (
           <section>
             <SectionHeader title="Operational Overview" description="Ticket activity over the last 30 days." />
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
               <StatCard label="Total (30d)"  value={ops.total_last_30_days} />
               <StatCard label="Open"         value={ops.by_status?.open ?? 0} />
-              <StatCard label="In Progress"  value={(ops.by_status?.in_progress ?? 0) + (ops.by_status?.assigned ?? 0)} />
+              <StatCard label="Ready to Start" value={ops.by_status?.assigned ?? 0} />
+              <StatCard label="Work Started" value={ops.by_status?.in_progress ?? 0} />
               <StatCard label="Avg Resolution" value={ops.avg_resolution_hours != null ? `${ops.avg_resolution_hours}h` : "—"} sub="Mean time to resolve" />
             </div>
             {ops.by_status && (
@@ -94,7 +100,7 @@ export default function OpsAnalytics() {
                 <div className="space-y-2">
                   {Object.entries(ops.by_status).map(([s, n]) => (
                     <div key={s} className="flex items-center gap-3">
-                      <span className="w-36 text-sm text-slate-600 capitalize">{s.replace(/_/g, " ")}</span>
+                      <span className="w-36 text-sm text-slate-600 capitalize">{TICKET_STATUS_LABELS[s] ?? s.replace(/_/g, " ")}</span>
                       <div className="flex-1 bg-slate-100 rounded-full h-2">
                         <div
                           className="bg-indigo-500 h-2 rounded-full"

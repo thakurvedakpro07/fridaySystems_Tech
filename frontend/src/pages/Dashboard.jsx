@@ -16,8 +16,8 @@ import { CONTACT } from "../config/contact";
 const STATUS_OPTIONS = [
   { value: "",                 label: "All statuses" },
   { value: "open",             label: "Open" },
-  { value: "assigned",         label: "Assigned" },
-  { value: "in_progress",      label: "In Progress" },
+  { value: "assigned",         label: "Ready to Start" },
+  { value: "in_progress",      label: "Work Started" },
   { value: "resolved",         label: "Resolved" },
   { value: "closed",           label: "Closed" },
 ];
@@ -506,7 +506,7 @@ function CustomerDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <KpiCard label="Total"       value={stats.total}      sub="all time"           color="indigo"  loading={statsLoading} />
         <KpiCard label="Open"        value={stats.open}       sub="awaiting engineer"  color="blue"    loading={statsLoading} />
-        <KpiCard label="In Progress" value={stats.inProgress} sub="being worked on"    color="amber"   loading={statsLoading} />
+        <KpiCard label="Work Started" value={stats.inProgress} sub="being worked on"    color="amber"   loading={statsLoading} />
         <KpiCard label="Resolved"    value={stats.resolved}   sub="successfully fixed" color="emerald" loading={statsLoading} />
       </div>
 

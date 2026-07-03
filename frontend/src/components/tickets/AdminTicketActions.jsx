@@ -21,6 +21,14 @@ const STATUS_TRANSITIONS = {
   pending_payment: ["open"],
 };
 
+// Same wording customers see everywhere else (Badge, timeline, queues) — "assigned"
+// means the engineer hasn't started yet, so it reads "Ready to Start" here too.
+const STATUS_LABEL = {
+  assigned:    "Ready to Start",
+  in_progress: "Work Started",
+};
+const statusLabel = (s) => STATUS_LABEL[s] ?? s.replaceAll("_", " ");
+
 export default function AdminTicketActions({ ticket, onUpdate }) {
   const toast = useToast();
   const [freelancers, setFreelancers]         = useState([]);
@@ -63,7 +71,7 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
     setSaving(true);
     try {
       await adminUpdateStatus(ticket.id, selectedStatus, note);
-      toast(`Status changed to ${selectedStatus.replaceAll("_", " ")}.`, "success");
+      toast(`Status changed to ${statusLabel(selectedStatus)}.`, "success");
       setShowStatus(false);
       setSelectedStatus("");
       setNote("");
@@ -164,7 +172,7 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
             >
               <option value="">— choose a status —</option>
               {nextStatuses.map((s) => (
-                <option key={s} value={s}>{s.replaceAll("_", " ")}</option>
+                <option key={s} value={s}>{statusLabel(s)}</option>
               ))}
             </select>
           </div>

@@ -34,7 +34,8 @@ const DOT_MAP = {
 
 const LABEL_MAP = {
   pending_payment: "Pending Payment",
-  in_progress:     "In Progress",
+  assigned:        "Ready to Start",
+  in_progress:     "Work Started",
 };
 
 export default function Badge({ label, dot = false }) {

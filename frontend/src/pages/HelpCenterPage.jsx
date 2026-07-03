@@ -184,14 +184,14 @@ export default function HelpCenterPage() {
               />
               <LifecycleStep
                 status="assigned"
-                label="Assigned"
-                description="A vetted engineer has accepted your ticket and will respond shortly."
+                label="Ready to Start"
+                description="A vetted engineer has been assigned to your ticket but hasn't started work yet."
               />
               <LifecycleStep
                 status="in_progress"
                 active
-                label="In Progress"
-                description="Your engineer is actively working on the issue and may message you for more information — all in the same conversation thread. The ticket stays 'In Progress' throughout."
+                label="Work Started"
+                description="Your engineer is actively working on the issue and may message you for more information — all in the same conversation thread. The ticket stays 'Work Started' throughout."
               />
               <LifecycleStep
                 status="resolved"

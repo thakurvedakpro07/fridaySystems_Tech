@@ -163,15 +163,20 @@ export default function OpsDashboard() {
         )}
 
         {/* KPI grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
             <KpiCard label="Open — Unassigned" value={stats?.open} color="indigo"
               sub="Awaiting engineer assignment" icon={IC.ticket} loading={statsLoading}
               to="/operations/tickets?status=open" />
           </motion.div>
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
-            <KpiCard label="In Progress" value={(stats?.assigned ?? 0) + (stats?.in_progress ?? 0)}
-              color="amber" sub="Assigned or actively worked" icon={IC.clock} loading={statsLoading}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}>
+            <KpiCard label="Ready to Start" value={stats?.assigned} color="violet"
+              sub="Assigned, not yet started" icon={IC.assign} loading={statsLoading}
+              to="/operations/tickets?status=assigned" />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
+            <KpiCard label="Work Started" value={stats?.in_progress}
+              color="amber" sub="Actively being worked" icon={IC.clock} loading={statsLoading}
               to="/operations/tickets?status=in_progress" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
@@ -179,7 +184,7 @@ export default function OpsDashboard() {
               sub="Deadline within 2 hours" icon={IC.alert} loading={statsLoading}
               to="/operations/tickets?status=in_progress" />
           </motion.div>
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
             <KpiCard label="Resolved / Closed" value={(stats?.resolved ?? 0) + (stats?.closed ?? 0)}
               color="emerald" sub="Successfully completed" icon={IC.check} loading={statsLoading}
               to="/operations/tickets?status=resolved" />

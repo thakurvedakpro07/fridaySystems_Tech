@@ -58,12 +58,16 @@ const STATUS_COLOURS = {
   assigned:        "bg-violet-100 text-violet-700",
   pending_payment: "bg-yellow-100 text-yellow-700",
 };
+const STATUS_LABELS = {
+  assigned:    "Ready to Start",
+  in_progress: "Work Started",
+};
 function statusPill(value) {
   if (!value) return null;
   const colour = STATUS_COLOURS[value] ?? "bg-slate-100 text-slate-600";
   return (
     <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${colour}`}>
-      {value.replaceAll("_", " ")}
+      {STATUS_LABELS[value] ?? value.replaceAll("_", " ")}
     </span>
   );
 }

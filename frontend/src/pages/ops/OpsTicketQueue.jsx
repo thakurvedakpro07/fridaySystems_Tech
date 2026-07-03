@@ -9,8 +9,8 @@ import { usePageTitle } from "../../hooks/usePageTitle";
 const STATUS_OPTIONS = [
   { value: "", label: "All Tickets" },
   { value: "open", label: "Open" },
-  { value: "assigned", label: "Assigned" },
-  { value: "in_progress", label: "In Progress" },
+  { value: "assigned", label: "Ready to Start" },
+  { value: "in_progress", label: "Work Started" },
   { value: "resolved", label: "Resolved" },
   { value: "closed", label: "Closed" },
   { value: "pending_payment", label: "Pending Payment" },
@@ -25,10 +25,15 @@ const STATUS_BADGE = {
   pending_payment:  "bg-rose-100 text-rose-700",
 };
 
+const STATUS_LABEL = {
+  assigned:    "Ready to Start",
+  in_progress: "Work Started",
+};
+
 function Badge({ label, colorClass }) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold capitalize ${colorClass}`}>
-      {String(label).replace(/_/g, " ")}
+      {STATUS_LABEL[label] ?? String(label).replace(/_/g, " ")}
     </span>
   );
 }

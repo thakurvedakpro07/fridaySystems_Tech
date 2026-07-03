@@ -12,8 +12,8 @@ import { CONTACT } from "../../config/contact";
 
 const STATUS_OPTIONS = [
   { value: "",                 label: "All statuses" },
-  { value: "assigned",         label: "Assigned" },
-  { value: "in_progress",      label: "In Progress" },
+  { value: "assigned",         label: "Ready to Start" },
+  { value: "in_progress",      label: "Work Started" },
   { value: "resolved",         label: "Resolved" },
   { value: "closed",           label: "Closed" },
 ];
@@ -324,7 +324,7 @@ export default function FreelancerDashboard() {
       {/* ── KPI cards ────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <KpiCard label="Total Assigned" value={stats.total}    sub="all time"            color="indigo"  loading={statsLoading} />
-        <KpiCard label="In Progress"    value={stats.active}   sub="actively working"    color="violet"  loading={statsLoading} />
+        <KpiCard label="Work Started"   value={stats.active}   sub="actively working"    color="violet"  loading={statsLoading} />
         <KpiCard label="Resolved"       value={stats.resolved} sub="successfully closed" color="emerald" loading={statsLoading} />
         <KpiCard
           label="Avg Resolution"

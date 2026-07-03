@@ -183,7 +183,7 @@ export default function AnalyticsPage() {
 
   const donutSegments = [
     { label: "Open",        value: data.open,        color: "#f59e0b" },
-    { label: "In Progress", value: data.in_progress, color: "#8b5cf6" },
+    { label: "Work Started", value: data.in_progress, color: "#8b5cf6" },
     { label: "Resolved",    value: data.resolved,    color: "#10b981" },
     { label: "Pending",     value: data.pending_payment, color: "#94a3b8" },
   ].filter((s) => s.value > 0);
@@ -204,7 +204,7 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <StatCard label="Total Tickets"    value={data.total}       color="indigo"  icon="🎫" />
         <StatCard label="Open"             value={data.open}        color="amber"   icon="📬" />
-        <StatCard label="In Progress"      value={data.in_progress} color="violet"  icon="⚡" />
+        <StatCard label="Work Started"     value={data.in_progress} color="violet"  icon="⚡" />
         <StatCard label="Resolved"         value={data.resolved}    color="emerald" icon="✅" />
       </div>
 

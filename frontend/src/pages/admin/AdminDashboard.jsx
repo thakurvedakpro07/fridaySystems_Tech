@@ -11,8 +11,8 @@ import { usePageTitle } from "../../hooks/usePageTitle";
 const STATUS_OPTIONS = [
   { value: "",                 label: "All statuses" },
   { value: "open",             label: "Open" },
-  { value: "assigned",         label: "Assigned" },
-  { value: "in_progress",      label: "In Progress" },
+  { value: "assigned",         label: "Ready to Start" },
+  { value: "in_progress",      label: "Work Started" },
   { value: "resolved",         label: "Resolved" },
   { value: "closed",           label: "Closed" },
   { value: "pending_payment",  label: "Pending Payment" },
@@ -296,7 +296,7 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiCard label="Total Tickets" value={stats.total}      sub="all time"            color="indigo"  icon="🎫" loading={statsLoading} />
             <KpiCard label="Open"          value={stats.open}       sub="awaiting assignment" color="amber"   icon="📬" loading={statsLoading} />
-            <KpiCard label="In Progress"   value={stats.inProgress} sub="being worked on"     color="violet"  icon="⚡" loading={statsLoading} />
+            <KpiCard label="Work Started"  value={stats.inProgress} sub="being worked on"     color="violet"  icon="⚡" loading={statsLoading} />
             <KpiCard label="Resolved"      value={stats.resolved}   sub="successfully closed" color="emerald" icon="✅" loading={statsLoading} />
           </div>
         </div>
