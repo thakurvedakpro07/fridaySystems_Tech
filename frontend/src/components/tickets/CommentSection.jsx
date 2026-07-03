@@ -17,12 +17,12 @@ function CommentBubble({ comment }) {
   return (
     <div className={`flex flex-col ${isOwn ? "items-end" : "items-start"}`}>
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-slate-500">
           {comment.author_email ?? "Deleted User"}
           {comment.is_edited && <span className="ml-1 italic">(edited)</span>}
         </span>
-        <span className="text-xs text-gray-300">·</span>
-        <span className="text-xs text-gray-400">{timeLabel}</span>
+        <span className="text-xs text-slate-500">·</span>
+        <span className="text-xs text-slate-500">{timeLabel}</span>
       </div>
 
       <div
@@ -74,7 +74,7 @@ export default function CommentSection({ ticketId }) {
         {loading && (
           <div className="flex items-center gap-2 py-4">
             <Spinner size="sm" />
-            <span className="text-sm text-gray-400">Loading comments…</span>
+            <span className="text-sm text-slate-500">Loading comments…</span>
           </div>
         )}
 
@@ -83,7 +83,7 @@ export default function CommentSection({ ticketId }) {
         )}
 
         {!loading && !error && comments.length === 0 && (
-          <p className="text-gray-400 text-sm">
+          <p className="text-slate-500 text-sm">
             No comments yet. Be the first to reply.
           </p>
         )}

@@ -37,7 +37,7 @@ function Toast({ toast, onClose }) {
       <span className="flex-1 text-sm text-slate-800 leading-snug">{toast.message}</span>
       <button
         onClick={onClose}
-        className="shrink-0 text-slate-400 hover:text-slate-700 mt-0.5 transition-colors"
+        className="shrink-0 text-slate-500 hover:text-slate-700 mt-0.5 transition-colors"
         aria-label="Dismiss"
       >
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

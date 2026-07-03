@@ -43,7 +43,7 @@ export default function Modal({ isOpen, onClose, title, children }) {
           <button
             onClick={onClose}
             aria-label="Close dialog"
-            className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400
+            className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-500
                        hover:text-slate-700 hover:bg-slate-100 transition-colors
                        focus:outline-none focus:ring-2 focus:ring-slate-300"
           >

@@ -9,7 +9,7 @@ import EmptyState from "../../components/ui/EmptyState";
 import { usePageTitle } from "../../hooks/usePageTitle";
 
 function RatingStars({ rating }) {
-  if (!rating) return <span className="text-slate-400 text-xs">No rating</span>;
+  if (!rating) return <span className="text-slate-500 text-xs">No rating</span>;
   const score = parseFloat(rating);
   return (
     <div className="flex items-center gap-1">
@@ -84,7 +84,7 @@ function AddFreelancerForm({ onSuccess }) {
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">
             Initial password <span className="text-rose-500">*</span>
-            <span className="ml-1 text-slate-400 font-normal">(min 10 chars)</span>
+            <span className="ml-1 text-slate-500 font-normal">(min 10 chars)</span>
           </label>
           <input
             name="password"
@@ -207,7 +207,7 @@ export default function FreelancerList() {
                               hover:bg-slate-50 transition-colors">
                 <div>
                   <p className="font-medium text-slate-900 text-sm">{f.email}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{f.skills || "No skills listed"}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{f.skills || "No skills listed"}</p>
                 </div>
                 <div className="text-right">
                   <RatingStars rating={f.rating} />

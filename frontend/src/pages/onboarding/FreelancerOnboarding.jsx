@@ -37,7 +37,7 @@ function StepIndicator({ current, total, labels }) {
                   ? "bg-violet-600 text-white"
                   : i === current
                   ? "bg-violet-600 text-white ring-2 ring-violet-200"
-                  : "bg-slate-100 text-slate-400"
+                  : "bg-slate-100 text-slate-500"
               }`}
             >
               {i < current ? (
@@ -48,7 +48,7 @@ function StepIndicator({ current, total, labels }) {
                 i + 1
               )}
             </div>
-            <span className={`text-xs font-medium hidden sm:block ${i === current ? "text-slate-700" : "text-slate-400"}`}>
+            <span className={`text-xs font-medium hidden sm:block ${i === current ? "text-slate-700" : "text-slate-500"}`}>
               {label}
             </span>
           </div>
@@ -137,7 +137,7 @@ export default function FreelancerOnboarding() {
                 })}
               </div>
               <div className="flex items-center justify-between mt-8">
-                <button onClick={skip} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
+                <button onClick={skip} className="text-sm text-slate-500 hover:text-slate-600 transition-colors">
                   Skip setup
                 </button>
                 <button
@@ -179,14 +179,14 @@ export default function FreelancerOnboarding() {
                     <p className={`text-sm font-semibold ${data.experience === opt.value ? "text-white" : "text-slate-900"}`}>
                       {opt.label}
                     </p>
-                    <p className={`text-xs mt-0.5 ${data.experience === opt.value ? "text-violet-200" : "text-slate-400"}`}>
+                    <p className={`text-xs mt-0.5 ${data.experience === opt.value ? "text-violet-200" : "text-slate-500"}`}>
                       {opt.desc}
                     </p>
                   </button>
                 ))}
               </div>
               <div className="flex items-center justify-between mt-8">
-                <button onClick={skip} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
+                <button onClick={skip} className="text-sm text-slate-500 hover:text-slate-600 transition-colors">
                   Skip setup
                 </button>
                 <button
@@ -228,14 +228,14 @@ export default function FreelancerOnboarding() {
                     <p className={`text-sm font-semibold ${data.availability === opt.value ? "text-white" : "text-slate-900"}`}>
                       {opt.label}
                     </p>
-                    <p className={`text-xs mt-0.5 ${data.availability === opt.value ? "text-violet-200" : "text-slate-400"}`}>
+                    <p className={`text-xs mt-0.5 ${data.availability === opt.value ? "text-violet-200" : "text-slate-500"}`}>
                       {opt.desc}
                     </p>
                   </button>
                 ))}
               </div>
               <div className="flex items-center justify-between mt-8">
-                <button onClick={skip} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
+                <button onClick={skip} className="text-sm text-slate-500 hover:text-slate-600 transition-colors">
                   Skip setup
                 </button>
                 <button
@@ -294,7 +294,7 @@ export default function FreelancerOnboarding() {
               </div>
 
               <div className="flex items-center justify-between mt-8">
-                <button onClick={skip} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
+                <button onClick={skip} className="text-sm text-slate-500 hover:text-slate-600 transition-colors">
                   Skip to dashboard
                 </button>
                 <button

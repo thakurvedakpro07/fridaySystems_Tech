@@ -114,7 +114,7 @@ function NavItem({ to, icon, label, exact = false }) {
         }`}
     >
       <span className={`shrink-0 transition-colors
-        ${active ? "text-white" : "text-slate-400 group-hover:text-slate-600"}`}>
+        ${active ? "text-white" : "text-slate-500 group-hover:text-slate-600"}`}>
         {icon}
       </span>
       <span className="truncate">{label}</span>
@@ -126,7 +126,7 @@ function NavItem({ to, icon, label, exact = false }) {
 function NavSection({ label, children }) {
   return (
     <div>
-      <p className="px-3 mb-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-widest select-none">
+      <p className="px-3 mb-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest select-none">
         {label}
       </p>
       <div className="space-y-0.5">{children}</div>
@@ -155,12 +155,12 @@ function UserChip({ user, onLogout }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-slate-800 truncate leading-tight">{displayName}</p>
-        <p className="text-[11px] text-slate-400 truncate capitalize">{user?.role ?? "user"}</p>
+        <p className="text-[11px] text-slate-500 truncate capitalize">{user?.role ?? "user"}</p>
       </div>
       <button
         onClick={onLogout}
         title="Sign out"
-        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50
+        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-500 hover:bg-rose-50
                    transition-colors shrink-0"
         aria-label="Sign out"
       >
@@ -201,7 +201,7 @@ export default function Sidebar({ open, onClose }) {
             <p className="text-[0.9375rem] font-bold text-slate-900 leading-tight tracking-tight">
               ResolveHQ
             </p>
-            <p className="text-[10px] text-slate-400 leading-tight font-medium tracking-wide">
+            <p className="text-[10px] text-slate-500 leading-tight font-medium tracking-wide">
               Enterprise IT Support
             </p>
           </div>
@@ -209,7 +209,7 @@ export default function Sidebar({ open, onClose }) {
         {/* Mobile close */}
         <button
           onClick={onClose}
-          className="lg:hidden ml-auto p-1.5 rounded-lg text-slate-400 hover:text-slate-700
+          className="lg:hidden ml-auto p-1.5 rounded-lg text-slate-500 hover:text-slate-700
                      hover:bg-slate-100 transition-colors shrink-0"
           aria-label="Close navigation"
         >

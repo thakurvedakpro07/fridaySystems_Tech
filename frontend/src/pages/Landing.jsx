@@ -59,7 +59,7 @@ function FaqItem({ q, a }) {
         aria-expanded={open}>
         <span className="text-base font-semibold text-slate-900 pr-4">{q}</span>
         <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
-          <svg className="w-5 h-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <svg className="w-5 h-5 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
           </svg>
         </motion.div>
@@ -740,7 +740,7 @@ function PopularProblemsSection() {
                 <p className="text-xs text-slate-500 leading-relaxed mb-3">{p.shortDesc}</p>
                 <div className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Engineers Available</span>
+                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Engineers Available</span>
                 </div>
               </motion.div>
             );
@@ -790,7 +790,7 @@ function HowItWorksSection() {
                 {i < PROCESS_STEPS.length - 1 && (
                   <div className="absolute top-7 left-[calc(50%+2.5rem)] right-0 flex items-center pointer-events-none">
                     <div className="flex-1 h-px bg-slate-200" />
-                    <svg className="w-4 h-4 text-slate-300 shrink-0 -mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-4 h-4 text-slate-500 shrink-0 -mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                     </svg>
                   </div>
@@ -798,7 +798,7 @@ function HowItWorksSection() {
                 <div className={`w-14 h-14 ${step.color} rounded-2xl flex items-center justify-center mb-4 shadow-lg ring-4 ${step.ring} relative z-10`}>
                   {step.icon}
                 </div>
-                <span className="text-[10px] font-black text-slate-300 tracking-widest mb-2">STEP {step.step}</span>
+                <span className="text-[10px] font-black text-slate-500 tracking-widest mb-2">STEP {step.step}</span>
                 <h3 className="text-base font-black text-slate-900 mb-2 leading-tight">{step.title}</h3>
                 <p className="text-sm text-slate-500 leading-relaxed">{step.body}</p>
               </motion.div>
@@ -820,7 +820,7 @@ function HowItWorksSection() {
                   )}
                 </div>
                 <div className="flex-1 pt-1.5">
-                  <span className="text-[10px] font-black text-slate-300 tracking-widest">STEP {step.step}</span>
+                  <span className="text-[10px] font-black text-slate-500 tracking-widest">STEP {step.step}</span>
                   <h3 className="text-base font-black text-slate-900 mt-0.5 mb-1">{step.title}</h3>
                   <p className="text-sm text-slate-500 leading-relaxed">{step.body}</p>
                 </div>
@@ -861,11 +861,11 @@ function PlatformPreviewSection() {
                 <div className="w-3 h-3 rounded-full bg-emerald-400" />
               </div>
               <div className="flex-1 max-w-xs mx-auto">
-                <div className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-400 text-center">
+                <div className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-500 text-center">
                   app.resolvehq.in/dashboard
                 </div>
               </div>
-              <div className="flex items-center gap-1 text-xs text-slate-400">
+              <div className="flex items-center gap-1 text-xs text-slate-500">
                 <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
                 <span className="hidden sm:block text-[10px]">Secure</span>
               </div>
@@ -1102,7 +1102,7 @@ function SLASection() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                 </svg>
               </div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">{m.label}</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">{m.label}</p>
               <p className={`text-2xl font-black ${m.color} mb-2 leading-tight`}>{m.value}</p>
               <p className="text-xs text-slate-500 leading-relaxed">{m.sub}</p>
             </motion.div>
@@ -1173,7 +1173,7 @@ function RecentActivitySection() {
                           </svg>
                           Resolved
                         </span>
-                        <span className="text-[10px] text-slate-400">{item.time}</span>
+                        <span className="text-[10px] text-slate-500">{item.time}</span>
                       </div>
                     </div>
                   </div>
@@ -1184,7 +1184,7 @@ function RecentActivitySection() {
         </div>
 
         <Reveal delay={0.3} className="mt-8 text-center">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500">
             Activity examples are illustrative only and not from real accounts.
           </p>
         </Reveal>
@@ -1247,7 +1247,7 @@ function EngineerSection() {
         </motion.div>
 
         <Reveal delay={0.2} className="mt-8 text-center">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500">
             Engineer profiles shown are representative examples only.
           </p>
         </Reveal>

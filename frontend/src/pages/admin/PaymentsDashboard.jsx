@@ -40,7 +40,7 @@ function StatCard({ icon, label, value, sub, colour }) {
         <span className="text-xs font-medium text-slate-500">{label}</span>
       </div>
       <p className="text-2xl font-bold text-slate-900">{value}</p>
-      {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
+      {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -81,7 +81,7 @@ function PaymentRow({ payment, onConfirm, confirming }) {
         <p className="text-sm font-medium text-slate-800 truncate">{payment.customer_email}</p>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           {payment.invoice_number && (
-            <span className="text-[11px] font-mono text-slate-400">{payment.invoice_number}</span>
+            <span className="text-[11px] font-mono text-slate-500">{payment.invoice_number}</span>
           )}
           {payment.ticket_number && (
             <Link
@@ -91,7 +91,7 @@ function PaymentRow({ payment, onConfirm, confirming }) {
               {payment.ticket_number}
             </Link>
           )}
-          <span className="text-[11px] text-slate-400">{date}</span>
+          <span className="text-[11px] text-slate-500">{date}</span>
         </div>
       </div>
 
@@ -261,7 +261,7 @@ export default function PaymentsDashboard() {
           <div className="flex flex-col items-center gap-2 py-12 px-5">
             <span className="text-3xl select-none" aria-hidden="true">🧾</span>
             <p className="text-sm text-slate-500 font-medium">No payments found</p>
-            <p className="text-xs text-slate-400 text-center">
+            <p className="text-xs text-slate-500 text-center">
               {statusTab ? `No ${statusTab} payments at this time.` : "Payments will appear here once customers submit tickets."}
             </p>
           </div>
@@ -281,7 +281,7 @@ export default function PaymentsDashboard() {
         )}
       </div>
 
-      <p className="text-xs text-slate-400 mt-3 text-center">
+      <p className="text-xs text-slate-500 mt-3 text-center">
         Use "Confirm" to manually open a ticket when Razorpay webhook delivery fails.
       </p>
     </MainLayout>

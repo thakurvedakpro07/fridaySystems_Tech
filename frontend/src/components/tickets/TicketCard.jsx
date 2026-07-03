@@ -25,7 +25,7 @@ export default function TicketCard({ ticket }) {
         <div className="flex-1 min-w-0">
           {/* Ticket number */}
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono text-slate-400 font-medium">{ticket.ticket_number}</span>
+            <span className="text-xs font-mono text-slate-500 font-medium">{ticket.ticket_number}</span>
           </div>
 
           {/* Title */}
@@ -39,7 +39,7 @@ export default function TicketCard({ ticket }) {
 
           {/* Assigned to */}
           {ticket.assigned_to && (
-            <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+            <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
               </svg>
@@ -64,13 +64,13 @@ export default function TicketCard({ ticket }) {
 
       {/* Footer */}
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
-        <span className="text-xs text-slate-400 flex items-center gap-1">
+        <span className="text-xs text-slate-500 flex items-center gap-1">
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5" />
           </svg>
           Opened {createdAt}
         </span>
-        <svg className="w-4 h-4 text-slate-300 group-hover:text-indigo-400 transition-colors"
+        <svg className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-colors"
              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
         </svg>

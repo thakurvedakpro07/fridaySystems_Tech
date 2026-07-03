@@ -23,9 +23,9 @@ const SEVERITY_LABELS = {
 function StatCard({ label, value, sub }) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-5">
-      <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">{label}</p>
       <p className="text-2xl font-bold text-slate-800">{value ?? "—"}</p>
-      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+      {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -34,7 +34,7 @@ function SectionHeader({ title, description }) {
   return (
     <div className="mb-4">
       <h2 className="text-base font-semibold text-slate-700">{title}</h2>
-      {description && <p className="text-sm text-slate-400 mt-0.5">{description}</p>}
+      {description && <p className="text-sm text-slate-500 mt-0.5">{description}</p>}
     </div>
   );
 }
@@ -57,7 +57,7 @@ export default function OpsAnalytics() {
   if (loading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center h-64 text-slate-400 text-sm">Loading analytics…</div>
+        <div className="flex items-center justify-center h-64 text-slate-500 text-sm">Loading analytics…</div>
       </AppShell>
     );
   }
@@ -90,7 +90,7 @@ export default function OpsAnalytics() {
             </div>
             {ops.by_status && (
               <div className="mt-4 bg-white border border-slate-200 rounded-xl p-5">
-                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">Tickets by Status</p>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Tickets by Status</p>
                 <div className="space-y-2">
                   {Object.entries(ops.by_status).map(([s, n]) => (
                     <div key={s} className="flex items-center gap-3">
@@ -112,7 +112,7 @@ export default function OpsAnalytics() {
             {ops.severity_distribution?.length > 0 && (
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-white border border-slate-200 rounded-xl p-5">
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">Tickets by Severity (30d)</p>
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Tickets by Severity (30d)</p>
                   <div className="space-y-2">
                     {ops.severity_distribution.map(({ severity, n }) => {
                       const maxN = Math.max(...ops.severity_distribution.map((x) => x.n), 1);
@@ -140,7 +140,7 @@ export default function OpsAnalytics() {
 
                 {ops.severity_revenue?.length > 0 && (
                   <div className="bg-white border border-slate-200 rounded-xl p-5">
-                    <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">Revenue by Severity (30d)</p>
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Revenue by Severity (30d)</p>
                     <div className="space-y-2">
                       {ops.severity_revenue.map(({ severity, revenue }) => {
                         const maxRev = Math.max(...ops.severity_revenue.map((x) => x.revenue), 1);
@@ -187,7 +187,7 @@ export default function OpsAnalytics() {
             </div>
             {fin.monthly_revenue?.length > 0 && (
               <div className="mt-4 bg-white border border-slate-200 rounded-xl p-5">
-                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">Monthly Revenue</p>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Monthly Revenue</p>
                 <div className="space-y-2">
                   {fin.monthly_revenue.map((row) => {
                     const maxRevenue = Math.max(...fin.monthly_revenue.map((r) => r.total), 1);
@@ -213,7 +213,7 @@ export default function OpsAnalytics() {
         )}
 
         {!showOperational && !showFinancial && (
-          <div className="flex items-center justify-center h-40 text-slate-400 text-sm">
+          <div className="flex items-center justify-center h-40 text-slate-500 text-sm">
             No analytics available for your role.
           </div>
         )}

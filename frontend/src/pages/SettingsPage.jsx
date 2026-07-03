@@ -110,7 +110,7 @@ function ProfileTab({ profile, setProfile, role }) {
         </FieldRow>
         <FieldRow label="Email">
           <input className="input-base w-full bg-slate-50 cursor-not-allowed" value={profile?.email || ""} readOnly />
-          <p className="text-xs text-slate-400 mt-1">Email cannot be changed.</p>
+          <p className="text-xs text-slate-500 mt-1">Email cannot be changed.</p>
         </FieldRow>
         <FieldRow label="Role">
           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold
@@ -145,7 +145,7 @@ function ProfileTab({ profile, setProfile, role }) {
               placeholder="27AAPFU0939F1ZV"
               maxLength={15}
             />
-            <p className="text-xs text-slate-400 mt-1">15-digit GST registration number (required for B2B invoices).</p>
+            <p className="text-xs text-slate-500 mt-1">15-digit GST registration number (required for B2B invoices).</p>
           </FieldRow>
         </SectionCard>
       )}
@@ -159,7 +159,7 @@ function ProfileTab({ profile, setProfile, role }) {
               onChange={set("skills")}
               placeholder="linux, vmware, sap, windows"
             />
-            <p className="text-xs text-slate-400 mt-1">Comma-separated skill tags.</p>
+            <p className="text-xs text-slate-500 mt-1">Comma-separated skill tags.</p>
           </FieldRow>
           <FieldRow label="Availability">
             <select className="input-base w-auto" value={form.availability} onChange={set("availability")}>

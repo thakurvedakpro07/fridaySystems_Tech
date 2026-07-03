@@ -79,7 +79,7 @@ function AssignModal({ ticket, freelancers, onClose, onDone }) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div>
             <h3 className="font-bold text-slate-900">{isReassign ? "Reassign" : "Assign"} Engineer</h3>
-            <p className="text-xs text-slate-400 mt-0.5 font-mono">{ticket.ticket_number}</p>
+            <p className="text-xs text-slate-500 mt-0.5 font-mono">{ticket.ticket_number}</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">
             <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -244,7 +244,7 @@ export default function OpsTicketQueue() {
 
           {/* Search */}
           <div className="relative flex-1 min-w-[200px]">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"
                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
             </svg>
@@ -288,7 +288,7 @@ export default function OpsTicketQueue() {
           {/* Table header */}
           <div className="hidden md:grid grid-cols-[auto_1fr_120px_130px_100px_80px_120px] gap-3 px-6 py-3 border-b border-slate-100 bg-slate-50">
             {["#", "Ticket", "Status", "Service", "Created", "", "Action"].map((h, i) => (
-              <span key={i} className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{h}</span>
+              <span key={i} className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{h}</span>
             ))}
           </div>
 
@@ -301,12 +301,12 @@ export default function OpsTicketQueue() {
           ) : tickets.length === 0 ? (
             <div className="py-20 text-center">
               <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" />
                 </svg>
               </div>
               <p className="text-sm font-semibold text-slate-700">No tickets found</p>
-              <p className="text-xs text-slate-400 mt-1">Try adjusting your filters or search.</p>
+              <p className="text-xs text-slate-500 mt-1">Try adjusting your filters or search.</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-50">
@@ -322,12 +322,12 @@ export default function OpsTicketQueue() {
                                hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center`}>
 
                     {/* # */}
-                    <span className="text-[11px] font-mono font-semibold text-slate-400 hidden md:block">{t.ticket_number}</span>
+                    <span className="text-[11px] font-mono font-semibold text-slate-500 hidden md:block">{t.ticket_number}</span>
 
                     {/* Title + mobile meta */}
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 md:hidden mb-1">
-                        <span className="text-[11px] font-mono text-slate-400">{t.ticket_number}</span>
+                        <span className="text-[11px] font-mono text-slate-500">{t.ticket_number}</span>
                         <Badge label={t.status} colorClass={STATUS_BADGE[t.status] ?? "bg-slate-100 text-slate-500"} />
                       </div>
                       <button
@@ -337,7 +337,7 @@ export default function OpsTicketQueue() {
                         {t.title}
                       </button>
                       {t.freelancer && (
-                        <p className="text-[11px] text-slate-400 mt-0.5">
+                        <p className="text-[11px] text-slate-500 mt-0.5">
                           Assigned: <span className="font-medium">{t.freelancer.name ?? t.freelancer.email}</span>
                         </p>
                       )}
@@ -355,7 +355,7 @@ export default function OpsTicketQueue() {
 
                     {/* Created */}
                     <div className="hidden md:block">
-                      <span className="text-xs text-slate-400">{fmtDate(t.created_at)}</span>
+                      <span className="text-xs text-slate-500">{fmtDate(t.created_at)}</span>
                     </div>
 
                     {/* View */}
@@ -387,7 +387,7 @@ export default function OpsTicketQueue() {
         </div>
 
         {!loading && tickets.length > 0 && (
-          <p className="text-xs text-slate-400 text-center">{tickets.length} ticket{tickets.length !== 1 ? "s" : ""} shown</p>
+          <p className="text-xs text-slate-500 text-center">{tickets.length} ticket{tickets.length !== 1 ? "s" : ""} shown</p>
         )}
       </div>
 

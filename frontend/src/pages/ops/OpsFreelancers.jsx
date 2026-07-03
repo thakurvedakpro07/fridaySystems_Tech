@@ -80,7 +80,7 @@ function FreelancerCard({ f, index }) {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-bold text-slate-900 truncate">{f.name ?? f.user?.email ?? "Engineer"}</p>
-            <p className="text-[11px] text-slate-400 truncate">{f.user?.email ?? "—"}</p>
+            <p className="text-[11px] text-slate-500 truncate">{f.user?.email ?? "—"}</p>
           </div>
         </div>
         <div className="shrink-0">
@@ -99,23 +99,23 @@ function FreelancerCard({ f, index }) {
           )}
         </div>
       ) : (
-        <p className="text-xs text-slate-400 italic">No skills listed</p>
+        <p className="text-xs text-slate-500 italic">No skills listed</p>
       )}
 
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-50">
         <div className="text-center">
           <p className="text-xl font-black text-indigo-600">{f.active_ticket_count ?? 0}</p>
-          <p className="text-[10px] text-slate-400 font-medium mt-0.5">Active</p>
+          <p className="text-[10px] text-slate-500 font-medium mt-0.5">Active</p>
         </div>
         <div className="text-center border-x border-slate-100">
           <p className="text-xl font-black text-emerald-600">{f.resolved_count ?? f.total_resolved ?? 0}</p>
-          <p className="text-[10px] text-slate-400 font-medium mt-0.5">Resolved</p>
+          <p className="text-[10px] text-slate-500 font-medium mt-0.5">Resolved</p>
         </div>
         <div className="text-center">
           <div className="flex flex-col items-center">
             <StarRating rating={f.avg_rating ?? f.rating} />
-            <p className="text-[10px] text-slate-400 font-medium mt-1">Rating</p>
+            <p className="text-[10px] text-slate-500 font-medium mt-1">Rating</p>
           </div>
         </div>
       </div>
@@ -123,7 +123,7 @@ function FreelancerCard({ f, index }) {
       {/* Experience level */}
       {f.experience_level && (
         <div className="flex items-center gap-1.5">
-          <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />
           </svg>
           <span className="text-[11px] text-slate-500 capitalize">{f.experience_level.replace(/_/g, " ")}</span>
@@ -188,12 +188,12 @@ export default function OpsFreelancers() {
             <div className="flex items-center gap-4">
               <div className="text-right">
                 <p className="text-2xl font-black text-indigo-600">{availCount}</p>
-                <p className="text-[11px] text-slate-400 font-medium">Available</p>
+                <p className="text-[11px] text-slate-500 font-medium">Available</p>
               </div>
               <div className="h-8 w-px bg-slate-200" />
               <div className="text-right">
                 <p className="text-2xl font-black text-amber-600">{totalActive}</p>
-                <p className="text-[11px] text-slate-400 font-medium">Active Tickets</p>
+                <p className="text-[11px] text-slate-500 font-medium">Active Tickets</p>
               </div>
             </div>
           )}
@@ -204,7 +204,7 @@ export default function OpsFreelancers() {
              style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
           {/* Skill search */}
           <div className="relative flex-1 min-w-[200px]">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"
                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
             </svg>
@@ -251,12 +251,12 @@ export default function OpsFreelancers() {
           <div className="bg-white border border-slate-200 rounded-2xl py-20 text-center"
                style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
             <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-              <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
               </svg>
             </div>
             <p className="text-sm font-semibold text-slate-700">No engineers found</p>
-            <p className="text-xs text-slate-400 mt-1">Try adjusting your filters.</p>
+            <p className="text-xs text-slate-500 mt-1">Try adjusting your filters.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -267,7 +267,7 @@ export default function OpsFreelancers() {
         )}
 
         {!loading && freelancers.length > 0 && (
-          <p className="text-xs text-slate-400 text-center">{freelancers.length} engineer{freelancers.length !== 1 ? "s" : ""} shown</p>
+          <p className="text-xs text-slate-500 text-center">{freelancers.length} engineer{freelancers.length !== 1 ? "s" : ""} shown</p>
         )}
       </div>
     </AppShell>

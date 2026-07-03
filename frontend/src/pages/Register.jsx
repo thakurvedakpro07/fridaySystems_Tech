@@ -209,7 +209,7 @@ export default function Register() {
               <div>
                 <label htmlFor="reg-password" className="block text-sm font-medium text-slate-700 mb-1.5">
                   Password <span className="text-rose-500">*</span>
-                  <span className="ml-1.5 text-slate-400 font-normal">(min 10 chars)</span>
+                  <span className="ml-1.5 text-slate-500 font-normal">(min 10 chars)</span>
                 </label>
                 <input
                   id="reg-password"
@@ -272,7 +272,7 @@ export default function Register() {
               </div>
             </form>
 
-            <p className="text-xs text-slate-400 text-center mt-4 leading-relaxed">
+            <p className="text-xs text-slate-500 text-center mt-4 leading-relaxed">
               By registering you agree to our{" "}
               <a href="#" className="text-slate-500 hover:text-slate-700 underline underline-offset-2 transition-colors">Terms of Service</a>
               {" "}and{" "}
@@ -289,11 +289,11 @@ export default function Register() {
 
           {/* Security badge */}
           <div className="flex items-center justify-center gap-1.5 mt-5">
-            <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round"
                 d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
             </svg>
-            <p className="text-xs text-slate-400">256-bit SSL encryption · SOC 2 compliant</p>
+            <p className="text-xs text-slate-500">256-bit SSL encryption · SOC 2 compliant</p>
           </div>
 
         </div>

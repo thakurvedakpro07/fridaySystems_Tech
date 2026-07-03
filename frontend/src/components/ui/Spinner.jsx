@@ -18,7 +18,7 @@ export function PageSpinner() {
   return (
     <div className="flex flex-col items-center justify-center py-24 gap-3">
       <Spinner size="lg" />
-      <p className="text-sm text-slate-400">Loading…</p>
+      <p className="text-sm text-slate-500">Loading…</p>
     </div>
   );
 }

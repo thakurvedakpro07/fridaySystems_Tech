@@ -135,7 +135,7 @@ function TicketStatusTracker({ status, ticket, role }) {
     <div className="bg-white border border-slate-200 rounded-2xl p-5"
          style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
       <div className="flex items-center justify-between mb-5">
-        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
           Ticket Progress
         </p>
         {(status === "resolved" || status === "closed") && (
@@ -148,7 +148,7 @@ function TicketStatusTracker({ status, ticket, role }) {
           </span>
         )}
         {status !== "resolved" && status !== "closed" && currentIdx >= 0 && (
-          <span className="text-[11px] text-slate-400 font-medium">
+          <span className="text-[11px] text-slate-500 font-medium">
             Step {currentIdx + 1} of {lifecycle.length}
           </span>
         )}
@@ -181,7 +181,7 @@ function TicketStatusTracker({ status, ticket, role }) {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
                   ) : (
-                    <span className={current ? "text-white" : "text-slate-300"}>
+                    <span className={current ? "text-white" : "text-slate-500"}>
                       {step.icon}
                     </span>
                   )}
@@ -199,18 +199,18 @@ function TicketStatusTracker({ status, ticket, role }) {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className={`text-sm font-semibold leading-tight
-                      ${current ? "text-indigo-700" : done ? "text-slate-800" : "text-slate-300"}`}>
+                      ${current ? "text-indigo-700" : done ? "text-slate-800" : "text-slate-500"}`}>
                       {step.label}
                     </p>
                     {(current || done) && (
                       <p className={`text-xs mt-0.5 leading-relaxed
-                        ${current ? "text-slate-500" : "text-slate-400"}`}>
+                        ${current ? "text-slate-500" : "text-slate-500"}`}>
                         {step.desc}
                       </p>
                     )}
                   </div>
                   {ts && (done || current) && (
-                    <span className="text-[10px] text-slate-400 shrink-0 pt-0.5 whitespace-nowrap">
+                    <span className="text-[10px] text-slate-500 shrink-0 pt-0.5 whitespace-nowrap">
                       {formatShortDate(ts)}
                     </span>
                   )}
@@ -249,7 +249,7 @@ function EngineerTrustCard({ assignedTo }) {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-5"
          style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-4">
+      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-4">
         Your Assigned Engineer
       </p>
 
@@ -275,7 +275,7 @@ function EngineerTrustCard({ assignedTo }) {
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">IT Support Engineer</p>
-          <p className="text-xs text-slate-400 mt-0.5">{assignedTo.email}</p>
+          <p className="text-xs text-slate-500 mt-0.5">{assignedTo.email}</p>
         </div>
       </div>
     </div>
@@ -308,7 +308,7 @@ const TABS = [
 function MetaItem({ label, children }) {
   return (
     <div>
-      <dt className="text-xs font-medium text-slate-400 mb-0.5">{label}</dt>
+      <dt className="text-xs font-medium text-slate-500 mb-0.5">{label}</dt>
       <dd className="text-sm font-medium text-slate-800">{children}</dd>
     </div>
   );
@@ -335,7 +335,7 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
         <div className="p-6">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div className="flex-1 min-w-0">
-              <span className="text-xs font-mono font-medium text-slate-400">{ticket.ticket_number}</span>
+              <span className="text-xs font-mono font-medium text-slate-500">{ticket.ticket_number}</span>
               <h1 className="text-lg font-semibold text-slate-900 mt-1 leading-snug">
                 {ticket.title}
               </h1>
@@ -361,7 +361,7 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
                 {ticket.customer.company && (
                   <span className="block text-xs text-slate-500 font-normal">{ticket.customer.company}</span>
                 )}
-                <span className="block text-xs text-slate-400 font-normal">{ticket.customer.email}</span>
+                <span className="block text-xs text-slate-500 font-normal">{ticket.customer.email}</span>
               </MetaItem>
             )}
             <MetaItem label="Service">
@@ -369,7 +369,7 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
             </MetaItem>
             <MetaItem label="Assigned to">
               {ticket.assigned_to?.email ?? (
-                <span className="text-slate-400 font-normal italic">Unassigned</span>
+                <span className="text-slate-500 font-normal italic">Unassigned</span>
               )}
             </MetaItem>
             <MetaItem label="Opened">
@@ -393,7 +393,7 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
             )}
             {ticket.due_at && (
               <div>
-                <dt className="text-xs font-medium text-slate-400 mb-0.5">Consultation deadline</dt>
+                <dt className="text-xs font-medium text-slate-500 mb-0.5">Consultation deadline</dt>
                 <dd className={`text-sm font-medium ${
                   new Date(ticket.due_at) < new Date() && !["resolved", "closed"].includes(ticket.status)
                     ? "text-rose-600"

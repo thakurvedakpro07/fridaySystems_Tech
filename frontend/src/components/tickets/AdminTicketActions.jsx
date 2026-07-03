@@ -118,7 +118,7 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
           )}
 
           {nextStatuses.length === 0 && ticket.status === "closed" && (
-            <p className="text-sm text-slate-400 italic">This ticket is closed.</p>
+            <p className="text-sm text-slate-500 italic">This ticket is closed.</p>
           )}
         </div>
       </div>

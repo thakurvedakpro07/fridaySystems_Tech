@@ -49,7 +49,7 @@ function PricingPreview({ service, severity, severitySurcharges, consultingFee }
           <div className="flex justify-between">
             <span>Consulting fee</span><span>{fmt(consultingFee)}</span>
           </div>
-          <div className="flex justify-between text-slate-400 text-xs">
+          <div className="flex justify-between text-slate-500 text-xs">
             <span>GST (18%)</span><span>{fmt(cfGst)}</span>
           </div>
           <div className="flex justify-between font-bold text-slate-800 pt-1.5 border-t border-indigo-200 mt-1">
@@ -77,7 +77,7 @@ function PricingPreview({ service, severity, severitySurcharges, consultingFee }
               <span>+{fmt(surcharge)}</span>
             </div>
           )}
-          <div className="flex justify-between text-slate-400 text-xs">
+          <div className="flex justify-between text-slate-500 text-xs">
             <span>GST (18%)</span><span>{fmt(gst)}</span>
           </div>
           <div className="flex justify-between font-bold text-slate-800 pt-1.5 border-t border-indigo-200 mt-1">
@@ -170,7 +170,7 @@ export default function TicketForm({ onSubmit, loading }) {
         <label className="block text-sm font-semibold text-slate-700 mb-2">
           How urgent is this? <span className="text-rose-500">*</span>
         </label>
-        <p className="text-xs text-slate-400 mb-2.5">
+        <p className="text-xs text-slate-500 mb-2.5">
           Priority determines how quickly a Support Agent contacts you — it does not affect resolution speed.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -198,7 +198,7 @@ export default function TicketForm({ onSubmit, loading }) {
                     {opt.label}
                   </p>
                   <p className="text-xs text-slate-500 leading-snug mt-0.5">{opt.hint}</p>
-                  <p className={`text-[10px] font-semibold mt-1 ${selected ? "text-indigo-600" : "text-slate-400"}`}>
+                  <p className={`text-[10px] font-semibold mt-1 ${selected ? "text-indigo-600" : "text-slate-500"}`}>
                     {opt.sla}
                   </p>
                 </div>
@@ -239,7 +239,7 @@ export default function TicketForm({ onSubmit, loading }) {
           placeholder="What happened? When did it start? What have you already tried?"
           className="input-base resize-none"
         />
-        <p className="text-xs text-slate-400 mt-1.5">
+        <p className="text-xs text-slate-500 mt-1.5">
           The more detail you provide, the faster your engineer can help.
           You can attach screenshots and log files after submitting.
         </p>
@@ -275,7 +275,7 @@ export default function TicketForm({ onSubmit, loading }) {
         >
           {loading ? "Opening ticket…" : "Open Ticket →"}
         </Button>
-        <p className="text-xs text-slate-400 text-center mt-2">
+        <p className="text-xs text-slate-500 text-center mt-2">
           Payment is collected on the next screen.
         </p>
       </div>

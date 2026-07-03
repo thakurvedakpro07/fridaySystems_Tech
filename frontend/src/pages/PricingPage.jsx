@@ -69,7 +69,7 @@ function FaqItem({ q, a }) {
       <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none
                           bg-white hover:bg-slate-50 transition-colors">
         <span className="text-sm font-semibold text-slate-800 pr-4">{q}</span>
-        <svg className="w-4 h-4 text-slate-400 shrink-0 group-open:rotate-180 transition-transform duration-200"
+        <svg className="w-4 h-4 text-slate-500 shrink-0 group-open:rotate-180 transition-transform duration-200"
              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
         </svg>
@@ -110,7 +110,7 @@ export default function PricingPage() {
       {/* ── How payment works ─────────────────────────────────── */}
       <section className="py-12 px-4 sm:px-6 bg-slate-50 border-y border-slate-100">
         <div className="max-w-4xl mx-auto">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-8">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center mb-8">
             How Payment Works
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
@@ -118,7 +118,7 @@ export default function PricingPage() {
               <div key={step} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-card">
                 <div className="flex items-center justify-between mb-3">
                   <p className={`text-4xl font-black ${color} tracking-tighter`}>{step}</p>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest
                                    border border-slate-200 px-2 py-0.5 rounded-full">
                     {badge}
                   </span>
@@ -145,7 +145,7 @@ export default function PricingPage() {
                   ₹{CONSULTING_FEE}
                   <span className="text-xl font-bold text-indigo-400 ml-1.5">+ GST</span>
                 </p>
-                <p className="text-xs text-slate-400 mt-1">GST calculated and shown at checkout</p>
+                <p className="text-xs text-slate-500 mt-1">GST calculated and shown at checkout</p>
               </div>
             </div>
             <ul className="space-y-3">
@@ -207,7 +207,7 @@ export default function PricingPage() {
                       <td className="px-5 py-4 font-semibold text-slate-800">{svc.name}</td>
                       <td className="px-5 py-4 text-right">
                         <span className="font-black text-slate-900 text-base">{fmtINR(total)}</span>
-                        <span className="text-xs text-slate-400 font-medium ml-1.5">onwards</span>
+                        <span className="text-xs text-slate-500 font-medium ml-1.5">onwards</span>
                       </td>
                     </tr>
                   );
@@ -291,7 +291,7 @@ export default function PricingPage() {
               >
                 Contact Sales
               </a>
-              <p className="text-xs text-slate-400 text-center">{CONTACT.salesEmail}</p>
+              <p className="text-xs text-slate-500 text-center">{CONTACT.salesEmail}</p>
             </div>
           </div>
         </div>

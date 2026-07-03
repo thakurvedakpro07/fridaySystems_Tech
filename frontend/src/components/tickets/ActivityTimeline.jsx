@@ -53,7 +53,7 @@ function statusPill(value) {
 
 // ── Role-aware actor label ───────────────────────────────────────────────────
 function actorLabel(actorEmail, currentUser) {
-  if (!actorEmail) return <span className="text-slate-400 italic text-xs">system</span>;
+  if (!actorEmail) return <span className="text-slate-500 italic text-xs">system</span>;
   if (actorEmail === currentUser?.email) return <span className="text-indigo-600 text-xs font-medium">you</span>;
   if (currentUser?.role !== "admin" && currentUser?.is_staff) {
     return <span className="text-xs text-slate-500">Admin</span>;
@@ -91,7 +91,7 @@ function TimelineEntry({ entry, isLast, index, currentUser }) {
           <span className="text-sm font-medium text-slate-800">
             {entry.action_display}
           </span>
-          <span className="text-xs text-slate-400">by</span>
+          <span className="text-xs text-slate-500">by</span>
           {actorLabel(entry.actor_email, currentUser)}
         </div>
 
@@ -99,7 +99,7 @@ function TimelineEntry({ entry, isLast, index, currentUser }) {
         {hasTransition && (
           <div className="flex items-center gap-1.5 mt-1.5">
             {statusPill(entry.from_value)}
-            <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <svg className="w-3 h-3 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5l6 6m0 0l-6 6m6-6H4.5" />
             </svg>
             {statusPill(entry.to_value)}
@@ -118,7 +118,7 @@ function TimelineEntry({ entry, isLast, index, currentUser }) {
 
         {/* Timestamp */}
         <p
-          className="text-[11px] text-slate-400 mt-1.5 cursor-default"
+          className="text-[11px] text-slate-500 mt-1.5 cursor-default"
           title={formatAbsoluteTime(entry.created_at)}
         >
           {formatRelativeTime(entry.created_at)}
@@ -189,7 +189,7 @@ export default function ActivityTimeline({ ticketId }) {
     return (
       <div className="flex flex-col items-center gap-2 py-8 mt-1">
         <span className="text-2xl select-none" aria-hidden="true">📭</span>
-        <p className="text-sm text-slate-400">No activity yet on this ticket.</p>
+        <p className="text-sm text-slate-500">No activity yet on this ticket.</p>
       </div>
     );
   }

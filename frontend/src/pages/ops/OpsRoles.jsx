@@ -109,7 +109,7 @@ export default function OpsRoles() {
           {/* Column headers */}
           <div className="grid grid-cols-[1.5fr_0.9fr_0.9fr_1.2fr_1fr] gap-4 px-6 py-3 border-b border-slate-100 bg-slate-50">
             {["User", "From", "To", "Changed By", "Date"].map((h) => (
-              <p key={h} className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{h}</p>
+              <p key={h} className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">{h}</p>
             ))}
           </div>
 
@@ -122,13 +122,13 @@ export default function OpsRoles() {
           ) : entries.length === 0 ? (
             <div className="py-16 text-center">
               <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                   <path strokeLinecap="round" strokeLinejoin="round"
                     d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                 </svg>
               </div>
               <p className="text-sm font-semibold text-slate-700">No role changes recorded</p>
-              <p className="text-xs text-slate-400 mt-1">Every role promotion and demotion will appear here.</p>
+              <p className="text-xs text-slate-500 mt-1">Every role promotion and demotion will appear here.</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-50">
@@ -143,18 +143,18 @@ export default function OpsRoles() {
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-900 truncate">{entry.target_email}</p>
                     {entry.note && (
-                      <p className="text-[11px] text-slate-400 italic truncate mt-0.5">"{entry.note}"</p>
+                      <p className="text-[11px] text-slate-500 italic truncate mt-0.5">"{entry.note}"</p>
                     )}
                   </div>
                   <RolePill role={entry.old_role} />
                   <div className="flex items-center gap-1">
-                    <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <svg className="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                     </svg>
                     <RolePill role={entry.new_role} />
                   </div>
                   <p className="text-xs text-slate-500 truncate">{entry.changed_by_email}</p>
-                  <p className="text-xs text-slate-400">{fmtDateTime(entry.timestamp)}</p>
+                  <p className="text-xs text-slate-500">{fmtDateTime(entry.timestamp)}</p>
                 </motion.div>
               ))}
             </div>

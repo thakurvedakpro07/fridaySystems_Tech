@@ -29,7 +29,7 @@ function StatusBadge({ status }) {
 function SummaryCard({ label, value }) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-5">
-      <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">{label}</p>
       <p className="text-2xl font-bold text-slate-800">{value}</p>
     </div>
   );
@@ -143,9 +143,9 @@ export default function OpsPayments() {
         {/* Table */}
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           {loading ? (
-            <div className="flex items-center justify-center h-40 text-slate-400 text-sm">Loading payments…</div>
+            <div className="flex items-center justify-center h-40 text-slate-500 text-sm">Loading payments…</div>
           ) : payments.length === 0 ? (
-            <div className="flex items-center justify-center h-40 text-slate-400 text-sm">No payments found.</div>
+            <div className="flex items-center justify-center h-40 text-slate-500 text-sm">No payments found.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

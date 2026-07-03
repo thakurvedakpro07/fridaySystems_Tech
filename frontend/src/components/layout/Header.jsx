@@ -67,7 +67,7 @@ function PhoneNavButton() {
         aria-label={`Call support: ${CONTACT.tollFree}`}
         title={`Call ${CONTACT.tollFree}`}
         className="p-2.5 rounded-xl hover:bg-emerald-50 transition-colors
-                   text-slate-400 hover:text-emerald-600 border border-transparent hover:border-emerald-100
+                   text-slate-500 hover:text-emerald-600 border border-transparent hover:border-emerald-100
                    focus:outline-none focus:ring-2 focus:ring-emerald-500"
       >
         <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
@@ -83,7 +83,7 @@ function PhoneNavButton() {
       aria-label={`Copy phone number ${CONTACT.tollFree} to clipboard`}
       title={`${CONTACT.tollFree} — click to copy`}
       className="p-2.5 rounded-xl hover:bg-emerald-50 transition-colors
-                 text-slate-400 hover:text-emerald-600 border border-transparent hover:border-emerald-100
+                 text-slate-500 hover:text-emerald-600 border border-transparent hover:border-emerald-100
                  focus:outline-none focus:ring-2 focus:ring-emerald-500"
     >
       <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
@@ -119,7 +119,7 @@ export default function Header() {
           </div>
           <div>
             <p className="text-[1.75rem] font-black text-slate-900 leading-tight tracking-tight">ResolveHQ</p>
-            <p className="text-[11px] text-slate-400 leading-tight font-semibold tracking-wider hidden sm:block">
+            <p className="text-[11px] text-slate-500 leading-tight font-semibold tracking-wider hidden sm:block">
               Enterprise IT Support Marketplace
             </p>
           </div>

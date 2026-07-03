@@ -68,15 +68,15 @@ export default function FreelancerProfileCard({ engineer, size = "full" }) {
         <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-100 text-center">
           <div>
             <p className="text-base font-black text-slate-900">{yearsExp}+</p>
-            <p className="text-[10px] text-slate-400 font-medium leading-tight">yrs exp</p>
+            <p className="text-[10px] text-slate-500 font-medium leading-tight">yrs exp</p>
           </div>
           <div className="border-x border-slate-100">
             <p className="text-base font-black text-slate-900">{ticketsSolved}</p>
-            <p className="text-[10px] text-slate-400 font-medium leading-tight">resolved</p>
+            <p className="text-[10px] text-slate-500 font-medium leading-tight">resolved</p>
           </div>
           <div>
             <p className="text-base font-black text-slate-900">{avgResponseTime}</p>
-            <p className="text-[10px] text-slate-400 font-medium leading-tight">response</p>
+            <p className="text-[10px] text-slate-500 font-medium leading-tight">response</p>
           </div>
         </div>
         {skills.length > 0 && (
@@ -134,7 +134,7 @@ export default function FreelancerProfileCard({ engineer, size = "full" }) {
         <div className="flex items-center gap-2 mt-2">
           <Stars value={rating} />
           {successRate && (
-            <span className="text-[11px] text-slate-400">· {successRate}% success rate</span>
+            <span className="text-[11px] text-slate-500">· {successRate}% success rate</span>
           )}
         </div>
 
@@ -147,22 +147,22 @@ export default function FreelancerProfileCard({ engineer, size = "full" }) {
         <div className="grid grid-cols-3 gap-3 mt-4 py-4 border-y border-slate-100 text-center">
           <div>
             <p className="text-xl font-black text-slate-900">{yearsExp}+</p>
-            <p className="text-[11px] text-slate-400 font-medium leading-tight mt-0.5">Yrs Experience</p>
+            <p className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5">Yrs Experience</p>
           </div>
           <div>
             <p className="text-xl font-black text-slate-900">{ticketsSolved}</p>
-            <p className="text-[11px] text-slate-400 font-medium leading-tight mt-0.5">Tickets Solved</p>
+            <p className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5">Tickets Solved</p>
           </div>
           <div>
             <p className="text-xl font-black text-slate-900">{avgResponseTime}</p>
-            <p className="text-[11px] text-slate-400 font-medium leading-tight mt-0.5">Avg Response</p>
+            <p className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5">Avg Response</p>
           </div>
         </div>
 
         {/* Skills */}
         {skills.length > 0 && (
           <div className="mt-4">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Skills</p>
+            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-2">Skills</p>
             <div className="flex flex-wrap gap-1.5">
               {skills.map((s) => (
                 <span key={s}
@@ -178,7 +178,7 @@ export default function FreelancerProfileCard({ engineer, size = "full" }) {
         {/* Certifications */}
         {certifications.length > 0 && (
           <div className="mt-3">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Certifications</p>
+            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-2">Certifications</p>
             <div className="flex flex-wrap gap-1.5">
               {certifications.map((c) => (
                 <span key={c}

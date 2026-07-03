@@ -47,7 +47,7 @@ function AttachmentCard({ attachment, onDelete, canDelete }) {
       <span className="text-2xl shrink-0">{getFileIcon(attachment.mime_type)}</span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-slate-800 truncate">{attachment.file_name}</p>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-slate-500 mt-0.5">
           {formatBytes(attachment.file_size)}
           {attachment.uploaded_by_email && ` · ${attachment.uploaded_by_email}`}
           {" · "}{new Date(attachment.uploaded_at).toLocaleDateString("en-IN", {
@@ -70,7 +70,7 @@ function AttachmentCard({ attachment, onDelete, canDelete }) {
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="text-xs text-slate-400 hover:text-rose-600 transition-colors disabled:opacity-50"
+            className="text-xs text-slate-500 hover:text-rose-600 transition-colors disabled:opacity-50"
             title="Delete attachment"
           >
             {deleting ? "…" : "Delete"}
@@ -164,7 +164,7 @@ export default function AttachmentSection({ ticketId, userEmail, isStaff }) {
         <p className="text-sm font-medium text-slate-700">
           {uploading ? "Uploading…" : "Drop a file here or click to browse"}
         </p>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-slate-500 mt-1">
           PNG, JPG, PDF, CSV, ZIP, Excel · Max {MAX_SIZE_MB} MB
         </p>
         <input
@@ -184,7 +184,7 @@ export default function AttachmentSection({ ticketId, userEmail, isStaff }) {
           ))}
         </div>
       ) : attachments.length === 0 ? (
-        <p className="text-sm text-slate-400 text-center py-4">No attachments yet.</p>
+        <p className="text-sm text-slate-500 text-center py-4">No attachments yet.</p>
       ) : (
         <div className="space-y-2">
           {attachments.map((att) => (

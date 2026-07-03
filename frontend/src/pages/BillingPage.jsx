@@ -38,10 +38,10 @@ function StatCard({ icon, label, value, sub, colour }) {
          style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
       <div className="flex items-center gap-2 mb-3">
         <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${colour}`}>{icon}</span>
-        <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{label}</span>
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{label}</span>
       </div>
       <p className="text-3xl font-bold text-slate-900 leading-none">{value}</p>
-      {sub && <p className="text-xs text-slate-400 mt-1.5">{sub}</p>}
+      {sub && <p className="text-xs text-slate-500 mt-1.5">{sub}</p>}
     </div>
   );
 }
@@ -88,7 +88,7 @@ function PaymentRow({ payment }) {
         <p className="text-sm font-medium text-slate-800 capitalize">{typeLabel}</p>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           {payment.invoice_number && (
-            <span className="text-[11px] font-mono text-slate-400">{payment.invoice_number}</span>
+            <span className="text-[11px] font-mono text-slate-500">{payment.invoice_number}</span>
           )}
           {payment.ticket_number && (
             <Link
@@ -98,7 +98,7 @@ function PaymentRow({ payment }) {
               {payment.ticket_number}
             </Link>
           )}
-          <span className="text-[11px] text-slate-400">{date}</span>
+          <span className="text-[11px] text-slate-500">{date}</span>
         </div>
       </div>
 
@@ -235,7 +235,7 @@ export default function BillingPage() {
             </div>
             <div>
               <p className="text-base font-bold text-slate-800">No payments yet</p>
-              <p className="text-sm text-slate-400 mt-1 max-w-xs leading-relaxed">
+              <p className="text-sm text-slate-500 mt-1 max-w-xs leading-relaxed">
                 Payments appear here after you raise a support ticket. GST-compliant PDF invoices are generated automatically.
               </p>
             </div>
@@ -261,7 +261,7 @@ export default function BillingPage() {
 
       {/* GST note */}
       {payments.length > 0 && (
-        <p className="text-xs text-slate-400 mt-3 text-center">
+        <p className="text-xs text-slate-500 mt-3 text-center">
           All amounts inclusive of 18% GST. Contact{" "}
           <a href={CONTACT.billingMailto} className="text-indigo-500 hover:underline">
             {CONTACT.billingEmail}

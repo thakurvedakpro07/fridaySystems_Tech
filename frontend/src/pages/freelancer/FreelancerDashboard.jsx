@@ -41,14 +41,14 @@ function KpiCard({ label, value, sub, color = "indigo", loading }) {
                  hover:-translate-y-0.5 transition-all duration-200 cursor-default`}
       style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.07), 0 0 0 1px rgb(0 0 0 / 0.02)" }}
     >
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">{label}</p>
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">{label}</p>
       {loading ? (
         <div className="h-10 w-16 shimmer rounded-lg mb-1" />
       ) : (
         <p className={`text-4xl font-black ${s.num} leading-none`}>{value ?? "—"}</p>
       )}
       {sub && !loading && (
-        <p className="text-xs text-slate-400 mt-2 font-medium">{sub}</p>
+        <p className="text-xs text-slate-500 mt-2 font-medium">{sub}</p>
       )}
     </div>
   );
@@ -61,7 +61,7 @@ function FreelancerInfoPanel({ csatAvg, avgHours, csatLoading }) {
       {/* CSAT score */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5"
            style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">
+        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
           Your CSAT Score
         </p>
         {csatLoading ? (
@@ -72,7 +72,7 @@ function FreelancerInfoPanel({ csatAvg, avgHours, csatLoading }) {
               <span className="text-4xl font-black text-amber-500 leading-none">
                 {csatAvg}
               </span>
-              <span className="text-sm text-slate-400 mb-1 font-medium">/ 5.0</span>
+              <span className="text-sm text-slate-500 mb-1 font-medium">/ 5.0</span>
             </div>
             <div className="flex items-center gap-0.5 mb-2">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -85,10 +85,10 @@ function FreelancerInfoPanel({ csatAvg, avgHours, csatLoading }) {
                 </svg>
               ))}
             </div>
-            <p className="text-xs text-slate-400">Average customer rating</p>
+            <p className="text-xs text-slate-500">Average customer rating</p>
           </>
         ) : (
-          <p className="text-sm text-slate-400">No ratings yet</p>
+          <p className="text-sm text-slate-500">No ratings yet</p>
         )}
       </div>
 
@@ -96,21 +96,21 @@ function FreelancerInfoPanel({ csatAvg, avgHours, csatLoading }) {
       {avgHours != null && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5"
              style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-2">
             Avg. Resolution Time
           </p>
           <div className="flex items-end gap-1.5">
             <span className="text-4xl font-black text-emerald-600 leading-none">{avgHours}</span>
-            <span className="text-sm text-slate-400 mb-1">hrs</span>
+            <span className="text-sm text-slate-500 mb-1">hrs</span>
           </div>
-          <p className="text-xs text-slate-400 mt-1.5">Average hours to close a ticket</p>
+          <p className="text-xs text-slate-500 mt-1.5">Average hours to close a ticket</p>
         </div>
       )}
 
       {/* System status */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5"
            style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">
+        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
           Platform Status
         </p>
         <div className="flex items-center gap-2.5 mb-3">
@@ -125,7 +125,7 @@ function FreelancerInfoPanel({ csatAvg, avgHours, csatLoading }) {
       {/* Quick actions */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5"
            style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">
+        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
           Quick Actions
         </p>
         <div className="space-y-2">
@@ -134,7 +134,7 @@ function FreelancerInfoPanel({ csatAvg, avgHours, csatLoading }) {
             className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-slate-100 text-slate-700
                        text-sm font-medium hover:bg-slate-200 transition-colors"
           >
-            <svg className="w-4 h-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4 shrink-0 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round"
                 d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
             </svg>
@@ -145,7 +145,7 @@ function FreelancerInfoPanel({ csatAvg, avgHours, csatLoading }) {
             className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-slate-100 text-slate-700
                        text-sm font-medium hover:bg-slate-200 transition-colors"
           >
-            <svg className="w-4 h-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4 shrink-0 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round"
                 d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
             </svg>
@@ -170,7 +170,7 @@ function FreelancerInfoPanel({ csatAvg, avgHours, csatLoading }) {
             </svg>
             {CONTACT.supportEmail}
           </a>
-          <p className="text-[11px] text-slate-400 pl-[1.375rem]">{CONTACT.businessHours}</p>
+          <p className="text-[11px] text-slate-500 pl-[1.375rem]">{CONTACT.businessHours}</p>
         </div>
       </div>
     </div>
@@ -183,13 +183,13 @@ function AssignmentsEmptyState({ hasFilters }) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
         <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-5">
-          <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <svg className="w-8 h-8 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round"
               d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
         </div>
         <p className="text-slate-800 font-semibold text-base mb-2">No tickets match your filters</p>
-        <p className="text-slate-400 text-sm max-w-xs">Try clearing your search or selecting a different status.</p>
+        <p className="text-slate-500 text-sm max-w-xs">Try clearing your search or selecting a different status.</p>
       </div>
     );
   }
@@ -202,7 +202,7 @@ function AssignmentsEmptyState({ hasFilters }) {
         </svg>
       </div>
       <p className="text-slate-900 font-bold text-lg mb-2">No assignments yet</p>
-      <p className="text-slate-400 text-sm max-w-xs leading-relaxed">
+      <p className="text-slate-500 text-sm max-w-xs leading-relaxed">
         You&apos;ll see tickets here once an admin assigns one to you. Keep your profile updated to attract more assignments.
       </p>
     </div>
@@ -304,7 +304,7 @@ export default function FreelancerDashboard() {
 
           <div className="flex flex-wrap gap-2.5 mb-5">
             <div className="relative flex-1 min-w-[160px]">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"
                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round"
                   d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
@@ -320,7 +320,7 @@ export default function FreelancerDashboard() {
                 <button
                   onClick={clearSearch}
                   aria-label="Clear search"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

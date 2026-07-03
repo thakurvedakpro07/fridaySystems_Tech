@@ -39,11 +39,11 @@ function ServiceCard({ service }) {
       {/* Time stats */}
       <div className="grid grid-cols-2 gap-3 mb-5">
         <div className="bg-slate-50 rounded-xl px-3 py-2.5">
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Consultation</p>
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-0.5">Consultation</p>
           <p className="text-sm font-black text-slate-800">30 min – 4 hrs</p>
         </div>
         <div className="bg-slate-50 rounded-xl px-3 py-2.5">
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Completion</p>
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-0.5">Completion</p>
           <p className="text-sm font-black text-slate-800">Varies by issue</p>
         </div>
       </div>
@@ -90,7 +90,7 @@ export default function ServicesPage() {
             Expert IT support<br />
             <span className="text-indigo-400">for every problem</span>
           </h1>
-          <p className="text-lg text-slate-400 leading-relaxed max-w-2xl mx-auto mb-8">
+          <p className="text-lg text-slate-500 leading-relaxed max-w-2xl mx-auto mb-8">
             {SERVICES.length} specialisations. Verified engineers. Pay only when your problem is resolved.
             Transparent fixed pricing on every ticket.
           </p>
@@ -105,7 +105,7 @@ export default function ServicesPage() {
             ].map(({ value, label }) => (
               <div key={label} className="text-center">
                 <p className="text-2xl font-black text-white">{value}</p>
-                <p className="text-xs text-slate-400 font-medium mt-0.5">{label}</p>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">{label}</p>
               </div>
             ))}
           </div>
@@ -141,7 +141,7 @@ export default function ServicesPage() {
       <section className="py-14 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto">
           {/* Results label */}
-          <p className="text-sm text-slate-400 font-medium mb-6">
+          <p className="text-sm text-slate-500 font-medium mb-6">
             {filtered.length === SERVICES.length
               ? `All ${SERVICES.length} services`
               : `${filtered.length} service${filtered.length !== 1 ? "s" : ""} in ${active}`}
@@ -155,7 +155,7 @@ export default function ServicesPage() {
 
           {filtered.length === 0 && (
             <div className="text-center py-20">
-              <p className="text-slate-400 text-lg font-medium">No services in this category.</p>
+              <p className="text-slate-500 text-lg font-medium">No services in this category.</p>
             </div>
           )}
         </div>

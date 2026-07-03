@@ -28,15 +28,15 @@ export default function Footer() {
                              bg-indigo-50 text-indigo-600 border border-indigo-100">
               Beta
             </span>
-            <span className="text-slate-300 text-xs">·</span>
-            <span className="text-xs text-slate-400">© {new Date().getFullYear()} Friday Tech Systems</span>
+            <span className="text-slate-500 text-xs">·</span>
+            <span className="text-xs text-slate-500">© {new Date().getFullYear()} Friday Tech Systems</span>
           </div>
 
           {/* Contact + links */}
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5">
             <a
               href={CONTACT.supportMailto}
-              className="text-xs text-slate-400 hover:text-indigo-600 transition-colors"
+              className="text-xs text-slate-500 hover:text-indigo-600 transition-colors"
             >
               {CONTACT.supportEmail}
             </a>
@@ -45,7 +45,7 @@ export default function Footer() {
               <a
                 href={`tel:${CONTACT.tollFree.replace(/-/g, "")}`}
                 aria-label={`Call support: ${CONTACT.tollFree}`}
-                className="text-xs text-slate-400 hover:text-slate-700 transition-colors
+                className="text-xs text-slate-500 hover:text-slate-700 transition-colors
                            focus:outline-none focus:ring-1 focus:ring-slate-400 rounded"
               >
                 {CONTACT.tollFree}
@@ -55,14 +55,14 @@ export default function Footer() {
                 onClick={copyNumber}
                 aria-label="Copy phone number to clipboard"
                 title={`${CONTACT.tollFree} — click to copy`}
-                className="text-xs text-slate-400 hover:text-slate-700 transition-colors
+                className="text-xs text-slate-500 hover:text-slate-700 transition-colors
                            focus:outline-none focus:ring-1 focus:ring-slate-400 rounded"
               >
                 {CONTACT.tollFree}
               </button>
             )}
             <span className="text-slate-200 hidden sm:inline">·</span>
-            <span className="text-xs text-slate-400">{CONTACT.businessHours}</span>
+            <span className="text-xs text-slate-500">{CONTACT.businessHours}</span>
           </div>
 
         </div>

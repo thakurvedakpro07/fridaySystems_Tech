@@ -138,7 +138,7 @@ export default function PrivacyPage() {
 
           {/* Sidebar nav */}
           <nav className="hidden lg:block sticky top-24 space-y-1" aria-label="Privacy policy sections">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 px-2">On this page</p>
+            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-2 px-2">On this page</p>
             {SECTIONS.map(({ id, label }) => (
               <a key={id} href={`#${id}`}
                  className="block px-3 py-2 text-sm text-slate-500 hover:text-indigo-600

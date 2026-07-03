@@ -177,7 +177,7 @@ export default function PaymentGateway({ ticket, onPaymentSuccess }) {
         <InvoiceRow label="Consulting fee" amount={base} />
         <InvoiceRow label="GST (18%)"      amount={gst} />
         <InvoiceRow label={`Total due`}    amount={total} bold border />
-        <p className="text-[11px] text-slate-400 pt-0.5">
+        <p className="text-[11px] text-slate-500 pt-0.5">
           Invoice {orderData?.invoice_number ?? "will be generated on payment"}
         </p>
       </div>

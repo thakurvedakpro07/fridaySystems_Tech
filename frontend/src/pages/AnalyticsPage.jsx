@@ -13,7 +13,7 @@ function BarChart({ data, color = "#4f46e5" }) {
     <div className="flex items-end gap-1.5 h-32">
       {data.map((d, i) => (
         <div key={i} className="flex flex-col items-center gap-1 flex-1 min-w-0">
-          <span className="text-[10px] text-slate-400 font-medium">{d.count || ""}</span>
+          <span className="text-[10px] text-slate-500 font-medium">{d.count || ""}</span>
           <div
             className="w-full rounded-t-sm transition-all duration-500"
             style={{
@@ -21,7 +21,7 @@ function BarChart({ data, color = "#4f46e5" }) {
               backgroundColor: d.count ? color : "#e2e8f0",
             }}
           />
-          <span className="text-[9px] text-slate-400 truncate w-full text-center">{d.label}</span>
+          <span className="text-[9px] text-slate-500 truncate w-full text-center">{d.label}</span>
         </div>
       ))}
     </div>
@@ -30,7 +30,7 @@ function BarChart({ data, color = "#4f46e5" }) {
 
 function DonutChart({ segments }) {
   const total = segments.reduce((s, x) => s + x.value, 0);
-  if (total === 0) return <p className="text-sm text-slate-400 text-center py-6">No data yet</p>;
+  if (total === 0) return <p className="text-sm text-slate-500 text-center py-6">No data yet</p>;
 
   let offset = 0;
   const r = 40;
@@ -87,9 +87,9 @@ function StatCard({ label, value, sub, color = "indigo", icon }) {
       style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}
     >
       <div>
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">{label}</p>
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">{label}</p>
         <p className={`text-3xl font-bold animate-fade-in leading-none ${text}`}>{value ?? "—"}</p>
-        {sub && <p className="text-xs text-slate-400 mt-1.5">{sub}</p>}
+        {sub && <p className="text-xs text-slate-500 mt-1.5">{sub}</p>}
       </div>
       {icon && (
         <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0 ${bg}`}>
@@ -242,7 +242,7 @@ export default function AnalyticsPage() {
           {data.timeline && data.timeline.some((t) => t.count > 0) ? (
             <BarChart data={data.timeline} color="#4f46e5" />
           ) : (
-            <p className="text-sm text-slate-400 text-center py-8">No tickets in the last 30 days</p>
+            <p className="text-sm text-slate-500 text-center py-8">No tickets in the last 30 days</p>
           )}
         </Card>
 
@@ -332,10 +332,10 @@ export default function AnalyticsPage() {
                 const displayName = first && last ? `${first} ${last}` : first || fl.email;
                 return (
                   <div key={fl.email} className="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
-                    <span className="text-xs font-bold text-slate-400 w-5">#{i + 1}</span>
+                    <span className="text-xs font-bold text-slate-500 w-5">#{i + 1}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-800 truncate">{displayName}</p>
-                      <p className="text-xs text-slate-400">{fl.assigned} assigned · {fl.resolved} resolved</p>
+                      <p className="text-xs text-slate-500">{fl.assigned} assigned · {fl.resolved} resolved</p>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold text-amber-500">★ {fl.rating}</p>

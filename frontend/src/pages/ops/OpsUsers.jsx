@@ -198,7 +198,7 @@ function RoleChangeModal({ open, onClose, user, onConfirm, loading }) {
                 {" → "}
                 <span className="font-semibold text-indigo-700">{toLabel}</span>
               </p>
-              {note && <p className="text-xs text-slate-400 italic">"{note}"</p>}
+              {note && <p className="text-xs text-slate-500 italic">"{note}"</p>}
             </div>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setConfirmed(false)} disabled={loading} className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
@@ -370,7 +370,7 @@ export default function OpsUsers() {
           {/* Table header */}
           <div className="grid grid-cols-[1fr_1.5fr_1fr_0.7fr_1fr_auto] gap-4 px-6 py-3 border-b border-slate-100 bg-slate-50">
             {["Name", "Email", "Role", "Status", "Joined", "Actions"].map((h) => (
-              <p key={h} className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{h}</p>
+              <p key={h} className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">{h}</p>
             ))}
           </div>
 
@@ -383,7 +383,7 @@ export default function OpsUsers() {
           ) : users.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-sm font-semibold text-slate-700">No users found</p>
-              <p className="text-xs text-slate-400 mt-1">Try adjusting your search or filters.</p>
+              <p className="text-xs text-slate-500 mt-1">Try adjusting your search or filters.</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-50">
@@ -399,13 +399,13 @@ export default function OpsUsers() {
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-900 truncate">
                         {u.full_name || "—"}
-                        {isSelf && <span className="ml-1.5 text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">(you)</span>}
+                        {isSelf && <span className="ml-1.5 text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">(you)</span>}
                       </p>
                     </div>
                     <p className="text-sm text-slate-500 truncate">{u.email}</p>
                     <RoleBadge role={u.role} />
                     <StatusBadge isActive={u.is_active} />
-                    <p className="text-xs text-slate-400">{fmtDate(u.date_joined)}</p>
+                    <p className="text-xs text-slate-500">{fmtDate(u.date_joined)}</p>
 
                     {/* Action buttons — Super Admin only */}
                     <div className="flex items-center gap-2 justify-end shrink-0">
@@ -443,7 +443,7 @@ export default function OpsUsers() {
                         </>
                       )}
                       {(!isSuperAdmin || isSelf) && (
-                        <span className="text-xs text-slate-300 italic">View only</span>
+                        <span className="text-xs text-slate-500 italic">View only</span>
                       )}
                     </div>
                   </motion.div>

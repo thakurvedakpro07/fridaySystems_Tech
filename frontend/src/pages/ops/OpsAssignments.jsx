@@ -118,7 +118,7 @@ function HistoryDrawer({ ticket, onClose, freelancers, onReassign }) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div>
             <h3 className="font-bold text-slate-900 text-base">Assignment History</h3>
-            <p className="text-[11px] font-mono text-slate-400 mt-0.5">{ticket.ticket_number}</p>
+            <p className="text-[11px] font-mono text-slate-500 mt-0.5">{ticket.ticket_number}</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">
             <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -183,7 +183,7 @@ function HistoryDrawer({ ticket, onClose, freelancers, onReassign }) {
 
         {/* Activity log */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Activity Log</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Activity Log</p>
           {loading ? (
             <div className="space-y-4">
               {[...Array(4)].map((_, i) => (
@@ -192,7 +192,7 @@ function HistoryDrawer({ ticket, onClose, freelancers, onReassign }) {
             </div>
           ) : history.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-sm text-slate-400">No activity recorded yet.</p>
+              <p className="text-sm text-slate-500">No activity recorded yet.</p>
             </div>
           ) : (
             <div className="relative">
@@ -209,7 +209,7 @@ function HistoryDrawer({ ticket, onClose, freelancers, onReassign }) {
                       {entry.note && (
                         <p className="text-xs text-slate-500 mt-0.5">{entry.note}</p>
                       )}
-                      <p className="text-[11px] text-slate-400 mt-1">
+                      <p className="text-[11px] text-slate-500 mt-1">
                         {fmtDate(entry.created_at)}
                         {entry.performed_by_name && (
                           <span className="ml-2">by <span className="font-medium">{entry.performed_by_name}</span></span>
@@ -289,7 +289,7 @@ export default function OpsAssignments() {
               <div key={s.label} className="bg-white border border-slate-200 rounded-2xl px-5 py-4"
                    style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
                 <p className={`text-3xl font-black ${s.color}`}>{s.value}</p>
-                <p className="text-xs text-slate-400 font-medium mt-1">{s.label}</p>
+                <p className="text-xs text-slate-500 font-medium mt-1">{s.label}</p>
               </div>
             ))}
           </div>
@@ -312,7 +312,7 @@ export default function OpsAssignments() {
                 {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-slate-50 animate-pulse rounded-xl" />)}
               </div>
             ) : assigned.length === 0 ? (
-              <div className="py-12 text-center text-sm text-slate-400">No assigned tickets.</div>
+              <div className="py-12 text-center text-sm text-slate-500">No assigned tickets.</div>
             ) : (
               <div className="divide-y divide-slate-50 max-h-[520px] overflow-y-auto">
                 {assigned.map((t) => (
@@ -321,18 +321,18 @@ export default function OpsAssignments() {
                        onClick={() => setActiveTicket(t)}>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[11px] font-mono text-slate-400">{t.ticket_number}</span>
+                        <span className="text-[11px] font-mono text-slate-500">{t.ticket_number}</span>
                         <Badge label={t.status} colorClass={STATUS_BADGE[t.status] ?? "bg-slate-100 text-slate-500"} />
                       </div>
                       <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                      <p className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1">
                         <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                         </svg>
                         {t.freelancer.name ?? t.freelancer.email}
                       </p>
                     </div>
-                    <svg className="w-4 h-4 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                     </svg>
                   </div>
@@ -357,7 +357,7 @@ export default function OpsAssignments() {
             ) : unassigned.length === 0 ? (
               <div className="py-12 text-center">
                 <p className="text-sm font-semibold text-slate-700">All open tickets assigned</p>
-                <p className="text-xs text-slate-400 mt-1">Good work!</p>
+                <p className="text-xs text-slate-500 mt-1">Good work!</p>
               </div>
             ) : (
               <div className="divide-y divide-slate-50 max-h-[520px] overflow-y-auto">
@@ -367,11 +367,11 @@ export default function OpsAssignments() {
                        onClick={() => setActiveTicket(t)}>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[11px] font-mono text-slate-400">{t.ticket_number}</span>
+                        <span className="text-[11px] font-mono text-slate-500">{t.ticket_number}</span>
                         {t.severity && <Badge label={t.severity} colorClass="bg-slate-100 text-slate-600" />}
                       </div>
                       <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">{fmtDate(t.created_at)}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{fmtDate(t.created_at)}</p>
                     </div>
                     <span className="shrink-0 text-xs font-semibold text-indigo-600 border border-indigo-200 px-2.5 py-1 rounded-lg hover:bg-indigo-50 transition-colors">
                       Assign →

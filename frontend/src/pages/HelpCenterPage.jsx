@@ -56,7 +56,7 @@ function FaqItem({ q, a }) {
       >
         <span className="text-sm font-semibold text-slate-800">{q}</span>
         <svg
-          className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`w-4 h-4 text-slate-500 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -78,7 +78,7 @@ function LifecycleStep({ status, label, description, active = false }) {
       <div className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${active ? "bg-indigo-600" : "bg-slate-200"}`} />
       <div>
         <p className={`text-sm font-semibold ${active ? "text-indigo-700" : "text-slate-700"}`}>{label}</p>
-        <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{description}</p>
+        <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{description}</p>
       </div>
     </div>
   );
@@ -412,7 +412,7 @@ export default function HelpCenterPage() {
                   <div>
                     <p className="text-xs font-bold text-slate-700 group-hover:text-indigo-700">Toll Free</p>
                     <p className="text-xs text-indigo-600 font-semibold mt-0.5">{CONTACT.tollFree}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">Tap to call</p>
+                    <p className="text-[10px] text-slate-500 mt-1">Tap to call</p>
                   </div>
                 </a>
               ) : (
@@ -443,7 +443,7 @@ export default function HelpCenterPage() {
               )}
 
               <div className="flex flex-col gap-2 bg-slate-50 border border-slate-200 rounded-xl p-4">
-                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24"
+                <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24"
                      stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round"
                     d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -479,7 +479,7 @@ export default function HelpCenterPage() {
 
         {/* ── Quick navigation sidebar ──────────────────────────── */}
         <nav className="hidden lg:block sticky top-24 space-y-1" aria-label="Help center sections">
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 px-2">
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-2 px-2">
             On this page
           </p>
           {SECTIONS.map(({ id, label }) => (

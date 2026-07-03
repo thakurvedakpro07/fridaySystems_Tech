@@ -74,10 +74,10 @@ function NotificationRow({ n, onMarkRead, onNavigate }) {
           {n.title}
         </p>
         {n.body && (
-          <p className="text-xs text-slate-400 mt-0.5 truncate">{n.body}</p>
+          <p className="text-xs text-slate-500 mt-0.5 truncate">{n.body}</p>
         )}
         <p
-          className="text-[11px] text-slate-400 mt-1"
+          className="text-[11px] text-slate-500 mt-1"
           title={formatAbsoluteTime(n.created_at)}
         >
           {formatRelativeTime(n.created_at)}
@@ -237,7 +237,7 @@ export default function NotificationBell() {
               <div className="flex flex-col items-center gap-3 py-10 px-4">
                 <span className="text-3xl select-none" aria-hidden="true">🔔</span>
                 <p className="text-sm text-slate-500 font-medium text-center">You're all caught up!</p>
-                <p className="text-xs text-slate-400 text-center">New notifications will appear here.</p>
+                <p className="text-xs text-slate-500 text-center">New notifications will appear here.</p>
               </div>
             )}
 
@@ -245,7 +245,7 @@ export default function NotificationBell() {
             {!listLoading && grouped.map(([label, items]) => (
               <div key={label}>
                 <div className="px-4 py-1.5 bg-slate-50/80 sticky top-0 z-10">
-                  <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
                     {label}
                   </span>
                 </div>
@@ -264,7 +264,7 @@ export default function NotificationBell() {
           {/* Footer — view all link */}
           <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between">
             {notifications.length > 20 ? (
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-slate-500">
                 Showing 20 of {notifications.length}
               </span>
             ) : (

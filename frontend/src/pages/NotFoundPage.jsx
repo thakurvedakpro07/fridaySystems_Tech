@@ -51,7 +51,7 @@ export default function NotFoundPage() {
             Go back
           </button>
         </div>
-        <p className="text-xs text-slate-400 mt-8">
+        <p className="text-xs text-slate-500 mt-8">
           Still stuck?{" "}
           <a href={CONTACT.supportMailto} className="text-indigo-500 hover:underline">
             {CONTACT.supportEmail}

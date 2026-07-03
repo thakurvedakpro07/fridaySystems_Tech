@@ -33,14 +33,14 @@ function KpiCard({ label, value, sub, color = "indigo", icon, loading, to }) {
                      hover:-translate-y-0.5 transition-all duration-200 h-full`}
          style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.07)" }}>
       <div className="min-w-0">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">{label}</p>
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">{label}</p>
         {loading ? (
           <div className="h-10 w-16 bg-slate-100 animate-pulse rounded-lg mb-1" />
         ) : (
           <p className={`text-4xl font-black ${s.num} leading-none`}>{value ?? "—"}</p>
         )}
         {sub && !loading && (
-          <p className="text-xs text-slate-400 mt-2 font-medium">{sub}</p>
+          <p className="text-xs text-slate-500 mt-2 font-medium">{sub}</p>
         )}
       </div>
       {icon && (
@@ -225,7 +225,7 @@ export default function OpsDashboard() {
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
               <div>
                 <h2 className="text-base font-bold text-slate-900">Unassigned Open Tickets</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Tickets paid and waiting for an engineer</p>
+                <p className="text-xs text-slate-500 mt-0.5">Tickets paid and waiting for an engineer</p>
               </div>
               <Link to="/operations/tickets?status=open"
                 className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
@@ -247,7 +247,7 @@ export default function OpsDashboard() {
                   </svg>
                 </div>
                 <p className="text-sm font-semibold text-slate-700">All open tickets are assigned</p>
-                <p className="text-xs text-slate-400 mt-1">No unassigned tickets at this time.</p>
+                <p className="text-xs text-slate-500 mt-1">No unassigned tickets at this time.</p>
               </div>
             ) : (
               <div className="divide-y divide-slate-50">
@@ -255,12 +255,12 @@ export default function OpsDashboard() {
                   <div key={t.id} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[11px] font-mono font-semibold text-slate-400">{t.ticket_number}</span>
+                        <span className="text-[11px] font-mono font-semibold text-slate-500">{t.ticket_number}</span>
                         {t.severity && <Badge label={t.severity} colorClass="bg-slate-100 text-slate-600" />}
                         <Badge label={t.service_type?.replace(/_/g, " ") ?? "—"} colorClass="bg-slate-100 text-slate-600" />
                       </div>
                       <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">{fmtDate(t.created_at)}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{fmtDate(t.created_at)}</p>
                     </div>
                     <Link to={`/operations/tickets?highlight=${t.id}`}
                       className="shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-800 border border-indigo-200
@@ -287,7 +287,7 @@ export default function OpsDashboard() {
                 className={`bg-white border ${s.border} rounded-2xl p-5 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 group`}
                 style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
                 <p className={`text-sm font-bold ${s.num} mb-1`}>{card.label}</p>
-                <p className="text-xs text-slate-400">{card.desc}</p>
+                <p className="text-xs text-slate-500">{card.desc}</p>
                 <p className={`text-xs font-semibold ${s.num} mt-3 group-hover:translate-x-1 transition-transform duration-150`}>
                   Open →
                 </p>

@@ -257,13 +257,13 @@ export default function OpsServices() {
         ) : services.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-2xl py-16 text-center">
             <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
-              <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round"
                   d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l5.654-4.654m5.905-2.72c.174-.168.35-.337.518-.512a5.29 5.29 0 00-7.497-7.497c-.175.168-.344.343-.512.518" />
               </svg>
             </div>
             <p className="text-sm font-semibold text-slate-700">No services found</p>
-            <p className="text-xs text-slate-400 mt-1">Create your first service to get started.</p>
+            <p className="text-xs text-slate-500 mt-1">Create your first service to get started.</p>
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 gap-4">
