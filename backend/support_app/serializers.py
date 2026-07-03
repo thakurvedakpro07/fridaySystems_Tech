@@ -261,6 +261,9 @@ class TicketDetailSerializer(serializers.ModelSerializer):
     # Customer info — name, email, company. Always safe to include: customers already
     # know their own details; internal staff need it for triage and assignment decisions.
     customer = serializers.SerializerMethodField()
+    # assigned_at: timestamp from the active TicketAssignment row.
+    # Used by EngineerAssignedInfoCard to show when the engineer was assigned.
+    assigned_at = serializers.SerializerMethodField()
 
     def get_csat_score(self, obj):
         try:
@@ -278,6 +281,14 @@ class TicketDetailSerializer(serializers.ModelSerializer):
             "company": getattr(obj.customer, "company", None) or "",
         }
 
+    def get_assigned_at(self, obj):
+        # Prefer the currently-active assignment; fall back to the most recent one.
+        assignment = (
+            obj.assignments.filter(unassigned_at__isnull=True).first()
+            or obj.assignments.first()
+        )
+        return assignment.assigned_at if assignment else None
+
     class Meta:
         model = Ticket
         fields = [
@@ -286,12 +297,16 @@ class TicketDetailSerializer(serializers.ModelSerializer):
             "assigned_to", "customer", "remote_session_url",
             "created_at", "updated_at", "resolved_at",
             "first_response_at", "first_response_due_at", "due_at", "csat_score",
+            "communication_preference", "preferred_language", "assigned_at",
         ]
         read_only_fields = [
             "id", "ticket_number", "status", "assigned_to", "customer",
             "created_at", "updated_at", "resolved_at",
             "first_response_at", "first_response_due_at", "due_at", "csat_score",
+            "assigned_at",
         ]
+        # communication_preference and preferred_language are intentionally writable
+        # so the customer can PATCH them via TicketDetailView.
 
 
 class TicketCreateSerializer(serializers.ModelSerializer):

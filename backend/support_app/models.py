@@ -343,6 +343,24 @@ class Ticket(models.Model):
     # ── Workflow state ────────────────────────────────────────────
     status = models.CharField(max_length=32, choices=STATUS_CHOICES, default="pending_payment")
 
+    # ── Customer contact preferences ──────────────────────────────
+    # Set by the customer immediately after payment while waiting for engineer assignment.
+    COMMUNICATION_CHOICES = [
+        ("phone", "Phone Call"),
+        ("chat",  "Live Chat"),
+    ]
+    LANGUAGE_CHOICES = [
+        ("english", "English"),
+        ("hindi",   "Hindi"),
+        ("marathi", "Marathi"),
+    ]
+    communication_preference = models.CharField(
+        max_length=16, choices=COMMUNICATION_CHOICES, blank=True, default="",
+    )
+    preferred_language = models.CharField(
+        max_length=16, choices=LANGUAGE_CHOICES, blank=True, default="",
+    )
+
     # ── Assignment ────────────────────────────────────────────────
     # SET_NULL means: if a Freelancer account is deleted, ticket stays
     # open but becomes unassigned. The TicketAssignment table preserves
