@@ -191,12 +191,7 @@ export default function HelpCenterPage() {
                 status="in_progress"
                 active
                 label="In Progress"
-                description="Your engineer is actively working on the issue. You can chat with them here."
-              />
-              <LifecycleStep
-                status="waiting_customer"
-                label="Waiting on You"
-                description="Your engineer needs additional information or access from you. Please respond promptly."
+                description="Your engineer is actively working on the issue and may message you for more information — all in the same conversation thread. The ticket stays 'In Progress' throughout."
               />
               <LifecycleStep
                 status="resolved"

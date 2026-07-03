@@ -4,7 +4,6 @@ const COLOUR_MAP = {
   open:             "bg-blue-50 text-blue-700 border-blue-200",
   assigned:         "bg-violet-50 text-violet-700 border-violet-200",
   in_progress:      "bg-indigo-50 text-indigo-700 border-indigo-200",
-  waiting_customer: "bg-pink-50 text-pink-700 border-pink-200",
   resolved:         "bg-emerald-50 text-emerald-700 border-emerald-200",
   closed:           "bg-slate-100 text-slate-600 border-slate-200",
 
@@ -24,7 +23,6 @@ const DOT_MAP = {
   open:             "bg-blue-500",
   in_progress:      "bg-indigo-500",
   assigned:         "bg-violet-500",
-  waiting_customer: "bg-pink-500",
   resolved:         "bg-emerald-500",
   closed:           "bg-slate-400",
   pending_payment:  "bg-amber-500",
@@ -35,9 +33,8 @@ const DOT_MAP = {
 };
 
 const LABEL_MAP = {
-  pending_payment:  "Pending Payment",
-  in_progress:      "In Progress",
-  waiting_customer: "Waiting",
+  pending_payment: "Pending Payment",
+  in_progress:     "In Progress",
 };
 
 export default function Badge({ label, dot = false }) {

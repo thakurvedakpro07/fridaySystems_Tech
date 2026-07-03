@@ -13,7 +13,6 @@ const STATUS_OPTIONS = [
   { value: "open",             label: "Open" },
   { value: "assigned",         label: "Assigned" },
   { value: "in_progress",      label: "In Progress" },
-  { value: "waiting_customer", label: "Waiting on Customer" },
   { value: "resolved",         label: "Resolved" },
   { value: "closed",           label: "Closed" },
   { value: "pending_payment",  label: "Pending Payment" },

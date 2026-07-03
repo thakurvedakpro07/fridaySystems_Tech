@@ -314,10 +314,13 @@ def test_freelancer_cannot_view_unassigned_ticket_detail(open_ticket, freelancer
 # ── Freelancer status update ──────────────────────────────────────
 
 @pytest.mark.django_db
-def test_freelancer_can_move_to_waiting_customer(assigned_ticket, freelancer_user):
+def test_freelancer_cannot_move_to_waiting_customer(assigned_ticket, freelancer_user):
+    """
+    "waiting_customer" no longer exists — the ticket stays in_progress while
+    the engineer and customer communicate, so this status is rejected.
+    """
     client = APIClient()
     client.force_authenticate(user=freelancer_user)
-    # Correct workflow: assigned → in_progress → waiting_customer
     client.post(
         f"/api/freelancer/tickets/{assigned_ticket.id}/status/",
         {"new_status": "in_progress"},
@@ -328,9 +331,9 @@ def test_freelancer_can_move_to_waiting_customer(assigned_ticket, freelancer_use
         {"new_status": "waiting_customer"},
         format="json",
     )
-    assert response.status_code == 200
+    assert response.status_code == 400
     assigned_ticket.refresh_from_db()
-    assert assigned_ticket.status == "waiting_customer"
+    assert assigned_ticket.status == "in_progress"
 
 
 @pytest.mark.django_db

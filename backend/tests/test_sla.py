@@ -305,7 +305,7 @@ def test_set_ticket_due_at_is_idempotent():
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("new_status", ["assigned", "in_progress", "waiting_customer"])
+@pytest.mark.parametrize("new_status", ["assigned", "in_progress"])
 def test_sla_survives_status_transitions(new_status):
     """
     SLA deadlines must not be cleared when ticket moves through assignment/work statuses.

@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useAuthStore } from "../../store/authStore";
-import ActivityTimeline from "./ActivityTimeline";
-import AttachmentSection from "./AttachmentSection";
-import CommentSection from "./CommentSection";
+import { useConversationFeed } from "../../hooks/useConversationFeed";
+import { useCountdown } from "../../hooks/useCountdown";
+import ConversationFeed from "./ConversationFeed";
 import AdminTicketActions from "./AdminTicketActions";
 import FreelancerTicketActions from "./FreelancerTicketActions";
 import PaymentGateway from "./PaymentGateway";
@@ -10,6 +9,8 @@ import CSATWidget from "./CSATWidget";
 import CustomerResolutionActions from "./CustomerResolutionActions";
 import Badge from "../ui/Badge";
 import { updateTicket } from "../../api/tickets";
+
+const CONVERSATION_COMPOSER_ID = "conversation-composer";
 
 // ── Ticket Timeline ───────────────────────────────────────────────
 const LIFECYCLE = [
@@ -54,16 +55,6 @@ const LIFECYCLE = [
     ),
   },
   {
-    status: "waiting_customer",
-    label: "Waiting for Your Response",
-    desc: "The engineer needs your input or additional access",
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
-      </svg>
-    ),
-  },
-  {
     status: "resolved",
     label: "Resolved",
     desc: "Issue fixed — please confirm resolution and rate your experience",
@@ -92,12 +83,8 @@ const ROLE_LABEL_OVERRIDES = {
     admin:      { label: "Engineer Assigned",                   desc: "A specialist has been assigned to this ticket" },
   },
   in_progress: {
-    customer:   { label: "Engineer Working",                    desc: "Your engineer is actively resolving the issue" },
+    customer:   { label: "Engineer Working",                    desc: "Your engineer is actively resolving the issue — see the conversation below" },
     admin:      { label: "In Progress",                         desc: "Engineer is actively working on this issue" },
-  },
-  waiting_customer: {
-    freelancer: { label: "Waiting for Customer Response",       desc: "Waiting for the customer to provide input or access" },
-    admin:      { label: "Waiting for Customer",                desc: "Waiting for the customer to provide input or access" },
   },
 };
 
@@ -132,10 +119,17 @@ function TicketStatusTracker({ status, ticket, role, isPendingPayment = false })
     closed:           ticket?.resolved_at,
   };
 
+  // ETA: count down to whichever SLA deadline hasn't been met yet — first
+  // response, then resolution — so the tracker always shows "what's next".
+  const isTerminal = status === "resolved" || status === "closed";
+  const etaTarget = !ticket?.first_response_at ? ticket?.first_response_due_at : ticket?.due_at;
+  const etaKind = !ticket?.first_response_at ? "First response" : "Resolution";
+  const { label: etaLabel, overdue: etaOverdue } = useCountdown(!isTerminal ? etaTarget : null);
+
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-5"
          style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-2">
         <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
           Ticket Progress
         </p>
@@ -154,6 +148,14 @@ function TicketStatusTracker({ status, ticket, role, isPendingPayment = false })
           </span>
         )}
       </div>
+
+      {etaLabel && (
+        <p className={`text-xs font-medium mb-3 ${etaOverdue ? "text-rose-600" : "text-slate-500"}`}
+           title={etaTarget ? new Date(etaTarget).toLocaleString("en-IN") : undefined}>
+          {etaKind} {etaLabel}
+        </p>
+      )}
+      {!etaLabel && <div className="mb-3" />}
 
       {/* Vertical timeline */}
       <div className="space-y-0">
@@ -296,24 +298,6 @@ function humanize(str) {
   if (!str) return "";
   return str.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
-
-const TABS = [
-  { id: "comments", label: "Comments",
-    icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-          </svg>
-  },
-  { id: "attachments", label: "Files",
-    icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
-          </svg>
-  },
-  { id: "activity", label: "Activity",
-    icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
-          </svg>
-  },
-];
 
 function MetaItem({ label, children }) {
   return (
@@ -768,13 +752,20 @@ function EngineerAssignedInfoCard({ ticket, onOpenChat }) {
 }
 
 export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
-  const [activeTab, setActiveTab] = useState("comments");
-  const user = useAuthStore((s) => s.user);
+  const [draftMessage, setDraftMessage] = useState("");
   const handleUpdate = onUpdate ?? (() => {});
+  const feed = useConversationFeed(ticket?.id);
 
   if (!ticket) return null;
 
   const isPendingPayment = role === "customer" && ticket.status === "pending_payment";
+
+  const focusComposer = () => {
+    requestAnimationFrame(() => {
+      document.getElementById(CONVERSATION_COMPOSER_ID)?.focus();
+      document.getElementById(CONVERSATION_COMPOSER_ID)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -793,7 +784,7 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
       {/* Replaces PostPaymentCard once an engineer is set    */}
       {role === "customer" && ticket.assigned_to &&
        !["pending_payment", "open"].includes(ticket.status) && (
-        <EngineerAssignedInfoCard ticket={ticket} onOpenChat={() => setActiveTab("comments")} />
+        <EngineerAssignedInfoCard ticket={ticket} onOpenChat={focusComposer} />
       )}
 
       {/* ── Status tracker ────────────────────────────────── */}
@@ -869,20 +860,6 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
                 })}
               </MetaItem>
             )}
-            {ticket.first_response_due_at && (
-              <div>
-                <dt className="text-xs font-medium text-slate-500 mb-0.5">Consultation deadline</dt>
-                <dd className={`text-sm font-medium ${
-                  new Date(ticket.first_response_due_at) < new Date() && !["resolved", "closed"].includes(ticket.status)
-                    ? "text-rose-600"
-                    : "text-slate-800"
-                }`}>
-                  {new Date(ticket.first_response_due_at).toLocaleString("en-IN", {
-                    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-                  })}
-                </dd>
-              </div>
-            )}
           </dl>
 
           {ticket.remote_session_url && (
@@ -911,7 +888,14 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
         <AdminTicketActions ticket={ticket} onUpdate={handleUpdate} />
       )}
       {role === "freelancer" && (
-        <FreelancerTicketActions ticket={ticket} onUpdate={handleUpdate} />
+        <FreelancerTicketActions
+          ticket={ticket}
+          onUpdate={handleUpdate}
+          draftMessage={draftMessage}
+          onDraftChange={setDraftMessage}
+          onFeedRefresh={feed.refetch}
+          composerId={CONVERSATION_COMPOSER_ID}
+        />
       )}
       {role === "customer" && (
         <>
@@ -920,43 +904,17 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
         </>
       )}
 
-      {/* ── Tab navigation ──────────────────────────────── */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
-           style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
-        <div className="flex border-b border-slate-100 px-2 pt-2">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium
-                          rounded-lg mb-1 transition-all duration-150
-                ${activeTab === tab.id
-                  ? "text-indigo-700 bg-indigo-50"
-                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-                }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div key={activeTab} className="p-5 animate-fade-in">
-          {activeTab === "comments" && (
-            <CommentSection ticketId={ticket.id} />
-          )}
-          {activeTab === "attachments" && (
-            <AttachmentSection
-              ticketId={ticket.id}
-              userEmail={user?.email}
-              isStaff={user?.is_staff}
-            />
-          )}
-          {activeTab === "activity" && (
-            <ActivityTimeline ticketId={ticket.id} />
-          )}
-        </div>
-      </div>
+      {/* ── Conversation — always visible, conversation-first ─── */}
+      <ConversationFeed
+        ticketId={ticket.id}
+        items={feed.items}
+        loading={feed.loading}
+        error={feed.error}
+        refetch={feed.refetch}
+        draftMessage={draftMessage}
+        onDraftChange={setDraftMessage}
+        composerId={CONVERSATION_COMPOSER_ID}
+      />
     </div>
   );
 }

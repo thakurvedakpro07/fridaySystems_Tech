@@ -190,7 +190,6 @@ class TicketAdmin(admin.ModelAdmin):
             "open":            "#007bff",
             "assigned":        "#17a2b8",
             "in_progress":     "#fd7e14",
-            "waiting_customer":"#ffc107",
             "resolved":        "#28a745",
             "closed":          "#343a40",
         }

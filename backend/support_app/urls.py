@@ -80,6 +80,7 @@ urlpatterns = [
     path("freelancer/tickets/", views.FreelancerTicketListView.as_view(), name="freelancer-ticket-list"),
     path("freelancer/tickets/<uuid:pk>/", views.FreelancerTicketDetailView.as_view(), name="freelancer-ticket-detail"),
     path("freelancer/tickets/<uuid:ticket_id>/status/", views.freelancer_update_status, name="freelancer-ticket-status"),
+    path("freelancer/tickets/<uuid:ticket_id>/remote-session/", views.freelancer_start_remote_session, name="freelancer-ticket-remote-session"),
 
     # ── Payments ─────────────────────────────────────────────────
     # NOTE: webhook/ MUST precede <uuid:pk>/ so the literal path matches first.

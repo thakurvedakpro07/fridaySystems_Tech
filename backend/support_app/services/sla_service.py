@@ -170,7 +170,7 @@ def run_sla_check_for_all_open_tickets() -> None:
     flagged as breached yet, then evaluates each one.
     """
     from ..models import Ticket
-    active_statuses = ["open", "assigned", "in_progress", "waiting_customer"]
+    active_statuses = ["open", "assigned", "in_progress"]
     tickets = Ticket.objects.filter(
         status__in=active_statuses,
         due_at__isnull=False,

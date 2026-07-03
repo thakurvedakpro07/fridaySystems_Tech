@@ -494,10 +494,12 @@ class NotificationSerializer(serializers.ModelSerializer):
 # Valid ticket status keys — duplicated here to avoid circular imports.
 _TICKET_STATUSES = [
     "pending_payment", "open", "assigned", "in_progress",
-    "waiting_customer", "resolved", "closed",
+    "resolved", "closed",
 ]
-# Freelancers may only move a ticket to these three statuses.
-_FREELANCER_STATUSES = ["in_progress", "waiting_customer", "resolved"]
+# Freelancers may only move a ticket to these statuses. "in_progress" covers
+# all active work, including customer communication — there is no separate
+# "waiting for customer" status to move to.
+_FREELANCER_STATUSES = ["in_progress", "resolved"]
 
 
 class AdminAssignSerializer(serializers.Serializer):
@@ -518,6 +520,11 @@ class FreelancerStatusSerializer(serializers.Serializer):
     """
     new_status = serializers.ChoiceField(choices=_FREELANCER_STATUSES)
     note = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class RemoteSessionSerializer(serializers.Serializer):
+    """Validates the body of POST /api/freelancer/tickets/{id}/remote-session/."""
+    remote_session_url = serializers.URLField(max_length=512)
 
 
 class UserProfileUpdateSerializer(serializers.Serializer):

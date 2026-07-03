@@ -13,13 +13,12 @@ import Button from "../ui/Button";
 import Modal from "../ui/Modal";
 
 const STATUS_TRANSITIONS = {
-  open:             ["assigned", "closed"],
-  assigned:         ["in_progress", "open"],
-  in_progress:      ["waiting_customer", "resolved"],
-  waiting_customer: ["in_progress", "resolved"],
-  resolved:         ["closed", "in_progress"],
-  closed:           [],
-  pending_payment:  ["open"],
+  open:            ["assigned", "closed"],
+  assigned:        ["in_progress", "open"],
+  in_progress:     ["resolved"],
+  resolved:        ["closed", "in_progress"],
+  closed:          [],
+  pending_payment: ["open"],
 };
 
 export default function AdminTicketActions({ ticket, onUpdate }) {

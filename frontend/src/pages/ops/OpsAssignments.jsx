@@ -9,7 +9,6 @@ const STATUS_BADGE = {
   open:             "bg-indigo-100 text-indigo-700",
   assigned:         "bg-violet-100 text-violet-700",
   in_progress:      "bg-amber-100 text-amber-700",
-  waiting_customer: "bg-orange-100 text-orange-700",
   resolved:         "bg-emerald-100 text-emerald-700",
   closed:           "bg-slate-100 text-slate-500",
   pending_payment:  "bg-rose-100 text-rose-700",

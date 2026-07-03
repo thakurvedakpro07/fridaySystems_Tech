@@ -98,6 +98,7 @@ from .serializers import (
     PaymentSerializer,
     PaymentVerifySerializer,
     RegisterSerializer,
+    RemoteSessionSerializer,
     RoleChangeAuditSerializer,
     RoleChangeSerializer,
     ServiceSerializer,
@@ -1233,9 +1234,9 @@ class FreelancerTicketDetailView(generics.RetrieveAPIView):
 def freelancer_update_status(request, ticket_id):
     """
     POST /api/freelancer/tickets/{id}/status/
-    Body: {"new_status": "waiting_customer", "note": "optional"}
+    Body: {"new_status": "resolved", "note": "optional"}
 
-    Freelancers can move a ticket to: in_progress, waiting_customer, resolved.
+    Freelancers can move a ticket to: in_progress, resolved.
     Only admins can close a ticket.
     """
     from .services.ticket_service import update_status
@@ -1266,6 +1267,41 @@ def freelancer_update_status(request, ticket_id):
         title=f"Ticket {ticket.ticket_number} update",
         body=f"Your ticket is now: {ticket.get_status_display()}",
         ticket=ticket,
+    )
+
+    return Response(TicketDetailSerializer(ticket).data)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsFreelancer])
+def freelancer_start_remote_session(request, ticket_id):
+    """
+    POST /api/freelancer/tickets/{id}/remote-session/
+    Body: {"remote_session_url": "https://anydesk.com/..."}
+
+    Lets the assigned freelancer share a remote-session link without
+    changing ticket status — the link and an announcement both appear
+    in the conversation thread.
+    """
+    from .services.ticket_service import add_comment
+
+    ticket = get_object_or_404(
+        Ticket,
+        pk=ticket_id,
+        assigned_to=request.user.freelancer_profile,
+    )
+
+    serializer = RemoteSessionSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    url = serializer.validated_data["remote_session_url"]
+
+    ticket.remote_session_url = url
+    ticket.save(update_fields=["remote_session_url", "updated_at"])
+
+    add_comment(
+        ticket=ticket,
+        author=request.user,
+        body=f"Started a remote session: {url}",
     )
 
     return Response(TicketDetailSerializer(ticket).data)
@@ -2022,7 +2058,6 @@ def ops_dashboard(request):
     open_count       = by_status.get("open", 0)
     assigned_count   = by_status.get("assigned", 0)
     in_progress_count = by_status.get("in_progress", 0)
-    waiting_count    = by_status.get("waiting_customer", 0)
     resolved_count   = by_status.get("resolved", 0)
     closed_count     = by_status.get("closed", 0)
     pending_count    = by_status.get("pending_payment", 0)
@@ -2042,7 +2077,7 @@ def ops_dashboard(request):
     # SLA counts — only active (non-terminal) tickets with a deadline set
     from django.utils import timezone as _tz
     _now = _tz.now()
-    _active_sla_statuses = ["open", "assigned", "in_progress", "waiting_customer"]
+    _active_sla_statuses = ["open", "assigned", "in_progress"]
     sla_overdue = Ticket.objects.filter(
         status__in=_active_sla_statuses,
         due_at__lt=_now,
@@ -2057,11 +2092,10 @@ def ops_dashboard(request):
         "open": open_count,
         "assigned": assigned_count,
         "in_progress": in_progress_count,
-        "waiting_customer": waiting_count,
         "resolved": resolved_count,
         "closed": closed_count,
         "pending_payment": pending_count,
-        "total_active": open_count + assigned_count + in_progress_count + waiting_count,
+        "total_active": open_count + assigned_count + in_progress_count,
         "total_resolved": resolved_count + closed_count,
         "unassigned": unassigned_count,
         "active_freelancers": active_freelancers,
@@ -2127,7 +2161,7 @@ class OpsFreelancerListView(generics.ListAPIView):
         qs = Freelancer.objects.filter(onboarding_status="approved", active=True).select_related("user").annotate(
             active_ticket_count=Count(
                 "assigned_tickets",
-                filter=DQ(assigned_tickets__status__in=["assigned", "in_progress", "waiting_customer"]),
+                filter=DQ(assigned_tickets__status__in=["assigned", "in_progress"]),
             )
         ).order_by("active_ticket_count", "-rating")
 

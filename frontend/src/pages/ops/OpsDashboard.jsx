@@ -20,7 +20,6 @@ const STATUS_COLORS = {
   open:             "bg-indigo-100 text-indigo-700",
   assigned:         "bg-violet-100 text-violet-700",
   in_progress:      "bg-amber-100 text-amber-700",
-  waiting_customer: "bg-orange-100 text-orange-700",
   resolved:         "bg-emerald-100 text-emerald-700",
   closed:           "bg-slate-100 text-slate-600",
   pending_payment:  "bg-rose-100 text-rose-700",
@@ -176,9 +175,9 @@ export default function OpsDashboard() {
               to="/operations/tickets?status=in_progress" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
-            <KpiCard label="Waiting on Customer" value={stats?.waiting_customer} color="orange"
-              sub="Engineer needs a response" icon={IC.alert} loading={statsLoading}
-              to="/operations/tickets?status=waiting_customer" />
+            <KpiCard label="SLA Due Soon" value={stats?.sla_due_soon} color="orange"
+              sub="Deadline within 2 hours" icon={IC.alert} loading={statsLoading}
+              to="/operations/tickets?status=in_progress" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
             <KpiCard label="Resolved / Closed" value={(stats?.resolved ?? 0) + (stats?.closed ?? 0)}

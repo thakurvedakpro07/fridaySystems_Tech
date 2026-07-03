@@ -170,11 +170,11 @@ DEMO_TICKETS = [
         "This is blocking budget approval workflows and HR document processing.",
     ),
 
-    # ── Waiting on Customer — 2 tickets ──────────────────────────────
+    # ── In progress, awaiting customer info — 2 tickets ──────────────
     (
         "DEMO_10",
         "Remote desktop access lost after firewall rule change",
-        "windows", "medium", "waiting_customer",
+        "windows", "medium", "in_progress",
         9, 6, 10, 2000,
         "Remote Desktop Protocol (RDP) access to our on-premise servers has been blocked "
         "since the network team modified the perimeter firewall rules on Wednesday. "
@@ -185,7 +185,7 @@ DEMO_TICKETS = [
     (
         "DEMO_11",
         "DNS records pointing to wrong IP after domain registrar migration",
-        "linux", "high", "waiting_customer",
+        "linux", "high", "in_progress",
         0, 7, 9, 2000,
         "After migrating our domain from GoDaddy to Cloudflare, several DNS records "
         "are pointing to the old server IP (203.0.113.45) instead of our new server (198.51.100.22). "
@@ -549,7 +549,6 @@ class Command(BaseCommand):
         t1 = self._dt(days_ago, hours_offset=-2)       # payment confirmed → open
         t2 = self._dt(days_ago, hours_offset=-4)       # assigned
         t3 = self._dt(days_ago, hours_offset=-6)       # in_progress
-        t4 = self._dt(days_ago, hours_offset=-24)      # waiting / escalated
         t5 = self._dt(days_ago - 1, hours_offset=4)   # resolved
 
         # Every ticket: created
@@ -557,17 +556,12 @@ class Command(BaseCommand):
         # Payment → open
         log("status_changed", "pending_payment", "open", None, t1, "Payment confirmed via Razorpay.")
 
-        if final_status in ("assigned", "in_progress", "waiting_customer", "resolved"):
+        if final_status in ("assigned", "in_progress", "resolved"):
             eng_email = engineer.user.email if engineer else ""
             log("assigned", "", eng_email, staff_user, t2)
 
-            if final_status in ("in_progress", "waiting_customer", "resolved"):
+            if final_status in ("in_progress", "resolved"):
                 log("status_changed", "assigned", "in_progress", engineer.user if engineer else staff_user, t3)
-
-            if final_status == "waiting_customer":
-                log("status_changed", "in_progress", "waiting_customer",
-                    engineer.user if engineer else staff_user, t4,
-                    "Waiting for customer to provide firewall/config details.")
 
             if final_status == "resolved":
                 log("resolved", "in_progress", "resolved",

@@ -276,8 +276,11 @@ class Ticket(models.Model):
     who is handling it, and what state it is currently in.
 
     Lifecycle:
-      pending_payment → open → assigned → in_progress → waiting_customer
-                                                      → resolved → closed
+      pending_payment → open → assigned → in_progress → resolved → closed
+
+    "in_progress" covers all active work on the ticket, including any
+    back-and-forth communication with the customer — status does not
+    change while the engineer and customer are messaging each other.
     """
 
     # ── Service catalogue ─────────────────────────────────────────
@@ -304,8 +307,8 @@ class Ticket(models.Model):
     # pending_payment  → customer has submitted; awaiting consulting fee payment
     # open             → payment received; ticket visible to admin queue
     # assigned         → freelancer assigned; they haven't started yet
-    # in_progress      → freelancer is actively working
-    # waiting_customer → freelancer needs info or action from customer
+    # in_progress      → freelancer is actively working (includes all customer
+    #                    communication — requesting info does not change status)
     # resolved         → freelancer marks fixed; customer can confirm or reopen
     # closed           → customer confirmed OR auto-closed after 48h
     STATUS_CHOICES = [
@@ -313,7 +316,6 @@ class Ticket(models.Model):
         ("open",             "Open"),
         ("assigned",         "Assigned"),
         ("in_progress",      "In Progress"),
-        ("waiting_customer", "Waiting for Customer"),
         ("resolved",         "Resolved"),
         ("closed",           "Closed"),
     ]

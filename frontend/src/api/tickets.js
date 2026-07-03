@@ -18,8 +18,8 @@ export const updateTicket = (id, data) =>
 export const listComments = (ticketId) =>
   apiClient.get(`/tickets/${ticketId}/comments/`);
 
-export const addComment = (ticketId, body) =>
-  apiClient.post(`/tickets/${ticketId}/comments/`, { body });
+export const addComment = (ticketId, body, isInternal = false) =>
+  apiClient.post(`/tickets/${ticketId}/comments/`, { body, is_internal: isInternal });
 
 export const submitCSAT = (ticketId, score, comment) =>
   apiClient.post(`/tickets/${ticketId}/csat/`, { score, comment });
@@ -62,6 +62,9 @@ export const freelancerGetTicket = (ticketId) =>
 
 export const freelancerUpdateStatus = (ticketId, newStatus, note = "") =>
   apiClient.post(`/freelancer/tickets/${ticketId}/status/`, { new_status: newStatus, note });
+
+export const freelancerStartRemoteSession = (ticketId, remoteSessionUrl) =>
+  apiClient.post(`/freelancer/tickets/${ticketId}/remote-session/`, { remote_session_url: remoteSessionUrl });
 
 // Admin freelancer management
 export const listFreelancers = () =>
