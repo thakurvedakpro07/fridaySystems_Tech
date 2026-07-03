@@ -406,7 +406,7 @@ function PostPaymentCard({ ticket, onUpdate }) {
         <div className="h-1 bg-gradient-to-r from-emerald-400 to-teal-500" />
 
         <div className="p-5">
-          {/* Success header */}
+          {/* Payment successful header */}
           <div className="flex items-start gap-3 mb-5">
             <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
               <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24"
@@ -415,25 +415,39 @@ function PostPaymentCard({ ticket, onUpdate }) {
               </svg>
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 leading-tight">You're all set!</h2>
+              <h2 className="text-base font-bold text-slate-900 leading-tight">Payment Successful</h2>
               <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-                Your preferences have been saved successfully.
+                Your ticket has been created successfully and is now in our support queue.
+              </p>
+              <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                A Support Engineer will contact you within your selected response window.
               </p>
             </div>
           </div>
 
-          {/* Estimated first response */}
-          <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-4">
-            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">
-              Estimated first response
-            </p>
-            <p className="text-sm font-bold text-slate-900">Within {slaTime}</p>
+          {/* Support Engineer Response — the primary answer to "when will someone contact me?",
+              so it's styled to stand out more than the ticket timeline that follows this card. */}
+          <div className="rounded-xl p-4 mb-5 border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50">
+            <div className="flex items-start gap-3">
+              <span className="relative flex h-2.5 w-2.5 mt-1.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+              </span>
+              <div>
+                <p className="text-[10px] font-semibold text-emerald-700 uppercase tracking-widest mb-1">
+                  Support Engineer Response
+                </p>
+                <p className="text-lg font-bold text-slate-900 leading-snug">
+                  A Support Engineer will contact you within {slaTime}.
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Saved preferences summary */}
+          {/* Contact preference summary */}
           <dl className="grid grid-cols-2 gap-4 mb-5">
             <div>
-              <dt className="text-xs font-medium text-slate-500 mb-0.5">Communication</dt>
+              <dt className="text-xs font-medium text-slate-500 mb-1">Communication Method</dt>
               <dd className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
                 {commPref === "phone" ? (
                   <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none"
@@ -452,8 +466,13 @@ function PostPaymentCard({ ticket, onUpdate }) {
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-medium text-slate-500 mb-0.5">Language</dt>
-              <dd className="text-sm font-semibold text-slate-800">
+              <dt className="text-xs font-medium text-slate-500 mb-1">Preferred Language</dt>
+              <dd className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
+                </svg>
                 {LANG_LABEL[language] || "—"}
               </dd>
             </div>
