@@ -413,6 +413,10 @@ function PostPaymentCard({ ticket, onUpdate }) {
           <div>
             <h2 className="text-base font-bold text-slate-900 leading-tight">You're all set!</h2>
             <p className="text-sm text-slate-600 mt-1 leading-relaxed">{slaMsg}</p>
+            <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+              A Support Agent will review your request and contact you using your preferred
+              communication method.
+            </p>
           </div>
         </div>
 
@@ -643,6 +647,19 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
         <PaymentGateway ticket={ticket} onPaymentSuccess={handleUpdate} />
       )}
 
+      {/* ── Contact / next steps card — FIRST after payment ── */}
+      {/* status=open: payment confirmed, waiting for engineer  */}
+      {role === "customer" && ticket.status === "open" && (
+        <PostPaymentCard ticket={ticket} onUpdate={handleUpdate} />
+      )}
+
+      {/* ── Engineer assigned info card ───────────────────── */}
+      {/* Replaces PostPaymentCard once an engineer is set    */}
+      {role === "customer" && ticket.assigned_to &&
+       !["pending_payment", "open"].includes(ticket.status) && (
+        <EngineerAssignedInfoCard ticket={ticket} />
+      )}
+
       {/* ── Status tracker ────────────────────────────────── */}
       <TicketStatusTracker
         status={ticket.status}
@@ -650,19 +667,6 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
         role={role}
         isPendingPayment={isPendingPayment}
       />
-
-      {/* ── Post-payment preferences card ─────────────────── */}
-      {/* status=open: payment confirmed, waiting for engineer */}
-      {role === "customer" && ticket.status === "open" && (
-        <PostPaymentCard ticket={ticket} onUpdate={handleUpdate} />
-      )}
-
-      {/* ── Engineer assigned info card ───────────────────── */}
-      {/* Replaces PostPaymentCard once an engineer is set */}
-      {role === "customer" && ticket.assigned_to &&
-       !["pending_payment", "open"].includes(ticket.status) && (
-        <EngineerAssignedInfoCard ticket={ticket} />
-      )}
 
       {/* ── Ticket header card ─────────────────────────────── */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
