@@ -927,6 +927,7 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
       {/* ── Conversation — always visible, conversation-first ─── */}
       <ConversationFeed
         ticketId={ticket.id}
+        ticket={ticket}
         items={feed.items}
         loading={feed.loading}
         error={feed.error}

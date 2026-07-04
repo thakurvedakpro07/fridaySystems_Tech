@@ -7,14 +7,25 @@ export default defineConfig(({ mode }) => ({
   // ── Dev server ─────────────────────────────────────────────────────────────
   server: {
     port: 5173,
-    // Proxy /api/* to the Django backend so the browser can call it on the same
-    // origin during development — avoids CORS and matches production behaviour.
+    // Proxy /api/* and /media/* to the Django backend so the browser can call
+    // them on the same origin during development — avoids CORS and matches
+    // production behaviour (nginx/nginx.conf proxies both under one host too).
+    //
+    // changeOrigin is intentionally left off: prod's nginx forwards the
+    // original Host header unchanged (`proxy_set_header Host $host`), which is
+    // what lets TicketAttachmentSerializer.get_file_url() build a correct,
+    // browser-reachable absolute URL via request.build_absolute_uri(). Setting
+    // changeOrigin here would rewrite the Host header to the proxy target
+    // (e.g. "backend:8000" inside Docker Compose) and Django would bake that
+    // unreachable hostname into every attachment's file_url instead.
     proxy: {
       "/api": {
         // Outside Docker: VITE_API_TARGET is unset → falls back to localhost:8000
         // Inside Docker:  VITE_API_TARGET=http://backend:8000 (set in docker-compose.yml)
         target: process.env.VITE_API_TARGET ?? "http://localhost:8000",
-        changeOrigin: true,
+      },
+      "/media": {
+        target: process.env.VITE_API_TARGET ?? "http://localhost:8000",
       },
     },
   },
