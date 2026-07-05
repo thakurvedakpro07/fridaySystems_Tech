@@ -464,15 +464,18 @@ export default function ConversationFeed({
   let lastDateKey = null;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-card">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-        <p className="text-sm font-semibold text-slate-900">Conversation</p>
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
+         style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
+      <div className="px-5 py-4 border-b border-slate-100">
+        <p className="text-base font-semibold text-slate-900 tracking-tight">Conversation</p>
         {items.length > 0 && (
-          <span className="text-xs text-slate-400">{items.length} update{items.length === 1 ? "" : "s"}</span>
+          <p className="text-xs text-slate-400 mt-0.5">
+            {items.length} activit{items.length === 1 ? "y" : "ies"}
+          </p>
         )}
       </div>
 
-      <div ref={scrollRef} className="p-5 space-y-4 max-h-[32rem] overflow-y-auto scrollbar-thin">
+      <div ref={scrollRef} className="p-5 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-thin">
         {loading && (
           <div className="flex items-center gap-2 py-4">
             <Spinner size="sm" />
@@ -538,9 +541,9 @@ export default function ConversationFeed({
           onChange={(e) => onDraftChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          rows={2}
+          rows={3}
           placeholder="Write a message… (Ctrl+Enter to send, paste an image or drop a file)"
-          className="input-base resize-none py-2.5 font-sans"
+          className="input-base resize-none py-3 text-[15px] leading-relaxed font-sans placeholder:text-slate-400"
         />
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center gap-1">

@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { adminGetTicket, freelancerGetTicket, getTicket } from "../api/tickets";
 import { useAuthStore } from "../store/authStore";
 import TicketDetail from "../components/tickets/TicketDetail";
 import MainLayout from "../components/layouts/MainLayout";
 import Spinner from "../components/ui/Spinner";
-import { SkeletonDetailCard } from "../components/ui/Spinner";
 import { usePageTitle } from "../hooks/usePageTitle";
 
 const INTERNAL_STAFF_ROLES = ["support_agent", "operations_manager", "finance_manager"];
@@ -20,7 +19,6 @@ function useRoleTicketFetcher(id) {
 
 export default function TicketDetailPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { fetchFn, role } = useRoleTicketFetcher(id);
 
   const [ticket, setTicket] = useState(null);
@@ -65,30 +63,41 @@ export default function TicketDetailPage() {
   }, [ticket?.status, role, loadTicket]);
 
   return (
-    <MainLayout maxWidth="max-w-3xl">
-      {/* Back button */}
-      <button
-        onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900
-                   mb-5 transition-colors group"
-      >
-        <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform"
-             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-        </svg>
-        Back
-      </button>
-
+    <MainLayout maxWidth="max-w-7xl" noPad>
+    <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-8">
       {loading && (
-        <div className="space-y-4">
-          <SkeletonDetailCard />
-          <div className="bg-white border border-slate-200 rounded-2xl p-6"
-               style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
-            <div className="h-4 w-32 shimmer rounded-full mb-4" />
-            <div className="space-y-2.5">
-              <div className="h-3 shimmer rounded-full" />
-              <div className="h-3 w-4/5 shimmer rounded-full" />
-              <div className="h-3 w-3/5 shimmer rounded-full" />
+        <div className="animate-fade-in space-y-4">
+          {/* Back button + hero header placeholder — keeps the loaded state from jumping */}
+          <div className="space-y-2">
+            <div className="h-4 w-28 shimmer rounded-full" />
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5">
+              <div className="h-3 w-24 shimmer rounded-full mb-1.5" />
+              <div className="h-9 w-2/3 shimmer rounded-full mb-2" />
+              <div className="h-3 w-4/5 shimmer rounded-full mb-3" />
+              <div className="flex gap-1.5">
+                <div className="h-5 w-16 shimmer rounded-md" />
+                <div className="h-5 w-16 shimmer rounded-md" />
+                <div className="h-5 w-16 shimmer rounded-md" />
+              </div>
+            </div>
+          </div>
+
+          <div className="ticket-detail-grid">
+            <div className="ticket-grid-conversation bg-white border border-slate-200 rounded-2xl p-6">
+              <div className="h-4 w-32 shimmer rounded-full mb-4" />
+              <div className="space-y-2.5">
+                <div className="h-3 shimmer rounded-full" />
+                <div className="h-3 w-4/5 shimmer rounded-full" />
+                <div className="h-3 w-3/5 shimmer rounded-full" />
+              </div>
+            </div>
+            <div className="ticket-grid-sidebar bg-white border border-slate-200 rounded-2xl p-5">
+              <div className="h-3 w-28 shimmer rounded-full mb-4" />
+              <div className="space-y-2.5">
+                <div className="h-3 shimmer rounded-full" />
+                <div className="h-3 w-4/5 shimmer rounded-full" />
+                <div className="h-3 w-3/5 shimmer rounded-full" />
+              </div>
             </div>
           </div>
         </div>
@@ -108,6 +117,7 @@ export default function TicketDetailPage() {
           <TicketDetail ticket={ticket} role={role} onUpdate={handleTicketUpdate} />
         </div>
       )}
+    </div>
     </MainLayout>
   );
 }

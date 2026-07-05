@@ -78,6 +78,39 @@
   :focus-visible {
     @apply outline-none ring-2 ring-indigo-500/50 ring-offset-1;
   }
+
+  /* ── Ticket detail page — two-column conversation/sidebar grid ────────
+     Title, description and status chips live in the page-level top bar
+     (TicketDetailPage.jsx), above this grid entirely — so the grid itself
+     contains only two things: conversation (left, primary) and sidebar
+     (right, engineer/progress/actions/facts). With nothing else competing
+     for a row, "align-items: stretch" (grid's own default — declared
+     explicitly here since it's load-bearing) makes both columns match
+     the height of the row's tallest content — normally the conversation
+     card — instead of the sidebar trailing off short. .ticket-grid-sidebar
+     is h-full (in JSX) so its card actually fills that stretched height,
+     and stays sticky so it keeps pace while the page scrolls. */
+  .ticket-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "conversation"
+      "sidebar";
+    gap: 1rem;
+  }
+
+  @media (min-width: 1024px) {
+    .ticket-detail-grid {
+      /* 18:7 ≈ 72% / 28% */
+      grid-template-columns: minmax(0, 18fr) minmax(280px, 7fr);
+      grid-template-areas: "conversation sidebar";
+      column-gap: 1.5rem;
+      align-items: stretch;
+    }
+  }
+
+  .ticket-grid-conversation { grid-area: conversation; min-width: 0; }
+  .ticket-grid-sidebar      { grid-area: sidebar; min-width: 0; }
 }
 
 @layer utilities {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useConversationFeed } from "../../hooks/useConversationFeed";
 import { useCountdown } from "../../hooks/useCountdown";
 import ConversationFeed from "./ConversationFeed";
@@ -8,6 +9,7 @@ import PaymentGateway from "./PaymentGateway";
 import CSATWidget from "./CSATWidget";
 import CustomerResolutionActions from "./CustomerResolutionActions";
 import Badge from "../ui/Badge";
+import Button from "../ui/Button";
 import { updateTicket } from "../../api/tickets";
 
 const CONVERSATION_COMPOSER_ID = "conversation-composer";
@@ -36,7 +38,7 @@ const LIFECYCLE = [
   },
   {
     status: "assigned",
-    label: "Ready to Start",
+    label: "Engineer Assigned",
     desc: "A verified engineer has been assigned — they haven't started work yet",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -46,7 +48,7 @@ const LIFECYCLE = [
   },
   {
     status: "in_progress",
-    label: "Work Started",
+    label: "Engineer Working",
     desc: "Engineer is actively diagnosing and resolving the issue",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -99,198 +101,83 @@ function getLifecycle(role) {
   });
 }
 
-function formatShortDate(dateStr) {
-  if (!dateStr) return null;
-  return new Date(dateStr).toLocaleString("en-IN", {
-    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-  });
+// Short labels for the compact tracker — scoped to this component only,
+// doesn't touch Badge.jsx or any other status wording elsewhere.
+const COMPACT_LABEL = {
+  pending_payment: "Created",
+  open:            "Payment",
+  assigned:        "Assigned",
+  in_progress:     "Working",
+  resolved:        "Resolved",
+  closed:          "Closed",
+};
+
+// Shared ETA calc — counts down to whichever SLA deadline hasn't been met
+// yet (first response, then resolution). Used by both the hero header and
+// the sidebar's Ticket Progress tracker so the two never disagree.
+function useTicketETA(ticket) {
+  const isTerminal = ticket?.status === "resolved" || ticket?.status === "closed";
+  const etaTarget = !ticket?.first_response_at ? ticket?.first_response_due_at : ticket?.due_at;
+  const etaKind = !ticket?.first_response_at ? "First response" : "Resolution";
+  const { label, overdue } = useCountdown(!isTerminal ? etaTarget : null);
+  return { label, overdue, kind: etaKind, target: etaTarget };
 }
 
+// Compact "Amazon order tracking"-style milestone list — no per-step
+// descriptions or connector lines, just a marker + short label per stage,
+// plus one ETA caption. Nested inside TicketSummarySidebar, so it has no
+// card chrome of its own.
 function TicketStatusTracker({ status, ticket, role, isPendingPayment = false }) {
   const lifecycle = getLifecycle(role);
   const currentIdx = lifecycle.findIndex((s) => s.status === status);
-
-  // Map statuses to ticket timestamps where available
-  const timestamps = {
-    pending_payment: ticket?.created_at,
-    open:             ticket?.payment_confirmed_at ?? (ticket?.status !== "pending_payment" ? ticket?.created_at : null),
-    assigned:         ticket?.first_response_at,
-    in_progress:      ticket?.first_response_at,
-    resolved:         ticket?.resolved_at,
-    closed:           ticket?.resolved_at,
-  };
-
-  // ETA: count down to whichever SLA deadline hasn't been met yet — first
-  // response, then resolution — so the tracker always shows "what's next".
-  const isTerminal = status === "resolved" || status === "closed";
-  const etaTarget = !ticket?.first_response_at ? ticket?.first_response_due_at : ticket?.due_at;
-  const etaKind = !ticket?.first_response_at ? "First response" : "Resolution";
-  const { label: etaLabel, overdue: etaOverdue } = useCountdown(!isTerminal ? etaTarget : null);
+  const { label: etaLabel, overdue: etaOverdue, kind: etaKind, target: etaTarget } = useTicketETA(ticket);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5"
-         style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
-          Ticket Progress
-        </p>
-        {(status === "resolved" || status === "closed") && (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700
-                           bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-            </svg>
-            Complete
-          </span>
-        )}
-        {status !== "resolved" && status !== "closed" && currentIdx >= 0 && (
-          <span className="text-[11px] text-slate-500 font-medium">
-            Step {currentIdx + 1} of {lifecycle.length}
-          </span>
-        )}
-      </div>
-
+    <div>
       {etaLabel && (
-        <p className={`text-xs font-medium mb-3 ${etaOverdue ? "text-rose-600" : "text-slate-500"}`}
+        <p className={`text-xs font-medium mb-2.5 ${etaOverdue ? "text-rose-600" : "text-slate-500"}`}
            title={etaTarget ? new Date(etaTarget).toLocaleString("en-IN") : undefined}>
           {etaKind} {etaLabel}
         </p>
       )}
-      {!etaLabel && <div className="mb-3" />}
 
-      {/* Vertical timeline */}
-      <div className="space-y-0">
+      <ol className="space-y-1.5">
         {lifecycle.map((step, idx) => {
           const done    = idx < currentIdx;
           const current = idx === currentIdx;
-          const isLast  = idx === lifecycle.length - 1;
-          const ts      = timestamps[step.status];
-          // In pending-payment state: step 1 is "next up", steps 2+ are locked/far future
-          const isNextStep = isPendingPayment && idx === 1;
-          const isLocked   = isPendingPayment && idx > 1;
+          const isLocked = isPendingPayment && idx > 1;
 
           return (
-            <div key={step.status}
-                 className={`flex gap-3 transition-opacity duration-200
-                   ${isLocked ? "opacity-40" : ""}`}>
-              {/* Icon column */}
-              <div className="flex flex-col items-center shrink-0">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-300
-                    ${current
-                      ? "bg-indigo-600 shadow-md shadow-indigo-200 ring-4 ring-indigo-50"
-                      : done
-                      ? "bg-emerald-500"
-                      : "bg-white border-2 border-slate-200"
-                    }`}
-                >
-                  {done ? (
-                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                  ) : (
-                    <span className={current ? "text-white" : "text-slate-500"}>
-                      {step.icon}
-                    </span>
-                  )}
-                </div>
-                {!isLast && (
-                  <div className={`w-0.5 flex-1 my-1 min-h-[20px] transition-colors duration-300
-                    ${done ? "bg-emerald-300" : "bg-slate-150"}`}
-                    style={{ backgroundColor: done ? "#6ee7b7" : "#f1f5f9" }}
-                  />
+            <li key={step.status}
+                className={`flex items-center gap-2 transition-opacity duration-200 ${isLocked ? "opacity-40" : ""}`}>
+              <span
+                className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0
+                  ${current
+                    ? "bg-indigo-600 ring-2 ring-indigo-100"
+                    : done
+                    ? "bg-emerald-500"
+                    : "bg-white border-2 border-slate-200"
+                  }`}
+              >
+                {done && (
+                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
                 )}
-              </div>
-
-              {/* Content */}
-              <div className={`pb-4 flex-1 min-w-0 ${isLast ? "pb-0" : ""}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className={`text-sm font-semibold leading-tight
-                      ${current ? "text-indigo-700" : done ? "text-slate-800" : "text-slate-500"}`}>
-                      {step.label}
-                    </p>
-                    {(current || done) && (
-                      <p className={`text-xs mt-0.5 leading-relaxed
-                        ${current ? "text-slate-500" : "text-slate-500"}`}>
-                        {step.desc}
-                      </p>
-                    )}
-                  </div>
-                  {ts && (done || current) && (
-                    <span className="text-[10px] text-slate-500 shrink-0 pt-0.5 whitespace-nowrap">
-                      {formatShortDate(ts)}
-                    </span>
-                  )}
-                </div>
-                {current && (
-                  <div className="mt-1.5 flex items-center gap-1.5">
-                    <span className="relative flex h-2 w-2 shrink-0">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
-                    </span>
-                    <span className="text-[11px] font-semibold text-indigo-600">Active now</span>
-                  </div>
-                )}
-                {isNextStep && (
-                  <p className="text-[10px] font-medium text-amber-600 mt-1 leading-snug">
-                    Unlocks after payment above
-                  </p>
-                )}
-              </div>
-            </div>
+              </span>
+              <span className={`text-xs ${current ? "font-semibold text-indigo-700" : done ? "font-medium text-slate-700" : "text-slate-400"}`}>
+                {COMPACT_LABEL[step.status]}
+              </span>
+              {current && (
+                <span className="relative flex h-1.5 w-1.5 shrink-0 ml-auto">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-indigo-500" />
+                </span>
+              )}
+            </li>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-// ── Engineer Trust Card ───────────────────────────────────────────
-function EngineerTrustCard({ assignedTo }) {
-  if (!assignedTo?.email) return null;
-
-  const firstName = (assignedTo.first_name ?? "").trim();
-  const lastName  = (assignedTo.last_name  ?? "").trim();
-  const name      = firstName && lastName
-    ? `${firstName} ${lastName}`
-    : firstName || assignedTo.email.split("@")[0];
-  const initials  = firstName && lastName
-    ? `${firstName[0]}${lastName[0]}`.toUpperCase()
-    : name.slice(0, 2).toUpperCase();
-
-  return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5"
-         style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-4">
-        Your Assigned Engineer
-      </p>
-
-      <div className="flex items-start gap-4">
-        {/* Avatar */}
-        <div className="shrink-0">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 text-sm font-bold
-                          flex items-center justify-center select-none">
-            {initials}
-          </div>
-        </div>
-
-        {/* Name + verified badge */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-base font-bold text-slate-900 leading-tight">{name}</p>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
-                             bg-indigo-50 border border-indigo-100 text-[10px] font-bold text-indigo-600">
-              <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-              </svg>
-              Verified
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-0.5">IT Support Engineer</p>
-          <p className="text-xs text-slate-500 mt-0.5">{assignedTo.email}</p>
-        </div>
-      </div>
+      </ol>
     </div>
   );
 }
@@ -640,132 +527,268 @@ function PostPaymentCard({ ticket, onUpdate }) {
   );
 }
 
-// ── Engineer assigned info card ───────────────────────────────────
-// Replaces PostPaymentCard once ticket.assigned_to is set.
-function EngineerAssignedInfoCard({ ticket, onOpenChat }) {
-  const { assigned_to, communication_preference, preferred_language, assigned_at } = ticket;
+// ── Sidebar section wrapper — consistent divider/spacing between blocks ──
+function SidebarSection({ title, children }) {
+  return (
+    <div className="border-t border-slate-100 pt-6 mt-6 first:border-t-0 first:pt-0 first:mt-0">
+      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
+        {title}
+      </p>
+      {children}
+    </div>
+  );
+}
 
-  const firstName = (assigned_to.first_name ?? "").trim();
-  const lastName  = (assigned_to.last_name  ?? "").trim();
-  const name      = firstName && lastName
-    ? `${firstName} ${lastName}`
-    : firstName || assigned_to.email.split("@")[0];
-  const initials  = firstName && lastName
-    ? `${firstName[0]}${lastName[0]}`.toUpperCase()
-    : name.slice(0, 2).toUpperCase();
+// Small phone/chat icons, reused by both the Ticket Information "Communication"
+// field and the phone-reminder note in Quick Actions.
+function CommIcon({ method }) {
+  if (method === "phone") {
+    return (
+      <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none"
+           viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round"
+          d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+      </svg>
+    );
+  }
+  if (method === "chat") {
+    return (
+      <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none"
+           viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round"
+          d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+      </svg>
+    );
+  }
+  return null;
+}
 
-  const skills = assigned_to.skills
-    ? assigned_to.skills.split(",").map((s) => s.trim()).filter(Boolean)
-    : [];
-  const specialization = skills.length > 0
-    ? skills.slice(0, 3).map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(", ")
-    : null;
+// ── Right sidebar — sticky summary: engineer, customer, compact progress,
+// quick actions, and ticket facts, so each fact appears exactly once.
+function TicketSummarySidebar({
+  ticket, role, isPendingPayment, onOpenChat, handleUpdate,
+  draftMessage, onDraftChange, onFeedRefresh, composerId,
+}) {
+  const assignedTo = ticket.assigned_to;
+  const showEngineer = !!assignedTo?.email && role !== "freelancer";
+  const showCustomer = !!ticket.customer && role !== "customer";
+  const showQuickActions = role === "customer" || role === "freelancer" || role === "admin";
+  // Same condition that used to gate the standalone "Contact Preferences"
+  // card: customer only, once an engineer is assigned and past the
+  // pending-payment/open stages.
+  const showContactInfo = role === "customer" && !!ticket.assigned_to &&
+    !["pending_payment", "open"].includes(ticket.status);
+
+  let engineerName, engineerInitials, specialization;
+  if (showEngineer) {
+    const firstName = (assignedTo.first_name ?? "").trim();
+    const lastName  = (assignedTo.last_name  ?? "").trim();
+    engineerName = firstName && lastName
+      ? `${firstName} ${lastName}`
+      : firstName || assignedTo.email.split("@")[0];
+    engineerInitials = firstName && lastName
+      ? `${firstName[0]}${lastName[0]}`.toUpperCase()
+      : engineerName.slice(0, 2).toUpperCase();
+    const skills = assignedTo.skills
+      ? assignedTo.skills.split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
+    specialization = skills.length > 0
+      ? skills.slice(0, 3).map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(", ")
+      : null;
+  }
+
+  const slaTime = SLA_TIME[ticket.severity] ?? SLA_TIME.medium;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 h-full"
          style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-      {/* Indigo accent bar */}
-      <div className="h-1 bg-gradient-to-r from-indigo-500 to-violet-500" />
-
-      <div className="p-5">
-        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-4">
-          Your Engineer
-        </p>
-
-        {/* ── Engineer identity ────────────────────────────── */}
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-11 h-11 rounded-2xl bg-indigo-100 text-indigo-700 text-sm font-bold
-                          flex items-center justify-center shrink-0 select-none">
-            {initials}
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm font-bold text-slate-900 leading-tight">{name}</p>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
-                               bg-indigo-50 border border-indigo-100 text-[10px] font-bold text-indigo-600">
-                <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24"
-                     stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
-                Verified
-              </span>
+      {showEngineer && (
+        <SidebarSection title="Assigned Engineer">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-indigo-100 text-indigo-700 text-sm font-bold
+                            flex items-center justify-center shrink-0 select-none">
+              {engineerInitials}
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">IT Support Engineer</p>
-            {specialization && (
-              <p className="text-xs text-indigo-600 font-medium mt-0.5">{specialization}</p>
-            )}
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <p className="text-sm font-bold text-slate-900 leading-tight truncate">{engineerName}</p>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full
+                                 bg-indigo-50 border border-indigo-100 text-[9px] font-bold text-indigo-600 shrink-0">
+                  <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                  Verified
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5 truncate">{assignedTo.email}</p>
+            </div>
           </div>
-        </div>
+          {specialization && (
+            <p className="text-xs text-indigo-600 font-medium mt-2.5">{specialization}</p>
+          )}
+          <p className="text-xs text-slate-500 mt-1.5">
+            Responds within <span className="font-medium text-slate-700">{slaTime}</span>
+          </p>
+        </SidebarSection>
+      )}
 
-        {/* ── Details grid ────────────────────────────────── */}
-        <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-slate-100 pt-4 mb-4">
-          <div>
-            <dt className="text-xs font-medium text-slate-500 mb-1">Communication</dt>
-            <dd className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
-              {communication_preference === "phone" ? (
-                <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none"
-                     viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round"
-                    d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-                </svg>
-              ) : communication_preference === "chat" ? (
-                <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none"
-                     viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round"
-                    d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-                </svg>
-              ) : null}
-              {COMM_LABEL[communication_preference] || "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium text-slate-500 mb-1">Language</dt>
-            <dd className="text-sm font-semibold text-slate-800">
-              {LANG_LABEL[preferred_language] || "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium text-slate-500 mb-1">Assigned at</dt>
-            <dd className="text-sm font-semibold text-slate-800">
-              {assigned_at
-                ? new Date(assigned_at).toLocaleString("en-IN", {
-                    day: "numeric", month: "short",
-                    hour: "2-digit", minute: "2-digit",
-                  })
+      {showCustomer && (
+        <SidebarSection title="Customer">
+          <p className="text-sm font-semibold text-slate-800">{ticket.customer.name}</p>
+          {ticket.customer.company && (
+            <p className="text-xs text-slate-500 mt-0.5">{ticket.customer.company}</p>
+          )}
+          <p className="text-xs text-slate-500 mt-0.5">{ticket.customer.email}</p>
+        </SidebarSection>
+      )}
+
+      <SidebarSection title="Ticket Progress">
+        <TicketStatusTracker
+          status={ticket.status}
+          ticket={ticket}
+          role={role}
+          isPendingPayment={isPendingPayment}
+        />
+      </SidebarSection>
+
+      {showQuickActions && (
+        <SidebarSection title="Quick Actions">
+          {role === "customer" && (
+            <div className="flex flex-col gap-2">
+              <Button className="w-full" onClick={onOpenChat}>Reply</Button>
+              <Button className="w-full" variant="secondary" onClick={onOpenChat}>Add File</Button>
+              {showContactInfo && ticket.communication_preference === "phone" && (
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5">
+                  <CommIcon method="phone" />
+                  <p className="text-xs text-slate-600">
+                    <span className="font-semibold text-slate-800">Your engineer will call you</span>
+                    {" "}— keep your phone available
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          {role === "freelancer" && (
+            <FreelancerTicketActions
+              ticket={ticket}
+              onUpdate={handleUpdate}
+              draftMessage={draftMessage}
+              onDraftChange={onDraftChange}
+              onFeedRefresh={onFeedRefresh}
+              composerId={composerId}
+            />
+          )}
+          {role === "admin" && (
+            <AdminTicketActions ticket={ticket} onUpdate={handleUpdate} />
+          )}
+        </SidebarSection>
+      )}
+
+      <SidebarSection title="Ticket Information">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+          {showContactInfo && (
+            <MetaItem label="Communication">
+              <span className="flex items-center gap-1.5">
+                <CommIcon method={ticket.communication_preference} />
+                {COMM_LABEL[ticket.communication_preference] || "—"}
+              </span>
+            </MetaItem>
+          )}
+          {showContactInfo && (
+            <MetaItem label="Language">{LANG_LABEL[ticket.preferred_language] || "—"}</MetaItem>
+          )}
+          {showContactInfo && (
+            <MetaItem label="Assigned">
+              {ticket.assigned_at
+                ? new Date(ticket.assigned_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
                 : "—"}
-            </dd>
-          </div>
+            </MetaItem>
+          )}
+          <MetaItem label="Priority">
+            <Badge label={ticket.severity} />
+          </MetaItem>
+          <MetaItem label="Service">{humanize(ticket.service_type)}</MetaItem>
+          <MetaItem label="Created">
+            {new Date(ticket.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+          </MetaItem>
+          <MetaItem label="Ticket ID">{ticket.ticket_number}</MetaItem>
         </dl>
+      </SidebarSection>
+    </div>
+  );
+}
 
-        {/* ── CTA ──────────────────────────────────────────── */}
-        {communication_preference === "chat" ? (
-          <button
-            onClick={onOpenChat}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white
-                       text-sm font-semibold rounded-xl hover:bg-indigo-700 active:bg-indigo-800
-                       transition-colors shadow-sm shadow-indigo-200"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                 stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-            </svg>
-            Open Chat
-          </button>
-        ) : communication_preference === "phone" ? (
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl
-                          px-3.5 py-2.5">
-            <svg className="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24"
-                 stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-            </svg>
-            <p className="text-sm text-slate-600">
-              <span className="font-semibold text-slate-800">Your engineer will call you</span>
-              {" "}— keep your phone available
-            </p>
-          </div>
-        ) : null}
+// Inline "label / value" pair for the hero header's meta row — same visual
+// weight as MetaItem but laid out horizontally, one line, small footprint.
+function HeroMeta({ label, children }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-xs font-medium text-slate-500">{label}</span>
+      <span className="text-sm font-semibold text-slate-800">{children}</span>
+    </div>
+  );
+}
+
+// Page-level back link — navigation, not ticket content, so it renders
+// above the hero card rather than inside its chrome (GitHub Issues / Linear
+// convention: the back link sits at the page level, aligned with the
+// content container, not nested in the card it's leaving).
+function BackButton() {
+  const navigate = useNavigate();
+  return (
+    <button
+      onClick={() => navigate(-1)}
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900
+                 transition-colors group"
+    >
+      <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform"
+           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+      </svg>
+      Back to Tickets
+    </button>
+  );
+}
+
+// ══ Section 1 — Hero Header ══════════════════════════════════════════
+// Single card: ticket id/title/description, status/priority/service badges,
+// and a compact metadata row (created, resolution remaining). Nothing else
+// shares its chrome — everything an engineer needs to orient on the ticket
+// in one glance. Priority and Service each appear once, as badges, rather
+// than repeated in both a badge row and a label/value row.
+function TicketHeroHeader({ ticket }) {
+  const { label: etaLabel, overdue: etaOverdue, kind: etaKind } = useTicketETA(ticket);
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5"
+         style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
+      <span className="text-[11px] font-mono font-medium text-slate-400 uppercase tracking-wider">
+        {ticket.ticket_number}
+      </span>
+      <h1 className="text-4xl font-extrabold text-slate-900 mt-0.5 leading-[1.15] tracking-tight">
+        {ticket.title}
+      </h1>
+      {ticket.description && (
+        <p className="text-slate-500 text-sm leading-relaxed whitespace-pre-wrap mt-2.5">
+          {ticket.description}
+        </p>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2 mt-3">
+        <Badge label={ticket.status} dot />
+        <Badge label={ticket.severity} />
+        <Badge label={humanize(ticket.service_type)} />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mt-3 pt-3 border-t border-slate-100">
+        <HeroMeta label="Created">
+          {new Date(ticket.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+        </HeroMeta>
+        {etaLabel && (
+          <HeroMeta label={etaKind}>
+            <span className={etaOverdue ? "text-rose-600" : "text-slate-800"}>{etaLabel}</span>
+          </HeroMeta>
+        )}
       </div>
     </div>
   );
@@ -789,101 +812,42 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
 
   return (
     <div className="space-y-4">
-      {/* ── Payment card — FIRST when pending (primary next action) ── */}
-      {isPendingPayment && (
-        <PaymentGateway ticket={ticket} onPaymentSuccess={handleUpdate} />
-      )}
+      {/* Back link sits above the hero card, aligned with the same content
+          container — page navigation, not ticket content. */}
+      <div className="space-y-2">
+        <BackButton />
+        {/* ══ Section 1 — Hero Header (see TicketHeroHeader above) ══ */}
+        <TicketHeroHeader ticket={ticket} />
+      </div>
 
-      {/* ── Contact / next steps card — FIRST after payment ── */}
-      {/* status=open: payment confirmed, waiting for engineer  */}
-      {role === "customer" && ticket.status === "open" && (
-        <PostPaymentCard ticket={ticket} onUpdate={handleUpdate} />
-      )}
-
-      {/* ── Engineer assigned info card ───────────────────── */}
-      {/* Replaces PostPaymentCard once an engineer is set    */}
-      {role === "customer" && ticket.assigned_to &&
-       !["pending_payment", "open"].includes(ticket.status) && (
-        <EngineerAssignedInfoCard ticket={ticket} onOpenChat={focusComposer} />
-      )}
-
-      {/* ── Status tracker ────────────────────────────────── */}
-      <TicketStatusTracker
-        status={ticket.status}
-        ticket={ticket}
-        role={role}
-        isPendingPayment={isPendingPayment}
-      />
-
-      {/* ── Ticket header card ─────────────────────────────── */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
-           style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
-        {/* Top accent bar */}
-        <div className="h-1 bg-brand-gradient" />
-
-        <div className="p-6">
-          <div className="flex items-start justify-between gap-4 mb-4">
-            <div className="flex-1 min-w-0">
-              <span className="text-xs font-mono font-medium text-slate-500">{ticket.ticket_number}</span>
-              <h1 className="text-lg font-semibold text-slate-900 mt-1 leading-snug">
-                {ticket.title}
-              </h1>
-            </div>
-            <div className="flex flex-wrap gap-1.5 shrink-0 justify-end">
-              <Badge label={ticket.status} dot />
-              <Badge label={ticket.severity} />
-            </div>
-          </div>
-
-          {ticket.description && (
-            <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap
-                          bg-slate-50 rounded-lg px-4 py-3 border border-slate-100">
-              {ticket.description}
-            </p>
+      {/* ══ Section 2 — Two-column grid: conversation (left, ~72%) + sidebar (right, ~28%) ══
+          .ticket-detail-grid (index.css) stretches both columns to equal
+          height by default grid alignment — the sidebar card is h-full so
+          it visually fills that stretched cell instead of leaving the
+          conversation looking dramatically taller. */}
+      <div className="ticket-detail-grid">
+        <div className="ticket-grid-conversation space-y-4">
+          {/* ══ Contextual action cards — real next-step moments (payment, ══
+              resolution decision, CSAT), not decorative. They stack above
+              the feed but stay inside the conversation column so the grid
+              itself begins right under the header. */}
+          {isPendingPayment && (
+            <PaymentGateway ticket={ticket} onPaymentSuccess={handleUpdate} />
           )}
 
-          {/* Metadata grid */}
-          <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4 mt-5">
-            {ticket.customer && role !== "customer" && (
-              <MetaItem label="Customer">
-                <span className="block">{ticket.customer.name}</span>
-                {ticket.customer.company && (
-                  <span className="block text-xs text-slate-500 font-normal">{ticket.customer.company}</span>
-                )}
-                <span className="block text-xs text-slate-500 font-normal">{ticket.customer.email}</span>
-              </MetaItem>
-            )}
-            <MetaItem label="Service">
-              {humanize(ticket.service_type)}
-            </MetaItem>
-            <MetaItem label="Assigned to">
-              {ticket.assigned_to?.email ?? (
-                <span className="text-slate-500 font-normal italic">Unassigned</span>
-              )}
-            </MetaItem>
-            <MetaItem label="Opened">
-              {new Date(ticket.created_at).toLocaleDateString("en-IN", {
-                day: "numeric", month: "short", year: "numeric",
-              })}
-            </MetaItem>
-            {ticket.first_response_at && (
-              <MetaItem label="First response">
-                {new Date(ticket.first_response_at).toLocaleString("en-IN", {
-                  day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-                })}
-              </MetaItem>
-            )}
-            {ticket.resolved_at && (
-              <MetaItem label="Resolved">
-                {new Date(ticket.resolved_at).toLocaleDateString("en-IN", {
-                  day: "numeric", month: "short", year: "numeric",
-                })}
-              </MetaItem>
-            )}
-          </dl>
+          {role === "customer" && ticket.status === "open" && (
+            <PostPaymentCard ticket={ticket} onUpdate={handleUpdate} />
+          )}
+
+          {role === "customer" && (
+            <>
+              <CustomerResolutionActions ticket={ticket} onUpdate={handleUpdate} />
+              <CSATWidget ticket={ticket} onUpdate={handleUpdate} />
+            </>
+          )}
 
           {ticket.remote_session_url && (
-            <div className="mt-4 p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+            <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
               <p className="text-xs text-indigo-600 font-semibold mb-1">Remote session link</p>
               <a
                 href={ticket.remote_session_url}
@@ -895,47 +859,34 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
               </a>
             </div>
           )}
+
+          <ConversationFeed
+            ticketId={ticket.id}
+            ticket={ticket}
+            items={feed.items}
+            loading={feed.loading}
+            error={feed.error}
+            refetch={feed.refetch}
+            draftMessage={draftMessage}
+            onDraftChange={setDraftMessage}
+            composerId={CONVERSATION_COMPOSER_ID}
+          />
+        </div>
+
+        <div className="ticket-grid-sidebar h-full lg:sticky lg:top-6">
+          <TicketSummarySidebar
+            ticket={ticket}
+            role={role}
+            isPendingPayment={isPendingPayment}
+            onOpenChat={focusComposer}
+            handleUpdate={handleUpdate}
+            draftMessage={draftMessage}
+            onDraftChange={setDraftMessage}
+            onFeedRefresh={feed.refetch}
+            composerId={CONVERSATION_COMPOSER_ID}
+          />
         </div>
       </div>
-
-      {/* ── Engineer trust card ───────────────────────────── */}
-      {ticket.assigned_to && role !== "freelancer" && (
-        <EngineerTrustCard assignedTo={ticket.assigned_to} />
-      )}
-
-      {/* ── Role-specific action panels ──────────────────── */}
-      {role === "admin" && (
-        <AdminTicketActions ticket={ticket} onUpdate={handleUpdate} />
-      )}
-      {role === "freelancer" && (
-        <FreelancerTicketActions
-          ticket={ticket}
-          onUpdate={handleUpdate}
-          draftMessage={draftMessage}
-          onDraftChange={setDraftMessage}
-          onFeedRefresh={feed.refetch}
-          composerId={CONVERSATION_COMPOSER_ID}
-        />
-      )}
-      {role === "customer" && (
-        <>
-          <CustomerResolutionActions ticket={ticket} onUpdate={handleUpdate} />
-          <CSATWidget ticket={ticket} onUpdate={handleUpdate} />
-        </>
-      )}
-
-      {/* ── Conversation — always visible, conversation-first ─── */}
-      <ConversationFeed
-        ticketId={ticket.id}
-        ticket={ticket}
-        items={feed.items}
-        loading={feed.loading}
-        error={feed.error}
-        refetch={feed.refetch}
-        draftMessage={draftMessage}
-        onDraftChange={setDraftMessage}
-        composerId={CONVERSATION_COMPOSER_ID}
-      />
     </div>
   );
 }
