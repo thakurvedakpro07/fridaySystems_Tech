@@ -155,7 +155,7 @@ export default function FreelancerList() {
             {showForm ? "Cancel" : "Add Freelancer"}
           </button>
           <Link
-            to="/admin"
+            to="/operations"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600
                        hover:text-slate-900 border border-slate-200 hover:border-slate-300 hover:bg-slate-50
                        px-3.5 py-2 rounded-lg transition-all shadow-sm"

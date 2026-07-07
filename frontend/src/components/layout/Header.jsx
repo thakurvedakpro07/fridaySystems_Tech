@@ -130,7 +130,7 @@ export default function Header() {
           {isAuthenticated ? (
             <>
               {user?.is_staff && user?.role === "admin" ? (
-                <NavLink to="/admin">Dashboard</NavLink>
+                <NavLink to="/operations">Dashboard</NavLink>
               ) : user?.role === "operations_manager" ? (
                 <NavLink to="/operations">Ops Dashboard</NavLink>
               ) : user?.role === "freelancer" ? (
@@ -253,7 +253,7 @@ export default function Header() {
               </div>
 
               {user?.is_staff && user?.role === "admin" ? (
-                <NavLink to="/admin" onClick={closeMenu}>Dashboard</NavLink>
+                <NavLink to="/operations" onClick={closeMenu}>Dashboard</NavLink>
               ) : user?.role === "operations_manager" ? (
                 <NavLink to="/operations" onClick={closeMenu}>Ops Dashboard</NavLink>
               ) : user?.role === "freelancer" ? (

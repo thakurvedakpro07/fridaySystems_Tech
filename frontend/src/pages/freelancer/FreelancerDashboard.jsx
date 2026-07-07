@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { freelancerListTickets } from "../../api/tickets";
 import { getAnalytics } from "../../api/analytics";
 import AppShell from "../../components/layout/AppShell";
 import TicketCard from "../../components/tickets/TicketCard";
 import { SkeletonCard } from "../../components/ui/Spinner";
+import KpiRow from "../../components/dashboard/KpiRow";
+import SLACountdown from "../../components/dashboard/SLACountdown";
 import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { getDisplayName } from "../../utils/displayName";
@@ -18,37 +20,46 @@ const STATUS_OPTIONS = [
   { value: "closed",           label: "Closed" },
 ];
 
+const SLA_AT_RISK = new Set(["overdue", "due_soon"]);
+
 function salutation(name) {
   const h = new Date().getHours();
   const base = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
   return name ? `${base}, ${name}` : base;
 }
 
-// ── KPI card ─────────────────────────────────────────────────────
-const KPI_STYLES = {
-  indigo:  { num: "text-indigo-600",  border: "border-indigo-100" },
-  emerald: { num: "text-emerald-600", border: "border-emerald-100" },
-  amber:   { num: "text-amber-600",   border: "border-amber-100" },
-  violet:  { num: "text-violet-600",  border: "border-violet-100" },
-};
+// ── Urgent — SLA at risk ────────────────────────────────────────────
+function UrgentQueue({ tickets }) {
+  const urgent = useMemo(
+    () => tickets
+      .filter((t) => SLA_AT_RISK.has(t.sla_status))
+      .sort((a, b) => new Date(a.due_at ?? 0) - new Date(b.due_at ?? 0)),
+    [tickets],
+  );
 
-function KpiCard({ label, value, sub, color = "indigo", loading }) {
-  const s = KPI_STYLES[color] ?? KPI_STYLES.indigo;
+  if (urgent.length === 0) return null;
+
   return (
-    <div
-      className={`bg-white border ${s.border} rounded-2xl px-6 py-5
-                 hover:-translate-y-0.5 transition-all duration-200 cursor-default`}
-      style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.07), 0 0 0 1px rgb(0 0 0 / 0.02)" }}
-    >
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">{label}</p>
-      {loading ? (
-        <div className="h-10 w-16 shimmer rounded-lg mb-1" />
-      ) : (
-        <p className={`text-4xl font-black ${s.num} leading-none`}>{value ?? "—"}</p>
-      )}
-      {sub && !loading && (
-        <p className="text-xs text-slate-500 mt-2 font-medium">{sub}</p>
-      )}
+    <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5 mb-6">
+      <p className="text-[10px] font-semibold text-rose-700 uppercase tracking-widest mb-3">
+        Urgent — SLA at risk ({urgent.length})
+      </p>
+      <div className="space-y-2">
+        {urgent.slice(0, 4).map((t) => (
+          <Link
+            key={t.id}
+            to={`/tickets/${t.id}`}
+            className="flex items-center justify-between gap-3 bg-white border border-rose-100 rounded-xl
+                       px-4 py-2.5 hover:border-rose-300 transition-colors"
+          >
+            <div className="min-w-0">
+              <span className="text-xs font-mono text-slate-500">{t.ticket_number}</span>
+              <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
+            </div>
+            <SLACountdown dueAt={t.due_at} kind="Resolution" />
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
@@ -105,21 +116,6 @@ function FreelancerInfoPanel({ csatAvg, avgHours, csatLoading }) {
           <p className="text-xs text-slate-500 mt-1.5">Average hours to close a ticket</p>
         </div>
       )}
-
-      {/* System status */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5"
-           style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
-          Platform Status
-        </p>
-        <div className="flex items-center gap-2.5 mb-3">
-          <span className="relative flex h-2.5 w-2.5 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-          </span>
-          <span className="text-sm font-semibold text-slate-900">All systems operational</span>
-        </div>
-      </div>
 
       {/* Quick actions */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5"
@@ -285,6 +281,19 @@ export default function FreelancerDashboard() {
   const name = getDisplayName(user);
   const hasFilters = !!(search || status);
 
+  // Today's Queue sorts soonest-due-first so the most time-sensitive
+  // assignment surfaces at the top; tickets without a due date (e.g.
+  // already resolved/closed) sort to the end.
+  const queueTickets = useMemo(() => {
+    if (hasFilters) return tickets;
+    return [...tickets].sort((a, b) => {
+      if (!a.due_at && !b.due_at) return 0;
+      if (!a.due_at) return 1;
+      if (!b.due_at) return -1;
+      return new Date(a.due_at) - new Date(b.due_at);
+    });
+  }, [tickets, hasFilters]);
+
   return (
     <AppShell>
       {/* ── New assignment banner ─────────────────────────────── */}
@@ -322,18 +331,24 @@ export default function FreelancerDashboard() {
       </div>
 
       {/* ── KPI cards ────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <KpiCard label="Total Assigned" value={stats.total}    sub="all time"            color="indigo"  loading={statsLoading} />
-        <KpiCard label="Work Started"   value={stats.active}   sub="actively working"    color="violet"  loading={statsLoading} />
-        <KpiCard label="Resolved"       value={stats.resolved} sub="successfully closed" color="emerald" loading={statsLoading} />
-        <KpiCard
-          label="Avg Resolution"
-          value={stats.avgHours != null ? `${stats.avgHours}h` : null}
-          sub="hours to close"
-          color="amber"
-          loading={statsLoading}
-        />
-      </div>
+      <KpiRow
+        className="mb-8"
+        items={[
+          { label: "Total Assigned", value: stats.total,    sub: "all time",            color: "indigo",  loading: statsLoading },
+          { label: "Work Started",   value: stats.active,   sub: "actively working",    color: "violet",  loading: statsLoading },
+          { label: "Resolved",       value: stats.resolved, sub: "successfully closed", color: "emerald", loading: statsLoading },
+          {
+            label: "Avg Resolution",
+            value: stats.avgHours != null ? `${stats.avgHours}h` : null,
+            sub: "hours to close",
+            color: "amber",
+            loading: statsLoading,
+          },
+        ]}
+      />
+
+      {/* ── Urgent — SLA at risk ─────────────────────────────── */}
+      {!hasFilters && !loading && !error && <UrgentQueue tickets={tickets} />}
 
       {/* ── Two-column layout ──────────────────────────────────── */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-8 items-start">
@@ -341,7 +356,7 @@ export default function FreelancerDashboard() {
         {/* ── Left: ticket list ─────────────────────────────── */}
         <div className="min-w-0">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-slate-900">My Assignments</h2>
+            <h2 className="text-base font-bold text-slate-900">Today&apos;s Queue</h2>
           </div>
 
           <div className="flex flex-wrap gap-2.5 mb-5">
@@ -397,7 +412,7 @@ export default function FreelancerDashboard() {
             <AssignmentsEmptyState hasFilters={hasFilters} />
           ) : (
             <div className="space-y-2.5">
-              {tickets.map((ticket, i) => (
+              {queueTickets.map((ticket, i) => (
                 <div key={ticket.id} className="animate-fade-in" style={{ animationDelay: `${i * 35}ms` }}>
                   <TicketCard ticket={ticket} />
                 </div>

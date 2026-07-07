@@ -5,7 +5,6 @@ import ErrorBoundary from "./components/ui/ErrorBoundary";
 import OfflineBanner from "./components/ui/OfflineBanner";
 
 // Eagerly loaded — smallest possible critical path for authenticated users
-import AdminDashboard from "./pages/admin/AdminDashboard";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import NewTicket from "./pages/NewTicket";
@@ -238,9 +237,13 @@ export default function App() {
           />
 
           {/* Admin pages — require login + is_staff */}
+          {/* /admin's dashboard was a duplicate of /operations (unified staff
+              dashboard covers Super Admin's superset view now) — redirect
+              rather than maintain two dashboards. The remaining /admin/*
+              pages below are distinct tools, not dashboards, and stay put. */}
           <Route
             path="/admin"
-            element={<AdminRoute><AdminDashboard /></AdminRoute>}
+            element={<AdminRoute><Navigate to="/operations" replace /></AdminRoute>}
           />
           <Route
             path="/admin/freelancers"

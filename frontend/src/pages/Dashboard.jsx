@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { getAnalytics } from "../api/analytics";
 import { getProfile } from "../api/settings";
 import AppShell from "../components/layout/AppShell";
 import TicketCard from "../components/tickets/TicketCard";
 import { SkeletonCard } from "../components/ui/Spinner";
+import KpiRow from "../components/dashboard/KpiRow";
 import { useAuthStore } from "../store/authStore";
 import { useTickets } from "../hooks/useTickets";
 import { usePageTitle } from "../hooks/usePageTitle";
@@ -22,37 +23,86 @@ const STATUS_OPTIONS = [
   { value: "closed",           label: "Closed" },
 ];
 
+// Ticket statuses that require the customer to act next — payment or a
+// resolution confirm/rate. Everything else is "with the engineer". This is
+// a status-based approximation, not a true last-reply-owner signal (the
+// backend has no such field — see backend/support_app/migrations/
+// 0024_remove_waiting_customer_status.py), agreed as the v1 approach.
+const WAITING_ON_CUSTOMER = new Set(["pending_payment", "resolved"]);
+
 function salutation(name) {
   const h = new Date().getHours();
   const base = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
   return name ? `${base}, ${name}` : base;
 }
 
-// ── KPI card ─────────────────────────────────────────────────────
-const KPI_STYLES = {
-  indigo:  { num: "text-indigo-600",  bg: "bg-indigo-50",  border: "border-indigo-100" },
-  blue:    { num: "text-blue-600",    bg: "bg-blue-50",    border: "border-blue-100" },
-  amber:   { num: "text-amber-600",   bg: "bg-amber-50",   border: "border-amber-100" },
-  emerald: { num: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-};
+function humanizeStatus(status) {
+  return (status ?? "").replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
-function KpiCard({ label, value, sub, color = "indigo", loading }) {
-  const s = KPI_STYLES[color] ?? KPI_STYLES.indigo;
+// ── Action Required — tickets needing the customer to do something ──
+function ActionRequired({ tickets }) {
+  const actionable = tickets.filter((t) => WAITING_ON_CUSTOMER.has(t.status));
+  if (actionable.length === 0) return null;
+
   return (
-    <div
-      className={`bg-white border ${s.border} rounded-2xl px-6 py-5
-                 hover:-translate-y-0.5 transition-all duration-200 cursor-default`}
-      style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.07), 0 0 0 1px rgb(0 0 0 / 0.02)" }}
-    >
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">{label}</p>
-      {loading ? (
-        <div className="h-10 w-16 shimmer rounded-lg mb-1" />
-      ) : (
-        <p className={`text-4xl font-black ${s.num} leading-none`}>{value ?? "—"}</p>
-      )}
-      {sub && !loading && (
-        <p className="text-xs text-slate-500 mt-2 font-medium">{sub}</p>
-      )}
+    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
+      <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-widest mb-3">
+        Action Required
+      </p>
+      <div className="space-y-2">
+        {actionable.slice(0, 4).map((t) => (
+          <Link
+            key={t.id}
+            to={`/tickets/${t.id}`}
+            className="flex items-center justify-between gap-3 bg-white border border-amber-100 rounded-xl
+                       px-4 py-2.5 hover:border-amber-300 transition-colors"
+          >
+            <div className="min-w-0">
+              <span className="text-xs font-mono text-slate-500">{t.ticket_number}</span>
+              <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
+            </div>
+            <span className="text-xs font-semibold text-amber-700 shrink-0">
+              {t.status === "pending_payment" ? "Payment pending" : "Confirm & rate"}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Recent Activity — tickets opened in the last 24 hours ───────────
+// The customer-facing ticket list serializer only exposes `created_at`
+// (no `updated_at`), so "what changed today" is scoped to new tickets
+// for v1 rather than status-change events we can't see yet.
+function RecentActivity({ tickets }) {
+  const recent = useMemo(() => {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    return tickets
+      .filter((t) => new Date(t.created_at).getTime() >= cutoff)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }, [tickets]);
+
+  if (recent.length === 0) return null;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6"
+         style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
+      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
+        Recent Activity
+      </p>
+      <div className="space-y-2.5">
+        {recent.slice(0, 4).map((t) => (
+          <Link key={t.id} to={`/tickets/${t.id}`} className="flex items-center gap-2.5 text-sm hover:text-indigo-700 transition-colors">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+            <span className="text-slate-700 truncate">
+              <span className="font-mono text-xs text-slate-500 mr-1.5">{t.ticket_number}</span>
+              opened as {humanizeStatus(t.status)}
+            </span>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
@@ -63,33 +113,6 @@ function InfoPanel() {
   const addToast = useToast();
   return (
     <div className="space-y-4">
-      {/* System status */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5"
-           style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
-          Platform Status
-        </p>
-        <div className="flex items-center gap-2.5 mb-3">
-          <span className="relative flex h-2.5 w-2.5 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-          </span>
-          <span className="text-sm font-semibold text-slate-900">All systems operational</span>
-        </div>
-        <div className="space-y-2">
-          {[
-            ["Ticket routing",        "operational"],
-            ["Payment processing",    "operational"],
-            ["Email notifications",   "operational"],
-          ].map(([label, status]) => (
-            <div key={label} className="flex items-center justify-between">
-              <span className="text-xs text-slate-500">{label}</span>
-              <span className="text-xs font-semibold text-emerald-600 capitalize">{status}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Consultation response */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5"
            style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
@@ -428,6 +451,34 @@ function TicketsEmptyState({ hasFilters }) {
   );
 }
 
+// ── Ticket list split — "Waiting For You" vs "With Engineer" ───────
+function TicketGroups({ tickets }) {
+  const waiting = tickets.filter((t) => WAITING_ON_CUSTOMER.has(t.status));
+  const withEngineer = tickets.filter((t) => !WAITING_ON_CUSTOMER.has(t.status));
+
+  const renderGroup = (label, group) => (
+    <div className="mb-6 last:mb-0">
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">
+        {label} ({group.length})
+      </p>
+      <div className="space-y-2.5">
+        {group.map((ticket, i) => (
+          <div key={ticket.id} className="animate-fade-in" style={{ animationDelay: `${i * 35}ms` }}>
+            <TicketCard ticket={ticket} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div>
+      {waiting.length > 0 && renderGroup("Waiting For You", waiting)}
+      {withEngineer.length > 0 && renderGroup("With Engineer", withEngineer)}
+    </div>
+  );
+}
+
 // ── Root component ────────────────────────────────────────────────
 export default function Dashboard() {
   const user = useAuthStore((s) => s.user);
@@ -503,15 +554,26 @@ function CustomerDashboard() {
       <TrustBar />
 
       {/* ── KPI cards ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <KpiCard label="Total"       value={stats.total}      sub="all time"           color="indigo"  loading={statsLoading} />
-        <KpiCard label="Open"        value={stats.open}       sub="awaiting engineer"  color="blue"    loading={statsLoading} />
-        <KpiCard label="Work Started" value={stats.inProgress} sub="being worked on"    color="amber"   loading={statsLoading} />
-        <KpiCard label="Resolved"    value={stats.resolved}   sub="successfully fixed" color="emerald" loading={statsLoading} />
-      </div>
+      <KpiRow
+        className="mb-8"
+        items={[
+          { label: "Total",        value: stats.total,      sub: "all time",           color: "indigo",  loading: statsLoading },
+          { label: "Open",         value: stats.open,       sub: "awaiting engineer",  color: "blue",    loading: statsLoading },
+          { label: "Work Started", value: stats.inProgress, sub: "being worked on",    color: "amber",   loading: statsLoading },
+          { label: "Resolved",     value: stats.resolved,   sub: "successfully fixed", color: "emerald", loading: statsLoading },
+        ]}
+      />
 
       {/* ── Getting started — zero-ticket accounts ──────────── */}
       {!statsLoading && stats.total === 0 && <GettingStarted />}
+
+      {/* ── Action required + recent activity — unfiltered view only ── */}
+      {!hasFilters && !loading && !error && (
+        <>
+          <ActionRequired tickets={tickets} />
+          <RecentActivity tickets={tickets} />
+        </>
+      )}
 
       {/* ── Two-column layout ──────────────────────────────────── */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-8 items-start">
@@ -583,17 +645,17 @@ function CustomerDashboard() {
           )}
 
           {!loading && !error && tickets.length > 0 && (
-            <div className="space-y-2.5">
-              {tickets.map((ticket, i) => (
-                <div
-                  key={ticket.id}
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${i * 35}ms` }}
-                >
-                  <TicketCard ticket={ticket} />
-                </div>
-              ))}
-            </div>
+            hasFilters ? (
+              <div className="space-y-2.5">
+                {tickets.map((ticket, i) => (
+                  <div key={ticket.id} className="animate-fade-in" style={{ animationDelay: `${i * 35}ms` }}>
+                    <TicketCard ticket={ticket} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <TicketGroups tickets={tickets} />
+            )
           )}
         </div>
 

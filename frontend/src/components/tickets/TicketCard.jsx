@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import Badge from "../ui/Badge";
+import SLABadge from "../dashboard/SLABadge";
 
 function humanize(str) {
   if (!str) return "";
@@ -63,17 +64,20 @@ export default function TicketCard({ ticket }) {
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
-        <span className="text-xs text-slate-500 flex items-center gap-1">
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 gap-3">
+        <span className="text-xs text-slate-500 flex items-center gap-1 shrink-0">
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5" />
           </svg>
           Opened {createdAt}
         </span>
-        <svg className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-colors"
-             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-        </svg>
+        <div className="flex items-center gap-2 min-w-0">
+          {ticket.sla_status && <SLABadge status={ticket.sla_status} />}
+          <svg className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-colors shrink-0"
+               fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
+        </div>
       </div>
     </Link>
   );
