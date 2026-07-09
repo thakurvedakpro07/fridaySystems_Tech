@@ -8,6 +8,7 @@ import Pagination from "../../components/table/Pagination";
 import { getOpsTickets, getOpsFreelancers, opsAssignTicket, opsUnassignTicket } from "../../api/ops";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useSelection } from "../../hooks/useSelection";
+import { useToast } from "../../context/ToastContext";
 
 // ── Constants ─────────────────────────────────────────────────────
 const STATUS_OPTIONS = [
@@ -163,6 +164,101 @@ function AssignModal({ ticket, freelancers, onClose, onDone }) {
   );
 }
 
+// ── Bulk assign modal ──────────────────────────────────────────────
+// Assign-only (no unassign concept for a bulk selection). Reuses the same
+// single-ticket assignment endpoint, looping sequentially since no bulk
+// endpoint exists — a failed ticket doesn't stop the rest from being tried.
+function BulkAssignModal({ ticketIds, freelancers, onClose, onDone }) {
+  const [selected, setSelected] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  async function submit() {
+    if (!selected) return;
+    setLoading(true);
+    setProgress(0);
+    let succeeded = 0;
+    let failed = 0;
+    for (const ticketId of ticketIds) {
+      try {
+        await opsAssignTicket(ticketId, selected);
+        succeeded++;
+      } catch (e) {
+        failed++;
+      }
+      setProgress((p) => p + 1);
+    }
+    setLoading(false);
+    onDone({ succeeded, failed });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+         onClick={(e) => !loading && e.target === e.currentTarget && onClose()}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ duration: 0.18 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div>
+            <h3 className="font-bold text-slate-900">Assign Engineer</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {ticketIds.length} ticket{ticketIds.length !== 1 ? "s" : ""} selected
+            </p>
+          </div>
+          <button onClick={onClose} disabled={loading}
+            className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {/* Engineer select */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Assign to Engineer</label>
+            <select
+              value={selected}
+              onChange={(e) => setSelected(e.target.value)}
+              disabled={loading}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white text-slate-800
+                         focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-indigo-400 transition disabled:opacity-60">
+              <option value="">Select an engineer</option>
+              {freelancers.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name ?? f.user?.email} — {f.skills_display ?? f.skills ?? ""}
+                  {f.active_ticket_count != null ? ` (${f.active_ticket_count} active)` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {loading && (
+            <p className="text-xs text-slate-500">Assigning {progress} of {ticketIds.length}…</p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
+          <button onClick={onClose} disabled={loading}
+            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">
+            Cancel
+          </button>
+          <button onClick={submit} disabled={loading || !selected}
+            className={`px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all
+                       ${loading || !selected ? "bg-indigo-400 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700 shadow-sm"}`}>
+            {loading ? "Assigning…" : "Confirm"}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────
 export default function OpsTicketQueue() {
   usePageTitle("Ticket Queue — ResolveHQ Ops");
@@ -173,6 +269,8 @@ export default function OpsTicketQueue() {
   const [loading, setLoading] = useState(true);
   const [freelancers, setFreelancers] = useState([]);
   const [modalTicket, setModalTicket] = useState(null);
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const addToast = useToast();
   // Bulk selection — persists across page/filter/sort changes since it's
   // keyed purely on ticket id, independent of what `tickets` currently holds.
   const selection = useSelection();
@@ -379,6 +477,19 @@ export default function OpsTicketQueue() {
     loadTickets();
   }
 
+  function onBulkAssignDone({ succeeded, failed }) {
+    setBulkAssignOpen(false);
+    selection.clear();
+    loadTickets();
+    if (failed === 0) {
+      addToast(`Assigned ${succeeded} ticket${succeeded !== 1 ? "s" : ""}.`, "success");
+    } else if (succeeded === 0) {
+      addToast(`Failed to assign ${failed} ticket${failed !== 1 ? "s" : ""}. Please try again.`, "error");
+    } else {
+      addToast(`Assigned ${succeeded} ticket${succeeded !== 1 ? "s" : ""}; ${failed} failed.`, "warning");
+    }
+  }
+
   const engineerOptions = [
     { value: "", label: "All Engineers" },
     ...freelancers.map((f) => ({ value: f.id, label: f.name ?? f.email })),
@@ -430,9 +541,16 @@ export default function OpsTicketQueue() {
         )}
 
         {selection.count > 0 && (
-          <p className="text-sm font-semibold text-slate-700">
-            Selected: {selection.count} ticket{selection.count !== 1 ? "s" : ""}
-          </p>
+          <div className="flex items-center justify-between bg-indigo-50 border border-indigo-100 rounded-2xl px-5 py-3">
+            <p className="text-sm font-semibold text-indigo-900">
+              Selected: {selection.count} ticket{selection.count !== 1 ? "s" : ""}
+            </p>
+            <button
+              onClick={() => setBulkAssignOpen(true)}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+              Assign Engineer
+            </button>
+          </div>
         )}
 
         {/* Ticket table */}
@@ -469,6 +587,13 @@ export default function OpsTicketQueue() {
             freelancers={freelancers}
             onClose={() => setModalTicket(null)}
             onDone={onAssignDone} />
+        )}
+        {bulkAssignOpen && (
+          <BulkAssignModal
+            ticketIds={Array.from(selection.selected)}
+            freelancers={freelancers}
+            onClose={() => setBulkAssignOpen(false)}
+            onDone={onBulkAssignDone} />
         )}
       </AnimatePresence>
     </AppShell>
