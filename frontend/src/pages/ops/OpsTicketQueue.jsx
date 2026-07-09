@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import AppShell from "../../components/layout/AppShell";
 import FilterBar from "../../components/filters/FilterBar";
+import QuickViews from "../../components/filters/QuickViews";
 import TicketQueueTable, { Badge, STATUS_BADGE } from "../../components/tickets/queue/TicketQueueTable";
 import Pagination from "../../components/table/Pagination";
 import { getOpsTickets, getOpsFreelancers, opsAssignTicket, opsUnassignTicket, opsStatusUpdate } from "../../api/ops";
@@ -42,6 +43,26 @@ const PRIORITY_OPTIONS = [
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 const DEFAULT_PAGE_SIZE = 20; // matches the backend's default when ?page_size= is omitted
+
+// Built-in "Saved Views" — each is a full, exact filter state (not merged
+// with whatever's currently set), so "is this preset active" can be a
+// simple equality check. Only touches the four filter dimensions (status/
+// service_type/priority/assigned_to) — search and ordering are left alone,
+// consistent with how onFilterChange/onClear already treat search/ordering
+// as separate from "filters" elsewhere in this file.
+// Status mapping notes: "open" already means paid-but-unassigned in this
+// system (see OpsDashboard's "open = unassigned" convention), so it maps
+// to the Unassigned view; "in_progress" (actively being worked, including
+// customer back-and-forth) is the closest match for "My Open Tickets".
+const QUICK_VIEWS = [
+  { key: "all",              label: "All Tickets",      filters: { status: "",             service_type: "", priority: "", assigned_to: "" } },
+  { key: "my_open",          label: "My Open Tickets",  filters: { status: "in_progress",  service_type: "", priority: "", assigned_to: "" } },
+  { key: "unassigned",       label: "Unassigned",       filters: { status: "open",          service_type: "", priority: "", assigned_to: "" } },
+  { key: "pending_payment",  label: "Pending Payment",  filters: { status: "pending_payment", service_type: "", priority: "", assigned_to: "" } },
+  { key: "high_priority",    label: "High Priority",    filters: { status: "",             service_type: "", priority: "high", assigned_to: "" } },
+  { key: "linux",            label: "Linux",            filters: { status: "",             service_type: "linux", priority: "", assigned_to: "" } },
+  { key: "windows",          label: "Windows",          filters: { status: "",             service_type: "windows", priority: "", assigned_to: "" } },
+];
 
 // ── Assign / Unassign modal ───────────────────────────────────────
 function AssignModal({ ticket, freelancers, onClose, onDone }) {
@@ -565,6 +586,27 @@ export default function OpsTicketQueue() {
     loadTickets({ [field]: value, page: 1 });
   }
 
+  // Applies a Saved View's full filter state at once (same "atomic reset"
+  // pattern as onClear, just with preset target values instead of all-empty).
+  function onQuickViewSelect(view) {
+    setStatus(view.filters.status);
+    setServiceType(view.filters.service_type);
+    setPriority(view.filters.priority);
+    setAssignedTo(view.filters.assigned_to);
+    setPage(1);
+    setSearchParams(buildParams({ ...view.filters, page: 1 }), { replace: true });
+    loadTickets({ ...view.filters, page: 1 });
+  }
+
+  // A view is "active" only when every one of its filter values exactly
+  // matches current state — no partial/best-effort match.
+  const activeQuickViewKey = QUICK_VIEWS.find((v) =>
+    v.filters.status === status &&
+    v.filters.service_type === serviceType &&
+    v.filters.priority === priority &&
+    v.filters.assigned_to === assignedTo
+  )?.key ?? null;
+
   function onAssignDone() {
     setModalTicket(null);
     loadTickets();
@@ -609,6 +651,12 @@ export default function OpsTicketQueue() {
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Ticket Queue</h1>
           <p className="text-sm text-slate-500 mt-0.5">Filter, search, and assign engineers to tickets.</p>
+        </div>
+
+        {/* Saved Views */}
+        <div>
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Saved Views</p>
+          <QuickViews views={QUICK_VIEWS} activeKey={activeQuickViewKey} onSelect={onQuickViewSelect} />
         </div>
 
         {/* Filters bar */}
