@@ -1,8 +1,9 @@
-export default function SelectFilter({ value, onChange, options }) {
+export default function SelectFilter({ value, onChange, options, ariaLabel }) {
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      aria-label={ariaLabel}
       className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white text-slate-700
                  focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-indigo-400 transition min-w-[160px]">
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}

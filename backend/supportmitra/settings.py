@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.google",
     "django_celery_beat",
     "django_prometheus",
+    "django_filters",
 
     # Our app
     "support_app.apps.SupportAppConfig",

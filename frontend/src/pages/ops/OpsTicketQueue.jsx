@@ -19,6 +19,25 @@ const STATUS_OPTIONS = [
   { value: "pending_payment", label: "Pending Payment" },
 ];
 
+const SERVICE_OPTIONS = [
+  { value: "", label: "All Services" },
+  { value: "desktop", label: "Desktop" },
+  { value: "linux", label: "Linux" },
+  { value: "windows", label: "Windows" },
+  { value: "patching", label: "Patching" },
+  { value: "security", label: "Security" },
+  { value: "vmware", label: "VMware" },
+  { value: "sap", label: "SAP" },
+];
+
+const PRIORITY_OPTIONS = [
+  { value: "", label: "All Priorities" },
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "critical", label: "Critical" },
+];
+
 // ── Assign / Unassign modal ───────────────────────────────────────
 function AssignModal({ ticket, freelancers, onClose, onDone }) {
   const [selected, setSelected] = useState(ticket.freelancer?.id ?? "");
@@ -152,6 +171,9 @@ export default function OpsTicketQueue() {
   const [modalTicket, setModalTicket] = useState(null);
   const [search, setSearch] = useState(searchParams.get("search") ?? "");
   const [status, setStatus] = useState(searchParams.get("status") ?? "");
+  const [serviceType, setServiceType] = useState(searchParams.get("service_type") ?? "");
+  const [priority, setPriority] = useState(searchParams.get("priority") ?? "");
+  const [assignedTo, setAssignedTo] = useState(searchParams.get("assigned_to") ?? "");
   const [highlight, setHighlight] = useState(searchParams.get("highlight") ?? "");
   const [page, setPage] = useState(() => {
     const p = parseInt(searchParams.get("page"), 10);
@@ -166,7 +188,6 @@ export default function OpsTicketQueue() {
   const [previous, setPrevious] = useState(null);
   const [error, setError] = useState(null);
   const searchDebounce = useRef(null);
-  const isFirstStatusEffect = useRef(true);
 
   const loadFreelancers = useCallback(async () => {
     try {
@@ -180,13 +201,19 @@ export default function OpsTicketQueue() {
     setError(null);
     try {
       const currentOrdering = params.ordering ?? ordering;
+      const currentServiceType = params.service_type ?? serviceType;
+      const currentPriority = params.priority ?? priority;
+      const currentAssignedTo = params.assigned_to ?? assignedTo;
       const res = await getOpsTickets({
         status: params.status ?? status,
         search: params.search ?? search,
         page: params.page ?? page,
         // Omit entirely when unset so the backend applies its own default
-        // (-created_at) — matches how status/search are already omitted.
+        // (-created_at) / no filter — matches how status/search are already omitted.
         ...(currentOrdering ? { ordering: currentOrdering } : {}),
+        ...(currentServiceType ? { service_type: currentServiceType } : {}),
+        ...(currentPriority ? { priority: currentPriority } : {}),
+        ...(currentAssignedTo ? { assigned_to: currentAssignedTo } : {}),
       });
       const data = res.data ?? {};
       const results = data.results ?? (Array.isArray(data) ? data : []);
@@ -199,51 +226,65 @@ export default function OpsTicketQueue() {
     } finally {
       setLoading(false);
     }
-  }, [status, search, page, ordering]);
+  }, [status, search, page, ordering, serviceType, priority, assignedTo]);
+
+  // Builds the canonical URL params object from current state, with
+  // per-call overrides — the single source of truth for what goes in the
+  // URL, used by every handler below so status/search/service_type/
+  // priority/assigned_to/ordering/page all stay consistent together.
+  function buildParams(overrides = {}) {
+    const v = {
+      status: overrides.status ?? status,
+      search: overrides.search ?? search,
+      service_type: overrides.service_type ?? serviceType,
+      priority: overrides.priority ?? priority,
+      assigned_to: overrides.assigned_to ?? assignedTo,
+      ordering: overrides.ordering ?? ordering,
+      page: overrides.page ?? page,
+    };
+    const p = {};
+    if (v.status) p.status = v.status;
+    if (v.search) p.search = v.search;
+    if (v.service_type) p.service_type = v.service_type;
+    if (v.priority) p.priority = v.priority;
+    if (v.assigned_to) p.assigned_to = v.assigned_to;
+    if (v.ordering) p.ordering = v.ordering;
+    if (v.page > 1) p.page = String(v.page);
+    return p;
+  }
 
   useEffect(() => {
     loadFreelancers();
     loadTickets();
   }, []);  // initial load only
 
-  // Re-fetch when filters change
+  // Restore status/service_type/priority/assigned_to/ordering on browser
+  // Back/Forward (page/search keep their existing behavior — out of scope
+  // here). Our own click/change handlers already update local state and
+  // the URL together in the same render, so this is a no-op immediately
+  // after them; it only actually fires on a true popstate navigation.
   useEffect(() => {
-    // On initial mount, keep whatever page was deep-linked in the URL
-    // (e.g. ?status=open&page=3) — effect above already triggered the
-    // initial fetch, so just keep the URL params consistent without
-    // resetting page or fetching again.
-    if (isFirstStatusEffect.current) {
-      isFirstStatusEffect.current = false;
-      const p = {};
-      if (status) p.status = status;
-      if (search) p.search = search;
-      if (page > 1) p.page = String(page);
-      if (ordering) p.ordering = ordering;
-      setSearchParams(p, { replace: true });
-      return;
-    }
+    const url = {
+      status: searchParams.get("status") ?? "",
+      service_type: searchParams.get("service_type") ?? "",
+      priority: searchParams.get("priority") ?? "",
+      assigned_to: searchParams.get("assigned_to") ?? "",
+      ordering: searchParams.get("ordering") ?? "",
+    };
+    const changed =
+      url.status !== status ||
+      url.service_type !== serviceType ||
+      url.priority !== priority ||
+      url.assigned_to !== assignedTo ||
+      url.ordering !== ordering;
 
-    // An explicit status change invalidates the current page — reset to 1.
-    // Ordering is preserved (a filter change shouldn't discard the sort).
-    const p = {};
-    if (status) p.status = status;
-    if (search) p.search = search;
-    if (ordering) p.ordering = ordering;
-    setPage(1);
-    setSearchParams(p, { replace: true });
-    loadTickets({ status, search, page: 1 });
-  }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Restore `ordering` on browser Back/Forward. Page/status/search are left
-  // exactly as before (out of scope here) — this only re-syncs sort state
-  // when the URL's `ordering` no longer matches local state, which happens
-  // on a popstate navigation (our own click handlers already keep the two
-  // in sync in the same render, so this is a no-op immediately after them).
-  useEffect(() => {
-    const urlOrdering = searchParams.get("ordering") ?? "";
-    if (urlOrdering !== ordering) {
-      setOrdering(urlOrdering);
-      loadTickets({ ordering: urlOrdering });
+    if (changed) {
+      setStatus(url.status);
+      setServiceType(url.service_type);
+      setPriority(url.priority);
+      setAssignedTo(url.assigned_to);
+      setOrdering(url.ordering);
+      loadTickets(url);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
@@ -253,24 +294,15 @@ export default function OpsTicketQueue() {
     setPage(1);
     clearTimeout(searchDebounce.current);
     searchDebounce.current = setTimeout(() => {
-      const p = {};
-      if (status) p.status = status;
-      if (val) p.search = val;
-      if (ordering) p.ordering = ordering;
-      setSearchParams(p, { replace: true });
+      setSearchParams(buildParams({ search: val, page: 1 }), { replace: true });
       loadTickets({ search: val, page: 1 });
     }, 380);
   }
 
   function onPageChange(newPage) {
     if (newPage < 1) return;
-    const p = {};
-    if (status) p.status = status;
-    if (search) p.search = search;
-    if (ordering) p.ordering = ordering;
-    if (newPage > 1) p.page = String(newPage);
     setPage(newPage);
-    setSearchParams(p); // push (no replace) — a new history entry per page navigation
+    setSearchParams(buildParams({ page: newPage })); // push — a new history entry per page navigation
     loadTickets({ page: newPage });
   }
 
@@ -284,20 +316,36 @@ export default function OpsTicketQueue() {
     } else {
       nextOrdering = field;
     }
-    const p = {};
-    if (status) p.status = status;
-    if (search) p.search = search;
-    if (nextOrdering) p.ordering = nextOrdering;
     setOrdering(nextOrdering);
     setPage(1); // a re-sorted result set invalidates the current page
-    setSearchParams(p); // push — an explicit sort choice, like page navigation
+    setSearchParams(buildParams({ ordering: nextOrdering, page: 1 })); // push — an explicit sort choice
     loadTickets({ ordering: nextOrdering, page: 1 });
+  }
+
+  // Any explicit filter change (status/service/priority/engineer) invalidates
+  // the current page — reset to 1. Ordering and search are preserved.
+  function onFilterChange(field, value) {
+    const setters = {
+      status: setStatus,
+      service_type: setServiceType,
+      priority: setPriority,
+      assigned_to: setAssignedTo,
+    };
+    setters[field](value);
+    setPage(1);
+    setSearchParams(buildParams({ [field]: value, page: 1 }), { replace: true });
+    loadTickets({ [field]: value, page: 1 });
   }
 
   function onAssignDone() {
     setModalTicket(null);
     loadTickets();
   }
+
+  const engineerOptions = [
+    { value: "", label: "All Engineers" },
+    ...freelancers.map((f) => ({ value: f.id, label: f.name ?? f.email })),
+  ];
 
   return (
     <AppShell>
@@ -315,17 +363,25 @@ export default function OpsTicketQueue() {
           onSearchChange={onSearchChange}
           searchPlaceholder="Search by title or ticket number…"
           status={status}
-          onStatusChange={setStatus}
+          onStatusChange={(v) => onFilterChange("status", v)}
           statusOptions={STATUS_OPTIONS}
+          extraFilters={[
+            { key: "service_type", value: serviceType, onChange: (v) => onFilterChange("service_type", v), options: SERVICE_OPTIONS, ariaLabel: "Filter by service" },
+            { key: "priority", value: priority, onChange: (v) => onFilterChange("priority", v), options: PRIORITY_OPTIONS, ariaLabel: "Filter by priority" },
+            { key: "assigned_to", value: assignedTo, onChange: (v) => onFilterChange("assigned_to", v), options: engineerOptions, ariaLabel: "Filter by engineer" },
+          ]}
           onClear={() => {
             setStatus("");
+            setServiceType("");
+            setPriority("");
+            setAssignedTo("");
             setSearch("");
             setPage(1);
             // Clearing filters preserves the current sort — sorting isn't a filter.
             const p = {};
             if (ordering) p.ordering = ordering;
             setSearchParams(p, { replace: true });
-            loadTickets({ status: "", search: "", page: 1 });
+            loadTickets({ status: "", search: "", service_type: "", priority: "", assigned_to: "", page: 1 });
           }}
         />
 

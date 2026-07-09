@@ -29,6 +29,9 @@ API VERSIONING NOTE:
 
 import logging
 
+import django_filters
+from django_filters.rest_framework import DjangoFilterBackend
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -2109,15 +2112,30 @@ def ops_dashboard(request):
     return Response(data)
 
 
+class OpsTicketFilterSet(django_filters.FilterSet):
+    """
+    Ops ticket queue filters — status/service_type/assigned_to are exact-match
+    on their model fields; `priority` is an alias for `severity` (the product
+    calls it "priority", the schema calls it "severity").
+    """
+    priority = django_filters.CharFilter(field_name="severity")
+
+    class Meta:
+        model = Ticket
+        fields = ["status", "service_type", "assigned_to"]
+
+
 class OpsTicketListView(generics.ListAPIView):
     """
     GET /api/ops/tickets/
-    All tickets — status, severity, service, search, ordering filters.
-    Support Agents and Finance Managers get read access alongside Ops Manager and Super Admin.
+    All tickets — status, severity, service, assigned engineer, search,
+    ordering filters. Support Agents and Finance Managers get read access
+    alongside Ops Manager and Super Admin.
     """
     serializer_class = OpsTicketListSerializer
     permission_classes = [permissions.IsAuthenticated, IsAnyStaffRole]
-    filter_backends = [filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = OpsTicketFilterSet
     # Allow-listed order_by targets. "ticket_number" is the closest thing to
     # a ticket_id (the UUID pk isn't meaningfully sortable); "severity" is
     # this model's field for what the product calls "priority"; "service_type"
@@ -2131,14 +2149,6 @@ class OpsTicketListView(generics.ListAPIView):
 
     def get_queryset(self):
         qs = Ticket.objects.select_related("customer__user", "assigned_to__user")
-
-        status_filter = self.request.query_params.get("status")
-        if status_filter:
-            qs = qs.filter(status=status_filter)
-
-        service_filter = self.request.query_params.get("service_type")
-        if service_filter:
-            qs = qs.filter(service_type=service_filter)
 
         search = self.request.query_params.get("search")
         if search:

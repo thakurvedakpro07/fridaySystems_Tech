@@ -8,9 +8,13 @@ export default function FilterBar({
   status,
   onStatusChange,
   statusOptions,
+  // Additional select-filter dropdowns beyond status, e.g. service/priority/
+  // engineer: [{ key, value, onChange, options, ariaLabel }]. Optional so
+  // existing single-status callers are unaffected.
+  extraFilters = [],
   onClear,
 }) {
-  const hasActiveFilters = Boolean(status || search);
+  const hasActiveFilters = Boolean(status || search || extraFilters.some((f) => f.value));
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl px-5 py-4 flex flex-wrap items-center gap-3"
@@ -19,6 +23,10 @@ export default function FilterBar({
       <SearchInput value={search} onChange={onSearchChange} placeholder={searchPlaceholder} />
 
       <SelectFilter value={status} onChange={onStatusChange} options={statusOptions} />
+
+      {extraFilters.map((f) => (
+        <SelectFilter key={f.key} value={f.value} onChange={f.onChange} options={f.options} ariaLabel={f.ariaLabel} />
+      ))}
 
       {hasActiveFilters && (
         <button onClick={onClear}
