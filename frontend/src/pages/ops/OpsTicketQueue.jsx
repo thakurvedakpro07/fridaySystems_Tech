@@ -153,8 +153,16 @@ export default function OpsTicketQueue() {
   const [search, setSearch] = useState(searchParams.get("search") ?? "");
   const [status, setStatus] = useState(searchParams.get("status") ?? "");
   const [highlight, setHighlight] = useState(searchParams.get("highlight") ?? "");
+  const [page, setPage] = useState(() => {
+    const p = parseInt(searchParams.get("page"), 10);
+    return Number.isFinite(p) && p > 0 ? p : 1;
+  });
+  const [count, setCount] = useState(0);
+  const [next, setNext] = useState(null);
+  const [previous, setPrevious] = useState(null);
   const [error, setError] = useState(null);
   const searchDebounce = useRef(null);
+  const isFirstStatusEffect = useRef(true);
 
   const loadFreelancers = useCallback(async () => {
     try {
@@ -170,15 +178,21 @@ export default function OpsTicketQueue() {
       const res = await getOpsTickets({
         status: params.status ?? status,
         search: params.search ?? search,
+        page: params.page ?? page,
         ordering: "-created_at",
       });
-      setTickets(res.data?.results ?? res.data ?? []);
+      const data = res.data ?? {};
+      const results = data.results ?? (Array.isArray(data) ? data : []);
+      setTickets(results);
+      setCount(data.count ?? results.length);
+      setNext(data.next ?? null);
+      setPrevious(data.previous ?? null);
     } catch (e) {
       setError(e?.response?.data?.detail ?? "Failed to load tickets.");
     } finally {
       setLoading(false);
     }
-  }, [status, search]);
+  }, [status, search, page]);
 
   useEffect(() => {
     loadFreelancers();
@@ -187,19 +201,51 @@ export default function OpsTicketQueue() {
 
   // Re-fetch when filters change
   useEffect(() => {
+    // On initial mount, keep whatever page was deep-linked in the URL
+    // (e.g. ?status=open&page=3) — effect above already triggered the
+    // initial fetch, so just keep the URL params consistent without
+    // resetting page or fetching again.
+    if (isFirstStatusEffect.current) {
+      isFirstStatusEffect.current = false;
+      const p = {};
+      if (status) p.status = status;
+      if (search) p.search = search;
+      if (page > 1) p.page = String(page);
+      setSearchParams(p, { replace: true });
+      return;
+    }
+
+    // An explicit status change invalidates the current page — reset to 1.
     const p = {};
     if (status) p.status = status;
     if (search) p.search = search;
+    setPage(1);
     setSearchParams(p, { replace: true });
-    loadTickets({ status, search });
+    loadTickets({ status, search, page: 1 });
   }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function onSearchChange(val) {
     setSearch(val);
+    setPage(1);
     clearTimeout(searchDebounce.current);
     searchDebounce.current = setTimeout(() => {
-      loadTickets({ search: val });
+      const p = {};
+      if (status) p.status = status;
+      if (val) p.search = val;
+      setSearchParams(p, { replace: true });
+      loadTickets({ search: val, page: 1 });
     }, 380);
+  }
+
+  function onPageChange(newPage) {
+    if (newPage < 1) return;
+    const p = {};
+    if (status) p.status = status;
+    if (search) p.search = search;
+    if (newPage > 1) p.page = String(newPage);
+    setPage(newPage);
+    setSearchParams(p); // push (no replace) — a new history entry per page navigation
+    loadTickets({ page: newPage });
   }
 
   function onAssignDone() {
@@ -225,7 +271,13 @@ export default function OpsTicketQueue() {
           status={status}
           onStatusChange={setStatus}
           statusOptions={STATUS_OPTIONS}
-          onClear={() => { setStatus(""); setSearch(""); loadTickets({ status: "", search: "" }); }}
+          onClear={() => {
+            setStatus("");
+            setSearch("");
+            setPage(1);
+            setSearchParams({}, { replace: true });
+            loadTickets({ status: "", search: "", page: 1 });
+          }}
         />
 
         {error && (
@@ -243,7 +295,14 @@ export default function OpsTicketQueue() {
           onAssign={(t) => setModalTicket(t)}
         />
 
-        <Pagination loading={loading} count={tickets.length} />
+        <Pagination
+          page={page}
+          count={count}
+          hasPrevious={Boolean(previous)}
+          hasNext={Boolean(next)}
+          loading={loading}
+          onPageChange={onPageChange}
+        />
       </div>
 
       {/* Modal */}

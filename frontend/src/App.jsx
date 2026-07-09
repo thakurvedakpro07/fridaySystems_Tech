@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Spinner from "./components/ui/Spinner";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
 import OfflineBanner from "./components/ui/OfflineBanner";
@@ -62,6 +62,30 @@ function PageLoader() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
       <Spinner size="lg" />
     </div>
+  );
+}
+
+// Suppressed on the Ops Ticket Queue only — the fixed bottom-right widget
+// overlaps the ticket table's Assign/Reassign action column there. Every
+// other route keeps the widget; this is not a global removal.
+const FLOATING_WIDGET_HIDDEN_PATHS = ["/operations/tickets"];
+
+function FloatingSupportWidgets() {
+  const { pathname } = useLocation();
+  if (FLOATING_WIDGET_HIDDEN_PATHS.includes(pathname)) return null;
+
+  return (
+    <>
+      {/* Mobile call bar — full-width, only visible below sm breakpoint */}
+      <FloatingCallButton />
+      {/* Desktop floating column — phone widget pinned to bottom-right, ticket CTA
+          stacks above it via flex-col-reverse. No hardcoded offsets means no overlap
+          regardless of widget height. Hidden on mobile (mobile bar handles that). */}
+      <div className="fixed bottom-6 right-6 z-50 hidden sm:flex flex-col-reverse gap-3 items-end">
+        <PhoneSupportWidget />
+        <StickyTicketCTA />
+      </div>
+    </>
   );
 }
 
@@ -186,15 +210,7 @@ export default function App() {
     <ErrorBoundary>
     <BrowserRouter>
       <OfflineBanner />
-      {/* Mobile call bar — full-width, only visible below sm breakpoint */}
-      <FloatingCallButton />
-      {/* Desktop floating column — phone widget pinned to bottom-right, ticket CTA
-          stacks above it via flex-col-reverse. No hardcoded offsets means no overlap
-          regardless of widget height. Hidden on mobile (mobile bar handles that). */}
-      <div className="fixed bottom-6 right-6 z-50 hidden sm:flex flex-col-reverse gap-3 items-end">
-        <PhoneSupportWidget />
-        <StickyTicketCTA />
-      </div>
+      <FloatingSupportWidgets />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public pages */}

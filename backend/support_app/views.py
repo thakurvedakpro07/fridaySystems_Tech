@@ -92,6 +92,7 @@ from .serializers import (
     FreelancerCreateSerializer,
     FreelancerSerializer,
     FreelancerStatusSerializer,
+    FreelancerTicketListSerializer,
     NotificationSerializer,
     OpsPaymentSerializer,
     OpsUserSerializer,
@@ -1197,7 +1198,7 @@ class FreelancerTicketListView(generics.ListAPIView):
     Query params:
       ?status=in_progress   — filter by status
     """
-    serializer_class = TicketListSerializer
+    serializer_class = FreelancerTicketListSerializer
     permission_classes = [permissions.IsAuthenticated, IsFreelancer]
 
     def get_queryset(self):

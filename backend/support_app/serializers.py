@@ -211,24 +211,15 @@ class TicketListSerializer(serializers.ModelSerializer):
         ]
 
 
-class OpsTicketListSerializer(TicketListSerializer):
-    """Extends TicketListSerializer with assignment info and SLA status for the ops ticket queue."""
-    freelancer = serializers.SerializerMethodField()
-    sla_status = serializers.SerializerMethodField()
-
-    def get_freelancer(self, obj):
-        if not obj.assigned_to:
-            return None
-        u = obj.assigned_to.user
-        return {
-            "id": str(obj.assigned_to.id),
-            "name": f"{u.first_name} {u.last_name}".strip() or u.email,
-            "email": u.email,
-        }
+class SLAStatusMixin:
+    """
+    Computes the SLA health label shared by any ticket-list serializer that
+    exposes `due_at`. Extracted so the ops queue and the freelancer's own
+    queue compute "overdue"/"due_soon" identically instead of drifting.
+    """
 
     def get_sla_status(self, obj):
         """
-        Computed SLA health label for the ops ticket queue.
         "no_deadline" — due_at not set (ticket not yet open or SLA not initialized)
         "overdue"     — past the resolution deadline
         "due_soon"    — deadline within the next 2 hours
@@ -245,9 +236,39 @@ class OpsTicketListSerializer(TicketListSerializer):
             return "due_soon"
         return "ok"
 
+
+class OpsTicketListSerializer(SLAStatusMixin, TicketListSerializer):
+    """Extends TicketListSerializer with assignment info and SLA status for the ops ticket queue."""
+    freelancer = serializers.SerializerMethodField()
+    sla_status = serializers.SerializerMethodField()
+
+    def get_freelancer(self, obj):
+        if not obj.assigned_to:
+            return None
+        u = obj.assigned_to.user
+        return {
+            "id": str(obj.assigned_to.id),
+            "name": f"{u.first_name} {u.last_name}".strip() or u.email,
+            "email": u.email,
+        }
+
     class Meta(TicketListSerializer.Meta):
         fields = TicketListSerializer.Meta.fields + [
             "freelancer", "due_at", "first_response_due_at", "sla_status",
+        ]
+
+
+class FreelancerTicketListSerializer(SLAStatusMixin, TicketListSerializer):
+    """
+    Extends TicketListSerializer with SLA status for a freelancer's own ticket
+    queue. No `freelancer` field — an engineer viewing their own assignments
+    already knows the tickets are theirs.
+    """
+    sla_status = serializers.SerializerMethodField()
+
+    class Meta(TicketListSerializer.Meta):
+        fields = TicketListSerializer.Meta.fields + [
+            "due_at", "first_response_due_at", "sla_status",
         ]
 
 
