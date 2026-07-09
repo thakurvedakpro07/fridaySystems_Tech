@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
 import AppShell from "../../components/layout/AppShell";
 import FilterBar from "../../components/filters/FilterBar";
 import QuickViews from "../../components/filters/QuickViews";
@@ -411,6 +412,19 @@ export default function OpsTicketQueue() {
   const [previous, setPrevious] = useState(null);
   const [error, setError] = useState(null);
   const searchDebounce = useRef(null);
+  // Tracks the in-flight tickets request so a newer loadTickets() call can
+  // cancel whatever's still pending — prevents a slow, superseded response
+  // from landing after a faster, newer one and overwriting current state
+  // with stale data (see audit C1).
+  const abortControllerRef = useRef(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   const loadFreelancers = useCallback(async () => {
     try {
@@ -420,6 +434,12 @@ export default function OpsTicketQueue() {
   }, []);
 
   const loadTickets = useCallback(async (params = {}) => {
+    // Cancel whatever request is still in flight before starting a new one
+    // — only the request started here can go on to update state below.
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
@@ -439,7 +459,9 @@ export default function OpsTicketQueue() {
         ...(currentPriority ? { priority: currentPriority } : {}),
         ...(currentAssignedTo ? { assigned_to: currentAssignedTo } : {}),
         ...(currentPageSize !== DEFAULT_PAGE_SIZE ? { page_size: currentPageSize } : {}),
-      });
+      }, { signal: controller.signal });
+
+      if (!isMountedRef.current || controller.signal.aborted) return;
       const data = res.data ?? {};
       const results = data.results ?? (Array.isArray(data) ? data : []);
       setTickets(results);
@@ -447,9 +469,17 @@ export default function OpsTicketQueue() {
       setNext(data.next ?? null);
       setPrevious(data.previous ?? null);
     } catch (e) {
+      // A superseded/unmount-triggered abort is expected, not a failure —
+      // ignore it silently rather than surfacing an error banner.
+      if (axios.isCancel(e) || controller.signal.aborted) return;
+      if (!isMountedRef.current) return;
       setError(e?.response?.data?.detail ?? "Failed to load tickets.");
     } finally {
-      setLoading(false);
+      // Only the request that "won" (wasn't itself aborted by a newer one)
+      // gets to clear the loading state.
+      if (isMountedRef.current && !controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, [status, search, page, ordering, serviceType, priority, assignedTo, pageSize]);
 

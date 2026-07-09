@@ -5,8 +5,11 @@ import apiClient from "./client";
 export const getOpsDashboard = () =>
   apiClient.get("/ops/dashboard/");
 
-export const getOpsTickets = (params = {}) =>
-  apiClient.get("/ops/tickets/", { params });
+// `config` accepts extra axios request config (e.g. `{ signal }` for
+// request cancellation) without disturbing existing callers that only
+// pass `params`.
+export const getOpsTickets = (params = {}, config = {}) =>
+  apiClient.get("/ops/tickets/", { params, ...config });
 
 export const getOpsFreelancers = (params = {}) =>
   apiClient.get("/ops/freelancers/", { params });
