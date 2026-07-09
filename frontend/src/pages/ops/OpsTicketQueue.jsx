@@ -10,6 +10,7 @@ import Pagination from "../../components/table/Pagination";
 import { getOpsTickets, getOpsFreelancers, opsAssignTicket, opsUnassignTicket, opsStatusUpdate } from "../../api/ops";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useSelection } from "../../hooks/useSelection";
+import { useRoles } from "../../hooks/useRoles";
 import { useToast } from "../../context/ToastContext";
 
 // ── Constants ─────────────────────────────────────────────────────
@@ -378,6 +379,13 @@ export default function OpsTicketQueue() {
   usePageTitle("Ticket Queue — ResolveHQ Ops");
 
   const navigate = useNavigate();
+  const { isTicketManagementStaff } = useRoles();
+  // Both bulk actions currently require the same backend permission
+  // (IsTicketManagementStaff on ops_assign_ticket / ops_status_update), but
+  // gated independently per the actual authorization each one needs — not
+  // collapsed into one flag — so they stay correct if that ever diverges.
+  const canBulkAssign = isTicketManagementStaff;
+  const canBulkUpdateStatus = isTicketManagementStaff;
   const [searchParams, setSearchParams] = useSearchParams();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -420,6 +428,14 @@ export default function OpsTicketQueue() {
   const isMountedRef = useRef(true);
 
   useEffect(() => {
+    // Must reset to true here, not just at useRef(true) declaration time —
+    // under StrictMode's dev-only mount→cleanup→mount double-invoke, the
+    // cleanup below runs once synthetically before the "real" mount settles,
+    // permanently flipping this to false with nothing to ever flip it back.
+    // Every subsequent loadTickets() call would then hit its `!isMountedRef.
+    // current` guard and silently bail before setTickets/setLoading(false),
+    // even though the component is genuinely still mounted.
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       abortControllerRef.current?.abort();
@@ -724,22 +740,29 @@ export default function OpsTicketQueue() {
           </div>
         )}
 
-        {selection.count > 0 && (
+        {/* Hidden entirely when the current role can perform neither bulk
+            action (e.g. Finance Manager) — selection itself still works,
+            it's just this action surface that disappears. */}
+        {selection.count > 0 && (canBulkAssign || canBulkUpdateStatus) && (
           <div className="flex items-center justify-between bg-indigo-50 border border-indigo-100 rounded-2xl px-5 py-3">
             <p className="text-sm font-semibold text-indigo-900">
               Selected: {selection.count} ticket{selection.count !== 1 ? "s" : ""}
             </p>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setBulkAssignOpen(true)}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
-                Assign Engineer
-              </button>
-              <button
-                onClick={() => setBulkStatusOpen(true)}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50 transition-colors">
-                Update Status
-              </button>
+              {canBulkAssign && (
+                <button
+                  onClick={() => setBulkAssignOpen(true)}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                  Assign Engineer
+                </button>
+              )}
+              {canBulkUpdateStatus && (
+                <button
+                  onClick={() => setBulkStatusOpen(true)}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50 transition-colors">
+                  Update Status
+                </button>
+              )}
             </div>
           </div>
         )}

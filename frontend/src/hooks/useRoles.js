@@ -22,6 +22,12 @@ export function useRoles() {
   // True for any of the four internal staff roles.
   const isAnyStaff = isSuperAdmin || isOpsManager || isFinanceManager || isSupportAgent;
 
+  // Mirrors the backend's IsTicketManagementStaff permission (Ops Manager,
+  // Support Agent, Super Admin) — Finance Managers have financial visibility
+  // but no ticket-management authority (cannot assign engineers or change
+  // ticket status). Single source of truth for any UI that gates on this.
+  const isTicketManagementStaff = isOpsManager || isSupportAgent || isSuperAdmin;
+
   return {
     user,
     isSuperAdmin,
@@ -31,5 +37,6 @@ export function useRoles() {
     isEngineer,
     isCustomer,
     isAnyStaff,
+    isTicketManagementStaff,
   };
 }
