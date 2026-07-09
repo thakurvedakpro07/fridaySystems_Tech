@@ -1,5 +1,26 @@
+import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import SortableColumnHeader from "../../table/SortableColumnHeader";
+
+// Plain checkbox that also supports the (non-JSX-expressible) indeterminate
+// state, needed for the header's "select all visible" control.
+function RowCheckbox({ checked, indeterminate = false, onChange, ariaLabel }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      aria-label={ariaLabel}
+      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-400 cursor-pointer"
+    />
+  );
+}
 
 // Column key → backend `ordering` field name. Only these four header cells
 // are sortable per the current requirement.
@@ -40,13 +61,31 @@ export function fmtDate(iso) {
   return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 }
 
-export default function TicketQueueTable({ tickets, loading, highlight, ordering, onSort, onView, onAssign }) {
+export default function TicketQueueTable({
+  tickets, loading, highlight, ordering, onSort, onView, onAssign,
+  selectedIds, onToggleOne, onToggleAll,
+}) {
+  const hasSelection = Boolean(selectedIds && onToggleOne && onToggleAll);
+  const visibleIds = tickets.map((t) => t.id);
+  const allVisibleSelected = hasSelection && visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+  const someVisibleSelected = hasSelection && visibleIds.some((id) => selectedIds.has(id));
+
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
          style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
 
       {/* Table header */}
-      <div className="hidden md:grid grid-cols-[auto_1fr_120px_130px_100px_80px_120px] gap-3 px-6 py-3 border-b border-slate-100 bg-slate-50">
+      <div className="hidden md:grid grid-cols-[28px_auto_1fr_120px_130px_100px_80px_120px] gap-3 px-6 py-3 border-b border-slate-100 bg-slate-50 items-center">
+        <div>
+          {hasSelection && (
+            <RowCheckbox
+              checked={allVisibleSelected}
+              indeterminate={someVisibleSelected && !allVisibleSelected}
+              onChange={() => onToggleAll(visibleIds)}
+              ariaLabel="Select all tickets on this page"
+            />
+          )}
+        </div>
         <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">#</span>
         {SORTABLE_HEADERS.map((col) => (
           <SortableColumnHeader key={col.key} label={col.label} field={col.key} ordering={ordering} onSort={onSort} />
@@ -81,8 +120,19 @@ export default function TicketQueueTable({ tickets, loading, highlight, ordering
                 initial={isHighlighted ? { backgroundColor: "#eef2ff" } : false}
                 animate={isHighlighted ? { backgroundColor: "#ffffff" } : {}}
                 transition={{ duration: 1.5, delay: 0.3 }}
-                className={`md:grid md:grid-cols-[auto_1fr_120px_130px_100px_80px_120px] gap-3 px-6 py-4
+                className={`md:grid md:grid-cols-[28px_auto_1fr_120px_130px_100px_80px_120px] gap-3 px-6 py-4
                            hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center`}>
+
+                {/* Select */}
+                {hasSelection && (
+                  <div className="hidden md:block">
+                    <RowCheckbox
+                      checked={selectedIds.has(t.id)}
+                      onChange={() => onToggleOne(t.id)}
+                      ariaLabel={`Select ticket ${t.ticket_number}`}
+                    />
+                  </div>
+                )}
 
                 {/* # */}
                 <span className="text-[11px] font-mono font-semibold text-slate-500 hidden md:block">{t.ticket_number}</span>
@@ -90,6 +140,13 @@ export default function TicketQueueTable({ tickets, loading, highlight, ordering
                 {/* Title + mobile meta */}
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 md:hidden mb-1">
+                    {hasSelection && (
+                      <RowCheckbox
+                        checked={selectedIds.has(t.id)}
+                        onChange={() => onToggleOne(t.id)}
+                        ariaLabel={`Select ticket ${t.ticket_number}`}
+                      />
+                    )}
                     <span className="text-[11px] font-mono text-slate-500">{t.ticket_number}</span>
                     <Badge label={t.status} colorClass={STATUS_BADGE[t.status] ?? "bg-slate-100 text-slate-500"} />
                   </div>

@@ -7,6 +7,7 @@ import TicketQueueTable, { Badge, STATUS_BADGE } from "../../components/tickets/
 import Pagination from "../../components/table/Pagination";
 import { getOpsTickets, getOpsFreelancers, opsAssignTicket, opsUnassignTicket } from "../../api/ops";
 import { usePageTitle } from "../../hooks/usePageTitle";
+import { useSelection } from "../../hooks/useSelection";
 
 // ── Constants ─────────────────────────────────────────────────────
 const STATUS_OPTIONS = [
@@ -172,6 +173,9 @@ export default function OpsTicketQueue() {
   const [loading, setLoading] = useState(true);
   const [freelancers, setFreelancers] = useState([]);
   const [modalTicket, setModalTicket] = useState(null);
+  // Bulk selection — persists across page/filter/sort changes since it's
+  // keyed purely on ticket id, independent of what `tickets` currently holds.
+  const selection = useSelection();
   const [search, setSearch] = useState(searchParams.get("search") ?? "");
   const [status, setStatus] = useState(searchParams.get("status") ?? "");
   const [serviceType, setServiceType] = useState(searchParams.get("service_type") ?? "");
@@ -425,6 +429,12 @@ export default function OpsTicketQueue() {
           </div>
         )}
 
+        {selection.count > 0 && (
+          <p className="text-sm font-semibold text-slate-700">
+            Selected: {selection.count} ticket{selection.count !== 1 ? "s" : ""}
+          </p>
+        )}
+
         {/* Ticket table */}
         <TicketQueueTable
           tickets={tickets}
@@ -434,6 +444,9 @@ export default function OpsTicketQueue() {
           onSort={onSort}
           onView={(id) => navigate(`/tickets/${id}`)}
           onAssign={(t) => setModalTicket(t)}
+          selectedIds={selection.selected}
+          onToggleOne={selection.toggle}
+          onToggleAll={selection.toggleAll}
         />
 
         <Pagination
