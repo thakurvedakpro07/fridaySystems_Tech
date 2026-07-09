@@ -1,4 +1,14 @@
 import { motion } from "framer-motion";
+import SortableColumnHeader from "../../table/SortableColumnHeader";
+
+// Column key → backend `ordering` field name. Only these four header cells
+// are sortable per the current requirement.
+const SORTABLE_HEADERS = [
+  { key: "title", label: "Ticket" },
+  { key: "status", label: "Status" },
+  { key: "service_type", label: "Service" },
+  { key: "created_at", label: "Created" },
+];
 
 // ── Shared status display helpers ──────────────────────────────────
 // Exported (not just used internally) so OpsTicketQueue.jsx's AssignModal
@@ -30,16 +40,19 @@ export function fmtDate(iso) {
   return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 }
 
-export default function TicketQueueTable({ tickets, loading, highlight, onView, onAssign }) {
+export default function TicketQueueTable({ tickets, loading, highlight, ordering, onSort, onView, onAssign }) {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
          style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
 
       {/* Table header */}
       <div className="hidden md:grid grid-cols-[auto_1fr_120px_130px_100px_80px_120px] gap-3 px-6 py-3 border-b border-slate-100 bg-slate-50">
-        {["#", "Ticket", "Status", "Service", "Created", "", "Action"].map((h, i) => (
-          <span key={i} className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{h}</span>
+        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">#</span>
+        {SORTABLE_HEADERS.map((col) => (
+          <SortableColumnHeader key={col.key} label={col.label} field={col.key} ordering={ordering} onSort={onSort} />
         ))}
+        <span />
+        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Action</span>
       </div>
 
       {loading ? (

@@ -38,7 +38,7 @@ from django.shortcuts import get_object_or_404
 _logger = logging.getLogger(__name__)
 
 User = get_user_model()
-from rest_framework import generics, permissions, status
+from rest_framework import filters, generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes as throttle_classes_dec
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -2117,6 +2117,17 @@ class OpsTicketListView(generics.ListAPIView):
     """
     serializer_class = OpsTicketListSerializer
     permission_classes = [permissions.IsAuthenticated, IsAnyStaffRole]
+    filter_backends = [filters.OrderingFilter]
+    # Allow-listed order_by targets. "ticket_number" is the closest thing to
+    # a ticket_id (the UUID pk isn't meaningfully sortable); "severity" is
+    # this model's field for what the product calls "priority"; "service_type"
+    # is what the product calls "service"; assigned-engineer sorts by the
+    # freelancer's first name since there's no single "assigned engineer" field.
+    ordering_fields = [
+        "ticket_number", "title", "status", "severity",
+        "service_type", "created_at", "assigned_to__user__first_name",
+    ]
+    ordering = ["-created_at"]  # unchanged default — matches prior manual behavior
 
     def get_queryset(self):
         qs = Ticket.objects.select_related("customer__user", "assigned_to__user")
@@ -2137,11 +2148,6 @@ class OpsTicketListView(generics.ListAPIView):
                 | Q(ticket_number__icontains=search)
                 | Q(customer__user__email__icontains=search)
             )
-
-        ordering = self.request.query_params.get("ordering", "-created_at")
-        allowed = {"created_at", "-created_at", "status", "-status", "severity", "-severity"}
-        if ordering in allowed:
-            qs = qs.order_by(ordering)
 
         return qs
 

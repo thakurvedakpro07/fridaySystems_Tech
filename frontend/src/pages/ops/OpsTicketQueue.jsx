@@ -157,6 +157,10 @@ export default function OpsTicketQueue() {
     const p = parseInt(searchParams.get("page"), 10);
     return Number.isFinite(p) && p > 0 ? p : 1;
   });
+  // Raw DRF `ordering` value: "" = default (-created_at, sent by the
+  // backend automatically when the param is omitted), "field" = ascending,
+  // "-field" = descending.
+  const [ordering, setOrdering] = useState(() => searchParams.get("ordering") ?? "");
   const [count, setCount] = useState(0);
   const [next, setNext] = useState(null);
   const [previous, setPrevious] = useState(null);
@@ -175,11 +179,14 @@ export default function OpsTicketQueue() {
     setLoading(true);
     setError(null);
     try {
+      const currentOrdering = params.ordering ?? ordering;
       const res = await getOpsTickets({
         status: params.status ?? status,
         search: params.search ?? search,
         page: params.page ?? page,
-        ordering: "-created_at",
+        // Omit entirely when unset so the backend applies its own default
+        // (-created_at) — matches how status/search are already omitted.
+        ...(currentOrdering ? { ordering: currentOrdering } : {}),
       });
       const data = res.data ?? {};
       const results = data.results ?? (Array.isArray(data) ? data : []);
@@ -192,7 +199,7 @@ export default function OpsTicketQueue() {
     } finally {
       setLoading(false);
     }
-  }, [status, search, page]);
+  }, [status, search, page, ordering]);
 
   useEffect(() => {
     loadFreelancers();
@@ -211,18 +218,35 @@ export default function OpsTicketQueue() {
       if (status) p.status = status;
       if (search) p.search = search;
       if (page > 1) p.page = String(page);
+      if (ordering) p.ordering = ordering;
       setSearchParams(p, { replace: true });
       return;
     }
 
     // An explicit status change invalidates the current page — reset to 1.
+    // Ordering is preserved (a filter change shouldn't discard the sort).
     const p = {};
     if (status) p.status = status;
     if (search) p.search = search;
+    if (ordering) p.ordering = ordering;
     setPage(1);
     setSearchParams(p, { replace: true });
     loadTickets({ status, search, page: 1 });
   }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Restore `ordering` on browser Back/Forward. Page/status/search are left
+  // exactly as before (out of scope here) — this only re-syncs sort state
+  // when the URL's `ordering` no longer matches local state, which happens
+  // on a popstate navigation (our own click handlers already keep the two
+  // in sync in the same render, so this is a no-op immediately after them).
+  useEffect(() => {
+    const urlOrdering = searchParams.get("ordering") ?? "";
+    if (urlOrdering !== ordering) {
+      setOrdering(urlOrdering);
+      loadTickets({ ordering: urlOrdering });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   function onSearchChange(val) {
     setSearch(val);
@@ -232,6 +256,7 @@ export default function OpsTicketQueue() {
       const p = {};
       if (status) p.status = status;
       if (val) p.search = val;
+      if (ordering) p.ordering = ordering;
       setSearchParams(p, { replace: true });
       loadTickets({ search: val, page: 1 });
     }, 380);
@@ -242,10 +267,31 @@ export default function OpsTicketQueue() {
     const p = {};
     if (status) p.status = status;
     if (search) p.search = search;
+    if (ordering) p.ordering = ordering;
     if (newPage > 1) p.page = String(newPage);
     setPage(newPage);
     setSearchParams(p); // push (no replace) — a new history entry per page navigation
     loadTickets({ page: newPage });
+  }
+
+  // Clicking a sortable header cycles: ascending → descending → default (off).
+  function onSort(field) {
+    let nextOrdering;
+    if (ordering === field) {
+      nextOrdering = `-${field}`;
+    } else if (ordering === `-${field}`) {
+      nextOrdering = "";
+    } else {
+      nextOrdering = field;
+    }
+    const p = {};
+    if (status) p.status = status;
+    if (search) p.search = search;
+    if (nextOrdering) p.ordering = nextOrdering;
+    setOrdering(nextOrdering);
+    setPage(1); // a re-sorted result set invalidates the current page
+    setSearchParams(p); // push — an explicit sort choice, like page navigation
+    loadTickets({ ordering: nextOrdering, page: 1 });
   }
 
   function onAssignDone() {
@@ -275,7 +321,10 @@ export default function OpsTicketQueue() {
             setStatus("");
             setSearch("");
             setPage(1);
-            setSearchParams({}, { replace: true });
+            // Clearing filters preserves the current sort — sorting isn't a filter.
+            const p = {};
+            if (ordering) p.ordering = ordering;
+            setSearchParams(p, { replace: true });
             loadTickets({ status: "", search: "", page: 1 });
           }}
         />
@@ -291,6 +340,8 @@ export default function OpsTicketQueue() {
           tickets={tickets}
           loading={loading}
           highlight={highlight}
+          ordering={ordering}
+          onSort={onSort}
           onView={(id) => navigate(`/tickets/${id}`)}
           onAssign={(t) => setModalTicket(t)}
         />
