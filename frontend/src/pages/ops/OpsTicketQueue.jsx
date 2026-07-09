@@ -191,10 +191,18 @@ function AssignModal({ ticket, freelancers, onClose, onDone }) {
 // Assign-only (no unassign concept for a bulk selection). Reuses the same
 // single-ticket assignment endpoint, looping sequentially since no bulk
 // endpoint exists — a failed ticket doesn't stop the rest from being tried.
+// Two-step flow: pick an engineer, then explicitly confirm before the loop
+// (below, unchanged) actually runs — prevents an accidental mass-assign.
 function BulkAssignModal({ ticketIds, freelancers, onClose, onDone }) {
+  const [step, setStep] = useState("select"); // "select" | "confirm"
   const [selected, setSelected] = useState("");
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  const selectedFreelancer = freelancers.find((f) => f.id === selected);
+  const selectedFreelancerLabel = selectedFreelancer
+    ? (selectedFreelancer.name ?? selectedFreelancer.user?.email ?? selectedFreelancer.email)
+    : "";
 
   async function submit() {
     if (!selected) return;
@@ -242,24 +250,31 @@ function BulkAssignModal({ ticketIds, freelancers, onClose, onDone }) {
         </div>
 
         <div className="px-6 py-5 space-y-4">
-          {/* Engineer select */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Assign to Engineer</label>
-            <select
-              value={selected}
-              onChange={(e) => setSelected(e.target.value)}
-              disabled={loading}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white text-slate-800
-                         focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-indigo-400 transition disabled:opacity-60">
-              <option value="">Select an engineer</option>
-              {freelancers.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name ?? f.user?.email} — {f.skills_display ?? f.skills ?? ""}
-                  {f.active_ticket_count != null ? ` (${f.active_ticket_count} active)` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
+          {step === "select" && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Assign to Engineer</label>
+              <select
+                value={selected}
+                onChange={(e) => setSelected(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white text-slate-800
+                           focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-indigo-400 transition">
+                <option value="">Select an engineer</option>
+                {freelancers.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name ?? f.user?.email} — {f.skills_display ?? f.skills ?? ""}
+                    {f.active_ticket_count != null ? ` (${f.active_ticket_count} active)` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {step === "confirm" && !loading && (
+            <p className="text-sm text-slate-700">
+              Assign <span className="font-semibold">{ticketIds.length}</span> selected ticket{ticketIds.length !== 1 ? "s" : ""} to{" "}
+              <span className="font-semibold">&ldquo;{selectedFreelancerLabel}&rdquo;</span>?
+            </p>
+          )}
 
           {loading && (
             <p className="text-xs text-slate-500">Assigning {progress} of {ticketIds.length}…</p>
@@ -267,14 +282,18 @@ function BulkAssignModal({ ticketIds, freelancers, onClose, onDone }) {
         </div>
 
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
-          <button onClick={onClose} disabled={loading}
-            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">
+          <button
+            onClick={() => (step === "confirm" ? setStep("select") : onClose())}
+            disabled={loading}
+            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
             Cancel
           </button>
-          <button onClick={submit} disabled={loading || !selected}
+          <button
+            onClick={() => (step === "confirm" ? submit() : setStep("confirm"))}
+            disabled={loading || !selected}
             className={`px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all
                        ${loading || !selected ? "bg-indigo-400 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700 shadow-sm"}`}>
-            {loading ? "Assigning…" : "Confirm"}
+            {loading ? "Assigning…" : step === "confirm" ? "Assign Tickets" : "Confirm"}
           </button>
         </div>
       </motion.div>
@@ -282,14 +301,24 @@ function BulkAssignModal({ ticketIds, freelancers, onClose, onDone }) {
   );
 }
 
+// Statuses that end a ticket's lifecycle — a bulk transition into one of
+// these gets an extra warning in the confirmation step below.
+const TERMINAL_STATUSES = new Set(["resolved", "closed"]);
+
 // ── Bulk status update modal ───────────────────────────────────────
 // Same pattern as BulkAssignModal: reuses the existing single-ticket status
 // endpoint, looping sequentially since no bulk endpoint exists — a failed
-// ticket doesn't stop the rest from being tried.
+// ticket doesn't stop the rest from being tried. Two-step flow: pick a
+// status, then explicitly confirm (with a terminal-status warning when
+// applicable) before the loop (below, unchanged) actually runs.
 function BulkStatusModal({ ticketIds, statusOptions, onClose, onDone }) {
+  const [step, setStep] = useState("select"); // "select" | "confirm"
   const [selected, setSelected] = useState("");
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  const selectedStatusLabel = statusOptions.find((o) => o.value === selected)?.label ?? selected;
+  const isTerminalStatus = TERMINAL_STATUSES.has(selected);
 
   async function submit() {
     if (!selected) return;
@@ -337,21 +366,35 @@ function BulkStatusModal({ ticketIds, statusOptions, onClose, onDone }) {
         </div>
 
         <div className="px-6 py-5 space-y-4">
-          {/* Status select */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">New Status</label>
-            <select
-              value={selected}
-              onChange={(e) => setSelected(e.target.value)}
-              disabled={loading}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white text-slate-800
-                         focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-indigo-400 transition disabled:opacity-60">
-              <option value="">Select a status</option>
-              {statusOptions.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </div>
+          {step === "select" && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">New Status</label>
+              <select
+                value={selected}
+                onChange={(e) => setSelected(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white text-slate-800
+                           focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-indigo-400 transition">
+                <option value="">Select a status</option>
+                {statusOptions.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {step === "confirm" && !loading && (
+            <div className="space-y-3">
+              <p className="text-sm text-slate-700">
+                Update status of <span className="font-semibold">{ticketIds.length}</span> selected ticket{ticketIds.length !== 1 ? "s" : ""} to{" "}
+                <span className="font-semibold">&ldquo;{selectedStatusLabel}&rdquo;</span>?
+              </p>
+              {isTerminalStatus && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  &ldquo;{selectedStatusLabel}&rdquo; ends a ticket's lifecycle. This affects multiple tickets at once — double-check the selection before continuing.
+                </p>
+              )}
+            </div>
+          )}
 
           {loading && (
             <p className="text-xs text-slate-500">Updating {progress} of {ticketIds.length}…</p>
@@ -359,14 +402,18 @@ function BulkStatusModal({ ticketIds, statusOptions, onClose, onDone }) {
         </div>
 
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
-          <button onClick={onClose} disabled={loading}
-            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">
+          <button
+            onClick={() => (step === "confirm" ? setStep("select") : onClose())}
+            disabled={loading}
+            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
             Cancel
           </button>
-          <button onClick={submit} disabled={loading || !selected}
+          <button
+            onClick={() => (step === "confirm" ? submit() : setStep("confirm"))}
+            disabled={loading || !selected}
             className={`px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all
                        ${loading || !selected ? "bg-indigo-400 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700 shadow-sm"}`}>
-            {loading ? "Updating…" : "Confirm"}
+            {loading ? "Updating…" : step === "confirm" ? "Update Tickets" : "Confirm"}
           </button>
         </div>
       </motion.div>
