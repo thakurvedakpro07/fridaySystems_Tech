@@ -32,6 +32,8 @@ import logging
 import django_filters
 from django_filters.rest_framework import DjangoFilterBackend
 
+from .pagination import OpsPageNumberPagination
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -2136,6 +2138,7 @@ class OpsTicketListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated, IsAnyStaffRole]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = OpsTicketFilterSet
+    pagination_class = OpsPageNumberPagination
     # Allow-listed order_by targets. "ticket_number" is the closest thing to
     # a ticket_id (the UUID pk isn't meaningfully sortable); "severity" is
     # this model's field for what the product calls "priority"; "service_type"

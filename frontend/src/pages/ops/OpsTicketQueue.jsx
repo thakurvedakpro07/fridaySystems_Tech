@@ -38,6 +38,9 @@ const PRIORITY_OPTIONS = [
   { value: "critical", label: "Critical" },
 ];
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+const DEFAULT_PAGE_SIZE = 20; // matches the backend's default when ?page_size= is omitted
+
 // ── Assign / Unassign modal ───────────────────────────────────────
 function AssignModal({ ticket, freelancers, onClose, onDone }) {
   const [selected, setSelected] = useState(ticket.freelancer?.id ?? "");
@@ -179,6 +182,10 @@ export default function OpsTicketQueue() {
     const p = parseInt(searchParams.get("page"), 10);
     return Number.isFinite(p) && p > 0 ? p : 1;
   });
+  const [pageSize, setPageSize] = useState(() => {
+    const s = parseInt(searchParams.get("page_size"), 10);
+    return PAGE_SIZE_OPTIONS.includes(s) ? s : DEFAULT_PAGE_SIZE;
+  });
   // Raw DRF `ordering` value: "" = default (-created_at, sent by the
   // backend automatically when the param is omitted), "field" = ascending,
   // "-field" = descending.
@@ -204,6 +211,7 @@ export default function OpsTicketQueue() {
       const currentServiceType = params.service_type ?? serviceType;
       const currentPriority = params.priority ?? priority;
       const currentAssignedTo = params.assigned_to ?? assignedTo;
+      const currentPageSize = params.page_size ?? pageSize;
       const res = await getOpsTickets({
         status: params.status ?? status,
         search: params.search ?? search,
@@ -214,6 +222,7 @@ export default function OpsTicketQueue() {
         ...(currentServiceType ? { service_type: currentServiceType } : {}),
         ...(currentPriority ? { priority: currentPriority } : {}),
         ...(currentAssignedTo ? { assigned_to: currentAssignedTo } : {}),
+        ...(currentPageSize !== DEFAULT_PAGE_SIZE ? { page_size: currentPageSize } : {}),
       });
       const data = res.data ?? {};
       const results = data.results ?? (Array.isArray(data) ? data : []);
@@ -226,7 +235,7 @@ export default function OpsTicketQueue() {
     } finally {
       setLoading(false);
     }
-  }, [status, search, page, ordering, serviceType, priority, assignedTo]);
+  }, [status, search, page, ordering, serviceType, priority, assignedTo, pageSize]);
 
   // Builds the canonical URL params object from current state, with
   // per-call overrides — the single source of truth for what goes in the
@@ -241,6 +250,7 @@ export default function OpsTicketQueue() {
       assigned_to: overrides.assigned_to ?? assignedTo,
       ordering: overrides.ordering ?? ordering,
       page: overrides.page ?? page,
+      page_size: overrides.page_size ?? pageSize,
     };
     const p = {};
     if (v.status) p.status = v.status;
@@ -250,6 +260,7 @@ export default function OpsTicketQueue() {
     if (v.assigned_to) p.assigned_to = v.assigned_to;
     if (v.ordering) p.ordering = v.ordering;
     if (v.page > 1) p.page = String(v.page);
+    if (v.page_size !== DEFAULT_PAGE_SIZE) p.page_size = String(v.page_size);
     return p;
   }
 
@@ -258,25 +269,37 @@ export default function OpsTicketQueue() {
     loadTickets();
   }, []);  // initial load only
 
-  // Restore status/service_type/priority/assigned_to/ordering on browser
-  // Back/Forward (page/search keep their existing behavior — out of scope
-  // here). Our own click/change handlers already update local state and
-  // the URL together in the same render, so this is a no-op immediately
+  // Restore status/service_type/priority/assigned_to/ordering/page/page_size
+  // on browser Back/Forward (search keeps its existing behavior — out of
+  // scope here). Our own click/change handlers already update local state
+  // and the URL together in the same render, so this is a no-op immediately
   // after them; it only actually fires on a true popstate navigation.
   useEffect(() => {
+    const urlPage = (() => {
+      const n = parseInt(searchParams.get("page"), 10);
+      return Number.isFinite(n) && n > 0 ? n : 1;
+    })();
+    const urlPageSize = (() => {
+      const n = parseInt(searchParams.get("page_size"), 10);
+      return PAGE_SIZE_OPTIONS.includes(n) ? n : DEFAULT_PAGE_SIZE;
+    })();
     const url = {
       status: searchParams.get("status") ?? "",
       service_type: searchParams.get("service_type") ?? "",
       priority: searchParams.get("priority") ?? "",
       assigned_to: searchParams.get("assigned_to") ?? "",
       ordering: searchParams.get("ordering") ?? "",
+      page: urlPage,
+      page_size: urlPageSize,
     };
     const changed =
       url.status !== status ||
       url.service_type !== serviceType ||
       url.priority !== priority ||
       url.assigned_to !== assignedTo ||
-      url.ordering !== ordering;
+      url.ordering !== ordering ||
+      url.page !== page ||
+      url.page_size !== pageSize;
 
     if (changed) {
       setStatus(url.status);
@@ -284,6 +307,8 @@ export default function OpsTicketQueue() {
       setPriority(url.priority);
       setAssignedTo(url.assigned_to);
       setOrdering(url.ordering);
+      setPage(url.page);
+      setPageSize(url.page_size);
       loadTickets(url);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -304,6 +329,14 @@ export default function OpsTicketQueue() {
     setPage(newPage);
     setSearchParams(buildParams({ page: newPage })); // push — a new history entry per page navigation
     loadTickets({ page: newPage });
+  }
+
+  function onPageSizeChange(val) {
+    const newSize = parseInt(val, 10);
+    setPageSize(newSize);
+    setPage(1); // changing page size resets to page 1
+    setSearchParams(buildParams({ page_size: newSize, page: 1 })); // push — an explicit choice, like page navigation
+    loadTickets({ page_size: newSize, page: 1 });
   }
 
   // Clicking a sortable header cycles: ascending → descending → default (off).
@@ -377,10 +410,11 @@ export default function OpsTicketQueue() {
             setAssignedTo("");
             setSearch("");
             setPage(1);
-            // Clearing filters preserves the current sort — sorting isn't a filter.
-            const p = {};
-            if (ordering) p.ordering = ordering;
-            setSearchParams(p, { replace: true });
+            // Clearing filters preserves sort and page size — neither is a filter.
+            setSearchParams(
+              buildParams({ status: "", search: "", service_type: "", priority: "", assigned_to: "", page: 1 }),
+              { replace: true }
+            );
             loadTickets({ status: "", search: "", service_type: "", priority: "", assigned_to: "", page: 1 });
           }}
         />
@@ -404,11 +438,13 @@ export default function OpsTicketQueue() {
 
         <Pagination
           page={page}
+          pageSize={pageSize}
           count={count}
           hasPrevious={Boolean(previous)}
           hasNext={Boolean(next)}
           loading={loading}
           onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
         />
       </div>
 
