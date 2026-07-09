@@ -5,7 +5,7 @@ import AppShell from "../../components/layout/AppShell";
 import FilterBar from "../../components/filters/FilterBar";
 import TicketQueueTable, { Badge, STATUS_BADGE } from "../../components/tickets/queue/TicketQueueTable";
 import Pagination from "../../components/table/Pagination";
-import { getOpsTickets, getOpsFreelancers, opsAssignTicket, opsUnassignTicket } from "../../api/ops";
+import { getOpsTickets, getOpsFreelancers, opsAssignTicket, opsUnassignTicket, opsStatusUpdate } from "../../api/ops";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useSelection } from "../../hooks/useSelection";
 import { useToast } from "../../context/ToastContext";
@@ -259,6 +259,98 @@ function BulkAssignModal({ ticketIds, freelancers, onClose, onDone }) {
   );
 }
 
+// ── Bulk status update modal ───────────────────────────────────────
+// Same pattern as BulkAssignModal: reuses the existing single-ticket status
+// endpoint, looping sequentially since no bulk endpoint exists — a failed
+// ticket doesn't stop the rest from being tried.
+function BulkStatusModal({ ticketIds, statusOptions, onClose, onDone }) {
+  const [selected, setSelected] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  async function submit() {
+    if (!selected) return;
+    setLoading(true);
+    setProgress(0);
+    let succeeded = 0;
+    let failed = 0;
+    for (const ticketId of ticketIds) {
+      try {
+        await opsStatusUpdate(ticketId, selected);
+        succeeded++;
+      } catch (e) {
+        failed++;
+      }
+      setProgress((p) => p + 1);
+    }
+    setLoading(false);
+    onDone({ succeeded, failed });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+         onClick={(e) => !loading && e.target === e.currentTarget && onClose()}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ duration: 0.18 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div>
+            <h3 className="font-bold text-slate-900">Update Status</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {ticketIds.length} ticket{ticketIds.length !== 1 ? "s" : ""} selected
+            </p>
+          </div>
+          <button onClick={onClose} disabled={loading}
+            className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {/* Status select */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">New Status</label>
+            <select
+              value={selected}
+              onChange={(e) => setSelected(e.target.value)}
+              disabled={loading}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white text-slate-800
+                         focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-indigo-400 transition disabled:opacity-60">
+              <option value="">Select a status</option>
+              {statusOptions.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {loading && (
+            <p className="text-xs text-slate-500">Updating {progress} of {ticketIds.length}…</p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
+          <button onClick={onClose} disabled={loading}
+            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">
+            Cancel
+          </button>
+          <button onClick={submit} disabled={loading || !selected}
+            className={`px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all
+                       ${loading || !selected ? "bg-indigo-400 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700 shadow-sm"}`}>
+            {loading ? "Updating…" : "Confirm"}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────
 export default function OpsTicketQueue() {
   usePageTitle("Ticket Queue — ResolveHQ Ops");
@@ -270,6 +362,7 @@ export default function OpsTicketQueue() {
   const [freelancers, setFreelancers] = useState([]);
   const [modalTicket, setModalTicket] = useState(null);
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
   const addToast = useToast();
   // Bulk selection — persists across page/filter/sort changes since it's
   // keyed purely on ticket id, independent of what `tickets` currently holds.
@@ -490,6 +583,19 @@ export default function OpsTicketQueue() {
     }
   }
 
+  function onBulkStatusDone({ succeeded, failed }) {
+    setBulkStatusOpen(false);
+    selection.clear();
+    loadTickets();
+    if (failed === 0) {
+      addToast(`Updated status for ${succeeded} ticket${succeeded !== 1 ? "s" : ""}.`, "success");
+    } else if (succeeded === 0) {
+      addToast(`Failed to update ${failed} ticket${failed !== 1 ? "s" : ""}. Please try again.`, "error");
+    } else {
+      addToast(`Updated ${succeeded} ticket${succeeded !== 1 ? "s" : ""}; ${failed} failed.`, "warning");
+    }
+  }
+
   const engineerOptions = [
     { value: "", label: "All Engineers" },
     ...freelancers.map((f) => ({ value: f.id, label: f.name ?? f.email })),
@@ -545,11 +651,18 @@ export default function OpsTicketQueue() {
             <p className="text-sm font-semibold text-indigo-900">
               Selected: {selection.count} ticket{selection.count !== 1 ? "s" : ""}
             </p>
-            <button
-              onClick={() => setBulkAssignOpen(true)}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
-              Assign Engineer
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setBulkAssignOpen(true)}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                Assign Engineer
+              </button>
+              <button
+                onClick={() => setBulkStatusOpen(true)}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50 transition-colors">
+                Update Status
+              </button>
+            </div>
           </div>
         )}
 
@@ -594,6 +707,13 @@ export default function OpsTicketQueue() {
             freelancers={freelancers}
             onClose={() => setBulkAssignOpen(false)}
             onDone={onBulkAssignDone} />
+        )}
+        {bulkStatusOpen && (
+          <BulkStatusModal
+            ticketIds={Array.from(selection.selected)}
+            statusOptions={STATUS_OPTIONS.filter((o) => o.value)}
+            onClose={() => setBulkStatusOpen(false)}
+            onDone={onBulkStatusDone} />
         )}
       </AnimatePresence>
     </AppShell>

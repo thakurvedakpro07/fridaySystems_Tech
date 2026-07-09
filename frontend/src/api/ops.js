@@ -17,6 +17,9 @@ export const opsAssignTicket = (ticketId, freelancerId) =>
 export const opsUnassignTicket = (ticketId, note = "") =>
   apiClient.post(`/ops/tickets/${ticketId}/unassign/`, { note });
 
+export const opsStatusUpdate = (ticketId, newStatus, note = "") =>
+  apiClient.post(`/ops/tickets/${ticketId}/status/`, { new_status: newStatus, note });
+
 export const getOpsTicketHistory = (ticketId) =>
   apiClient.get(`/ops/tickets/${ticketId}/history/`);
 
