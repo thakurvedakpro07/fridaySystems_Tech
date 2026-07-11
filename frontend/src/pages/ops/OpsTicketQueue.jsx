@@ -406,6 +406,22 @@ export default function OpsTicketQueue() {
   // with stale data (see audit C1).
   const abortControllerRef = useRef(null);
   const isMountedRef = useRef(true);
+  // M1: loadTickets used to close directly over status/search/page/ordering/
+  // serviceType/priority/assignedTo/pageSize, so its useCallback identity
+  // changed on nearly every state update (all 8 were dependencies). Every
+  // caller either passes an explicit override for a field or relies on
+  // "whatever the current value is" as the fallback for the rest — never a
+  // stale snapshot — so mirroring these into a ref and reading from the ref
+  // inside loadTickets preserves that exact fallback behavior without
+  // forcing loadTickets to be recreated whenever any of them changes.
+  const queryStateRef = useRef({
+    status, search, page, ordering, serviceType, priority, assignedTo, pageSize,
+  });
+  useEffect(() => {
+    queryStateRef.current = {
+      status, search, page, ordering, serviceType, priority, assignedTo, pageSize,
+    };
+  }, [status, search, page, ordering, serviceType, priority, assignedTo, pageSize]);
 
   useEffect(() => {
     // Must reset to true here, not just at useRef(true) declaration time —
@@ -439,15 +455,16 @@ export default function OpsTicketQueue() {
     setLoading(true);
     setError(null);
     try {
-      const currentOrdering = params.ordering ?? ordering;
-      const currentServiceType = params.service_type ?? serviceType;
-      const currentPriority = params.priority ?? priority;
-      const currentAssignedTo = params.assigned_to ?? assignedTo;
-      const currentPageSize = params.page_size ?? pageSize;
+      const current = queryStateRef.current;
+      const currentOrdering = params.ordering ?? current.ordering;
+      const currentServiceType = params.service_type ?? current.serviceType;
+      const currentPriority = params.priority ?? current.priority;
+      const currentAssignedTo = params.assigned_to ?? current.assignedTo;
+      const currentPageSize = params.page_size ?? current.pageSize;
       const res = await getOpsTickets({
-        status: params.status ?? status,
-        search: params.search ?? search,
-        page: params.page ?? page,
+        status: params.status ?? current.status,
+        search: params.search ?? current.search,
+        page: params.page ?? current.page,
         // Omit entirely when unset so the backend applies its own default
         // (-created_at) / no filter — matches how status/search are already omitted.
         ...(currentOrdering ? { ordering: currentOrdering } : {}),
@@ -477,7 +494,7 @@ export default function OpsTicketQueue() {
         setLoading(false);
       }
     }
-  }, [status, search, page, ordering, serviceType, priority, assignedTo, pageSize]);
+  }, []);
 
   // Builds the canonical URL params object from current state, with
   // per-call overrides — the single source of truth for what goes in the
@@ -537,7 +554,10 @@ export default function OpsTicketQueue() {
   useEffect(() => {
     loadFreelancers();
     loadTickets();
-  }, []);  // initial load only
+    // Both are now stable (useCallback with `[]` deps — see M1), so this
+    // still only runs once on mount despite being an honest, exhaustive
+    // dependency list rather than a suppressed one.
+  }, [loadFreelancers, loadTickets]);
 
   // C2: whenever the visible ticket list changes — refresh, search, filter,
   // sort, pagination, page size, quick views, or a refetch after a bulk/
