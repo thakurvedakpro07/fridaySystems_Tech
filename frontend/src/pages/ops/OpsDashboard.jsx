@@ -13,6 +13,11 @@ import SLABadge from "../../components/dashboard/SLABadge";
 import EngineerWorkloadBars from "../../components/dashboard/EngineerWorkloadBars";
 import Sparkline from "../../components/dashboard/charts/Sparkline";
 import Donut from "../../components/dashboard/charts/Donut";
+import BarRow from "../../components/dashboard/charts/BarRow";
+// Aliased to avoid colliding with this file's own local `Badge` (used for
+// severity/service badges elsewhere on this page) — reuses the Ticket
+// Queue's exact status color/label mapping instead of re-declaring it.
+import { Badge as StatusBadge, STATUS_BADGE } from "../../components/tickets/queue/TicketQueueTable";
 
 // ── Shared tokens ─────────────────────────────────────────────────
 const KPI_STYLES = {
@@ -47,6 +52,18 @@ const PAYMENT_TYPE_COLOR = {
   refund:         "#ef4444",
 };
 
+// "Tickets by Status" donut — reuses the exact counts already returned by
+// GET /api/ops/dashboard/ (no extra request), just labeled/colored to match
+// this app's existing status badge palette (STATUS_BADGE in TicketQueueTable.jsx).
+const STATUS_CHART_SEGMENTS = [
+  { key: "open",             label: "Open (Unassigned)", color: "#4f46e5" },
+  { key: "assigned",         label: "Ready to Start",    color: "#7c3aed" },
+  { key: "in_progress",      label: "Work Started",      color: "#d97706" },
+  { key: "pending_payment",  label: "Pending Payment",   color: "#e11d48" },
+  { key: "resolved",         label: "Resolved",          color: "#059669" },
+  { key: "closed",           label: "Closed",            color: "#64748b" },
+];
+
 // ── Icons ─────────────────────────────────────────────────────────
 const IC = {
   ticket: (
@@ -79,7 +96,27 @@ const IC = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
     </svg>
   ),
+  payment: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-9-9.75h16.5a1.5 1.5 0 011.5 1.5v9a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5v-9a1.5 1.5 0 011.5-1.5z" />
+    </svg>
+  ),
 };
+
+// "Tickets by Service Type" — same seven values/order as the Ticket Queue's
+// own service filter (OpsTicketQueue.jsx's SERVICE_OPTIONS), kept as a
+// separate local copy since that file doesn't export its constants and
+// each dashboard/page in this app already defines its own small constants
+// rather than sharing them cross-file.
+const SERVICE_TYPES = [
+  { value: "desktop",  label: "Desktop" },
+  { value: "linux",    label: "Linux" },
+  { value: "windows",  label: "Windows" },
+  { value: "patching", label: "Patching" },
+  { value: "security", label: "Security" },
+  { value: "vmware",   label: "VMware" },
+  { value: "sap",      label: "SAP" },
+];
 
 function fmtDate(iso) {
   if (!iso) return "—";
@@ -95,18 +132,45 @@ export default function OpsDashboard() {
   const { isSuperAdmin, isOpsManager, isFinanceManager } = useRoles();
   const canSeeWorkload  = isOpsManager || isSuperAdmin;
   const canSeeFinancial = isFinanceManager || isSuperAdmin;
+  // Mirrors the exact role sets the router already enforces for these two
+  // destinations (App.jsx's OpsManagerRoute / PaymentRoute) — a Quick
+  // Action shouldn't link somewhere the viewer's own role would immediately
+  // 403 out of.
+  const canOpenAssignments = isOpsManager || isSuperAdmin;
+  const canOpenPayments = isOpsManager || isFinanceManager || isSuperAdmin;
 
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [openTickets, setOpenTickets] = useState([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [recentTickets, setRecentTickets] = useState([]);
+  const [recentLoading, setRecentLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const [freelancers, setFreelancers] = useState([]);
   const [freelancersLoading, setFreelancersLoading] = useState(canSeeWorkload);
 
-  const [financial, setFinancial] = useState(null);
-  const [financialLoading, setFinancialLoading] = useState(canSeeFinancial);
+  // `analytics` holds the full GET /api/ops/analytics/ response — its
+  // `.operational` slice feeds the "Resolved (Last 30 Days)" KPI card
+  // (base, all roles) and its `.financial` slice feeds the existing
+  // Finance-only sections further down. Previously this was only fetched
+  // for canSeeFinancial roles and narrowed immediately to `.financial`;
+  // now fetched unconditionally since every staff role gets at least one
+  // of the two slices (backend: operational for ops_manager/support_agent/
+  // super_admin, financial for finance_manager/super_admin).
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+
+  // Derived, client-side-only counts that have no direct field in any
+  // existing API response: "High Priority Tickets" (severity=high +
+  // severity=critical) and the "Tickets by Service Type" chart (one count
+  // per service type). Each is a lightweight page_size=1 request against
+  // the existing GET /api/ops/tickets/ endpoint — DRF's paginated `count`
+  // reflects the full filtered total regardless of page size, so this gets
+  // an exact count per bucket without downloading the matching rows.
+  const [highPriorityCount, setHighPriorityCount] = useState(null);
+  const [serviceTypeCounts, setServiceTypeCounts] = useState(null);
+  const [derivedLoading, setDerivedLoading] = useState(true);
 
   const [overview, setOverview] = useState(null);
   const [overviewLoading, setOverviewLoading] = useState(isSuperAdmin);
@@ -114,19 +178,23 @@ export default function OpsDashboard() {
   const load = useCallback(async () => {
     setStatsLoading(true);
     setTicketsLoading(true);
+    setRecentLoading(true);
     setError(null);
     try {
-      const [dashRes, ticketsRes] = await Promise.all([
+      const [dashRes, ticketsRes, recentRes] = await Promise.all([
         getOpsDashboard(),
         getOpsTickets({ status: "open", ordering: "-created_at" }),
+        getOpsTickets({ ordering: "-created_at", page_size: 10 }),
       ]);
       setStats(dashRes.data);
       setOpenTickets(ticketsRes.data?.results ?? ticketsRes.data ?? []);
+      setRecentTickets(recentRes.data?.results ?? recentRes.data ?? []);
     } catch (e) {
       setError(e?.response?.data?.detail ?? "Failed to load dashboard.");
     } finally {
       setStatsLoading(false);
       setTicketsLoading(false);
+      setRecentLoading(false);
     }
   }, []);
 
@@ -142,13 +210,35 @@ export default function OpsDashboard() {
   }, [canSeeWorkload]);
 
   useEffect(() => {
-    if (!canSeeFinancial) return;
-    setFinancialLoading(true);
+    setAnalyticsLoading(true);
     getOpsAnalytics()
-      .then(({ data }) => setFinancial(data?.financial ?? null))
+      .then(({ data }) => setAnalytics(data ?? null))
       .catch(() => {})
-      .finally(() => setFinancialLoading(false));
-  }, [canSeeFinancial]);
+      .finally(() => setAnalyticsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setDerivedLoading(true);
+    Promise.all([
+      getOpsTickets({ priority: "high", page_size: 1 }),
+      getOpsTickets({ priority: "critical", page_size: 1 }),
+      ...SERVICE_TYPES.map((s) => getOpsTickets({ service_type: s.value, page_size: 1 })),
+    ])
+      .then(([highRes, criticalRes, ...serviceResults]) => {
+        if (cancelled) return;
+        setHighPriorityCount((highRes.data?.count ?? 0) + (criticalRes.data?.count ?? 0));
+        setServiceTypeCounts(
+          SERVICE_TYPES.reduce((acc, s, i) => {
+            acc[s.value] = serviceResults[i].data?.count ?? 0;
+            return acc;
+          }, {})
+        );
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setDerivedLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!isSuperAdmin) return;
@@ -169,6 +259,26 @@ export default function OpsDashboard() {
   // zero. Check key presence, not truthiness, so we don't render "₹0"
   // for a role that isn't authorized to see revenue at all.
   const hasRevenue = !statsLoading && stats && Object.prototype.hasOwnProperty.call(stats, "revenue");
+
+  // `.operational` is likewise absent for Finance Manager (backend gates it
+  // to ops_manager/support_agent/super_admin — see ops_analytics). "Resolved
+  // (Last 30 Days)" approximates true "resolved today" (no resolution-date
+  // field is exposed by any current API — see Phase 1 note below) using
+  // by_status among tickets *created* in the last 30 days, which is real,
+  // already-computed backend data rather than a fabricated number.
+  const hasOperational = !analyticsLoading && Boolean(analytics?.operational);
+  const opByStatus = analytics?.operational?.by_status;
+  const resolvedLast30 = hasOperational ? (opByStatus?.resolved ?? 0) + (opByStatus?.closed ?? 0) : null;
+
+  // Busiest-first, matching EngineerWorkloadBars' own sort convention for
+  // the same BarRow component.
+  const serviceTypeChartData = serviceTypeCounts
+    ? [...SERVICE_TYPES]
+        .map((s) => ({ label: s.label, value: serviceTypeCounts[s.value] ?? 0 }))
+        .sort((a, b) => b.value - a.value)
+    : [];
+
+  const financial = analytics?.financial ?? null;
 
   return (
     <AppShell>
@@ -199,17 +309,26 @@ export default function OpsDashboard() {
           </div>
         )}
 
-        {/* KPI grid — base for all staff roles */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* KPI grid — base for all staff roles (Phase 1 dashboard cards) */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           {[
-            { label: "Open — Unassigned", value: stats?.open, color: "indigo", sub: "Awaiting engineer assignment", icon: IC.ticket, to: "/operations/tickets?status=open", delay: 0 },
-            { label: "Ready to Start", value: stats?.assigned, color: "violet", sub: "Assigned, not yet started", icon: IC.assign, to: "/operations/tickets?status=assigned", delay: 0.04 },
-            { label: "Work Started", value: stats?.in_progress, color: "amber", sub: "Actively being worked", icon: IC.clock, to: "/operations/tickets?status=in_progress", delay: 0.08 },
-            { label: "SLA Due Soon", value: stats?.sla_due_soon, color: "orange", sub: "Deadline within 2 hours", icon: IC.alert, to: "/operations/tickets?status=in_progress", delay: 0.12 },
-            { label: "Resolved / Closed", value: (stats?.resolved ?? 0) + (stats?.closed ?? 0), color: "emerald", sub: "Successfully completed", icon: IC.check, to: "/operations/tickets?status=resolved", delay: 0.16 },
+            { label: "Total Open Tickets", value: stats?.total_active, color: "indigo", sub: "Open, assigned & in progress", icon: IC.ticket, to: "/operations/tickets", loading: statsLoading, delay: 0 },
+            { label: "Unassigned Tickets", value: stats?.unassigned, color: "violet", sub: "Awaiting engineer assignment", icon: IC.assign, to: "/operations/tickets?status=open", loading: statsLoading, delay: 0.04 },
+            { label: "Work Started", value: stats?.in_progress, color: "amber", sub: "Actively being worked", icon: IC.clock, to: "/operations/tickets?status=in_progress", loading: statsLoading, delay: 0.08 },
+            { label: "Pending Payment", value: stats?.pending_payment, color: "rose", sub: "Awaiting customer payment", icon: IC.payment, to: "/operations/tickets?status=pending_payment", loading: statsLoading, delay: 0.12 },
+            {
+              label: "Resolved (Last 30 Days)", value: resolvedLast30, color: "emerald",
+              sub: hasOperational ? "Resolved/closed, created in last 30 days" : "Not available for this role",
+              icon: IC.check, to: "/operations/tickets?status=resolved", loading: statsLoading || analyticsLoading, delay: 0.16,
+            },
+            {
+              label: "High Priority Tickets", value: highPriorityCount, color: "orange",
+              sub: "High & critical severity", icon: IC.alert, to: "/operations/tickets?priority=high",
+              loading: derivedLoading, delay: 0.2,
+            },
           ].map(({ delay, ...kpi }) => (
             <motion.div key={kpi.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}>
-              <KpiCard {...kpi} loading={statsLoading} />
+              <KpiCard {...kpi} />
             </motion.div>
           ))}
         </div>
@@ -242,6 +361,32 @@ export default function OpsDashboard() {
             </div>
           </motion.div>
         )}
+
+        {/* Tickets by Status / Tickets by Service Type — base for all staff */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }}>
+            <DashboardSection title="Tickets by Status" description="Current distribution across the pipeline">
+              {statsLoading ? (
+                <div className="h-24 shimmer rounded-lg" />
+              ) : (
+                <Donut segments={STATUS_CHART_SEGMENTS.map((s) => ({ label: s.label, value: stats?.[s.key] ?? 0, color: s.color }))} />
+              )}
+            </DashboardSection>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}>
+            <DashboardSection title="Tickets by Service Type" description="Ticket volume per service, busiest first">
+              {derivedLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((n) => <div key={n} className="h-6 shimmer rounded-lg" />)}
+                </div>
+              ) : serviceTypeChartData.every((d) => d.value === 0) ? (
+                <p className="text-sm text-slate-500 text-center py-6">No data yet</p>
+              ) : (
+                <BarRow data={serviceTypeChartData} color="#4f46e5" valueFormatter={(v) => `${v} ticket${v !== 1 ? "s" : ""}`} />
+              )}
+            </DashboardSection>
+          </motion.div>
+        </div>
 
         {/* Engineer Workload — Ops Manager + Super Admin only */}
         {canSeeWorkload && (
@@ -301,6 +446,50 @@ export default function OpsDashboard() {
           </DashboardSection>
         </motion.div>
 
+        {/* Recent Activity — base for all staff. No cross-ticket "activity
+            log" endpoint exists (getOpsTicketHistory is per-ticket only),
+            so this uses the 10 most recently *created* tickets — each row
+            still shows the ticket's current status — as the closest
+            available proxy for "recent updates" using only existing data. */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.31 }}>
+          <DashboardSection
+            title="Recent Activity"
+            description="10 most recently created tickets"
+            viewAllTo="/operations/tickets"
+          >
+            {recentLoading ? (
+              <div className="space-y-3">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="h-14 bg-slate-50 animate-pulse rounded-xl" />
+                ))}
+              </div>
+            ) : recentTickets.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-6">No tickets yet.</p>
+            ) : (
+              <div className="divide-y divide-slate-50 -m-6">
+                {recentTickets.map((t) => (
+                  <div key={t.id} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-[11px] font-mono font-semibold text-slate-500">{t.ticket_number}</span>
+                        <StatusBadge label={t.status} colorClass={STATUS_BADGE[t.status] ?? "bg-slate-100 text-slate-500"} />
+                        <Badge label={t.service_type?.replace(/_/g, " ") ?? "—"} colorClass="bg-slate-100 text-slate-600" />
+                      </div>
+                      <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{fmtDate(t.created_at)}</p>
+                    </div>
+                    <Link to={`/operations/tickets?highlight=${t.id}`}
+                      className="shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-800 border border-indigo-200
+                                 hover:border-indigo-400 px-3 py-1.5 rounded-lg transition-colors">
+                      View →
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+          </DashboardSection>
+        </motion.div>
+
         {/* Business Overview — Super Admin only */}
         {isSuperAdmin && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}>
@@ -323,7 +512,7 @@ export default function OpsDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }}>
               <DashboardSection title="Revenue Trend" description="Completed payments by month">
-                {financialLoading ? (
+                {analyticsLoading ? (
                   <div className="h-16 shimmer rounded-lg" />
                 ) : (
                   <Sparkline
@@ -336,7 +525,7 @@ export default function OpsDashboard() {
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.36 }}>
               <DashboardSection title="Payment Type Split" description="Revenue by payment type">
-                {financialLoading ? (
+                {analyticsLoading ? (
                   <div className="h-16 shimmer rounded-lg" />
                 ) : (
                   <Donut
@@ -354,20 +543,28 @@ export default function OpsDashboard() {
               <KpiRow
                 columns={3}
                 items={[
-                  { label: "Refunds", value: financial?.refund_count, sub: "total refunded payments", color: "rose", loading: financialLoading, to: "/operations/payments" },
-                  { label: "Pending Payouts", value: financial ? fmtCurrency(financial.pending_payouts_total) : null, sub: "owed to engineers", color: "amber", loading: financialLoading, to: "/operations/payments" },
+                  { label: "Refunds", value: financial?.refund_count, sub: "total refunded payments", color: "rose", loading: analyticsLoading, to: "/operations/payments" },
+                  { label: "Pending Payouts", value: financial ? fmtCurrency(financial.pending_payouts_total) : null, sub: "owed to engineers", color: "amber", loading: analyticsLoading, to: "/operations/payments" },
                 ]}
               />
             </motion.div>
           </div>
         )}
 
-        {/* Quick nav cards */}
+        {/* Quick Actions — Open Ticket Queue / Open Assignments / Open
+            Payments, per the Phase 1 spec. Assignments and Payments are
+            gated to the same role sets their routes already enforce
+            (App.jsx's OpsManagerRoute / PaymentRoute) so a Support Agent,
+            say, never sees a shortcut that immediately 403s. */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { to: "/operations/tickets", label: "Ticket Queue", desc: "Filter, search, and assign all tickets", color: "indigo" },
-            { to: "/operations/freelancers", label: "Engineer Roster", desc: "Skills, availability, and active load", color: "violet" },
-            { to: "/operations/assignments", label: "Assignment History", desc: "View all assignment and reassignment events", color: "emerald" },
+            ...(canOpenAssignments ? [
+              { to: "/operations/assignments", label: "Assignments", desc: "View all assignment and reassignment events", color: "emerald" },
+            ] : []),
+            ...(canOpenPayments ? [
+              { to: "/operations/payments", label: "Payments", desc: "Review and confirm ticket payments", color: "violet" },
+            ] : []),
             ...(isSuperAdmin ? [
               { to: "/operations/users", label: "Users", desc: "Manage accounts across every role", color: "sky" },
               { to: "/operations/roles", label: "Roles", desc: "Change roles and review the audit log", color: "amber" },
