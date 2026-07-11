@@ -6,6 +6,7 @@ import AppShell from "../../components/layout/AppShell";
 import FilterBar from "../../components/filters/FilterBar";
 import QuickViews from "../../components/filters/QuickViews";
 import TicketQueueTable, { Badge, STATUS_BADGE } from "../../components/tickets/queue/TicketQueueTable";
+import BulkActionModal from "../../components/tickets/queue/BulkActionModal";
 import Pagination from "../../components/table/Pagination";
 import { getOpsTickets, getOpsFreelancers, opsAssignTicket, opsUnassignTicket, opsStatusUpdate } from "../../api/ops";
 import { usePageTitle } from "../../hooks/usePageTitle";
@@ -224,80 +225,46 @@ function BulkAssignModal({ ticketIds, freelancers, onClose, onDone }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-         onClick={(e) => !loading && e.target === e.currentTarget && onClose()}>
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        transition={{ duration: 0.18 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+    <BulkActionModal
+      title="Assign Engineer"
+      subtitle={`${ticketIds.length} ticket${ticketIds.length !== 1 ? "s" : ""} selected`}
+      onClose={onClose}
+      loading={loading}
+      primaryButtonText={loading ? "Assigning…" : step === "confirm" ? "Assign Tickets" : "Confirm"}
+      onCancel={() => (step === "confirm" ? setStep("select") : onClose())}
+      onConfirm={() => (step === "confirm" ? submit() : setStep("confirm"))}
+      confirmDisabled={loading || !selected}>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <div>
-            <h3 className="font-bold text-slate-900">Assign Engineer</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {ticketIds.length} ticket{ticketIds.length !== 1 ? "s" : ""} selected
-            </p>
-          </div>
-          <button onClick={onClose} disabled={loading}
-            className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-            <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+      {step === "select" && (
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1.5">Assign to Engineer</label>
+          <select
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white text-slate-800
+                       focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-indigo-400 transition">
+            <option value="">Select an engineer</option>
+            {freelancers.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name ?? f.user?.email} — {f.skills_display ?? f.skills ?? ""}
+                {f.active_ticket_count != null ? ` (${f.active_ticket_count} active)` : ""}
+              </option>
+            ))}
+          </select>
         </div>
+      )}
 
-        <div className="px-6 py-5 space-y-4">
-          {step === "select" && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Assign to Engineer</label>
-              <select
-                value={selected}
-                onChange={(e) => setSelected(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white text-slate-800
-                           focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-indigo-400 transition">
-                <option value="">Select an engineer</option>
-                {freelancers.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name ?? f.user?.email} — {f.skills_display ?? f.skills ?? ""}
-                    {f.active_ticket_count != null ? ` (${f.active_ticket_count} active)` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+      {step === "confirm" && !loading && (
+        <p className="text-sm text-slate-700">
+          Assign <span className="font-semibold">{ticketIds.length}</span> selected ticket{ticketIds.length !== 1 ? "s" : ""} to{" "}
+          <span className="font-semibold">&ldquo;{selectedFreelancerLabel}&rdquo;</span>?
+        </p>
+      )}
 
-          {step === "confirm" && !loading && (
-            <p className="text-sm text-slate-700">
-              Assign <span className="font-semibold">{ticketIds.length}</span> selected ticket{ticketIds.length !== 1 ? "s" : ""} to{" "}
-              <span className="font-semibold">&ldquo;{selectedFreelancerLabel}&rdquo;</span>?
-            </p>
-          )}
-
-          {loading && (
-            <p className="text-xs text-slate-500">Assigning {progress} of {ticketIds.length}…</p>
-          )}
-        </div>
-
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
-          <button
-            onClick={() => (step === "confirm" ? setStep("select") : onClose())}
-            disabled={loading}
-            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-            Cancel
-          </button>
-          <button
-            onClick={() => (step === "confirm" ? submit() : setStep("confirm"))}
-            disabled={loading || !selected}
-            className={`px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all
-                       ${loading || !selected ? "bg-indigo-400 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700 shadow-sm"}`}>
-            {loading ? "Assigning…" : step === "confirm" ? "Assign Tickets" : "Confirm"}
-          </button>
-        </div>
-      </motion.div>
-    </div>
+      {loading && (
+        <p className="text-xs text-slate-500">Assigning {progress} of {ticketIds.length}…</p>
+      )}
+    </BulkActionModal>
   );
 }
 
@@ -340,84 +307,50 @@ function BulkStatusModal({ ticketIds, statusOptions, onClose, onDone }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-         onClick={(e) => !loading && e.target === e.currentTarget && onClose()}>
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        transition={{ duration: 0.18 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+    <BulkActionModal
+      title="Update Status"
+      subtitle={`${ticketIds.length} ticket${ticketIds.length !== 1 ? "s" : ""} selected`}
+      onClose={onClose}
+      loading={loading}
+      primaryButtonText={loading ? "Updating…" : step === "confirm" ? "Update Tickets" : "Confirm"}
+      onCancel={() => (step === "confirm" ? setStep("select") : onClose())}
+      onConfirm={() => (step === "confirm" ? submit() : setStep("confirm"))}
+      confirmDisabled={loading || !selected}>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <div>
-            <h3 className="font-bold text-slate-900">Update Status</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {ticketIds.length} ticket{ticketIds.length !== 1 ? "s" : ""} selected
+      {step === "select" && (
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1.5">New Status</label>
+          <select
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white text-slate-800
+                       focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-indigo-400 transition">
+            <option value="">Select a status</option>
+            {statusOptions.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {step === "confirm" && !loading && (
+        <div className="space-y-3">
+          <p className="text-sm text-slate-700">
+            Update status of <span className="font-semibold">{ticketIds.length}</span> selected ticket{ticketIds.length !== 1 ? "s" : ""} to{" "}
+            <span className="font-semibold">&ldquo;{selectedStatusLabel}&rdquo;</span>?
+          </p>
+          {isTerminalStatus && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              &ldquo;{selectedStatusLabel}&rdquo; ends a ticket's lifecycle. This affects multiple tickets at once — double-check the selection before continuing.
             </p>
-          </div>
-          <button onClick={onClose} disabled={loading}
-            className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-            <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="px-6 py-5 space-y-4">
-          {step === "select" && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">New Status</label>
-              <select
-                value={selected}
-                onChange={(e) => setSelected(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white text-slate-800
-                           focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-indigo-400 transition">
-                <option value="">Select a status</option>
-                {statusOptions.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {step === "confirm" && !loading && (
-            <div className="space-y-3">
-              <p className="text-sm text-slate-700">
-                Update status of <span className="font-semibold">{ticketIds.length}</span> selected ticket{ticketIds.length !== 1 ? "s" : ""} to{" "}
-                <span className="font-semibold">&ldquo;{selectedStatusLabel}&rdquo;</span>?
-              </p>
-              {isTerminalStatus && (
-                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  &ldquo;{selectedStatusLabel}&rdquo; ends a ticket's lifecycle. This affects multiple tickets at once — double-check the selection before continuing.
-                </p>
-              )}
-            </div>
-          )}
-
-          {loading && (
-            <p className="text-xs text-slate-500">Updating {progress} of {ticketIds.length}…</p>
           )}
         </div>
+      )}
 
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
-          <button
-            onClick={() => (step === "confirm" ? setStep("select") : onClose())}
-            disabled={loading}
-            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-            Cancel
-          </button>
-          <button
-            onClick={() => (step === "confirm" ? submit() : setStep("confirm"))}
-            disabled={loading || !selected}
-            className={`px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all
-                       ${loading || !selected ? "bg-indigo-400 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700 shadow-sm"}`}>
-            {loading ? "Updating…" : step === "confirm" ? "Update Tickets" : "Confirm"}
-          </button>
-        </div>
-      </motion.div>
-    </div>
+      {loading && (
+        <p className="text-xs text-slate-500">Updating {progress} of {ticketIds.length}…</p>
+      )}
+    </BulkActionModal>
   );
 }
 
