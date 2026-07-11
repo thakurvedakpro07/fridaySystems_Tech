@@ -578,6 +578,22 @@ export default function OpsTicketQueue() {
     loadTickets();
   }, []);  // initial load only
 
+  // C2: whenever the visible ticket list changes — refresh, search, filter,
+  // sort, pagination, page size, quick views, or a refetch after a bulk/
+  // single-ticket action — drop any selected id that's no longer on screen.
+  // Tied to `tickets` itself (not to which handler caused the change) so it
+  // can't miss a case: every one of those flows ends the same way, a fresh
+  // `setTickets(results)` in loadTickets. Reuses the existing `toggle`
+  // (flips a selected id off) instead of adding new state to useSelection.
+  useEffect(() => {
+    if (selection.count === 0) return;
+    const visibleIds = new Set(tickets.map((t) => t.id));
+    selection.selected.forEach((id) => {
+      if (!visibleIds.has(id)) selection.toggle(id);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickets]);
+
   // Restore status/service_type/priority/assigned_to/ordering/page/page_size
   // on browser Back/Forward (search keeps its existing behavior — out of
   // scope here). Our own click/change handlers already update local state
