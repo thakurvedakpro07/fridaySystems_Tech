@@ -874,6 +874,7 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
             refetch={feed.refetch}
             draftMessage={draftMessage}
             onDraftChange={setDraftMessage}
+            role={role}
             composerId={CONVERSATION_COMPOSER_ID}
           />
         </div>
