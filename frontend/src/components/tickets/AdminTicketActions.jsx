@@ -7,8 +7,9 @@
  *   onUpdate — callback fired after a successful action so the parent can refetch
  */
 import { useEffect, useState } from "react";
-import { assignTicket, adminUpdateStatus, unassignTicket, listFreelancers } from "../../api/tickets";
+import { opsAssignTicket, opsStatusUpdate, opsUnassignTicket, getOpsFreelancers } from "../../api/ops";
 import { useToast } from "../../context/ToastContext";
+import { useRoles } from "../../hooks/useRoles";
 import Button from "../ui/Button";
 import Modal from "../ui/Modal";
 
@@ -31,6 +32,13 @@ const statusLabel = (s) => STATUS_LABEL[s] ?? s.replaceAll("_", " ");
 
 export default function AdminTicketActions({ ticket, onUpdate }) {
   const toast = useToast();
+  // Rendered for both the true Super Admin ("admin") role and the collapsed
+  // "support_agent" role string (which TicketDetailPage.jsx's role fetcher
+  // also assigns to Ops Manager AND Finance Manager) — this is the one place
+  // that actually distinguishes them, mirroring IsTicketManagementStaff on
+  // the backend (ops manager OR support agent OR super admin, excluding
+  // finance manager), same as OpsTicketQueue.jsx's bulk-toolbar gating.
+  const { isTicketManagementStaff } = useRoles();
   const [freelancers, setFreelancers]         = useState([]);
   const [showAssign, setShowAssign]           = useState(false);
   const [showStatus, setShowStatus]           = useState(false);
@@ -43,10 +51,12 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
   // Load freelancer list when assign modal opens
   useEffect(() => {
     if (!showAssign) return;
-    listFreelancers()
+    getOpsFreelancers()
       .then(({ data }) => setFreelancers(data.results ?? data))
       .catch(() => toast("Could not load freelancers.", "error"));
   }, [showAssign]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!isTicketManagementStaff) return null;
 
   const nextStatuses = STATUS_TRANSITIONS[ticket.status] ?? [];
 
@@ -54,7 +64,7 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
     if (!selectedFreelancer) return;
     setSaving(true);
     try {
-      await assignTicket(ticket.id, selectedFreelancer);
+      await opsAssignTicket(ticket.id, selectedFreelancer);
       toast("Freelancer assigned.", "success");
       setShowAssign(false);
       setSelectedFreelancer("");
@@ -70,7 +80,7 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
     if (!selectedStatus) return;
     setSaving(true);
     try {
-      await adminUpdateStatus(ticket.id, selectedStatus, note);
+      await opsStatusUpdate(ticket.id, selectedStatus, note);
       toast(`Status changed to ${statusLabel(selectedStatus)}.`, "success");
       setShowStatus(false);
       setSelectedStatus("");
@@ -86,7 +96,7 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
   const handleUnassign = async () => {
     setSaving(true);
     try {
-      await unassignTicket(ticket.id, note);
+      await opsUnassignTicket(ticket.id, note);
       toast("Freelancer unassigned.", "success");
       setShowUnassign(false);
       setNote("");
@@ -144,8 +154,8 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
               <option value="">— choose a freelancer —</option>
               {freelancers.map((f) => (
                 <option key={f.id} value={f.id}>
-                  {f.user?.email ?? f.email ?? f.id}
-                  {f.skills ? ` · ${f.skills}` : ""}
+                  {f.name ?? f.user?.email} — {f.skills_display ?? f.skills ?? ""}
+                  {f.active_ticket_count != null ? ` (${f.active_ticket_count} active)` : ""}
                 </option>
               ))}
             </select>

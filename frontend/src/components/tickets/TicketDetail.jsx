@@ -572,7 +572,12 @@ function TicketSummarySidebar({
   const assignedTo = ticket.assigned_to;
   const showEngineer = !!assignedTo?.email && role !== "freelancer";
   const showCustomer = !!ticket.customer && role !== "customer";
-  const showQuickActions = role === "customer" || role === "freelancer" || role === "admin";
+  // "support_agent" is the role string TicketDetailPage.jsx's useRoleTicketFetcher
+  // assigns to Ops Manager, Support Agent, AND Finance Manager alike (all three
+  // collapse to one string at that layer) — AdminTicketActions itself narrows
+  // further via useRoles().isTicketManagementStaff so Finance Manager still sees
+  // no ticket-management actions despite sharing this string.
+  const showQuickActions = role === "customer" || role === "freelancer" || role === "admin" || role === "support_agent";
   // Same condition that used to gate the standalone "Contact Preferences"
   // card: customer only, once an engineer is assigned and past the
   // pending-payment/open stages.
@@ -678,7 +683,7 @@ function TicketSummarySidebar({
               composerId={composerId}
             />
           )}
-          {role === "admin" && (
+          {(role === "admin" || role === "support_agent") && (
             <AdminTicketActions ticket={ticket} onUpdate={handleUpdate} />
           )}
         </SidebarSection>
