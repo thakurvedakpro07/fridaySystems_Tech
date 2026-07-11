@@ -506,6 +506,34 @@ export default function OpsTicketQueue() {
     return p;
   }
 
+  // Every query-changing handler below (search/filter/sort/page/page size/
+  // quick views/clear) performed the same three-step sequence by hand: set
+  // the relevant local state, write the resulting params to the URL, and
+  // refetch with those same overrides. This maps each field name to its
+  // setter so that sequence can be expressed once instead of once per
+  // handler (M2). It intentionally does NOT cover the browser Back/Forward
+  // restore effect above — that effect already reads its state *from* the
+  // URL, so writing back to the URL there would be the wrong direction and
+  // is deliberately left as-is.
+  const FIELD_SETTERS = {
+    search: setSearch,
+    status: setStatus,
+    service_type: setServiceType,
+    priority: setPriority,
+    assigned_to: setAssignedTo,
+    ordering: setOrdering,
+    page: setPage,
+    page_size: setPageSize,
+  };
+
+  function applyQueryChange(updates, { replace = false } = {}) {
+    Object.entries(updates).forEach(([field, value]) => {
+      FIELD_SETTERS[field](value);
+    });
+    setSearchParams(buildParams(updates), { replace });
+    loadTickets(updates);
+  }
+
   useEffect(() => {
     loadFreelancers();
     loadTickets();
@@ -573,28 +601,25 @@ export default function OpsTicketQueue() {
   }, [searchParams]);
 
   function onSearchChange(val) {
+    // Immediate local echo so the input feels responsive; the URL write and
+    // refetch are debounced separately below, so this stays outside the
+    // shared helper (which bundles all three steps into one call).
     setSearch(val);
     setPage(1);
     clearTimeout(searchDebounce.current);
     searchDebounce.current = setTimeout(() => {
-      setSearchParams(buildParams({ search: val, page: 1 }), { replace: true });
-      loadTickets({ search: val, page: 1 });
+      applyQueryChange({ search: val, page: 1 }, { replace: true });
     }, 380);
   }
 
   function onPageChange(newPage) {
     if (newPage < 1) return;
-    setPage(newPage);
-    setSearchParams(buildParams({ page: newPage })); // push — a new history entry per page navigation
-    loadTickets({ page: newPage });
+    applyQueryChange({ page: newPage }); // push — a new history entry per page navigation
   }
 
   function onPageSizeChange(val) {
     const newSize = parseInt(val, 10);
-    setPageSize(newSize);
-    setPage(1); // changing page size resets to page 1
-    setSearchParams(buildParams({ page_size: newSize, page: 1 })); // push — an explicit choice, like page navigation
-    loadTickets({ page_size: newSize, page: 1 });
+    applyQueryChange({ page_size: newSize, page: 1 }); // push — an explicit choice, like page navigation
   }
 
   // Clicking a sortable header cycles: ascending → descending → default (off).
@@ -607,37 +632,19 @@ export default function OpsTicketQueue() {
     } else {
       nextOrdering = field;
     }
-    setOrdering(nextOrdering);
-    setPage(1); // a re-sorted result set invalidates the current page
-    setSearchParams(buildParams({ ordering: nextOrdering, page: 1 })); // push — an explicit sort choice
-    loadTickets({ ordering: nextOrdering, page: 1 });
+    applyQueryChange({ ordering: nextOrdering, page: 1 }); // push — an explicit sort choice
   }
 
   // Any explicit filter change (status/service/priority/engineer) invalidates
   // the current page — reset to 1. Ordering and search are preserved.
   function onFilterChange(field, value) {
-    const setters = {
-      status: setStatus,
-      service_type: setServiceType,
-      priority: setPriority,
-      assigned_to: setAssignedTo,
-    };
-    setters[field](value);
-    setPage(1);
-    setSearchParams(buildParams({ [field]: value, page: 1 }), { replace: true });
-    loadTickets({ [field]: value, page: 1 });
+    applyQueryChange({ [field]: value, page: 1 }, { replace: true });
   }
 
   // Applies a Saved View's full filter state at once (same "atomic reset"
   // pattern as onClear, just with preset target values instead of all-empty).
   function onQuickViewSelect(view) {
-    setStatus(view.filters.status);
-    setServiceType(view.filters.service_type);
-    setPriority(view.filters.priority);
-    setAssignedTo(view.filters.assigned_to);
-    setPage(1);
-    setSearchParams(buildParams({ ...view.filters, page: 1 }), { replace: true });
-    loadTickets({ ...view.filters, page: 1 });
+    applyQueryChange({ ...view.filters, page: 1 }, { replace: true });
   }
 
   // A view is "active" only when every one of its filter values exactly
@@ -714,20 +721,13 @@ export default function OpsTicketQueue() {
             { key: "priority", value: priority, onChange: (v) => onFilterChange("priority", v), options: PRIORITY_OPTIONS, ariaLabel: "Filter by priority" },
             { key: "assigned_to", value: assignedTo, onChange: (v) => onFilterChange("assigned_to", v), options: engineerOptions, ariaLabel: "Filter by engineer" },
           ]}
-          onClear={() => {
-            setStatus("");
-            setServiceType("");
-            setPriority("");
-            setAssignedTo("");
-            setSearch("");
-            setPage(1);
+          onClear={() =>
             // Clearing filters preserves sort and page size — neither is a filter.
-            setSearchParams(
-              buildParams({ status: "", search: "", service_type: "", priority: "", assigned_to: "", page: 1 }),
+            applyQueryChange(
+              { status: "", search: "", service_type: "", priority: "", assigned_to: "", page: 1 },
               { replace: true }
-            );
-            loadTickets({ status: "", search: "", service_type: "", priority: "", assigned_to: "", page: 1 });
-          }}
+            )
+          }
         />
 
         {error && (
