@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useConversationFeed } from "../../hooks/useConversationFeed";
 import { useCountdown } from "../../hooks/useCountdown";
 import ConversationFeed from "./ConversationFeed";
+import TicketSLAPanel from "./TicketSLAPanel";
 import AdminTicketActions from "./AdminTicketActions";
 import FreelancerTicketActions from "./FreelancerTicketActions";
 import PaymentGateway from "./PaymentGateway";
@@ -654,6 +655,10 @@ function TicketSummarySidebar({
           role={role}
           isPendingPayment={isPendingPayment}
         />
+      </SidebarSection>
+
+      <SidebarSection title="SLA Status">
+        <TicketSLAPanel ticket={ticket} />
       </SidebarSection>
 
       {showQuickActions && (
