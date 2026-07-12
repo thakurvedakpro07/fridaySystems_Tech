@@ -9,23 +9,29 @@
  * for the entire time the engineer and customer communicate. Requesting
  * information, uploading a file, and starting a remote session are all
  * messages/actions in the conversation, not status changes, so none of them
- * open a confirmation dialog. Only Mark Resolved does, since it's the one
- * action that requires the engineer to record what was actually done.
+ * open a confirmation dialog. Mark Resolved does, but as of Phase 4.5 it's
+ * not this component's own dialog — it hands off to ResolutionPanel's
+ * capture form (via onRequestResolve), which requires a structured
+ * resolution summary and only transitions the status once that's saved.
  *
  * Props:
- *   ticket         — the full ticket object
- *   onUpdate       — callback fired after a successful update so parent can refetch the ticket
- *   draftMessage   — current text in the conversation composer (lifted to TicketDetail)
- *   onDraftChange  — setter for draftMessage
- *   onFeedRefresh  — refetches the conversation feed (after an upload / remote session)
- *   composerId     — id of the conversation composer textarea, for focusing
+ *   ticket          — the full ticket object
+ *   onUpdate        — callback fired after a successful update so parent can refetch the ticket
+ *   draftMessage    — current text in the conversation composer (lifted to TicketDetail)
+ *   onDraftChange   — setter for draftMessage
+ *   onFeedRefresh   — refetches the conversation feed (after an upload / remote session)
+ *   composerId      — id of the conversation composer textarea, for focusing
+ *
+ * Mark Resolved doesn't resolve the ticket itself here — it navigates to the
+ * dedicated Resolution Workspace page (/tickets/:id/resolve), which captures
+ * the structured resolution summary first and only then transitions status.
  */
 import { useRef, useState } from "react";
-import { freelancerStartRemoteSession, freelancerUpdateStatus, addComment } from "../../api/tickets";
+import { useNavigate } from "react-router-dom";
+import { freelancerStartRemoteSession, freelancerUpdateStatus } from "../../api/tickets";
 import { uploadAttachment } from "../../api/attachments";
 import { useToast } from "../../context/ToastContext";
 import Button from "../ui/Button";
-import Modal from "../ui/Modal";
 import Popover from "../ui/Popover";
 
 const FREELANCER_TRANSITIONS = {
@@ -68,9 +74,7 @@ export default function FreelancerTicketActions({
   ticket, onUpdate, draftMessage, onDraftChange, onFeedRefresh, composerId,
 }) {
   const toast = useToast();
-  const [showResolveModal, setShowResolveModal] = useState(false);
-  const [resolutionSummary, setResolutionSummary] = useState("");
-  const [internalNote, setInternalNote] = useState("");
+  const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
 
   const [showRequestPopover, setShowRequestPopover] = useState(false);
@@ -96,24 +100,6 @@ export default function FreelancerTicketActions({
     try {
       await applyStatus(targetStatus, "");
       toast(`${STATUS_LABEL[targetStatus] ?? targetStatus}.`, "success");
-    } catch (err) {
-      toast(err.response?.data?.detail ?? "Failed to update status.", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleResolveConfirm = async () => {
-    if (!resolutionSummary.trim()) return;
-    setSaving(true);
-    try {
-      await applyStatus("resolved", resolutionSummary.trim());
-      if (internalNote.trim() !== "") {
-        await addComment(ticket.id, internalNote.trim(), true);
-      }
-      toast("Ticket marked resolved.", "success");
-      setShowResolveModal(false);
-      onFeedRefresh?.();
     } catch (err) {
       toast(err.response?.data?.detail ?? "Failed to update status.", "error");
     } finally {
@@ -174,7 +160,7 @@ export default function FreelancerTicketActions({
             onClick={() => (
               INSTANT_STATUSES.has(targetStatus)
                 ? handleInstantClick(targetStatus)
-                : setShowResolveModal(true)
+                : navigate(`/tickets/${ticket.id}/resolve`)
             )}
           >
             {labelFor(targetStatus)}
@@ -234,47 +220,6 @@ export default function FreelancerTicketActions({
           </>
         )}
       </div>
-
-      <Modal
-        isOpen={showResolveModal}
-        onClose={() => setShowResolveModal(false)}
-        title="Mark Resolved"
-      >
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="freelancer-resolution" className="block text-sm font-medium text-slate-700 mb-1.5">
-              Resolution summary
-            </label>
-            <textarea
-              id="freelancer-resolution"
-              value={resolutionSummary}
-              onChange={(e) => setResolutionSummary(e.target.value)}
-              rows={3}
-              placeholder="Summarize how the issue was resolved for the customer…"
-              className="input-base resize-none"
-            />
-          </div>
-          <div>
-            <label htmlFor="freelancer-internal-note" className="block text-sm font-medium text-slate-700 mb-1.5">
-              Internal note (optional)
-            </label>
-            <textarea
-              id="freelancer-internal-note"
-              value={internalNote}
-              onChange={(e) => setInternalNote(e.target.value)}
-              rows={2}
-              placeholder="Add a note for admins — not visible to the customer…"
-              className="input-base resize-none"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setShowResolveModal(false)}>Cancel</Button>
-            <Button disabled={saving || !resolutionSummary.trim()} onClick={handleResolveConfirm}>
-              {saving ? "Saving…" : "Confirm"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }

@@ -7,6 +7,7 @@
  *   onUpdate — callback fired after a successful action so the parent can refetch
  */
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { opsAssignTicket, opsStatusUpdate, opsUnassignTicket, getOpsFreelancers } from "../../api/ops";
 import { useToast } from "../../context/ToastContext";
 import { useRoles } from "../../hooks/useRoles";
@@ -32,6 +33,7 @@ const statusLabel = (s) => STATUS_LABEL[s] ?? s.replaceAll("_", " ");
 
 export default function AdminTicketActions({ ticket, onUpdate }) {
   const toast = useToast();
+  const navigate = useNavigate();
   // Rendered for both the true Super Admin ("admin") role and the collapsed
   // "support_agent" role string (which TicketDetailPage.jsx's role fetcher
   // also assigns to Ops Manager AND Finance Manager) — this is the one place
@@ -78,6 +80,19 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
 
   const handleStatusChange = async () => {
     if (!selectedStatus) return;
+
+    // Marking resolved is a dedicated workflow, not a plain status change —
+    // hand off to the Resolution Workspace page instead of updating status
+    // immediately. That page captures the resolution summary first and only
+    // then transitions the status.
+    if (selectedStatus === "resolved") {
+      setShowStatus(false);
+      setSelectedStatus("");
+      setNote("");
+      navigate(`/tickets/${ticket.id}/resolve`);
+      return;
+    }
+
     setSaving(true);
     try {
       await opsStatusUpdate(ticket.id, selectedStatus, note);

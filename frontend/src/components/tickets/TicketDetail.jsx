@@ -4,6 +4,7 @@ import { useConversationFeed } from "../../hooks/useConversationFeed";
 import { useCountdown } from "../../hooks/useCountdown";
 import ConversationFeed from "./ConversationFeed";
 import TicketSLAPanel from "./TicketSLAPanel";
+import ResolutionPanel from "./ResolutionPanel";
 import AdminTicketActions from "./AdminTicketActions";
 import FreelancerTicketActions from "./FreelancerTicketActions";
 import PaymentGateway from "./PaymentGateway";
@@ -869,6 +870,13 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
               </a>
             </div>
           )}
+
+          <ResolutionPanel
+            ticketId={ticket.id}
+            feedItems={feed.items}
+            onCaptured={feed.refetch}
+            role={role}
+          />
 
           <ConversationFeed
             ticketId={ticket.id}

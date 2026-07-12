@@ -31,6 +31,7 @@ const CustomerOnboarding   = lazy(() => import("./pages/onboarding/CustomerOnboa
 const FreelancerOnboarding = lazy(() => import("./pages/onboarding/FreelancerOnboarding"));
 const NotificationsPage    = lazy(() => import("./pages/NotificationsPage"));
 const HelpCenterPage       = lazy(() => import("./pages/HelpCenterPage"));
+const ResolveTicketPage    = lazy(() => import("./pages/ResolveTicketPage"));
 
 // Operations Dashboard pages (all staff roles)
 const OpsDashboard      = lazy(() => import("./pages/ops/OpsDashboard"));
@@ -244,6 +245,10 @@ export default function App() {
           <Route
             path="/tickets/:id"
             element={<PrivateRoute><TicketDetailPage /></PrivateRoute>}
+          />
+          <Route
+            path="/tickets/:id/resolve"
+            element={<PrivateRoute><ResolveTicketPage /></PrivateRoute>}
           />
 
           {/* Freelancer pages — require login + role=freelancer */}
