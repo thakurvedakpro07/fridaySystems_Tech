@@ -8,17 +8,13 @@ import {
   updateOpsService,
   toggleOpsService,
 } from "../../api/ops";
-
-function StatusBadge({ status }) {
-  return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-      status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
-    }`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${status === "active" ? "bg-emerald-500" : "bg-slate-400"}`} />
-      {status === "active" ? "Active" : "Inactive"}
-    </span>
-  );
-}
+import Badge from "../../components/ui/Badge";
+import PageHeader from "../../components/ui/PageHeader";
+import Input from "../../components/ui/Input";
+import Textarea from "../../components/ui/Textarea";
+import Select from "../../components/ui/Select";
+import Alert from "../../components/ui/Alert";
+import Button from "../../components/ui/Button";
 
 // ── Service Form Modal ────────────────────────────────────────────
 function ServiceModal({ open, onClose, onSave, initial, loading }) {
@@ -58,46 +54,43 @@ function ServiceModal({ open, onClose, onSave, initial, loading }) {
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1.5">Service Name <span className="text-rose-500">*</span></label>
-            <input
+            <Input
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               placeholder="e.g. Linux Provisioning"
-              className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-400"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1.5">Description</label>
-            <textarea
+            <Textarea
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               rows={3}
               placeholder="Brief description of what this service covers…"
-              className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="resize-none"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1.5">Required Skills</label>
-            <input
+            <Input
               value={form.required_skills}
               onChange={(e) => setForm((f) => ({ ...f, required_skills: e.target.value }))}
               placeholder="e.g. linux, bash, vmware (comma-separated)"
-              className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-400"
             />
           </div>
 
           {isEdit && (
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1.5">Status</label>
-              <select
+              <Select
                 value={form.status}
                 onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-                className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
               >
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
-              </select>
+              </Select>
             </div>
           )}
         </div>
@@ -195,19 +188,13 @@ export default function OpsServices() {
 
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Services</h1>
-            <p className="text-sm text-slate-500 mt-0.5">Manage the platform's service catalogue.</p>
-          </div>
-          <button
-            onClick={() => setModal({ open: true, service: null })}
-            className="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
-          >
+          <PageHeader title="Services" description="Manage the platform's service catalogue." />
+          <Button onClick={() => setModal({ open: true, service: null })}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
             Add Service
-          </button>
+          </Button>
         </div>
 
         {/* Toast */}
@@ -226,26 +213,23 @@ export default function OpsServices() {
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3">
-          <input
+          <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search services…"
-            className="flex-1 min-w-[200px] text-sm border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+            className="flex-1 min-w-[200px]"
           />
-          <select
+          <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
           >
             <option value="">All Status</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
-          </select>
+          </Select>
         </div>
 
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-rose-700 text-sm font-medium">{error}</div>
-        )}
+        {error && <Alert severity="error">{error}</Alert>}
 
         {/* Service cards */}
         {loading ? (
@@ -281,7 +265,7 @@ export default function OpsServices() {
                       <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{s.description}</p>
                     )}
                   </div>
-                  <StatusBadge status={s.status} />
+                  <Badge domain="active" label={s.status} />
                 </div>
 
                 {s.required_skills && (

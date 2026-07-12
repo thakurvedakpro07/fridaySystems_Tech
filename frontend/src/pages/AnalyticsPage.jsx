@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { getAnalytics } from "../api/analytics";
 import MainLayout from "../components/layouts/MainLayout";
 import { SkeletonCard } from "../components/ui/Spinner";
+import Alert from "../components/ui/Alert";
+import PageHeader from "../components/ui/PageHeader";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useAuthStore } from "../store/authStore";
 
@@ -173,10 +175,7 @@ export default function AnalyticsPage() {
   if (error) {
     return (
       <MainLayout maxWidth="max-w-5xl">
-        <div className="flex items-center gap-3 bg-rose-50 border border-rose-200 text-rose-700
-                        text-sm rounded-xl px-4 py-3">
-          {error}
-        </div>
+        <Alert severity="error">{error}</Alert>
       </MainLayout>
     );
   }
@@ -194,10 +193,10 @@ export default function AnalyticsPage() {
     <MainLayout maxWidth="max-w-5xl">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight">{pageTitle}</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Last updated just now · {data.total} total ticket{data.total !== 1 ? "s" : ""}
-        </p>
+        <PageHeader
+          title={pageTitle}
+          description={`Last updated just now · ${data.total} total ticket${data.total !== 1 ? "s" : ""}`}
+        />
       </div>
 
       {/* Top stat cards */}

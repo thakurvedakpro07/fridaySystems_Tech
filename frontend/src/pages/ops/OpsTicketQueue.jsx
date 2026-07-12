@@ -5,7 +5,7 @@ import axios from "axios";
 import AppShell from "../../components/layout/AppShell";
 import FilterBar from "../../components/filters/FilterBar";
 import QuickViews from "../../components/filters/QuickViews";
-import TicketQueueTable, { Badge, STATUS_BADGE } from "../../components/tickets/queue/TicketQueueTable";
+import TicketQueueTable from "../../components/tickets/queue/TicketQueueTable";
 import BulkActionModal from "../../components/tickets/queue/BulkActionModal";
 import Pagination from "../../components/table/Pagination";
 import { getOpsTickets, getOpsFreelancers, opsAssignTicket, opsUnassignTicket, opsStatusUpdate } from "../../api/ops";
@@ -13,6 +13,10 @@ import { usePageTitle } from "../../hooks/usePageTitle";
 import { useSelection } from "../../hooks/useSelection";
 import { useRoles } from "../../hooks/useRoles";
 import { useToast } from "../../context/ToastContext";
+import Badge from "../../components/ui/Badge";
+import Alert from "../../components/ui/Alert";
+import PageHeader from "../../components/ui/PageHeader";
+import Button from "../../components/ui/Button";
 
 // ── Constants ─────────────────────────────────────────────────────
 const STATUS_OPTIONS = [
@@ -120,8 +124,8 @@ function AssignModal({ ticket, freelancers, onClose, onDone }) {
           <div className="bg-slate-50 rounded-xl px-4 py-3">
             <p className="text-sm font-semibold text-slate-800 truncate">{ticket.title}</p>
             <div className="flex items-center gap-2 mt-1.5">
-              <Badge label={ticket.status} colorClass={STATUS_BADGE[ticket.status] ?? "bg-slate-100 text-slate-500"} />
-              {ticket.severity && <Badge label={ticket.severity} colorClass="bg-slate-100 text-slate-600" />}
+              <Badge domain="ticketStatus" label={ticket.status} />
+              {ticket.severity && <Badge domain="severity" label={ticket.severity} />}
             </div>
           </div>
 
@@ -340,9 +344,9 @@ function BulkStatusModal({ ticketIds, statusOptions, onClose, onDone }) {
             <span className="font-semibold">&ldquo;{selectedStatusLabel}&rdquo;</span>?
           </p>
           {isTerminalStatus && (
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <Alert severity="warning" className="text-xs">
               &ldquo;{selectedStatusLabel}&rdquo; ends a ticket's lifecycle. This affects multiple tickets at once — double-check the selection before continuing.
-            </p>
+            </Alert>
           )}
         </div>
       )}
@@ -717,10 +721,7 @@ export default function OpsTicketQueue() {
       <div className="max-w-7xl mx-auto space-y-6">
 
         {/* Page header */}
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Ticket Queue</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Filter, search, and assign engineers to tickets.</p>
-        </div>
+        <PageHeader title="Ticket Queue" description="Filter, search, and assign engineers to tickets." />
 
         {/* Saved Views */}
         <div>
@@ -750,11 +751,7 @@ export default function OpsTicketQueue() {
           }
         />
 
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4 text-rose-700 text-sm font-medium">
-            {error}
-          </div>
-        )}
+        {error && <Alert severity="error">{error}</Alert>}
 
         {/* Hidden entirely when the current role can perform neither bulk
             action (e.g. Finance Manager) — selection itself still works,
@@ -766,11 +763,9 @@ export default function OpsTicketQueue() {
             </p>
             <div className="flex items-center gap-2">
               {canBulkAssign && (
-                <button
-                  onClick={() => setBulkAssignOpen(true)}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                <Button onClick={() => setBulkAssignOpen(true)} size="sm">
                   Assign Engineer
-                </button>
+                </Button>
               )}
               {canBulkUpdateStatus && (
                 <button

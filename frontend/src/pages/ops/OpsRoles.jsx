@@ -3,31 +3,12 @@ import { motion } from "framer-motion";
 import AppShell from "../../components/layout/AppShell";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { getOpsRoleAudit } from "../../api/ops";
-
-const ROLE_DISPLAY = {
-  customer:            "Customer",
-  freelancer:          "Engineer",
-  admin:               "Super Admin",
-  operations_manager:  "Operations Manager",
-  finance_manager:     "Finance Manager",
-  support_agent:       "Support Agent",
-};
-
-const ROLE_COLORS = {
-  customer:            "bg-slate-100 text-slate-700",
-  freelancer:          "bg-indigo-100 text-indigo-700",
-  admin:               "bg-violet-100 text-violet-700",
-  operations_manager:  "bg-amber-100 text-amber-700",
-  finance_manager:     "bg-teal-100 text-teal-700",
-  support_agent:       "bg-orange-100 text-orange-700",
-};
+import Badge from "../../components/ui/Badge";
+import PageHeader from "../../components/ui/PageHeader";
+import Alert from "../../components/ui/Alert";
 
 function RolePill({ role }) {
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${ROLE_COLORS[role] ?? "bg-slate-100 text-slate-600"}`}>
-      {ROLE_DISPLAY[role] ?? role}
-    </span>
-  );
+  return <Badge domain="role" label={role} />;
 }
 
 function fmtDateTime(iso) {
@@ -70,10 +51,7 @@ export default function OpsRoles() {
       <div className="max-w-5xl mx-auto space-y-6">
 
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Role Change Audit</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Immutable log of every role promotion and demotion.</p>
-        </div>
+        <PageHeader title="Role Change Audit" description="Immutable log of every role promotion and demotion." />
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3">
@@ -98,11 +76,7 @@ export default function OpsRoles() {
           </select>
         </div>
 
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-rose-700 text-sm font-medium">
-            {error}
-          </div>
-        )}
+        {error && <Alert severity="error">{error}</Alert>}
 
         {/* Timeline */}
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">

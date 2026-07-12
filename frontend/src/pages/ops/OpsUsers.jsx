@@ -9,8 +9,14 @@ import {
   opsDeactivateUser,
   opsReactivateUser,
 } from "../../api/ops";
+import Badge from "../../components/ui/Badge";
+import PageHeader from "../../components/ui/PageHeader";
+import Alert from "../../components/ui/Alert";
 
 // ── Constants ─────────────────────────────────────────────────────
+// Human-readable role labels — kept here (rather than only inside Badge's
+// "role" domain) since this file also uses them for modal copy ("Change
+// role for X (currently Y)"), not just badge rendering.
 const ROLE_DISPLAY = {
   customer:            "Customer",
   freelancer:          "Engineer",
@@ -18,15 +24,6 @@ const ROLE_DISPLAY = {
   operations_manager:  "Operations Manager",
   finance_manager:     "Finance Manager",
   support_agent:       "Support Agent",
-};
-
-const ROLE_COLORS = {
-  customer:            "bg-slate-100 text-slate-700",
-  freelancer:          "bg-indigo-100 text-indigo-700",
-  admin:               "bg-violet-100 text-violet-700",
-  operations_manager:  "bg-amber-100 text-amber-700",
-  finance_manager:     "bg-teal-100 text-teal-700",
-  support_agent:       "bg-orange-100 text-orange-700",
 };
 
 // Mirrors _ALLOWED_TRANSITIONS in views.py — keeps the role picker filtered client-side
@@ -39,23 +36,6 @@ const ALLOWED_TRANSITIONS = {
   support_agent:       ["customer", "operations_manager", "finance_manager"],
   admin:               ["operations_manager"],
 };
-
-function RoleBadge({ role }) {
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${ROLE_COLORS[role] ?? "bg-slate-100 text-slate-600"}`}>
-      {ROLE_DISPLAY[role] ?? role}
-    </span>
-  );
-}
-
-function StatusBadge({ isActive }) {
-  return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${isActive ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-rose-400"}`} />
-      {isActive ? "Active" : "Inactive"}
-    </span>
-  );
-}
 
 function fmtDate(iso) {
   if (!iso) return "—";
@@ -303,12 +283,7 @@ export default function OpsUsers() {
       <div className="max-w-7xl mx-auto space-y-6">
 
         {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">User Management</h1>
-            <p className="text-sm text-slate-500 mt-0.5">View, promote, demote, and manage all platform users.</p>
-          </div>
-        </div>
+        <PageHeader title="User Management" description="View, promote, demote, and manage all platform users." />
 
         {/* Toast */}
         <AnimatePresence>
@@ -359,11 +334,7 @@ export default function OpsUsers() {
         </div>
 
         {/* Error */}
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-rose-700 text-sm font-medium">
-            {error}
-          </div>
-        )}
+        {error && <Alert severity="error">{error}</Alert>}
 
         {/* Table */}
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
@@ -403,8 +374,8 @@ export default function OpsUsers() {
                       </p>
                     </div>
                     <p className="text-sm text-slate-500 truncate">{u.email}</p>
-                    <RoleBadge role={u.role} />
-                    <StatusBadge isActive={u.is_active} />
+                    <Badge domain="role" label={u.role} />
+                    <Badge domain="active" label={u.is_active ? "active" : "inactive"} />
                     <p className="text-xs text-slate-500">{fmtDate(u.date_joined)}</p>
 
                     {/* Action buttons — Super Admin only */}

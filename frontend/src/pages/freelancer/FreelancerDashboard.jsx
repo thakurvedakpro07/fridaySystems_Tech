@@ -5,6 +5,7 @@ import { getAnalytics } from "../../api/analytics";
 import AppShell from "../../components/layout/AppShell";
 import TicketCard from "../../components/tickets/TicketCard";
 import { SkeletonCard } from "../../components/ui/Spinner";
+import Alert from "../../components/ui/Alert";
 import KpiRow from "../../components/dashboard/KpiRow";
 import SLACountdown from "../../components/dashboard/SLACountdown";
 import { useAuthStore } from "../../store/authStore";
@@ -401,13 +402,7 @@ export default function FreelancerDashboard() {
               {[1, 2, 3].map((n) => <SkeletonCard key={n} />)}
             </div>
           ) : error ? (
-            <div className="flex items-center gap-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl px-4 py-3">
-              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round"
-                  d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-              </svg>
-              {error}
-            </div>
+            <Alert severity="error">{error}</Alert>
           ) : tickets.length === 0 ? (
             <AssignmentsEmptyState hasFilters={hasFilters} />
           ) : (

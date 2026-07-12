@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import TicketDetail from "../components/tickets/TicketDetail";
 import MainLayout from "../components/layouts/MainLayout";
 import Spinner from "../components/ui/Spinner";
+import Alert from "../components/ui/Alert";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useRoleTicketFetcher } from "../hooks/useRoleTicketFetcher";
 
@@ -92,14 +93,7 @@ export default function TicketDetailPage() {
         </div>
       )}
 
-      {error && (
-        <div className="flex items-center gap-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl px-4 py-3">
-          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-          </svg>
-          {error}
-        </div>
-      )}
+      {error && <Alert severity="error">{error}</Alert>}
 
       {!loading && !error && ticket && (
         <div className="animate-fade-in">

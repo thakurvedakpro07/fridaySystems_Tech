@@ -44,6 +44,8 @@ export default function Button({
       type={type}
       disabled={disabled || loading}
       onClick={onClick}
+      data-ds="button"
+      data-ds-variant={variant}
       className={`${base} ${variants[variant] ?? variants.primary} ${sizes[size] ?? sizes.md} ${className}`}
     >
       {loading && <Spinner size="sm" />}

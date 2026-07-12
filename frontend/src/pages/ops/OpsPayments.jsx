@@ -10,21 +10,8 @@ import {
   opsRefundPayment,
 } from "../../api/ops";
 import { extractErrorMessage } from "../../utils/apiError";
-
-const STATUS_COLORS = {
-  pending:   "bg-amber-100 text-amber-700",
-  completed: "bg-emerald-100 text-emerald-700",
-  failed:    "bg-red-100 text-red-700",
-  refunded:  "bg-slate-100 text-slate-500",
-};
-
-function StatusBadge({ status }) {
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_COLORS[status] ?? "bg-slate-100 text-slate-500"}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </span>
-  );
-}
+import Badge from "../../components/ui/Badge";
+import PageHeader from "../../components/ui/PageHeader";
 
 function SummaryCard({ label, value }) {
   return (
@@ -98,12 +85,10 @@ export default function OpsPayments() {
   return (
     <AppShell>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Payments</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {canWrite ? "Manage payments, confirm transactions, and issue refunds." : "Read-only view of all transactions."}
-          </p>
-        </div>
+        <PageHeader
+          title="Payments"
+          description={canWrite ? "Manage payments, confirm transactions, and issue refunds." : "Read-only view of all transactions."}
+        />
 
         {/* Summary cards — Finance Manager + Super Admin only */}
         {canWrite && summary && (
@@ -167,7 +152,7 @@ export default function OpsPayments() {
                       <td className="px-4 py-3 text-slate-700">{p.customer_email}</td>
                       <td className="px-4 py-3 text-slate-600 capitalize">{p.payment_type?.replace(/_/g, " ")}</td>
                       <td className="px-4 py-3 text-right font-medium text-slate-800">₹{p.total_amount?.toLocaleString("en-IN")}</td>
-                      <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
+                      <td className="px-4 py-3"><Badge domain="paymentStatus" label={p.status} /></td>
                       <td className="px-4 py-3 text-slate-500 text-xs">{new Date(p.created_at).toLocaleDateString("en-IN")}</td>
                       {canWrite && (
                         <td className="px-4 py-3">

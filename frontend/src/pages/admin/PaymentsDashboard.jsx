@@ -12,23 +12,8 @@ import { adminConfirmPayment, downloadInvoice, listAdminPayments } from "../../a
 import MainLayout from "../../components/layouts/MainLayout";
 import { useToast } from "../../context/ToastContext";
 import { usePageTitle } from "../../hooks/usePageTitle";
-
-// ── Status badge ──────────────────────────────────────────────────
-const STATUS_STYLES = {
-  completed: "bg-emerald-100 text-emerald-700",
-  pending:   "bg-amber-100 text-amber-700",
-  failed:    "bg-rose-100 text-rose-700",
-  refunded:  "bg-violet-100 text-violet-700",
-};
-
-function StatusBadge({ status }) {
-  const cls = STATUS_STYLES[status] ?? "bg-slate-100 text-slate-600";
-  return (
-    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold capitalize ${cls}`}>
-      {status.replace("_", " ")}
-    </span>
-  );
-}
+import Badge from "../../components/ui/Badge";
+import PageHeader from "../../components/ui/PageHeader";
 
 // ── Stat card ─────────────────────────────────────────────────────
 function StatCard({ icon, label, value, sub, colour }) {
@@ -102,7 +87,7 @@ function PaymentRow({ payment, onConfirm, confirming }) {
 
       {/* Status — hidden on xs */}
       <div className="hidden sm:flex justify-end">
-        <StatusBadge status={payment.status} />
+        <Badge domain="paymentStatus" label={payment.status} />
       </div>
 
       {/* Actions */}
@@ -110,7 +95,7 @@ function PaymentRow({ payment, onConfirm, confirming }) {
         {/* Mobile: show status + amount inline */}
         <div className="sm:hidden text-right">
           <p className="text-sm font-semibold text-slate-900">₹{payment.total_amount}</p>
-          <StatusBadge status={payment.status} />
+          <Badge domain="paymentStatus" label={payment.status} />
         </div>
         {payment.status === "completed" && (
           <button
@@ -207,8 +192,7 @@ export default function PaymentsDashboard() {
     <MainLayout maxWidth="max-w-4xl">
       {/* Page header */}
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900">Payments</h1>
-        <p className="text-sm text-slate-500 mt-0.5">All customer payments and manual controls.</p>
+        <PageHeader title="Payments" description="All customer payments and manual controls." />
       </div>
 
       {/* Stats */}

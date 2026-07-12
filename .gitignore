@@ -57,3 +57,9 @@ Thumbs.db
 htmlcov/
 .pytest_cache/
 coverage.xml
+
+# Playwright — saved auth sessions (tokens) and run artifacts
+frontend/tests/e2e/.auth/
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/

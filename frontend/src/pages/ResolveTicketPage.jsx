@@ -34,6 +34,7 @@ import MainLayout from "../components/layouts/MainLayout";
 import Spinner from "../components/ui/Spinner";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
+import Alert from "../components/ui/Alert";
 import SLABadge from "../components/dashboard/SLABadge";
 
 const NOTES_COMPOSER_ID = "resolve-notes-composer";
@@ -435,9 +436,7 @@ export default function ResolveTicketPage() {
   if (error) {
     return (
       <MainLayout maxWidth="max-w-5xl">
-        <div className="flex items-center gap-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl px-4 py-3 mt-6">
-          {error}
-        </div>
+        <Alert severity="error" className="mt-6">{error}</Alert>
       </MainLayout>
     );
   }
@@ -458,7 +457,7 @@ export default function ResolveTicketPage() {
             <p className="text-base font-semibold text-slate-900">This ticket can't be resolved right now.</p>
             <p className="text-sm text-slate-500 mt-1.5">
               Only a ticket that's currently <span className="font-medium">Work Started</span> can be marked resolved.
-              This ticket is currently <Badge label={ticket.status} />.
+              This ticket is currently <Badge label={ticket.status} domain="ticketStatus" />.
             </p>
             <Button className="mt-5" variant="secondary" onClick={handleCancel}>Back to Ticket</Button>
           </div>
@@ -484,13 +483,13 @@ export default function ResolveTicketPage() {
         <div className="mt-5 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 sm:p-7">
           <div className="flex items-center gap-2.5 flex-wrap">
             <span className="text-xs font-mono font-medium text-slate-400 uppercase tracking-wider">{ticket.ticket_number}</span>
-            <Badge label={ticket.status} />
+            <Badge label={ticket.status} domain="ticketStatus" />
           </div>
           <p className="mt-4 text-[11px] font-bold text-indigo-500 uppercase tracking-widest">Resolution Workspace</p>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight leading-tight mt-1">{ticket.title}</h1>
 
           <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3 mt-6 pt-6 border-t border-slate-100 items-stretch">
-            <MetaPill icon={FlagIcon} label="Priority"><Badge label={ticket.severity} /></MetaPill>
+            <MetaPill icon={FlagIcon} label="Priority"><Badge label={ticket.severity} domain="severity" /></MetaPill>
             <MetaPill icon={UserIcon} label="Customer">
               <span className="block break-words">{ticket.customer?.name ?? ticket.customer?.email ?? "—"}</span>
             </MetaPill>

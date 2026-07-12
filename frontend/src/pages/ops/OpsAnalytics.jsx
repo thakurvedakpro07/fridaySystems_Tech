@@ -5,6 +5,7 @@ import { useRoles } from "../../hooks/useRoles";
 import { useToast } from "../../context/ToastContext";
 import { getOpsAnalytics } from "../../api/ops";
 import { extractErrorMessage } from "../../utils/apiError";
+import PageHeader from "../../components/ui/PageHeader";
 
 const SEVERITY_COLORS = {
   low:      "#10b981",
@@ -76,12 +77,10 @@ export default function OpsAnalytics() {
   return (
     <AppShell>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Analytics</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {isSuperAdmin ? "Full platform overview." : isFinanceManager ? "Financial metrics." : "Operational metrics."}
-          </p>
-        </div>
+        <PageHeader
+          title="Analytics"
+          description={isSuperAdmin ? "Full platform overview." : isFinanceManager ? "Financial metrics." : "Operational metrics."}
+        />
 
         {/* Operational section */}
         {showOperational && ops && (

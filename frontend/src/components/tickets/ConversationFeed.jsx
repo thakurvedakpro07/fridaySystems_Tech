@@ -14,6 +14,8 @@ import { useToast } from "../../context/ToastContext";
 import { useAuthStore } from "../../store/authStore";
 import { formatAbsoluteTime, formatRelativeTime } from "../../utils/time";
 import Spinner from "../ui/Spinner";
+import Badge from "../ui/Badge";
+import FileTypeBadge from "../ui/FileTypeBadge";
 
 const MAX_SIZE_MB = 5;
 const ALLOWED_EXT = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".txt", ".csv", ".zip", ".xls", ".xlsx"];
@@ -58,26 +60,9 @@ const ACTION_META = {
 };
 const DEFAULT_ICON = "•";
 
-const STATUS_COLOURS = {
-  open:            "bg-sky-100 text-sky-700",
-  in_progress:     "bg-indigo-100 text-indigo-700",
-  resolved:        "bg-emerald-100 text-emerald-700",
-  closed:          "bg-slate-100 text-slate-600",
-  assigned:        "bg-violet-100 text-violet-700",
-  pending_payment: "bg-yellow-100 text-yellow-700",
-};
-const STATUS_LABELS = {
-  assigned:    "Ready to Start",
-  in_progress: "Work Started",
-};
 function statusPill(value) {
   if (!value) return null;
-  const colour = STATUS_COLOURS[value] ?? "bg-slate-100 text-slate-600";
-  return (
-    <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${colour}`}>
-      {STATUS_LABELS[value] ?? value.replaceAll("_", " ")}
-    </span>
-  );
+  return <Badge domain="ticketStatus" label={value} />;
 }
 function actorLabel(actorEmail, currentUser) {
   if (!actorEmail) return "System";
@@ -192,15 +177,6 @@ function FeedCommentBubble({ comment, ticket, currentUser }) {
   );
 }
 
-function fileBadge(mime, fileName) {
-  const ext = (fileName?.split(".").pop() || "").toUpperCase();
-  if (mime?.includes("pdf")) return { label: "PDF", classes: "bg-red-50 text-red-600 ring-red-100" };
-  if (mime?.includes("zip")) return { label: "ZIP", classes: "bg-amber-50 text-amber-600 ring-amber-100" };
-  if (mime?.includes("sheet") || mime?.includes("excel")) return { label: ext || "XLS", classes: "bg-emerald-50 text-emerald-600 ring-emerald-100" };
-  if (mime?.startsWith("text/")) return { label: ext || "TXT", classes: "bg-slate-100 text-slate-600 ring-slate-200" };
-  return { label: ext || "FILE", classes: "bg-brand-50 text-brand-600 ring-brand-100" };
-}
-
 function AttachmentActions({ attachment, canDelete, deleting, onDelete, light }) {
   return (
     <div className="flex items-center gap-3 shrink-0">
@@ -232,7 +208,6 @@ function FeedAttachmentCard({ attachment, ticket, canDelete, onDelete }) {
   const isEngineer = role === "engineer";
   const isImage = attachment.mime_type?.startsWith("image/");
   const isTextLike = attachment.mime_type?.startsWith("text/") && !isImage;
-  const badge = fileBadge(attachment.mime_type, attachment.file_name);
 
   useEffect(() => {
     if (!isTextLike || !attachment.file_url) return;
@@ -293,9 +268,7 @@ function FeedAttachmentCard({ attachment, ticket, canDelete, onDelete }) {
           </div>
         ) : (
           <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white shadow-sm min-w-[220px]">
-            <span className={`w-10 h-10 rounded-lg ring-1 flex items-center justify-center text-[10px] font-bold shrink-0 ${badge.classes}`}>
-              {badge.label}
-            </span>
+            <FileTypeBadge mimeType={attachment.mime_type} fileName={attachment.file_name} className="w-10 h-10 text-[10px]" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-800 truncate">{attachment.file_name}</p>
               {meta}

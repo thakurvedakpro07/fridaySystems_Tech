@@ -14,10 +14,9 @@ import EngineerWorkloadBars from "../../components/dashboard/EngineerWorkloadBar
 import Sparkline from "../../components/dashboard/charts/Sparkline";
 import Donut from "../../components/dashboard/charts/Donut";
 import BarRow from "../../components/dashboard/charts/BarRow";
-// Aliased to avoid colliding with this file's own local `Badge` (used for
-// severity/service badges elsewhere on this page) — reuses the Ticket
-// Queue's exact status color/label mapping instead of re-declaring it.
-import { Badge as StatusBadge, STATUS_BADGE } from "../../components/tickets/queue/TicketQueueTable";
+import Badge from "../../components/ui/Badge";
+import Alert from "../../components/ui/Alert";
+import PageHeader from "../../components/ui/PageHeader";
 
 // ── Shared tokens ─────────────────────────────────────────────────
 const KPI_STYLES = {
@@ -30,13 +29,6 @@ const KPI_STYLES = {
   orange:  { num: "text-orange-600",  border: "border-orange-100" },
 };
 
-function Badge({ label, colorClass }) {
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold capitalize ${colorClass}`}>
-      {label.replace(/_/g, " ")}
-    </span>
-  );
-}
 
 const PAYMENT_TYPE_LABEL = {
   consulting_fee: "Consulting Fee",
@@ -54,7 +46,7 @@ const PAYMENT_TYPE_COLOR = {
 
 // "Tickets by Status" donut — reuses the exact counts already returned by
 // GET /api/ops/dashboard/ (no extra request), just labeled/colored to match
-// this app's existing status badge palette (STATUS_BADGE in TicketQueueTable.jsx).
+// this app's existing status badge palette (Badge's "ticketStatus" domain).
 const STATUS_CHART_SEGMENTS = [
   { key: "open",             label: "Open (Unassigned)", color: "#4f46e5" },
   { key: "assigned",         label: "Ready to Start",    color: "#7c3aed" },
@@ -286,10 +278,7 @@ export default function OpsDashboard() {
 
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Operations Dashboard</h1>
-            <p className="text-sm text-slate-500 mt-0.5">Ticket queue overview and freelancer assignment management.</p>
-          </div>
+          <PageHeader title="Operations Dashboard" description="Ticket queue overview and freelancer assignment management." />
           <Link to="/operations/tickets"
             className="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold
                        px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors shadow-sm">
@@ -300,14 +289,7 @@ export default function OpsDashboard() {
           </Link>
         </div>
 
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4 text-rose-700 text-sm font-medium flex items-center gap-3">
-            <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-            </svg>
-            {error}
-          </div>
-        )}
+        {error && <Alert severity="error">{error}</Alert>}
 
         {/* KPI grid — base for all staff roles (Phase 1 dashboard cards) */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -427,8 +409,8 @@ export default function OpsDashboard() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-[11px] font-mono font-semibold text-slate-500">{t.ticket_number}</span>
-                        {t.severity && <Badge label={t.severity} colorClass="bg-slate-100 text-slate-600" />}
-                        <Badge label={t.service_type?.replace(/_/g, " ") ?? "—"} colorClass="bg-slate-100 text-slate-600" />
+                        {t.severity && <Badge domain="severity" label={t.severity} />}
+                        <Badge label={t.service_type?.replace(/_/g, " ") ?? "—"} />
                         {t.sla_status && <SLABadge status={t.sla_status} />}
                       </div>
                       <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
@@ -472,8 +454,8 @@ export default function OpsDashboard() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-[11px] font-mono font-semibold text-slate-500">{t.ticket_number}</span>
-                        <StatusBadge label={t.status} colorClass={STATUS_BADGE[t.status] ?? "bg-slate-100 text-slate-500"} />
-                        <Badge label={t.service_type?.replace(/_/g, " ") ?? "—"} colorClass="bg-slate-100 text-slate-600" />
+                        <Badge domain="ticketStatus" label={t.status} />
+                        <Badge label={t.service_type?.replace(/_/g, " ") ?? "—"} />
                       </div>
                       <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
                       <p className="text-[11px] text-slate-500 mt-0.5">{fmtDate(t.created_at)}</p>

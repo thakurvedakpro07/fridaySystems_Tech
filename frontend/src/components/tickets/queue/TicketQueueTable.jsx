@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import SortableColumnHeader from "../../table/SortableColumnHeader";
+import Badge from "../../ui/Badge";
 
 // Plain checkbox that also supports the (non-JSX-expressible) indeterminate
 // state, needed for the header's "select all visible" control.
@@ -30,31 +31,6 @@ const SORTABLE_HEADERS = [
   { key: "service_type", label: "Service" },
   { key: "created_at", label: "Created" },
 ];
-
-// ── Shared status display helpers ──────────────────────────────────
-// Exported (not just used internally) so OpsTicketQueue.jsx's AssignModal
-// can render the same status/severity badges without a second definition.
-export const STATUS_BADGE = {
-  open:             "bg-indigo-100 text-indigo-700",
-  assigned:         "bg-violet-100 text-violet-700",
-  in_progress:      "bg-amber-100 text-amber-700",
-  resolved:         "bg-emerald-100 text-emerald-700",
-  closed:           "bg-slate-100 text-slate-500",
-  pending_payment:  "bg-rose-100 text-rose-700",
-};
-
-export const STATUS_LABEL = {
-  assigned:    "Ready to Start",
-  in_progress: "Work Started",
-};
-
-export function Badge({ label, colorClass }) {
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold capitalize ${colorClass}`}>
-      {STATUS_LABEL[label] ?? String(label).replace(/_/g, " ")}
-    </span>
-  );
-}
 
 export function fmtDate(iso) {
   if (!iso) return "—";
@@ -148,7 +124,7 @@ export default function TicketQueueTable({
                       />
                     )}
                     <span className="text-[11px] font-mono text-slate-500">{t.ticket_number}</span>
-                    <Badge label={t.status} colorClass={STATUS_BADGE[t.status] ?? "bg-slate-100 text-slate-500"} />
+                    <Badge domain="ticketStatus" label={t.status} />
                   </div>
                   <button
                     onClick={() => onView(t.id)}
@@ -165,7 +141,7 @@ export default function TicketQueueTable({
 
                 {/* Status */}
                 <div className="hidden md:block">
-                  <Badge label={t.status} colorClass={STATUS_BADGE[t.status] ?? "bg-slate-100 text-slate-500"} />
+                  <Badge domain="ticketStatus" label={t.status} />
                 </div>
 
                 {/* Service */}

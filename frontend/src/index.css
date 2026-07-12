@@ -74,6 +74,30 @@
            transition-all duration-200;
   }
 
+  /* ── Typography scale — consumed by ui/PageHeader, ui/Card, ui/DashboardSection.
+     Documents the sizes/weights that were previously ad hoc and drifting
+     (e.g. page titles alternating between font-black and font-bold). */
+  .text-page-title    { @apply text-2xl font-black text-slate-900 tracking-tight; }
+  .text-page-subtitle { @apply text-sm text-slate-500 mt-1; }
+  .text-section-title { @apply text-base font-bold text-slate-900; }
+  .text-card-label    { @apply text-[10px] font-semibold text-slate-500 uppercase tracking-widest; }
+  .text-meta-label    { @apply text-[11px] font-semibold text-slate-400 uppercase tracking-wide; }
+
+  /* ── Page container width convention (documentation only — enforced via
+     MainLayout's `maxWidth` prop / inline `max-w-*` at each page, not a class):
+       - Wide list/dashboard pages (ops/*, Dashboard, BillingPage list views): max-w-7xl
+       - Form-centric / narrower pages (OpsRoles, OpsServices, SettingsPage,
+         NotificationsPage): max-w-5xl / max-w-3xl / max-w-2xl
+       - Ticket detail / resolution summary content: max-w-[1100px] (established
+         by the 2026-07-12 ticket-detail redesign, kept as-is) */
+
+  /* Bottom-pinned mobile action bar — scaffolding for future adoption. */
+  .sticky-action-bar {
+    @apply sticky bottom-0 left-0 right-0 bg-white border-t border-slate-200
+           px-4 py-3 flex items-center gap-3 z-10;
+    box-shadow: 0 -4px 16px -4px rgb(0 0 0 / 0.08);
+  }
+
   /* Focus-visible ring for keyboard navigation */
   :focus-visible {
     @apply outline-none ring-2 ring-indigo-500/50 ring-offset-1;

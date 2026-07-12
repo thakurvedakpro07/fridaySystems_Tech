@@ -26,6 +26,7 @@ export default {
       },
       boxShadow: {
         card:        "0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07)",
+        "card-sm":   "0 1px 4px 0 rgb(0 0 0 / 0.06)",
         "card-hover":"0 4px 16px -2px rgb(0 0 0 / 0.10), 0 2px 6px -2px rgb(0 0 0 / 0.06)",
         dropdown:    "0 10px 40px -4px rgb(0 0 0 / 0.14), 0 4px 16px -2px rgb(0 0 0 / 0.08)",
         modal:       "0 24px 64px -8px rgb(0 0 0 / 0.22), 0 8px 24px -4px rgb(0 0 0 / 0.08)",

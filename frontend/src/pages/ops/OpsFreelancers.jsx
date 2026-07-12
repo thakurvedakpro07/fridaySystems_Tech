@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import AppShell from "../../components/layout/AppShell";
 import { getOpsFreelancers } from "../../api/ops";
 import { usePageTitle } from "../../hooks/usePageTitle";
+import Alert from "../../components/ui/Alert";
+import PageHeader from "../../components/ui/PageHeader";
 
 const AVAIL_OPTIONS = [
   { value: "", label: "All Availability" },
@@ -180,10 +182,7 @@ export default function OpsFreelancers() {
 
         {/* Header */}
         <div className="flex items-start justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Engineer Roster</h1>
-            <p className="text-sm text-slate-500 mt-0.5">Skills, availability, active ticket load, and ratings.</p>
-          </div>
+          <PageHeader title="Engineer Roster" description="Skills, availability, active ticket load, and ratings." />
           {!loading && (
             <div className="flex items-center gap-4">
               <div className="text-right">
@@ -234,11 +233,7 @@ export default function OpsFreelancers() {
           )}
         </div>
 
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4 text-rose-700 text-sm font-medium">
-            {error}
-          </div>
-        )}
+        {error && <Alert severity="error">{error}</Alert>}
 
         {/* Grid */}
         {loading ? (

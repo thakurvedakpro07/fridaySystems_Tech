@@ -6,6 +6,8 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import { SkeletonCard } from "../../components/ui/Spinner";
 import EmptyState from "../../components/ui/EmptyState";
+import Alert from "../../components/ui/Alert";
+import PageHeader from "../../components/ui/PageHeader";
 import { usePageTitle } from "../../hooks/usePageTitle";
 
 function RatingStars({ rating }) {
@@ -57,14 +59,7 @@ function AddFreelancerForm({ onSuccess }) {
     >
       <h2 className="text-sm font-semibold text-slate-900 mb-4">Add new freelancer</h2>
 
-      {error && (
-        <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl px-4 py-3 mb-4">
-          <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-          </svg>
-          {error}
-        </div>
-      )}
+      {error && <Alert severity="error" className="mb-4">{error}</Alert>}
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
         <div>
@@ -137,23 +132,17 @@ export default function FreelancerList() {
     <MainLayout maxWidth="max-w-4xl">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Freelancers</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            {!loading ? `${freelancers.length} registered engineer${freelancers.length !== 1 ? "s" : ""}` : "Loading…"}
-          </p>
-        </div>
+        <PageHeader
+          title="Freelancers"
+          description={!loading ? `${freelancers.length} registered engineer${freelancers.length !== 1 ? "s" : ""}` : "Loading…"}
+        />
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowForm((v) => !v)}
-            className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-medium
-                       px-3.5 py-2 rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm"
-          >
+          <Button onClick={() => setShowForm((v) => !v)} size="sm">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d={showForm ? "M6 18L18 6M6 6l12 12" : "M12 4.5v15m7.5-7.5h-15"} />
             </svg>
             {showForm ? "Cancel" : "Add Freelancer"}
-          </button>
+          </Button>
           <Link
             to="/operations"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600
@@ -213,7 +202,7 @@ export default function FreelancerList() {
                   <RatingStars rating={f.rating} />
                 </div>
                 <div className="text-right">
-                  <Badge label={f.onboarding_status} />
+                  <Badge label={f.onboarding_status} domain="onboarding" />
                 </div>
               </div>
             ))}

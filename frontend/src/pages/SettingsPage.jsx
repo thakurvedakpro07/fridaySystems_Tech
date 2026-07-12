@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { changePassword, getProfile, updateProfile } from "../api/settings";
 import MainLayout from "../components/layouts/MainLayout";
 import Button from "../components/ui/Button";
+import PageHeader from "../components/ui/PageHeader";
 import { useToast } from "../context/ToastContext";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useAuthStore } from "../store/authStore";
@@ -305,10 +306,7 @@ export default function SettingsPage() {
     <MainLayout maxWidth="max-w-2xl">
       {/* Page header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-          {getDisplayName(user, "full") || "Account Settings"}
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">{user?.email}</p>
+        <PageHeader title={getDisplayName(user, "full") || "Account Settings"} description={user?.email} />
       </div>
 
       {/* Tab bar */}

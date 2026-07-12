@@ -58,8 +58,8 @@ export default function TicketCard({ ticket }) {
 
         {/* Badges */}
         <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <Badge label={ticket.status} dot />
-          {ticket.severity && <Badge label={ticket.severity} />}
+          <Badge label={ticket.status} domain="ticketStatus" dot />
+          {ticket.severity && <Badge label={ticket.severity} domain="severity" />}
         </div>
       </div>
 

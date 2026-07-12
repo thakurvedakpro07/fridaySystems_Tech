@@ -24,14 +24,7 @@
 import { formatAbsoluteTime } from "../../utils/time";
 import { getDisplayName } from "../../utils/displayName";
 import { findLatestResolution } from "../../utils/resolution";
-
-function fileBadge(mime, fileName) {
-  const ext = (fileName?.split(".").pop() || "").toUpperCase();
-  if (mime?.includes("pdf")) return { label: "PDF", classes: "bg-red-50 text-red-600 ring-red-100" };
-  if (mime?.includes("zip")) return { label: "ZIP", classes: "bg-amber-50 text-amber-600 ring-amber-100" };
-  if (mime?.startsWith("image/")) return { label: ext || "IMG", classes: "bg-violet-50 text-violet-600 ring-violet-100" };
-  return { label: ext || "FILE", classes: "bg-indigo-50 text-indigo-600 ring-indigo-100" };
-}
+import FileTypeBadge from "../ui/FileTypeBadge";
 
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -128,24 +121,19 @@ export default function ResolutionSummary({ ticket, feedItems, role }) {
               <h3 className="text-sm font-semibold text-slate-800 mb-2">Attachments</h3>
               {attachments.length > 0 ? (
                 <div className="space-y-2">
-                  {attachments.map((a) => {
-                    const badge = fileBadge(a.mime_type, a.file_name);
-                    return (
-                      <a
-                        key={a.id}
-                        href={a.file_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors"
-                      >
-                        <span className={`w-8 h-8 rounded-md ring-1 flex items-center justify-center text-[9px] font-bold shrink-0 ${badge.classes}`}>
-                          {badge.label}
-                        </span>
-                        <span className="flex-1 min-w-0 text-sm font-medium text-slate-700 truncate">{a.file_name}</span>
-                        <span className="text-xs text-slate-400 shrink-0">{formatBytes(a.file_size)}</span>
-                      </a>
-                    );
-                  })}
+                  {attachments.map((a) => (
+                    <a
+                      key={a.id}
+                      href={a.file_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors"
+                    >
+                      <FileTypeBadge mimeType={a.mime_type} fileName={a.file_name} />
+                      <span className="flex-1 min-w-0 text-sm font-medium text-slate-700 truncate">{a.file_name}</span>
+                      <span className="text-xs text-slate-400 shrink-0">{formatBytes(a.file_size)}</span>
+                    </a>
+                  ))}
                 </div>
               ) : (
                 <p className="text-sm text-slate-400 italic">No supporting files attached.</p>

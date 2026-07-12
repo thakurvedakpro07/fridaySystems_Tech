@@ -5,6 +5,7 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import { useNotifications } from "../hooks/useNotifications";
 import { useToast } from "../context/ToastContext";
 import { formatAbsoluteTime, formatRelativeTime, groupByDate } from "../utils/time";
+import PageHeader from "../components/ui/PageHeader";
 
 const CATEGORY_META = {
   ticket_assigned:   { icon: "📋", colour: "bg-indigo-100 text-indigo-700",  ring: "ring-indigo-200" },
@@ -107,16 +108,12 @@ export default function NotificationsPage() {
     <MainLayout maxWidth="max-w-2xl">
       {/* Page header */}
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Notifications</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {unreadCount > 0 ? (
-              <span>
-                <span className="text-indigo-600 font-semibold">{unreadCount}</span> unread
-              </span>
-            ) : "You're all caught up"}
-          </p>
-        </div>
+        <PageHeader
+          title="Notifications"
+          description={unreadCount > 0 ? (
+            <span><span className="text-indigo-600 font-semibold">{unreadCount}</span> unread</span>
+          ) : "You're all caught up"}
+        />
         {unreadCount > 0 && (
           <button
             onClick={handleMarkAll}

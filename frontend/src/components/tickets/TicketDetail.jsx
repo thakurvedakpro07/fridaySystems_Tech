@@ -14,6 +14,8 @@ import CustomerResolutionActions from "./CustomerResolutionActions";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
 import Card from "../ui/Card";
+import LiveDot from "../ui/LiveDot";
+import Alert from "../ui/Alert";
 import { updateTicket } from "../../api/tickets";
 import { ChatBubbleIcon, PaperClipIcon } from "./ActionIcons";
 
@@ -173,12 +175,7 @@ function TicketStatusTracker({ status, ticket, role, isPendingPayment = false })
               <span className={`text-xs ${current ? "font-semibold text-indigo-700" : done ? "font-medium text-slate-700" : "text-slate-400"}`}>
                 {COMPACT_LABEL[step.status]}
               </span>
-              {current && (
-                <span className="relative flex h-1.5 w-1.5 shrink-0 ml-auto">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-indigo-500" />
-                </span>
-              )}
+              {current && <LiveDot tone="indigo" size="xs" className="ml-auto" />}
             </li>
           );
         })}
@@ -322,10 +319,7 @@ function PostPaymentCard({ ticket, onUpdate }) {
               so it's styled to stand out more than the ticket timeline that follows this card. */}
           <div className="rounded-xl p-4 mb-5 border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50">
             <div className="flex items-start gap-3">
-              <span className="relative flex h-2.5 w-2.5 mt-1.5 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-              </span>
+              <LiveDot tone="emerald" size="sm" className="mt-1.5" />
               <div>
                 <p className="text-[10px] font-semibold text-emerald-700 uppercase tracking-widest mb-1">
                   Support Engineer Response
@@ -483,40 +477,13 @@ function PostPaymentCard({ ticket, onUpdate }) {
         </div>
 
         {/* Error */}
-        {error && (
-          <div className="flex items-center gap-2 bg-rose-50 border border-rose-100 rounded-xl
-                          px-3 py-2.5 text-xs text-rose-700 mb-4">
-            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24"
-                 stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-            </svg>
-            {error}
-          </div>
-        )}
+        {error && <Alert severity="error" className="mb-4">{error}</Alert>}
 
         {/* Save / Cancel row */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleSave}
-            disabled={saving || !commPref}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white
-                       text-sm font-semibold rounded-xl hover:bg-indigo-700 active:bg-indigo-800
-                       disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm
-                       shadow-indigo-200"
-          >
-            {saving ? (
-              <>
-                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                </svg>
-                Saving…
-              </>
-            ) : (
-              "Save Preferences"
-            )}
-          </button>
+          <Button onClick={handleSave} disabled={!commPref} loading={saving}>
+            {saving ? "Saving…" : "Save Preferences"}
+          </Button>
 
           {editing && (
             <button
@@ -647,8 +614,8 @@ function TicketSummarySidebar({
           progress, created — the working state of the ticket at a glance. */}
       <Card title="Current Status">
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <Badge label={ticket.status} dot />
-          <Badge label={ticket.severity} />
+          <Badge label={ticket.status} domain="ticketStatus" dot />
+          <Badge label={ticket.severity} domain="severity" />
         </div>
 
         {showEngineer && (
@@ -800,8 +767,8 @@ function TicketHeroHeader({ ticket }) {
       )}
 
       <div className="flex flex-wrap items-center gap-2 mt-3">
-        <Badge label={ticket.status} dot />
-        <Badge label={ticket.severity} />
+        <Badge label={ticket.status} domain="ticketStatus" dot />
+        <Badge label={ticket.severity} domain="severity" />
         <Badge label={humanize(ticket.service_type)} />
       </div>
 

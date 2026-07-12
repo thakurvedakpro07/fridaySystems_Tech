@@ -3,17 +3,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import AppShell from "../../components/layout/AppShell";
 import { getOpsTickets, getOpsTicketHistory, opsAssignTicket, opsUnassignTicket, getOpsFreelancers } from "../../api/ops";
 import { usePageTitle } from "../../hooks/usePageTitle";
+import Badge from "../../components/ui/Badge";
+import Alert from "../../components/ui/Alert";
+import PageHeader from "../../components/ui/PageHeader";
 
 // ── Constants ─────────────────────────────────────────────────────
-const STATUS_BADGE = {
-  open:             "bg-indigo-100 text-indigo-700",
-  assigned:         "bg-violet-100 text-violet-700",
-  in_progress:      "bg-amber-100 text-amber-700",
-  resolved:         "bg-emerald-100 text-emerald-700",
-  closed:           "bg-slate-100 text-slate-500",
-  pending_payment:  "bg-rose-100 text-rose-700",
-};
-
 const AVAIL_LABEL = {
   full_time: "Full Time",
   part_time: "Part Time",
@@ -24,19 +18,6 @@ const AVAIL_COLOR = {
   part_time: "bg-amber-100 text-amber-700",
   ad_hoc:    "bg-slate-100 text-slate-500",
 };
-
-const STATUS_LABEL = {
-  assigned:    "Ready to Start",
-  in_progress: "Work Started",
-};
-
-function Badge({ label, colorClass }) {
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold capitalize ${colorClass}`}>
-      {STATUS_LABEL[label] ?? String(label).replace(/_/g, " ")}
-    </span>
-  );
-}
 
 function fmtDate(iso) {
   if (!iso) return "—";
@@ -370,8 +351,8 @@ function HistoryDrawer({ ticket, onClose, onOpenAssignModal }) {
         <div className="px-6 py-4 border-b border-slate-50 bg-slate-50 shrink-0">
           <p className="text-sm font-semibold text-slate-900 mb-2">{ticket.title}</p>
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge label={ticket.status} colorClass={STATUS_BADGE[ticket.status] ?? "bg-slate-100 text-slate-500"} />
-            {ticket.severity && <Badge label={ticket.severity} colorClass="bg-slate-100 text-slate-600" />}
+            <Badge domain="ticketStatus" label={ticket.status} />
+            {ticket.severity && <Badge domain="severity" label={ticket.severity} />}
             {ticket.freelancer && (
               <span className="text-[11px] text-slate-500">
                 Engineer: <span className="font-semibold">{ticket.freelancer.name ?? ticket.freelancer.email}</span>
@@ -477,16 +458,9 @@ export default function OpsAssignments() {
       <div className="max-w-7xl mx-auto space-y-6">
 
         {/* Page header */}
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Assignments</h1>
-          <p className="text-sm text-slate-500 mt-0.5">View and manage all ticket-engineer assignments.</p>
-        </div>
+        <PageHeader title="Assignments" description="View and manage all ticket-engineer assignments." />
 
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4 text-rose-700 text-sm font-medium">
-            {error}
-          </div>
-        )}
+        {error && <Alert severity="error">{error}</Alert>}
 
         {/* Summary row */}
         {!loading && (
@@ -533,7 +507,7 @@ export default function OpsAssignments() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-[11px] font-mono text-slate-500">{t.ticket_number}</span>
-                        <Badge label={t.status} colorClass={STATUS_BADGE[t.status] ?? "bg-slate-100 text-slate-500"} />
+                        <Badge domain="ticketStatus" label={t.status} />
                       </div>
                       <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
                       <p className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1">
@@ -581,7 +555,7 @@ export default function OpsAssignments() {
                     >
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-[11px] font-mono text-slate-500">{t.ticket_number}</span>
-                        {t.severity && <Badge label={t.severity} colorClass="bg-slate-100 text-slate-600" />}
+                        {t.severity && <Badge domain="severity" label={t.severity} />}
                       </div>
                       <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
                       <p className="text-[11px] text-slate-500 mt-0.5">{fmtDate(t.created_at)}</p>
