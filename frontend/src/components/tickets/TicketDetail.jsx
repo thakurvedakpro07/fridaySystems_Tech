@@ -5,6 +5,7 @@ import { useCountdown } from "../../hooks/useCountdown";
 import ConversationFeed from "./ConversationFeed";
 import TicketSLAPanel from "./TicketSLAPanel";
 import ResolutionPanel from "./ResolutionPanel";
+import ResolutionSummary from "./ResolutionSummary";
 import AdminTicketActions from "./AdminTicketActions";
 import FreelancerTicketActions from "./FreelancerTicketActions";
 import PaymentGateway from "./PaymentGateway";
@@ -12,7 +13,9 @@ import CSATWidget from "./CSATWidget";
 import CustomerResolutionActions from "./CustomerResolutionActions";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
+import Card from "../ui/Card";
 import { updateTicket } from "../../api/tickets";
+import { ChatBubbleIcon, PaperClipIcon } from "./ActionIcons";
 
 const CONVERSATION_COMPOSER_ID = "conversation-composer";
 
@@ -529,18 +532,6 @@ function PostPaymentCard({ ticket, onUpdate }) {
   );
 }
 
-// ── Sidebar section wrapper — consistent divider/spacing between blocks ──
-function SidebarSection({ title, children }) {
-  return (
-    <div className="border-t border-slate-100 pt-6 mt-6 first:border-t-0 first:pt-0 first:mt-0">
-      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
-        {title}
-      </p>
-      {children}
-    </div>
-  );
-}
-
 // Small phone/chat icons, reused by both the Ticket Information "Communication"
 // field and the phone-reminder note in Quick Actions.
 function CommIcon({ method }) {
@@ -565,8 +556,12 @@ function CommIcon({ method }) {
   return null;
 }
 
-// ── Right sidebar — sticky summary: engineer, customer, compact progress,
-// quick actions, and ticket facts, so each fact appears exactly once.
+// ── Right sidebar — "Engineer Command Center": actions surface first,
+// informational cards (status, SLA, customer, ticket facts) follow, so
+// whoever opens the ticket sees what they can *do* before what they need
+// to *read*. Five distinct cards (not one card with dividers) — matches
+// how Jira Service Management / Zendesk / Freshservice lay out ticket
+// sidebars, and each fact still appears exactly once across the stack.
 function TicketSummarySidebar({
   ticket, role, isPendingPayment, onOpenChat, handleUpdate,
   draftMessage, onDraftChange, onFeedRefresh, composerId,
@@ -607,69 +602,22 @@ function TicketSummarySidebar({
   const slaTime = SLA_TIME[ticket.severity] ?? SLA_TIME.medium;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 h-full"
-         style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-      {showEngineer && (
-        <SidebarSection title="Assigned Engineer">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-indigo-100 text-indigo-700 text-sm font-bold
-                            flex items-center justify-center shrink-0 select-none">
-              {engineerInitials}
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <p className="text-sm font-bold text-slate-900 leading-tight truncate">{engineerName}</p>
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full
-                                 bg-indigo-50 border border-indigo-100 text-[9px] font-bold text-indigo-600 shrink-0">
-                  <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
-                  Verified
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5 truncate">{assignedTo.email}</p>
-            </div>
-          </div>
-          {specialization && (
-            <p className="text-xs text-indigo-600 font-medium mt-2.5">{specialization}</p>
-          )}
-          <p className="text-xs text-slate-500 mt-1.5">
-            Responds within <span className="font-medium text-slate-700">{slaTime}</span>
-          </p>
-        </SidebarSection>
-      )}
-
-      {showCustomer && (
-        <SidebarSection title="Customer">
-          <p className="text-sm font-semibold text-slate-800">{ticket.customer.name}</p>
-          {ticket.customer.company && (
-            <p className="text-xs text-slate-500 mt-0.5">{ticket.customer.company}</p>
-          )}
-          <p className="text-xs text-slate-500 mt-0.5">{ticket.customer.email}</p>
-        </SidebarSection>
-      )}
-
-      <SidebarSection title="Ticket Progress">
-        <TicketStatusTracker
-          status={ticket.status}
-          ticket={ticket}
-          role={role}
-          isPendingPayment={isPendingPayment}
-        />
-      </SidebarSection>
-
-      <SidebarSection title="SLA Status">
-        <TicketSLAPanel ticket={ticket} />
-      </SidebarSection>
-
+    <div className="flex flex-col gap-4 lg:sticky lg:top-6">
+      {/* CARD 1 — Quick Actions: highest priority, always the first thing visible. */}
       {showQuickActions && (
-        <SidebarSection title="Quick Actions">
+        <Card title="Quick Actions">
           {role === "customer" && (
             <div className="flex flex-col gap-2">
-              <Button className="w-full" onClick={onOpenChat}>Reply</Button>
-              <Button className="w-full" variant="secondary" onClick={onOpenChat}>Add File</Button>
+              <Button className="w-full mb-1" size="lg" onClick={onOpenChat}>
+                <ChatBubbleIcon />
+                Reply
+              </Button>
+              <Button className="w-full" variant="secondary" onClick={onOpenChat}>
+                <PaperClipIcon />
+                Add File
+              </Button>
               {showContactInfo && ticket.communication_preference === "phone" && (
-                <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5">
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 mt-1">
                   <CommIcon method="phone" />
                   <p className="text-xs text-slate-600">
                     <span className="font-semibold text-slate-800">Your engineer will call you</span>
@@ -692,10 +640,78 @@ function TicketSummarySidebar({
           {(role === "admin" || role === "support_agent") && (
             <AdminTicketActions ticket={ticket} onUpdate={handleUpdate} />
           )}
-        </SidebarSection>
+        </Card>
       )}
 
-      <SidebarSection title="Ticket Information">
+      {/* CARD 2 — Current Status: status, priority, assigned engineer, service,
+          progress, created — the working state of the ticket at a glance. */}
+      <Card title="Current Status">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <Badge label={ticket.status} dot />
+          <Badge label={ticket.severity} />
+        </div>
+
+        {showEngineer && (
+          <div className="flex items-center gap-3 pb-4 mb-4 border-b border-slate-100">
+            <div className="w-11 h-11 rounded-2xl bg-indigo-100 text-indigo-700 text-sm font-bold
+                            flex items-center justify-center shrink-0 select-none">
+              {engineerInitials}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <p className="text-sm font-bold text-slate-900 leading-tight truncate">{engineerName}</p>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full
+                                 bg-indigo-50 border border-indigo-100 text-[9px] font-bold text-indigo-600 shrink-0">
+                  <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                  Verified
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5 truncate">{assignedTo.email}</p>
+              {specialization && (
+                <p className="text-xs text-indigo-600 font-medium mt-1">{specialization}</p>
+              )}
+              <p className="text-xs text-slate-500 mt-1">
+                Responds within <span className="font-medium text-slate-700">{slaTime}</span>
+              </p>
+            </div>
+          </div>
+        )}
+
+        <TicketStatusTracker
+          status={ticket.status}
+          ticket={ticket}
+          role={role}
+          isPendingPayment={isPendingPayment}
+        />
+
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 mt-4 pt-4 border-t border-slate-100">
+          <MetaItem label="Service">{humanize(ticket.service_type)}</MetaItem>
+          <MetaItem label="Created">
+            {new Date(ticket.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+          </MetaItem>
+        </dl>
+      </Card>
+
+      {/* CARD 3 — SLA: response/resolution clocks, unchanged logic. */}
+      <Card title="SLA">
+        <TicketSLAPanel ticket={ticket} />
+      </Card>
+
+      {/* CARD 4 — Customer: essential contact info only. */}
+      {showCustomer && (
+        <Card title="Customer">
+          <p className="text-sm font-semibold text-slate-800">{ticket.customer.name}</p>
+          {ticket.customer.company && (
+            <p className="text-xs text-slate-500 mt-0.5">{ticket.customer.company}</p>
+          )}
+          <p className="text-xs text-slate-500 mt-0.5">{ticket.customer.email}</p>
+        </Card>
+      )}
+
+      {/* CARD 5 — Ticket Information: remaining metadata, each fact once. */}
+      <Card title="Ticket Information">
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
           {showContactInfo && (
             <MetaItem label="Communication">
@@ -715,16 +731,14 @@ function TicketSummarySidebar({
                 : "—"}
             </MetaItem>
           )}
-          <MetaItem label="Priority">
-            <Badge label={ticket.severity} />
-          </MetaItem>
-          <MetaItem label="Service">{humanize(ticket.service_type)}</MetaItem>
-          <MetaItem label="Created">
-            {new Date(ticket.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-          </MetaItem>
+          {ticket.updated_at && (
+            <MetaItem label="Updated">
+              {new Date(ticket.updated_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+            </MetaItem>
+          )}
           <MetaItem label="Ticket ID">{ticket.ticket_number}</MetaItem>
         </dl>
-      </SidebarSection>
+      </Card>
     </div>
   );
 }
@@ -831,6 +845,9 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
         <TicketHeroHeader ticket={ticket} />
       </div>
 
+      {/* ══ Resolution Summary — read-only, only renders once status === "resolved" ══ */}
+      <ResolutionSummary ticket={ticket} feedItems={feed.items} role={role} />
+
       {/* ══ Section 2 — Two-column grid: conversation (left, ~72%) + sidebar (right, ~28%) ══
           .ticket-detail-grid (index.css) stretches both columns to equal
           height by default grid alignment — the sidebar card is h-full so
@@ -892,7 +909,7 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
           />
         </div>
 
-        <div className="ticket-grid-sidebar h-full lg:sticky lg:top-6">
+        <div className="ticket-grid-sidebar">
           <TicketSummarySidebar
             ticket={ticket}
             role={role}

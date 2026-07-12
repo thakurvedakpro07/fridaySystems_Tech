@@ -33,6 +33,7 @@ import { uploadAttachment } from "../../api/attachments";
 import { useToast } from "../../context/ToastContext";
 import Button from "../ui/Button";
 import Popover from "../ui/Popover";
+import { PlayCircleIcon, CheckCircleIcon, ChatBubbleIcon, UploadIcon, ComputerDesktopIcon } from "./ActionIcons";
 
 const FREELANCER_TRANSITIONS = {
   assigned:    ["in_progress"],
@@ -51,8 +52,13 @@ const STATUS_LABEL = {
 
 function labelFor(targetStatus) {
   if (targetStatus === "in_progress") return "Start Working";
-  if (targetStatus === "resolved") return "Mark Resolved";
+  if (targetStatus === "resolved") return "Resolve Ticket";
   return targetStatus.replaceAll("_", " ");
+}
+
+function iconFor(targetStatus) {
+  if (targetStatus === "resolved") return <CheckCircleIcon />;
+  return <PlayCircleIcon />;
 }
 
 const REQUEST_TEMPLATES = [
@@ -149,77 +155,80 @@ export default function FreelancerTicketActions({
   };
 
   return (
-    <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
-      <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-3">Engineer Actions</p>
-      <div className="flex flex-wrap gap-2">
-        {nextStatuses.map((targetStatus) => (
-          <Button
-            key={targetStatus}
-            variant={targetStatus === "resolved" ? "primary" : "secondary"}
-            disabled={saving}
-            onClick={() => (
-              INSTANT_STATUSES.has(targetStatus)
-                ? handleInstantClick(targetStatus)
-                : navigate(`/tickets/${ticket.id}/resolve`)
-            )}
-          >
-            {labelFor(targetStatus)}
-          </Button>
-        ))}
+    <div className="flex flex-col gap-2">
+      {nextStatuses.map((targetStatus) => (
+        <Button
+          key={targetStatus}
+          className={`w-full ${targetStatus === "resolved" ? "mb-1" : ""}`}
+          size={targetStatus === "resolved" ? "lg" : "md"}
+          variant={targetStatus === "resolved" ? "primary" : "secondary"}
+          disabled={saving}
+          onClick={() => (
+            INSTANT_STATUSES.has(targetStatus)
+              ? handleInstantClick(targetStatus)
+              : navigate(`/tickets/${ticket.id}/resolve`)
+          )}
+        >
+          {iconFor(targetStatus)}
+          {labelFor(targetStatus)}
+        </Button>
+      ))}
 
-        {canMessage && (
-          <>
-            <div className="relative">
-              <Button variant="secondary" onClick={() => setShowRequestPopover((v) => !v)}>
-                Request Information
-              </Button>
-              <Popover isOpen={showRequestPopover} onClose={() => setShowRequestPopover(false)}
-                       anchorClassName="left-0 w-64 p-1.5">
-                {REQUEST_TEMPLATES.map((t) => (
-                  <button
-                    key={t.label}
-                    onClick={() => handlePickTemplate(t.template)}
-                    className="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-700
-                               hover:bg-slate-50 transition-colors"
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </Popover>
-            </div>
-
-            <Button variant="secondary" disabled={uploading} onClick={handleFileButtonClick}>
-              {uploading ? "Uploading…" : "Upload File"}
+      {canMessage && (
+        <>
+          <div className="relative w-full">
+            <Button className="w-full" variant="secondary" onClick={() => setShowRequestPopover((v) => !v)}>
+              <ChatBubbleIcon />
+              Request Information
             </Button>
-            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
+            <Popover isOpen={showRequestPopover} onClose={() => setShowRequestPopover(false)}
+                     anchorClassName="left-0 w-64 p-1.5">
+              {REQUEST_TEMPLATES.map((t) => (
+                <button
+                  key={t.label}
+                  onClick={() => handlePickTemplate(t.template)}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-700
+                             hover:bg-slate-50 transition-colors"
+                >
+                  {t.label}
+                </button>
+              ))}
+            </Popover>
+          </div>
 
-            <div className="relative">
-              <Button variant="secondary" onClick={() => setShowRemotePopover((v) => !v)}>
-                Start Remote Session
-              </Button>
-              <Popover isOpen={showRemotePopover} onClose={() => setShowRemotePopover(false)}
-                       anchorClassName="left-0 w-80 p-3">
-                <label htmlFor="remote-session-url" className="block text-xs font-medium text-slate-700 mb-1.5">
-                  AnyDesk / remote session link
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    id="remote-session-url"
-                    type="url"
-                    value={remoteUrl}
-                    onChange={(e) => setRemoteUrl(e.target.value)}
-                    placeholder="https://anydesk.com/…"
-                    className="input-base flex-1 text-sm"
-                  />
-                  <Button size="sm" disabled={sharingRemote || !remoteUrl.trim()} onClick={handleShareRemoteSession}>
-                    {sharingRemote ? "Sharing…" : "Share"}
-                  </Button>
-                </div>
-              </Popover>
-            </div>
-          </>
-        )}
-      </div>
+          <Button className="w-full" variant="secondary" disabled={uploading} onClick={handleFileButtonClick}>
+            <UploadIcon />
+            {uploading ? "Uploading…" : "Upload File"}
+          </Button>
+          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
+
+          <div className="relative w-full">
+            <Button className="w-full" variant="secondary" onClick={() => setShowRemotePopover((v) => !v)}>
+              <ComputerDesktopIcon />
+              Start Remote Session
+            </Button>
+            <Popover isOpen={showRemotePopover} onClose={() => setShowRemotePopover(false)}
+                     anchorClassName="left-0 w-80 p-3">
+              <label htmlFor="remote-session-url" className="block text-xs font-medium text-slate-700 mb-1.5">
+                AnyDesk / remote session link
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="remote-session-url"
+                  type="url"
+                  value={remoteUrl}
+                  onChange={(e) => setRemoteUrl(e.target.value)}
+                  placeholder="https://anydesk.com/…"
+                  className="input-base flex-1 text-sm"
+                />
+                <Button size="sm" disabled={sharingRemote || !remoteUrl.trim()} onClick={handleShareRemoteSession}>
+                  {sharingRemote ? "Sharing…" : "Share"}
+                </Button>
+              </div>
+            </Popover>
+          </div>
+        </>
+      )}
     </div>
   );
 }

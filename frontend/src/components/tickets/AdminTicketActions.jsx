@@ -13,6 +13,7 @@ import { useToast } from "../../context/ToastContext";
 import { useRoles } from "../../hooks/useRoles";
 import Button from "../ui/Button";
 import Modal from "../ui/Modal";
+import { CheckCircleIcon, UserPlusIcon, UserMinusIcon, ArrowsPathIcon } from "./ActionIcons";
 
 const STATUS_TRANSITIONS = {
   open:            ["assigned", "closed"],
@@ -61,6 +62,14 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
   if (!isTicketManagementStaff) return null;
 
   const nextStatuses = STATUS_TRANSITIONS[ticket.status] ?? [];
+  // "resolved" is surfaced as its own dedicated primary button below
+  // (canResolve), so it's excluded from the generic Change Status dropdown
+  // to avoid two different controls reaching the same destination.
+  const dropdownStatuses = nextStatuses.filter((s) => s !== "resolved");
+  const canResolve = ticket.status === "in_progress";
+  const canAssign = !ticket.assigned_to && ticket.status !== "closed";
+
+  const handleResolveClick = () => navigate(`/tickets/${ticket.id}/resolve`);
 
   const handleAssign = async () => {
     if (!selectedFreelancer) return;
@@ -125,34 +134,43 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
 
   return (
     <>
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-        <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-3">Admin Actions</p>
-        <div className="flex flex-wrap gap-2">
-          {/* Assign button — show when not already assigned */}
-          {!ticket.assigned_to && ticket.status !== "closed" && (
-            <Button onClick={() => setShowAssign(true)} variant="primary">
-              Assign Freelancer
-            </Button>
-          )}
+      <div className="flex flex-col gap-2">
+        {/* Resolve Ticket — the primary command action, promoted out of the
+            Change Status dropdown so it's a first-class, one-click control. */}
+        {canResolve && (
+          <Button className="w-full mb-1" size="lg" variant="primary" onClick={handleResolveClick}>
+            <CheckCircleIcon />
+            Resolve Ticket
+          </Button>
+        )}
 
-          {/* Change status */}
-          {nextStatuses.length > 0 && (
-            <Button onClick={() => setShowStatus(true)} variant="secondary">
-              Change Status
-            </Button>
-          )}
+        {/* Assign Freelancer — primary when it's the next actionable step
+            and Resolve isn't applicable yet (mutually exclusive with
+            canResolve: an in-progress ticket is always already assigned). */}
+        {canAssign && (
+          <Button className="w-full mb-1" size="lg" onClick={() => setShowAssign(true)} variant="primary">
+            <UserPlusIcon />
+            Assign Freelancer
+          </Button>
+        )}
 
-          {/* Unassign */}
-          {ticket.assigned_to && (
-            <Button onClick={() => setShowUnassign(true)} variant="danger">
-              Unassign
-            </Button>
-          )}
+        {dropdownStatuses.length > 0 && (
+          <Button className="w-full" onClick={() => setShowStatus(true)} variant="secondary">
+            <ArrowsPathIcon />
+            Change Status
+          </Button>
+        )}
 
-          {nextStatuses.length === 0 && ticket.status === "closed" && (
-            <p className="text-sm text-slate-500 italic">This ticket is closed.</p>
-          )}
-        </div>
+        {ticket.assigned_to && (
+          <Button className="w-full" onClick={() => setShowUnassign(true)} variant="danger">
+            <UserMinusIcon />
+            Unassign
+          </Button>
+        )}
+
+        {dropdownStatuses.length === 0 && ticket.status === "closed" && (
+          <p className="text-sm text-slate-500 italic">This ticket is closed.</p>
+        )}
       </div>
 
       {/* ── Assign modal ──────────────────────────────────────── */}
@@ -196,7 +214,7 @@ export default function AdminTicketActions({ ticket, onUpdate }) {
               className="input-base"
             >
               <option value="">— choose a status —</option>
-              {nextStatuses.map((s) => (
+              {dropdownStatuses.map((s) => (
                 <option key={s} value={s}>{statusLabel(s)}</option>
               ))}
             </select>

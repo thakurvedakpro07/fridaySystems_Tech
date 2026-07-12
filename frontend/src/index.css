@@ -83,13 +83,17 @@
      Title, description and status chips live in the page-level top bar
      (TicketDetailPage.jsx), above this grid entirely — so the grid itself
      contains only two things: conversation (left, primary) and sidebar
-     (right, engineer/progress/actions/facts). With nothing else competing
-     for a row, "align-items: stretch" (grid's own default — declared
-     explicitly here since it's load-bearing) makes both columns match
-     the height of the row's tallest content — normally the conversation
-     card — instead of the sidebar trailing off short. .ticket-grid-sidebar
-     is h-full (in JSX) so its card actually fills that stretched height,
-     and stays sticky so it keeps pace while the page scrolls. */
+     (right, Engineer Command Center cards). "align-items: stretch" (grid's
+     own default — declared explicitly since it's load-bearing) makes
+     .ticket-grid-sidebar's own box match the taller conversation column's
+     height. That extra height is what "position: sticky" needs: the sticky
+     rule itself lives on an *inner* wrapper (the card stack, sized to its
+     own shorter content) inside this now-taller outer box, so the inner
+     stack has real room to visually stay pinned near the top while the
+     taller conversation column scrolls past it underneath. Applying
+     sticky directly to .ticket-grid-sidebar itself doesn't work — a
+     sticky element with no taller ancestor to move within just scrolls
+     like a static one. */
   .ticket-detail-grid {
     display: grid;
     grid-template-columns: 1fr;
