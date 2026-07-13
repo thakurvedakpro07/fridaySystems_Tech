@@ -55,7 +55,7 @@ def _make_customer(email="cust@signal.test"):
 
 def _make_freelancer(email="eng@signal.test"):
     user = _make_user(email, role="freelancer")
-    Freelancer.objects.create(user=user, onboarding_status="approved", active=True, skills="linux")
+    Freelancer.objects.create(user=user, onboarding_status="approved", active=True, skills="server_admin")
     return user
 
 
@@ -63,7 +63,7 @@ def _make_ticket(customer_user, status="open"):
     return Ticket.objects.create(
         customer=customer_user.customer_profile,
         title="Test ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="medium",
         status=status,
     )
@@ -176,7 +176,7 @@ def test_payment_confirm_produces_exactly_one_log_entry(db):
     ticket = Ticket.objects.create(
         customer=customer.customer_profile,
         title="Dup test ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="pending_payment",
     )
@@ -219,7 +219,7 @@ def test_ops_payment_confirm_writes_actor_via_signal(db):
     ticket = Ticket.objects.create(
         customer=customer.customer_profile,
         title="Ops confirm test",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="pending_payment",
     )
@@ -312,7 +312,7 @@ def test_customer_actor_on_ticket_creation(db):
     customer = _make_customer("cust_creation@signal.test")
     ticket = create_ticket(
         customer=customer.customer_profile,
-        validated_data={"title": "Actor test", "service_type": "linux", "severity": "low"},
+        validated_data={"title": "Actor test", "service_type": "server_admin", "severity": "low"},
     )
     log = TicketActivityLog.objects.filter(ticket=ticket, action="created").first()
     assert log is not None
@@ -515,7 +515,7 @@ def test_webhook_ticket_open_records_actor_none(db):
     ticket = Ticket.objects.create(
         customer=customer.customer_profile,
         title="Webhook test",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="pending_payment",
     )
@@ -561,7 +561,7 @@ def test_resolution_confirm_log_has_correct_actor_and_note(db):
     ticket = Ticket.objects.create(
         customer=customer.customer_profile,
         title="Resolution confirm test",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="resolved",
     )

@@ -94,6 +94,12 @@ const IC = {
         d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l5.654-4.654m5.905-2.72c.174-.168.35-.337.518-.512a5.29 5.29 0 00-7.497-7.497c-.175.168-.344.343-.512.518" />
     </svg>
   ),
+  knowledgeBase: (
+    <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+    </svg>
+  ),
 };
 
 // ── NavItem ───────────────────────────────────────────────────────
@@ -228,9 +234,10 @@ export default function Sidebar({ open, onClose }) {
               <NavItem to="/tickets/new" icon={IC.plus}      label="New Ticket" exact />
             </NavSection>
             <NavSection label="Manage">
-              <NavItem to="/analytics"     icon={IC.analytics} label="Analytics" />
-              <NavItem to="/billing"       icon={IC.billing}   label="Billing & Invoices" />
-              <NavItem to="/notifications" icon={IC.bell}      label="Notifications" />
+              <NavItem to="/analytics"     icon={IC.analytics}     label="Analytics" />
+              <NavItem to="/billing"       icon={IC.billing}       label="Billing & Invoices" />
+              <NavItem to="/knowledge-base" icon={IC.knowledgeBase} label="Knowledge Base" />
+              <NavItem to="/notifications" icon={IC.bell}          label="Notifications" />
             </NavSection>
             <NavSection label="Account">
               <NavItem to="/settings"     icon={IC.settings} label="Settings" />
@@ -245,8 +252,9 @@ export default function Sidebar({ open, onClose }) {
               <NavItem to="/freelancer" icon={IC.dashboard} label="My Assignments" exact />
             </NavSection>
             <NavSection label="Manage">
-              <NavItem to="/analytics"     icon={IC.analytics} label="Analytics" />
-              <NavItem to="/notifications" icon={IC.bell}      label="Notifications" />
+              <NavItem to="/analytics"     icon={IC.analytics}     label="Analytics" />
+              <NavItem to="/knowledge-base" icon={IC.knowledgeBase} label="Knowledge Base" />
+              <NavItem to="/notifications" icon={IC.bell}          label="Notifications" />
             </NavSection>
             <NavSection label="Account">
               <NavItem to="/settings"     icon={IC.settings} label="Settings" />
@@ -293,8 +301,9 @@ export default function Sidebar({ open, onClose }) {
             )}
 
             <NavSection label="Account">
-              <NavItem to="/operations/notifications" icon={IC.bell}  label="Notifications" />
-              <NavItem to="/help-center"              icon={IC.help}  label="Help Center" />
+              <NavItem to="/operations/knowledge-base" icon={IC.knowledgeBase} label="Knowledge Base" />
+              <NavItem to="/operations/notifications"  icon={IC.bell}          label="Notifications" />
+              <NavItem to="/help-center"               icon={IC.help}          label="Help Center" />
             </NavSection>
           </>
         )}

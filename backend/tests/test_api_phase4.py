@@ -36,7 +36,7 @@ def freelancer_user(db):
         email="freelancer@test.com", password="StrongPass123!", role="freelancer"
     )
     Freelancer.objects.create(
-        user=user, skills="linux", onboarding_status="approved", active=True
+        user=user, skills="server_admin", onboarding_status="approved", active=True
     )
     return user
 
@@ -53,7 +53,7 @@ def open_ticket(db, customer_user):
     return Ticket.objects.create(
         customer=customer_user.customer_profile,
         title="Server down",
-        service_type="linux",
+        service_type="server_admin",
         severity="high",
         status="open",
     )
@@ -485,12 +485,12 @@ def test_ticket_search_by_title(customer_user):
     Ticket.objects.create(
         customer=customer_user.customer_profile,
         title="Linux SSH problem",
-        service_type="linux", severity="high", status="open",
+        service_type="server_admin", severity="high", status="open",
     )
     Ticket.objects.create(
         customer=customer_user.customer_profile,
         title="Windows update",
-        service_type="windows", severity="low", status="open",
+        service_type="server_admin", severity="low", status="open",
     )
     client = APIClient()
     client.force_authenticate(user=customer_user)
@@ -517,12 +517,12 @@ def test_admin_ticket_search_by_number(open_ticket, admin_user):
 def test_admin_ticket_filter_by_severity(customer_user, admin_user):
     Ticket.objects.create(
         customer=customer_user.customer_profile,
-        title="Critical ticket", service_type="linux",
+        title="Critical ticket", service_type="server_admin",
         severity="critical", status="open",
     )
     Ticket.objects.create(
         customer=customer_user.customer_profile,
-        title="Low ticket", service_type="linux",
+        title="Low ticket", service_type="server_admin",
         severity="low", status="open",
     )
     client = APIClient()
@@ -673,7 +673,7 @@ def test_support_agent_cannot_assign_pending_payment_ticket(support_agent_user, 
     ticket = Ticket.objects.create(
         customer=customer_user.customer_profile,
         title="Unpaid ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="medium",
         status="pending_payment",
     )

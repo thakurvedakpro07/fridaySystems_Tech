@@ -142,7 +142,7 @@ function ProfileTab({ profile, setProfile, role }) {
               className="input-base w-full"
               value={form.skills}
               onChange={set("skills")}
-              placeholder="linux, vmware, sap, windows"
+              placeholder="aws, azure, kubernetes, server_admin"
             />
             <p className="text-xs text-slate-500 mt-1">Comma-separated skill tags.</p>
           </FieldRow>

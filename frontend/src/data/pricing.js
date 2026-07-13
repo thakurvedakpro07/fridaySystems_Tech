@@ -14,13 +14,14 @@ export const SEVERITY_TIERS = [
 ];
 
 export const SERVICE_FEES = [
-  { key: "desktop",  name: "Desktop / Laptop Support", baseFee:  499 },
-  { key: "linux",    name: "Linux Provisioning",        baseFee:  999 },
-  { key: "windows",  name: "Windows Provisioning",      baseFee:  999 },
-  { key: "patching", name: "OS Patching",               baseFee:  799 },
-  { key: "security", name: "Security Hardening",        baseFee: 1499 },
-  { key: "vmware",   name: "VMware / Hypervisor",       baseFee: 1299 },
-  { key: "sap",      name: "SAP Basis Lite",            baseFee: 1999 },
+  { key: "laptop_desktop",  name: "Laptop / Desktop Support",                    baseFee:  499 },
+  { key: "server_admin",    name: "Server Administration Support",               baseFee:  999 },
+  { key: "aws",             name: "AWS Support",                                 baseFee: 1499 },
+  { key: "azure",           name: "Azure Support",                               baseFee: 1499 },
+  { key: "kubernetes",      name: "Kubernetes Support",                          baseFee: 1799 },
+  { key: "database",        name: "Database Support",                           baseFee: 1299 },
+  { key: "devops_cicd",     name: "DevOps CI/CD Support",                        baseFee: 1499 },
+  { key: "infra_automation", name: "Infrastructure Platform Automation Support", baseFee: 1799 },
 ];
 
 export function calcResolutionFee(baseFee, surcharge) {

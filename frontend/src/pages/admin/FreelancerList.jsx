@@ -100,7 +100,7 @@ function AddFreelancerForm({ onSuccess }) {
               type="text"
               value={form.skills}
               onChange={handleChange}
-              placeholder="linux, sap, vmware"
+              placeholder="aws, kubernetes, server_admin"
               className="input-base"
             />
             <Button type="submit" disabled={saving} size="md">

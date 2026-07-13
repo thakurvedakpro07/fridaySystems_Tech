@@ -57,7 +57,7 @@ test.describe("Staff / admin pages", () => {
   test("Services page uses shared Input/Select in the create form", async ({ page }) => {
     await page.goto("/operations/services");
     await page.getByRole("button", { name: "Add Service" }).click();
-    await expect(page.locator('input[placeholder="e.g. Linux Provisioning"]')).toBeVisible();
+    await expect(page.locator('input[placeholder="e.g. Kubernetes Support"]')).toBeVisible();
   });
 
   test("Ops pages render a shared PageHeader consistently", async ({ page }) => {

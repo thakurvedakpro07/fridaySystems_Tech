@@ -90,7 +90,7 @@ def support_agent(db):
 @pytest.fixture
 def engineer_user(db):
     u = _user("eng@perm.test", "freelancer")
-    Freelancer.objects.create(user=u, onboarding_status="approved", active=True, skills="linux")
+    Freelancer.objects.create(user=u, onboarding_status="approved", active=True, skills="server_admin")
     return u
 
 
@@ -113,7 +113,7 @@ def open_ticket(db, customer_user):
     return Ticket.objects.create(
         customer=customer_user.customer_profile,
         title="Open ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="medium",
         status="open",
     )
@@ -124,7 +124,7 @@ def pending_payment_ticket(db, customer_user):
     return Ticket.objects.create(
         customer=customer_user.customer_profile,
         title="Pending payment ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="pending_payment",
     )
@@ -150,7 +150,7 @@ def assigned_ticket(db, customer_user, engineer_user):
     return Ticket.objects.create(
         customer=customer_user.customer_profile,
         title="Assigned ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="assigned",
         assigned_to=engineer_user.freelancer_profile,
@@ -495,7 +495,7 @@ def test_customer_cannot_see_other_customer_ticket(customer_user, customer_b):
     ticket_b = Ticket.objects.create(
         customer=customer_b.customer_profile,
         title="B ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="open",
     )
@@ -517,14 +517,14 @@ def test_customer_ticket_list_only_own(customer_user, customer_b):
     Ticket.objects.create(
         customer=customer_b.customer_profile,
         title="B ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="open",
     )
     mine = Ticket.objects.create(
         customer=customer_user.customer_profile,
         title="Mine",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="open",
     )
@@ -546,7 +546,7 @@ def test_customer_cannot_patch_another_customers_ticket(customer_user, customer_
     ticket_b = Ticket.objects.create(
         customer=customer_b.customer_profile,
         title="B ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="pending_payment",
     )
@@ -758,7 +758,7 @@ def test_customer_cannot_view_another_tickets_comments(customer_user, customer_b
     ticket_b = Ticket.objects.create(
         customer=customer_b.customer_profile,
         title="B ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="open",
     )
@@ -792,7 +792,7 @@ def test_customer_cannot_download_another_invoice(customer_user, customer_b, ope
     ticket_b = Ticket.objects.create(
         customer=customer_b.customer_profile,
         title="B ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="open",
     )

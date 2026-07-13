@@ -49,9 +49,8 @@ const PERKS = [
 ];
 
 const SKILL_OPTIONS = [
-  "Linux", "Windows Server", "Desktop Support", "Networking",
-  "VMware / ESXi", "SAP Basis", "Security Hardening", "OS Patching",
-  "Active Directory", "Cloud / AWS", "Python Scripting", "Databases",
+  "Laptop / Desktop Support", "Server Administration Support", "AWS Support", "Azure Support",
+  "Kubernetes Support", "Database Support", "DevOps CI/CD Support", "Infrastructure Platform Automation Support",
 ];
 
 const EXPERIENCE_OPTIONS = [

@@ -96,19 +96,20 @@ const IC = {
   ),
 };
 
-// "Tickets by Service Type" — same seven values/order as the Ticket Queue's
+// "Tickets by Service Type" — same eight values/order as the Ticket Queue's
 // own service filter (OpsTicketQueue.jsx's SERVICE_OPTIONS), kept as a
 // separate local copy since that file doesn't export its constants and
 // each dashboard/page in this app already defines its own small constants
 // rather than sharing them cross-file.
 const SERVICE_TYPES = [
-  { value: "desktop",  label: "Desktop" },
-  { value: "linux",    label: "Linux" },
-  { value: "windows",  label: "Windows" },
-  { value: "patching", label: "Patching" },
-  { value: "security", label: "Security" },
-  { value: "vmware",   label: "VMware" },
-  { value: "sap",      label: "SAP" },
+  { value: "laptop_desktop",  label: "Laptop / Desktop" },
+  { value: "server_admin",    label: "Server Administration" },
+  { value: "aws",              label: "AWS" },
+  { value: "azure",            label: "Azure" },
+  { value: "kubernetes",       label: "Kubernetes" },
+  { value: "database",         label: "Database" },
+  { value: "devops_cicd",      label: "DevOps CI/CD" },
+  { value: "infra_automation", label: "Infrastructure Automation" },
 ];
 
 function fmtDate(iso) {

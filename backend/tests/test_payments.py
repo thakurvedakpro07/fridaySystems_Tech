@@ -181,7 +181,7 @@ def _make_resolved_ticket_with_payment(email: str):
     ticket = Ticket.objects.create(
         customer=customer,
         title="Security test ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="resolved",
     )
@@ -287,7 +287,7 @@ def test_verify_and_complete_payment_rejects_bad_signature_in_live_mode():
     ticket = Ticket.objects.create(
         customer=customer,
         title="Live mode test",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="pending_payment",
     )
@@ -326,7 +326,7 @@ def test_verify_resolution_payment_service_rejects_bad_signature_in_live_mode():
     ticket = Ticket.objects.create(
         customer=customer,
         title="Live resolution test",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="resolved",
     )
@@ -369,7 +369,7 @@ def test_verify_and_complete_payment_sandbox_skips_signature_check():
     ticket = Ticket.objects.create(
         customer=customer,
         title="Sandbox test ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="pending_payment",
     )
@@ -429,7 +429,7 @@ def test_verify_and_complete_payment_is_atomic():
     ticket = Ticket.objects.create(
         customer=customer,
         title="Atomicity test",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="pending_payment",
     )
@@ -477,7 +477,7 @@ def test_verify_resolution_payment_service_is_atomic():
     ticket = Ticket.objects.create(
         customer=customer,
         title="Atomic resolution test",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="resolved",
     )
@@ -533,7 +533,7 @@ def test_payout_failure_does_not_rollback_resolution_payment():
     ticket = Ticket.objects.create(
         customer=customer,
         title="Payout isolation test",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="resolved",
         assigned_to=freelancer,
@@ -590,7 +590,7 @@ def test_payout_failure_is_logged():
     ticket = Ticket.objects.create(
         customer=customer,
         title="Payout log test",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="resolved",
         assigned_to=freelancer,
@@ -841,9 +841,9 @@ def test_invoice_pdf_resolution_fee_generates_valid_pdf():
 
     ticket = MagicMock()
     ticket.ticket_number = "TKT-0042"
-    ticket.get_service_type_display.return_value = "Linux Provisioning"
+    ticket.get_service_type_display.return_value = "Server Administration Support"
     ticket.get_severity_display.return_value = "High"
-    ticket.service_type = "linux"
+    ticket.service_type = "server_admin"
     ticket.severity = "high"
     ticket.title = "Server setup"
     # Simulate no payout yet — accessing ticket.payout should raise so we fall back to catalog
@@ -1580,7 +1580,7 @@ def _make_pending_payment_with_ticket(customer, order_id: str):
     ticket = Ticket.objects.create(
         customer=customer,
         title="Test ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="pending_payment",
     )
@@ -1667,7 +1667,7 @@ def _make_pending_payment(customer, order_id: str | None = None):
     ticket = Ticket.objects.create(
         customer=customer,
         title="Test ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="low",
         status="pending_payment",
     )

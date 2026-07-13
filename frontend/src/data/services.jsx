@@ -116,159 +116,28 @@ export const ACCENTS = {
 
 export const CATALOG_CATEGORIES = [
   "All",
-  "Server & Infrastructure",
-  "Enterprise",
-  "Data & Security",
   "End User",
+  "Server & Infrastructure",
+  "Cloud Platforms",
+  "DevOps & Automation",
+  "Data",
 ];
 
 export const SERVICES = [
   {
-    id: "sap-basis",
-    category: "Enterprise",
-    name: "SAP Basis Lite",
-    shortDesc: "Transport management, system health checks, user administration",
-    desc: "Expert SAP Basis support for Indian SMBs — transport management, system health checks, and user administration tasks.",
-    responseTime: "30 min – 4 hrs",
-    resolutionTime: "Varies by complexity",
-    accent: "blue",
-    featured: true,
-    issues: [
-      "Transport request failures & Basis errors",
-      "System health checks & performance alerts",
-      "User administration & role assignment",
-      "Background job scheduling & monitoring",
-    ],
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0l-5.571 3-5.571-3" />
-      </svg>
-    ),
-  },
-  {
-    id: "linux-provisioning",
-    category: "Server & Infrastructure",
-    name: "Linux Provisioning",
-    shortDesc: "Server setup, package management, systemd, automation",
-    desc: "Server setup and configuration for Ubuntu, RHEL, and CentOS — from bare-metal to production-ready in one engagement.",
-    responseTime: "30 min – 4 hrs",
-    resolutionTime: "Varies by complexity",
-    accent: "amber",
-    featured: true,
-    issues: [
-      "Server crashes, OOM kills & kernel panics",
-      "Package management & dependency conflicts",
-      "systemd service failures & boot issues",
-      "Shell automation, cron jobs & log management",
-    ],
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
-      </svg>
-    ),
-  },
-  {
-    id: "windows-provisioning",
-    category: "Server & Infrastructure",
-    name: "Windows Provisioning",
-    shortDesc: "Windows Server, Active Directory, DNS, DHCP, GPO",
-    desc: "Windows Server, Active Directory, and desktop infrastructure setup — domain, DNS, DHCP, Group Policy, and role configuration.",
-    responseTime: "30 min – 4 hrs",
-    resolutionTime: "Varies by complexity",
-    accent: "indigo",
-    featured: true,
-    issues: [
-      "Active Directory replication & account lockouts",
-      "Group Policy failures & GPO mis-application",
-      "DNS / DHCP misconfiguration & resolution errors",
-      "Windows Server roles — IIS, RDS, File Server",
-    ],
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-      </svg>
-    ),
-  },
-  {
-    id: "os-patching",
-    category: "Server & Infrastructure",
-    name: "OS Patching",
-    shortDesc: "Managed patching for Windows and Linux nodes",
-    desc: "Structured patch management for Windows and Linux fleets — assess, test, deploy, and verify with a full audit trail.",
-    responseTime: "30 min – 4 hrs",
-    resolutionTime: "Varies by complexity",
-    accent: "teal",
-    featured: true,
-    issues: [
-      "Patch scheduling & maintenance windows",
-      "Failed Windows Update & WSUS errors",
-      "Linux apt / yum / dnf upgrade failures",
-      "Post-patch regression testing & rollback",
-    ],
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-      </svg>
-    ),
-  },
-  {
-    id: "vmware",
-    category: "Server & Infrastructure",
-    name: "VMware / Hypervisor",
-    shortDesc: "ESXi host management, VM provisioning, storage troubleshooting",
-    desc: "ESXi host management, VM lifecycle, storage and network troubleshooting for on-premise virtualisation environments.",
-    responseTime: "30 min – 4 hrs",
-    resolutionTime: "Varies by complexity",
-    accent: "sky",
-    featured: true,
-    issues: [
-      "ESXi PSOD & host stability failures",
-      "VM provisioning & snapshot management",
-      "vSAN storage degradation & datastore issues",
-      "vMotion failures & cluster resource contention",
-    ],
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 17.25v2.25a2.25 2.25 0 01-2.25 2.25H4.5a2.25 2.25 0 01-2.25-2.25V4.5A2.25 2.25 0 014.5 2.25h10.5m5.25 5.25V2.25m0 5.25h-5.25m5.25 0L12 12" />
-      </svg>
-    ),
-  },
-  {
-    id: "security-hardening",
-    category: "Data & Security",
-    name: "Security Hardening",
-    shortDesc: "CIS baseline hardening, access controls, vulnerability remediation",
-    desc: "CIS baseline hardening, access control reviews, and vulnerability remediation for Linux, Windows, and virtualised environments.",
-    responseTime: "30 min – 4 hrs",
-    resolutionTime: "Varies by complexity",
-    accent: "rose",
-    featured: true,
-    issues: [
-      "Ransomware response & malware removal",
-      "CIS Level 1 & 2 baseline hardening",
-      "Access control audits & privilege review",
-      "Vulnerability scanning & patch remediation",
-    ],
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-      </svg>
-    ),
-  },
-  {
-    id: "desktop-support",
+    id: "laptop_desktop",
     category: "End User",
-    name: "Desktop / Laptop Support",
-    shortDesc: "Remote troubleshooting, driver issues, antivirus, connectivity",
-    desc: "Remote diagnosis and resolution for end-user workstations — drivers, connectivity, antivirus, and software issues.",
+    name: "Laptop / Desktop Support",
+    shortDesc: "Windows, macOS, Linux desktops and laptops, software installation, troubleshooting",
+    desc: "Business endpoint support including Windows, macOS, Linux desktops, laptops, software installation, troubleshooting, hardware diagnostics and end-user support.",
     responseTime: "30 min – 4 hrs",
     resolutionTime: "Varies by complexity",
-    accent: "orange",
+    accent: "cyan",
     featured: true,
     issues: [
       "Driver conflicts & hardware detection failures",
-      "Antivirus & endpoint security issues",
-      "Network connectivity & Wi-Fi troubleshooting",
+      "Software installation & endpoint troubleshooting",
+      "Network connectivity & Wi-Fi issues",
       "OS performance, startup errors & crashes",
     ],
     icon: (
@@ -277,5 +146,159 @@ export const SERVICES = [
       </svg>
     ),
   },
-
+  {
+    id: "server_admin",
+    category: "Server & Infrastructure",
+    name: "Server Administration Support",
+    shortDesc: "Windows Server and Linux Server administration, Active Directory, patching, monitoring",
+    desc: "Windows Server and Linux Server administration including Active Directory, patching, monitoring, storage, virtualization and server maintenance.",
+    responseTime: "30 min – 4 hrs",
+    resolutionTime: "Varies by complexity",
+    accent: "indigo",
+    featured: true,
+    issues: [
+      "Active Directory replication & account lockouts",
+      "Server crashes, resource exhaustion & boot issues",
+      "Patch scheduling & maintenance windows",
+      "Storage, virtualization & server maintenance",
+    ],
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
+      </svg>
+    ),
+  },
+  {
+    id: "aws",
+    category: "Cloud Platforms",
+    name: "AWS Support",
+    shortDesc: "EC2, VPC, IAM, S3, RDS, CloudWatch, Load Balancers and related cloud services",
+    desc: "Amazon Web Services administration including EC2, VPC, IAM, S3, RDS, CloudWatch, Load Balancers and related cloud services.",
+    responseTime: "30 min – 4 hrs",
+    resolutionTime: "Varies by complexity",
+    accent: "amber",
+    featured: true,
+    issues: [
+      "EC2 performance & scaling issues",
+      "IAM policy misconfiguration & access errors",
+      "S3 bucket policy & storage troubleshooting",
+      "RDS performance tuning & backup failures",
+    ],
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z" />
+      </svg>
+    ),
+  },
+  {
+    id: "azure",
+    category: "Cloud Platforms",
+    name: "Azure Support",
+    shortDesc: "Virtual Machines, Azure AD, Networking, Storage, Resource Groups, Monitoring and Identity",
+    desc: "Microsoft Azure administration including Virtual Machines, Azure AD, Networking, Storage, Resource Groups, Monitoring and Identity.",
+    responseTime: "30 min – 4 hrs",
+    resolutionTime: "Varies by complexity",
+    accent: "blue",
+    featured: true,
+    issues: [
+      "Virtual Machine connectivity & NSG rule issues",
+      "Azure AD conditional access & identity issues",
+      "Resource Group & networking misconfiguration",
+      "Storage account access & monitoring alerts",
+    ],
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+      </svg>
+    ),
+  },
+  {
+    id: "kubernetes",
+    category: "Server & Infrastructure",
+    name: "Kubernetes Support",
+    shortDesc: "Cluster management, deployments, scaling, ingress, troubleshooting",
+    desc: "Container orchestration, cluster management, deployments, scaling, ingress, troubleshooting and Kubernetes platform operations.",
+    responseTime: "30 min – 4 hrs",
+    resolutionTime: "Varies by complexity",
+    accent: "sky",
+    featured: true,
+    issues: [
+      "Pod crash loops & scheduling failures",
+      "Ingress controller & load balancing issues",
+      "Cluster scaling & node pool troubleshooting",
+      "Deployment rollouts & rollback support",
+    ],
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+      </svg>
+    ),
+  },
+  {
+    id: "database",
+    category: "Data",
+    name: "Database Support",
+    shortDesc: "Administration, monitoring, backup, tuning for PostgreSQL, MySQL, SQL Server, MongoDB",
+    desc: "Administration, monitoring, backup, tuning and troubleshooting for PostgreSQL, MySQL, SQL Server, MongoDB and similar databases.",
+    responseTime: "30 min – 4 hrs",
+    resolutionTime: "Varies by complexity",
+    accent: "violet",
+    featured: true,
+    issues: [
+      "Replication lag & failover troubleshooting",
+      "Backup failures & recovery procedures",
+      "Query performance tuning & indexing",
+      "Database monitoring & capacity planning",
+    ],
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
+      </svg>
+    ),
+  },
+  {
+    id: "devops_cicd",
+    category: "DevOps & Automation",
+    name: "DevOps CI/CD Support",
+    shortDesc: "GitHub Actions, GitLab CI, Jenkins, Docker pipelines, deployments, release automation",
+    desc: "GitHub Actions, GitLab CI, Jenkins, Docker pipelines, deployments, release automation, infrastructure delivery and CI/CD troubleshooting.",
+    responseTime: "30 min – 4 hrs",
+    resolutionTime: "Varies by complexity",
+    accent: "emerald",
+    featured: true,
+    issues: [
+      "Pipeline failures & build errors",
+      "Docker image builds & registry authentication",
+      "Deployment automation & release rollback",
+      "CI/CD troubleshooting across GitHub Actions, GitLab CI, Jenkins",
+    ],
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+      </svg>
+    ),
+  },
+  {
+    id: "infra_automation",
+    category: "DevOps & Automation",
+    name: "Infrastructure Platform Automation Support",
+    shortDesc: "Terraform, Ansible, scripting, provisioning and platform automation",
+    desc: "Infrastructure as Code, automation and configuration management including Terraform, Ansible, scripting, provisioning and platform automation.",
+    responseTime: "30 min – 4 hrs",
+    resolutionTime: "Varies by complexity",
+    accent: "teal",
+    featured: true,
+    issues: [
+      "Terraform state issues & drift resolution",
+      "Ansible playbook failures & provisioning errors",
+      "Infrastructure as Code design & review",
+      "Configuration management & automation scripting",
+    ],
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.28z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+  },
 ];

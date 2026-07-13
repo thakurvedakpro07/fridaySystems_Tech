@@ -19,6 +19,8 @@ from .models import (
     CSATSurvey,
     Customer,
     Freelancer,
+    KBArticle,
+    KBArticleTicketLink,
     Notification,
     Payment,
     RoleChangeAudit,
@@ -666,3 +668,69 @@ class ServiceSerializer(serializers.ModelSerializer):
             "required_skills", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+
+# ── Knowledge Base ──────────────────────────────────────────────
+
+def _kb_excerpt(body, length=160):
+    """Strip common Markdown syntax and truncate — good enough for a card preview."""
+    import re as _re
+    text = _re.sub(r"[#*`>_\-\[\]()]", "", body or "")
+    text = _re.sub(r"\s+", " ", text).strip()
+    return (text[:length] + "…") if len(text) > length else text
+
+
+class KBArticleListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for the Knowledge Base browse/search list."""
+    author_email = serializers.SerializerMethodField()
+    excerpt = serializers.SerializerMethodField()
+
+    def get_author_email(self, obj):
+        return obj.author.email if obj.author else None
+
+    def get_excerpt(self, obj):
+        return _kb_excerpt(obj.body)
+
+    class Meta:
+        model = KBArticle
+        fields = [
+            "id", "title", "slug", "category", "tags", "status",
+            "author_email", "excerpt", "view_count", "created_at", "updated_at",
+        ]
+
+
+class KBArticleTicketLinkSerializer(serializers.ModelSerializer):
+    """Nested inside KBArticleDetailSerializer — the tickets an article is linked to."""
+    ticket_id = serializers.UUIDField(source="ticket.id", read_only=True)
+    ticket_number = serializers.CharField(source="ticket.ticket_number", read_only=True)
+    ticket_title = serializers.CharField(source="ticket.title", read_only=True)
+
+    class Meta:
+        model = KBArticleTicketLink
+        fields = ["ticket_id", "ticket_number", "ticket_title", "linked_at"]
+
+
+class KBArticleDetailSerializer(serializers.ModelSerializer):
+    """Full serializer for a single Knowledge Base article."""
+    author_email = serializers.SerializerMethodField()
+    related_tickets = KBArticleTicketLinkSerializer(source="ticket_links", many=True, read_only=True)
+
+    def get_author_email(self, obj):
+        return obj.author.email if obj.author else None
+
+    class Meta:
+        model = KBArticle
+        fields = [
+            "id", "title", "slug", "body", "category", "tags", "status",
+            "author_email", "view_count", "related_tickets",
+            "created_at", "updated_at", "published_at",
+        ]
+
+
+class KBArticleWriteSerializer(serializers.ModelSerializer):
+    """Validates staff create/update payloads. author + slug are set server-side."""
+
+    class Meta:
+        model = KBArticle
+        fields = ["id", "title", "body", "category", "tags", "status", "slug"]
+        read_only_fields = ["id", "slug"]

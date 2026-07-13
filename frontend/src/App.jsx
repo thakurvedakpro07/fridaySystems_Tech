@@ -32,6 +32,8 @@ const FreelancerOnboarding = lazy(() => import("./pages/onboarding/FreelancerOnb
 const NotificationsPage    = lazy(() => import("./pages/NotificationsPage"));
 const HelpCenterPage       = lazy(() => import("./pages/HelpCenterPage"));
 const ResolveTicketPage    = lazy(() => import("./pages/ResolveTicketPage"));
+const KnowledgeBasePage        = lazy(() => import("./pages/KnowledgeBasePage"));
+const KnowledgeBaseArticlePage = lazy(() => import("./pages/KnowledgeBaseArticlePage"));
 
 // Operations Dashboard pages (all staff roles)
 const OpsDashboard      = lazy(() => import("./pages/ops/OpsDashboard"));
@@ -44,6 +46,7 @@ const OpsServices       = lazy(() => import("./pages/ops/OpsServices"));
 const OpsPayments       = lazy(() => import("./pages/ops/OpsPayments"));
 const OpsAnalytics      = lazy(() => import("./pages/ops/OpsAnalytics"));
 const OpsSettings       = lazy(() => import("./pages/ops/OpsSettings"));
+const OpsKnowledgeBase  = lazy(() => import("./pages/ops/OpsKnowledgeBase"));
 
 // Public website pages
 const AboutPage    = lazy(() => import("./pages/AboutPage"));
@@ -305,6 +308,16 @@ export default function App() {
             element={<PrivateRoute><HelpCenterPage /></PrivateRoute>}
           />
 
+          {/* Knowledge Base — customer self-service, all authenticated roles */}
+          <Route
+            path="/knowledge-base"
+            element={<PrivateRoute><KnowledgeBasePage /></PrivateRoute>}
+          />
+          <Route
+            path="/knowledge-base/:id"
+            element={<PrivateRoute><KnowledgeBaseArticlePage /></PrivateRoute>}
+          />
+
           {/* Onboarding — post-registration guided setup (require auth) */}
           <Route
             path="/onboarding/customer"
@@ -330,6 +343,7 @@ export default function App() {
 
           {/* Operations — all staff roles */}
           <Route path="/operations/notifications" element={<OpsRoute><NotificationsPage /></OpsRoute>} />
+          <Route path="/operations/knowledge-base" element={<OpsRoute><OpsKnowledgeBase /></OpsRoute>} />
 
           {/* Platform Management — Ops Manager + Super Admin (write gated inside page + backend) */}
           <Route path="/operations/users"       element={<OpsManagerRoute><OpsUsers /></OpsManagerRoute>} />

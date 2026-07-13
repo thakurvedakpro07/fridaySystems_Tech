@@ -31,13 +31,14 @@ const STATUS_OPTIONS = [
 
 const SERVICE_OPTIONS = [
   { value: "", label: "All Services" },
-  { value: "desktop", label: "Desktop" },
-  { value: "linux", label: "Linux" },
-  { value: "windows", label: "Windows" },
-  { value: "patching", label: "Patching" },
-  { value: "security", label: "Security" },
-  { value: "vmware", label: "VMware" },
-  { value: "sap", label: "SAP" },
+  { value: "laptop_desktop", label: "Laptop / Desktop" },
+  { value: "server_admin", label: "Server Administration" },
+  { value: "aws", label: "AWS" },
+  { value: "azure", label: "Azure" },
+  { value: "kubernetes", label: "Kubernetes" },
+  { value: "database", label: "Database" },
+  { value: "devops_cicd", label: "DevOps CI/CD" },
+  { value: "infra_automation", label: "Infrastructure Automation" },
 ];
 
 const PRIORITY_OPTIONS = [
@@ -67,8 +68,8 @@ const QUICK_VIEWS = [
   { key: "unassigned",       label: "Unassigned",       filters: { status: "open",          service_type: "", priority: "", assigned_to: "" } },
   { key: "pending_payment",  label: "Pending Payment",  filters: { status: "pending_payment", service_type: "", priority: "", assigned_to: "" } },
   { key: "high_priority",    label: "High Priority",    filters: { status: "",             service_type: "", priority: "high", assigned_to: "" } },
-  { key: "linux",            label: "Linux",            filters: { status: "",             service_type: "linux", priority: "", assigned_to: "" } },
-  { key: "windows",          label: "Windows",          filters: { status: "",             service_type: "windows", priority: "", assigned_to: "" } },
+  { key: "aws",              label: "AWS",              filters: { status: "",             service_type: "aws", priority: "", assigned_to: "" } },
+  { key: "kubernetes",       label: "Kubernetes",       filters: { status: "",             service_type: "kubernetes", priority: "", assigned_to: "" } },
 ];
 
 // ── Assign / Unassign modal ───────────────────────────────────────

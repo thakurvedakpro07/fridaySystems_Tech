@@ -51,3 +51,6 @@ structlog==24.2.0
 
 # ── Prometheus metrics ───────────────────────────────────────────
 django-prometheus==2.3.1
+
+# ── Demo data (dev only) ─────────────────────────────────────────
+Faker==26.0.0            # realistic names/companies/text for seed_enterprise_demo

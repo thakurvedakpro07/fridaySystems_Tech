@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useConversationFeed } from "../../hooks/useConversationFeed";
 import { useCountdown } from "../../hooks/useCountdown";
+import { useRoles } from "../../hooks/useRoles";
 import ConversationFeed from "./ConversationFeed";
 import TicketSLAPanel from "./TicketSLAPanel";
 import ResolutionPanel from "./ResolutionPanel";
@@ -11,6 +12,8 @@ import FreelancerTicketActions from "./FreelancerTicketActions";
 import PaymentGateway from "./PaymentGateway";
 import CSATWidget from "./CSATWidget";
 import CustomerResolutionActions from "./CustomerResolutionActions";
+import AIAssistantPanel from "./AIAssistantPanel";
+import RelatedArticlesCard from "./RelatedArticlesCard";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
 import Card from "../ui/Card";
@@ -548,6 +551,12 @@ function TicketSummarySidebar({
   const showContactInfo = role === "customer" && !!ticket.assigned_to &&
     !["pending_payment", "open"].includes(ticket.status);
 
+  // Reads the real role directly, NOT the `role` prop — that prop collapses
+  // Ops Manager, Support Agent, AND Finance Manager into the single string
+  // "support_agent" (see useRoleTicketFetcher), which would incorrectly
+  // grant Finance Manager access to this internal agent-assist tool.
+  const { isTicketManagementStaff } = useRoles();
+
   let engineerName, engineerInitials, specialization;
   if (showEngineer) {
     const firstName = (assignedTo.first_name ?? "").trim();
@@ -608,6 +617,13 @@ function TicketSummarySidebar({
             <AdminTicketActions ticket={ticket} onUpdate={handleUpdate} />
           )}
         </Card>
+      )}
+
+      {/* CARD 1.5 — AI Assistant: internal agent-assist tool (mock provider).
+          Ticket-management staff only — customers and freelancers never see
+          suggestions meant to help staff triage/respond. */}
+      {isTicketManagementStaff && (
+        <AIAssistantPanel ticketId={ticket.id} onDraftChange={onDraftChange} composerId={composerId} />
       )}
 
       {/* CARD 2 — Current Status: status, priority, assigned engineer, service,
@@ -706,6 +722,12 @@ function TicketSummarySidebar({
           <MetaItem label="Ticket ID">{ticket.ticket_number}</MetaItem>
         </dl>
       </Card>
+
+      {/* CARD 6 — Related Articles: Knowledge Base self-service, visible to
+          every role. Only ticket-management staff get the "Manage links"
+          action — matches the backend's IsTicketManagementStaff permission
+          on the link/unlink endpoints (Finance Manager is excluded there too). */}
+      <RelatedArticlesCard ticketId={ticket.id} canManage={isTicketManagementStaff} />
     </div>
   );
 }

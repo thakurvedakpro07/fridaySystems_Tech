@@ -212,7 +212,7 @@ export default function OpsFreelancers() {
               type="text"
               value={skillSearch}
               onChange={(e) => applySkill(e.target.value)}
-              placeholder="Search by skill (e.g. Linux, AWS)…"
+              placeholder="Search by skill (e.g. AWS, Kubernetes)…"
               className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 bg-white
                          focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-indigo-400 transition" />
           </div>

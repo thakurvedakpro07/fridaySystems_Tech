@@ -55,46 +55,52 @@ SEVERITY_CONFIG = {
 # ── Service catalog ───────────────────────────────────────────────
 SERVICE_CATALOG = [
     {
-        "key":            "desktop",
-        "name":           "Desktop / Laptop Support",
+        "key":            "laptop_desktop",
+        "name":           "Laptop / Desktop Support",
         "resolution_fee": 499,
-        "scope":          "Remote troubleshooting, driver issues, antivirus, connectivity",
+        "scope":          "Business endpoint support including Windows, macOS, Linux desktops, laptops, software installation, troubleshooting, hardware diagnostics and end-user support",
     },
     {
-        "key":            "linux",
-        "name":           "Linux Provisioning",
+        "key":            "server_admin",
+        "name":           "Server Administration Support",
         "resolution_fee": 999,
-        "scope":          "Server setup, package management, systemd, automation",
+        "scope":          "Windows Server and Linux Server administration including Active Directory, patching, monitoring, storage, virtualization and server maintenance",
     },
     {
-        "key":            "windows",
-        "name":           "Windows Provisioning",
-        "resolution_fee": 999,
-        "scope":          "Windows Server, Active Directory, DNS, DHCP, GPO",
-    },
-    {
-        "key":            "patching",
-        "name":           "OS Patching",
-        "resolution_fee": 799,
-        "scope":          "Managed patching for Windows and Linux nodes",
-    },
-    {
-        "key":            "security",
-        "name":           "Security Hardening",
+        "key":            "aws",
+        "name":           "AWS Support",
         "resolution_fee": 1499,
-        "scope":          "Baseline CIS hardening, access control, vulnerability remediation",
+        "scope":          "Amazon Web Services administration including EC2, VPC, IAM, S3, RDS, CloudWatch, Load Balancers and related cloud services",
     },
     {
-        "key":            "vmware",
-        "name":           "VMware / Hypervisor",
+        "key":            "azure",
+        "name":           "Azure Support",
+        "resolution_fee": 1499,
+        "scope":          "Microsoft Azure administration including Virtual Machines, Azure AD, Networking, Storage, Resource Groups, Monitoring and Identity",
+    },
+    {
+        "key":            "kubernetes",
+        "name":           "Kubernetes Support",
+        "resolution_fee": 1799,
+        "scope":          "Container orchestration, cluster management, deployments, scaling, ingress, troubleshooting and Kubernetes platform operations",
+    },
+    {
+        "key":            "database",
+        "name":           "Database Support",
         "resolution_fee": 1299,
-        "scope":          "ESXi host management, VM provisioning, storage troubleshooting",
+        "scope":          "Administration, monitoring, backup, tuning and troubleshooting for PostgreSQL, MySQL, SQL Server, MongoDB and similar databases",
     },
     {
-        "key":            "sap",
-        "name":           "SAP Basis Lite",
-        "resolution_fee": 1999,
-        "scope":          "Transport management, system health checks, user administration, basis tasks",
+        "key":            "devops_cicd",
+        "name":           "DevOps CI/CD Support",
+        "resolution_fee": 1499,
+        "scope":          "GitHub Actions, GitLab CI, Jenkins, Docker pipelines, deployments, release automation, infrastructure delivery and CI/CD troubleshooting",
+    },
+    {
+        "key":            "infra_automation",
+        "name":           "Infrastructure Platform Automation Support",
+        "resolution_fee": 1799,
+        "scope":          "Infrastructure as Code, automation and configuration management including Terraform, Ansible, scripting, provisioning and platform automation",
     },
 ]
 
@@ -114,7 +120,7 @@ def get_resolution_fee(service_key: str, severity: str) -> dict:
       total             — subtotal + gst_amount (what customer pays)
 
     Example:
-      Linux (₹999) + High (₹500) = subtotal ₹1499
+      Server Administration Support (₹999) + High (₹500) = subtotal ₹1499
       GST 18% = ₹270  →  total ₹1769
     """
     base       = Decimal(str(RESOLUTION_FEES[service_key]))

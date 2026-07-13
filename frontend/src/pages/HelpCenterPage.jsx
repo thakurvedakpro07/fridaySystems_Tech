@@ -144,7 +144,7 @@ export default function HelpCenterPage() {
             </P>
             <div className="space-y-4 mt-2">
               <Step n={1} title="Create a support ticket">
-                Describe your IT problem — hardware, software, networking, VMware, SAP, or anything in between.
+                Describe your IT problem — endpoint, server, cloud, Kubernetes, database, or anything in between.
                 Takes under 2 minutes.
               </Step>
               <Step n={2} title="Pay the consulting fee">
@@ -334,7 +334,7 @@ export default function HelpCenterPage() {
             <div className="space-y-2">
               <FaqItem
                 q="Can I get support for my Windows or Mac laptop?"
-                a="Yes. We support Windows, macOS, Linux, networking, VMware, SAP, and general IT infrastructure. Select the appropriate service type when creating your ticket."
+                a="Yes. We support Laptop / Desktop Support, Server Administration, AWS, Azure, Kubernetes, Database, DevOps CI/CD, and Infrastructure Platform Automation. Select the appropriate service type when creating your ticket."
               />
               <FaqItem
                 q="Is my data safe during a remote session?"

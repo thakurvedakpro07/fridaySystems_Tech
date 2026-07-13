@@ -222,6 +222,8 @@ REST_FRAMEWORK = {
         # 15-minute period). This value is unused at runtime but documents
         # the intended rate.
         "password_change": "5/15min",
+        # AI Assistant panel — each GET recomputes 5 suggestion types.
+        "ai_assistant": "20/minute",
     },
     # Centralizes all DRF exception responses into a consistent JSON shape
     # and logs server errors with full context.
@@ -251,6 +253,13 @@ else:
         "https://resolvehq.in",
         "https://www.resolvehq.in",
     ]
+
+# ── AI Assistant ─────────────────────────────────────────────────
+# "mock" = deterministic, rule-based suggestions (support_app/services/
+# ai_assistant_service.py), no network calls. Swap to a real-LLM-backed
+# provider later by adding a branch in ai_assistant_service.get_ai_provider()
+# and pointing this at it — no view/URL/frontend changes required.
+AI_ASSISTANT_PROVIDER = os.getenv("AI_ASSISTANT_PROVIDER", "mock")
 
 # ── Redis / Celery ────────────────────────────────────────────────
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")

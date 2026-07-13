@@ -168,50 +168,51 @@ const SLA_METRICS = [
 ];
 
 const RECENT_ACTIVITY = [
-  { issue: "Linux server performance degradation resolved", service: "Linux", time: "23 mins ago", severity: "High" },
-  { issue: "VMware ESXi host stability restored after PSOD", service: "VMware", time: "1 hr ago", severity: "Medium" },
-  { issue: "Windows Active Directory replication error fixed", service: "Windows", time: "2 hrs ago", severity: "High" },
-  { issue: "OS patch rollout completed across 40 Linux nodes", service: "Patching", time: "3 hrs ago", severity: "Medium" },
-  { issue: "Security hardening applied — CIS Level 1 baseline", service: "Security", time: "4 hrs ago", severity: "Low" },
-  { issue: "Desktop driver conflict resolved, user unblocked", service: "Desktop", time: "5 hrs ago", severity: "Medium" },
-  { issue: "SAP Basis transport request failure resolved", service: "SAP", time: "6 hrs ago", severity: "High" },
+  { issue: "S3 bucket ACL locked down after public exposure alert", service: "AWS", time: "18 mins ago", severity: "High" },
+  { issue: "Kubernetes ingress controller stabilised after crash loop", service: "Kubernetes", time: "1 hr ago", severity: "Critical" },
+  { issue: "Azure NSG rule fixed — production VM connectivity restored", service: "Azure", time: "2 hrs ago", severity: "Critical" },
+  { issue: "PostgreSQL replication lag resolved on reporting replicas", service: "Database", time: "3 hrs ago", severity: "High" },
+  { issue: "GitHub Actions deployment pipeline restored after 4-day outage", service: "DevOps CI/CD", time: "4 hrs ago", severity: "High" },
+  { issue: "Terraform state corruption recovered without resource loss", service: "Infra Automation", time: "5 hrs ago", severity: "Critical" },
+  { issue: "Linux file server CPU load resolved, NFS mounts stable", service: "Server Admin", time: "6 hrs ago", severity: "High" },
+  { issue: "Windows Hello login restored on 40 staff laptops", service: "Laptop / Desktop", time: "7 hrs ago", severity: "Medium" },
 ];
 
 const ENGINEERS = [
   {
-    name: "Arjun Kapoor",
-    spec: "Linux Specialist",
-    gradient: "from-orange-500 to-amber-500",
-    initials: "AK",
-    skills: ["RHEL", "Ubuntu", "Nginx", "Docker"],
+    name: "Kavita Rao",
+    spec: "AWS Specialist",
+    gradient: "from-amber-500 to-orange-500",
+    initials: "KR",
+    skills: ["EC2", "VPC", "IAM", "CloudWatch"],
   },
   {
-    name: "Preethi Rajan",
-    spec: "Windows Administrator",
+    name: "Nitin Chawla",
+    spec: "Azure Administrator",
     gradient: "from-blue-500 to-indigo-500",
-    initials: "PR",
-    skills: ["AD", "Group Policy", "Hyper-V", "RDS"],
+    initials: "NC",
+    skills: ["Azure AD", "Virtual Machines", "Networking", "Resource Groups"],
   },
   {
-    name: "Vikram Nair",
-    spec: "VMware Specialist",
+    name: "Pooja Desai",
+    spec: "Kubernetes Specialist",
     gradient: "from-sky-500 to-teal-500",
-    initials: "VN",
-    skills: ["ESXi", "vSphere", "vSAN", "NSX"],
+    initials: "PD",
+    skills: ["Docker", "Helm", "Ingress", "Cluster Scaling"],
   },
   {
-    name: "Sneha Kulkarni",
-    spec: "SAP Basis Consultant",
+    name: "Sanjay Kumar",
+    spec: "Database Administrator",
     gradient: "from-purple-500 to-violet-600",
     initials: "SK",
-    skills: ["SAP Basis", "TR Management", "HANA", "SM21"],
+    skills: ["PostgreSQL", "MySQL", "Backup & Recovery", "Query Tuning"],
   },
   {
-    name: "Rahul Mathur",
-    spec: "Security Hardening Expert",
-    gradient: "from-rose-500 to-pink-600",
-    initials: "RM",
-    skills: ["CIS Benchmarks", "VAPT", "ISO 27001", "SELinux"],
+    name: "Dev Malhotra",
+    spec: "DevOps / CI-CD Engineer",
+    gradient: "from-emerald-500 to-teal-600",
+    initials: "DM",
+    skills: ["GitHub Actions", "Jenkins", "Docker", "Release Automation"],
   },
 ];
 
@@ -264,7 +265,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Can I specify which type of engineer I need?",
-    a: "Yes. When raising a ticket, you select the service type — Linux, Windows, VMware, SAP Basis, Security, Desktop Support, and others. ResolveHQ routes your ticket to a specialist with proven expertise in that area.",
+    a: "Yes. When raising a ticket, you select the service type — Laptop / Desktop Support, Server Administration, AWS, Azure, Kubernetes, Database, DevOps CI/CD, or Infrastructure Platform Automation. ResolveHQ routes your ticket to a specialist with proven expertise in that area.",
   },
   {
     q: "What if my issue isn't resolved?",
@@ -278,32 +279,10 @@ const FAQ_ITEMS = [
 
 const HERO_TRUST = [
   {
-    label: "Windows Provisioning",
-    value: "Windows Server, Active Directory, DNS, GPO",
-    bg: "bg-indigo-500/15",
-    color: "text-indigo-300",
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-      </svg>
-    ),
-  },
-  {
-    label: "Linux Provisioning",
-    value: "Server setup, package mgmt, systemd, automation",
-    bg: "bg-amber-500/15",
-    color: "text-amber-300",
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
-      </svg>
-    ),
-  },
-  {
-    label: "Desktop Support",
-    value: "Remote troubleshooting, drivers, antivirus",
-    bg: "bg-orange-500/15",
-    color: "text-orange-300",
+    label: "Laptop / Desktop Support",
+    value: "Windows, macOS, Linux endpoints, troubleshooting",
+    bg: "bg-cyan-500/15",
+    color: "text-cyan-300",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3" />
@@ -311,21 +290,32 @@ const HERO_TRUST = [
     ),
   },
   {
-    label: "VMware / Hypervisor",
-    value: "ESXi host mgmt, VM provisioning, storage",
-    bg: "bg-sky-500/15",
-    color: "text-sky-300",
+    label: "Server Administration Support",
+    value: "Windows & Linux Server, Active Directory, patching",
+    bg: "bg-indigo-500/15",
+    color: "text-indigo-300",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 17.25v2.25a2.25 2.25 0 01-2.25 2.25H4.5a2.25 2.25 0 01-2.25-2.25V4.5A2.25 2.25 0 014.5 2.25h10.5m5.25 5.25V2.25m0 5.25h-5.25m5.25 0L12 12" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
       </svg>
     ),
   },
   {
-    label: "OS Patching",
-    value: "Managed patching for Windows and Linux nodes",
-    bg: "bg-teal-500/15",
-    color: "text-teal-300",
+    label: "AWS Support",
+    value: "EC2, VPC, IAM, S3, RDS, CloudWatch",
+    bg: "bg-amber-500/15",
+    color: "text-amber-300",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z" />
+      </svg>
+    ),
+  },
+  {
+    label: "Azure Support",
+    value: "Virtual Machines, Azure AD, Networking, Storage",
+    bg: "bg-blue-500/15",
+    color: "text-blue-300",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
@@ -333,13 +323,47 @@ const HERO_TRUST = [
     ),
   },
   {
-    label: "Security Hardening",
-    value: "CIS baseline, access controls, vuln remediation",
-    bg: "bg-rose-500/15",
-    color: "text-rose-300",
+    label: "Kubernetes Support",
+    value: "Cluster management, deployments, scaling, ingress",
+    bg: "bg-sky-500/15",
+    color: "text-sky-300",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+      </svg>
+    ),
+  },
+  {
+    label: "Database Support",
+    value: "PostgreSQL, MySQL, SQL Server, MongoDB",
+    bg: "bg-violet-500/15",
+    color: "text-violet-300",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
+      </svg>
+    ),
+  },
+  {
+    label: "DevOps CI/CD Support",
+    value: "GitHub Actions, GitLab CI, Jenkins, Docker pipelines",
+    bg: "bg-emerald-500/15",
+    color: "text-emerald-300",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+      </svg>
+    ),
+  },
+  {
+    label: "Infrastructure Platform Automation Support",
+    value: "Terraform, Ansible, provisioning, automation",
+    bg: "bg-teal-500/15",
+    color: "text-teal-300",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.28z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
     ),
   },

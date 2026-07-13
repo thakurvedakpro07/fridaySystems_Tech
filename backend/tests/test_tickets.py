@@ -36,7 +36,7 @@ def test_create_ticket(auth_client):
     payload = {
         "title": "Server down",
         "description": "Production server not responding",
-        "service_type": "linux",
+        "service_type": "server_admin",
         "severity": "high",
     }
     response = client.post("/api/tickets/", payload, format="json")
@@ -56,7 +56,7 @@ def test_list_tickets_only_shows_own(auth_client):
     # Create a ticket for this user
     client.post(
         "/api/tickets/",
-        {"title": "My ticket", "service_type": "desktop", "severity": "low"},
+        {"title": "My ticket", "service_type": "laptop_desktop", "severity": "low"},
         format="json",
     )
 
@@ -72,7 +72,7 @@ def test_unauthenticated_cannot_create_ticket():
     client = APIClient()
     response = client.post(
         "/api/tickets/",
-        {"title": "Test", "service_type": "linux", "severity": "high"},
+        {"title": "Test", "service_type": "server_admin", "severity": "high"},
         format="json",
     )
     assert response.status_code == 401
@@ -91,7 +91,7 @@ def test_admin_can_retrieve_any_ticket(auth_client):
     # Customer creates a ticket
     create_resp = customer_client.post(
         "/api/tickets/",
-        {"title": "Customer ticket", "service_type": "linux", "severity": "low"},
+        {"title": "Customer ticket", "service_type": "server_admin", "severity": "low"},
         format="json",
     )
     assert create_resp.status_code == 201
@@ -145,7 +145,7 @@ def test_customer_cannot_read_another_customers_comments(db):
     # Customer A creates a ticket
     client_a.post(
         "/api/tickets/",
-        {"title": "A ticket", "service_type": "linux", "severity": "low"},
+        {"title": "A ticket", "service_type": "server_admin", "severity": "low"},
         format="json",
     )
     from support_app.models import Ticket
@@ -167,7 +167,7 @@ def test_customer_cannot_post_comment_on_another_customers_ticket(db):
 
     client_a.post(
         "/api/tickets/",
-        {"title": "C ticket", "service_type": "desktop", "severity": "low"},
+        {"title": "C ticket", "service_type": "laptop_desktop", "severity": "low"},
         format="json",
     )
     from support_app.models import Ticket, TicketComment
@@ -191,7 +191,7 @@ def test_customer_can_post_comment_on_own_ticket(db):
 
     client_a.post(
         "/api/tickets/",
-        {"title": "E ticket", "service_type": "linux", "severity": "medium"},
+        {"title": "E ticket", "service_type": "server_admin", "severity": "medium"},
         format="json",
     )
     from support_app.models import Ticket, TicketComment
@@ -213,7 +213,7 @@ def _create_ticket_for_client(client, title, status_override=None):
     from support_app.models import Ticket
     client.post(
         "/api/tickets/",
-        {"title": title, "service_type": "linux", "severity": "medium"},
+        {"title": title, "service_type": "server_admin", "severity": "medium"},
         format="json",
     )
     ticket = Ticket.objects.get(title=title)

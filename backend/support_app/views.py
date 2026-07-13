@@ -56,6 +56,8 @@ from .models import (
     CSATSurvey,
     Customer,
     Freelancer,
+    KBArticle,
+    KBArticleTicketLink,
     Notification,
     Payment,
     Payout,
@@ -98,6 +100,9 @@ from .serializers import (
     FreelancerSerializer,
     FreelancerStatusSerializer,
     FreelancerTicketListSerializer,
+    KBArticleDetailSerializer,
+    KBArticleListSerializer,
+    KBArticleWriteSerializer,
     NotificationSerializer,
     OpsPaymentSerializer,
     OpsUserSerializer,
@@ -136,6 +141,14 @@ class AuthRateThrottle(AnonRateThrottle):
 
 class AnalyticsRateThrottle(UserRateThrottle):
     scope = "analytics"
+
+
+# Dedicated bucket for the AI Assistant panel — each GET recomputes 5
+# suggestion types, so it's throttled tighter than the general user rate
+# even though the mock provider itself is cheap (a future real-LLM-backed
+# provider would make this limit matter for cost control too).
+class AIAssistantRateThrottle(UserRateThrottle):
+    scope = "ai_assistant"
 
 
 # Dedicated bucket for password-change attempts — stricter than the global
@@ -2945,3 +2958,203 @@ def ops_analytics(request):
         }
 
     return Response(data)
+
+
+# ── Knowledge Base ──────────────────────────────────────────────
+
+class IsStaffOrReadOnly(permissions.BasePermission):
+    """
+    Any authenticated user (customer, freelancer, staff) can read.
+    Only internal staff (support_agent, operations_manager, finance_manager,
+    admin) can create/edit/delete — Knowledge Base authoring is a staff
+    tool, but the content itself is customer-facing self-service.
+    """
+
+    def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated):
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return is_internal_staff(request.user)
+
+
+class KBArticleListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /api/kb/articles/  — browse/search articles (customers/freelancers see
+         published only; staff also see drafts)
+    POST /api/kb/articles/  — create a new article (staff only)
+
+    Query params:
+      ?q=<text>        — search title/body/tags
+      ?category=<key>  — filter by category
+      ?status=draft    — staff only, narrows further (defaults to all statuses for staff)
+    """
+    permission_classes = [IsStaffOrReadOnly]
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return KBArticleWriteSerializer
+        return KBArticleListSerializer
+
+    def get_queryset(self):
+        from .services import kb_service
+
+        base = KBArticle.objects.all()
+        if not is_internal_staff(self.request.user):
+            base = base.filter(status="published")
+        elif self.request.query_params.get("status"):
+            base = base.filter(status=self.request.query_params["status"])
+
+        query = self.request.query_params.get("q", "")
+        category = self.request.query_params.get("category")
+        return kb_service.search_articles(query=query, category=category, status=None, queryset=base)
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
+
+class KBArticleDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET    /api/kb/articles/{id}/  — view (increments view_count); staff can view drafts
+    PATCH  /api/kb/articles/{id}/  — edit (staff only)
+    DELETE /api/kb/articles/{id}/  — remove (staff only)
+    """
+    permission_classes = [IsStaffOrReadOnly]
+
+    def get_queryset(self):
+        qs = KBArticle.objects.all()
+        if not is_internal_staff(self.request.user):
+            qs = qs.filter(status="published")
+        return qs
+
+    def get_serializer_class(self):
+        if self.request.method in ("PUT", "PATCH"):
+            return KBArticleWriteSerializer
+        return KBArticleDetailSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        from .services import kb_service
+
+        instance = self.get_object()
+        kb_service.increment_view_count(instance)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+
+@api_view(["GET"])
+def kb_categories(request):
+    """GET /api/kb/categories/ — the fixed category taxonomy (service catalogue + General)."""
+    from .services.service_catalog import SERVICE_CATALOG
+
+    categories = [{"key": s["key"], "name": s["name"]} for s in SERVICE_CATALOG]
+    categories.append({"key": "general", "name": "General"})
+    return Response({"categories": categories})
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def ticket_kb_articles(request, ticket_id):
+    """
+    GET /api/tickets/{id}/kb-articles/
+    Returns manually-linked and auto-suggested articles for a ticket.
+    Visible to the ticket owner and any internal staff — same access rule
+    as the ticket itself (Knowledge Base self-service applies to customers too).
+    """
+    from .services import kb_service
+
+    ticket = _get_ticket_for_user(request.user, ticket_id)
+
+    links = KBArticleTicketLink.objects.filter(ticket=ticket).select_related("article")
+    linked_ids = {link.article_id for link in links}
+    suggested = [
+        a for a in kb_service.get_related_articles_for_ticket(ticket, limit=5)
+        if a.id not in linked_ids
+    ]
+
+    return Response({
+        "linked": KBArticleListSerializer([link.article for link in links], many=True).data,
+        "suggested": KBArticleListSerializer(suggested, many=True).data,
+    })
+
+
+@api_view(["POST", "DELETE"])
+@permission_classes([IsTicketManagementStaff])
+def kb_link_article(request, ticket_id, article_id):
+    """
+    POST   /api/tickets/{id}/kb-articles/{article_id}/link/  — link an article to a ticket
+    DELETE /api/tickets/{id}/kb-articles/{article_id}/link/  — unlink
+
+    Staff-only — no object-level ownership check beyond role, matching
+    admin_assign_ticket/admin_status_update: internal ticket-management
+    staff can act on any ticket, not just ones assigned to them.
+    """
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    article = get_object_or_404(KBArticle, pk=article_id)
+
+    if request.method == "DELETE":
+        KBArticleTicketLink.objects.filter(ticket=ticket, article=article).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    link, created = KBArticleTicketLink.objects.get_or_create(
+        ticket=ticket, article=article, defaults={"linked_by": request.user},
+    )
+    if created:
+        TicketActivityLog.objects.create(
+            ticket=ticket, actor=request.user, action="kb_article_linked",
+            to_value=article.title,
+        )
+    return Response(
+        KBArticleListSerializer(article).data,
+        status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+    )
+
+
+# ── AI Assistant (internal staff only) ───────────────────────────
+# Mock-provider today (support_app/services/ai_assistant_service.py);
+# swapping in a real LLM later needs no changes here — get_ai_provider()
+# is the seam.
+
+@api_view(["GET"])
+@permission_classes([IsTicketManagementStaff])
+@throttle_classes_dec([AIAssistantRateThrottle])
+def ai_assistant_view(request, ticket_id):
+    """
+    GET /api/tickets/{id}/ai-assistant/?tone=professional|friendly|concise
+    Returns suggested root cause, resolution, related KB articles, similar
+    tickets, and a draft customer reply in one payload.
+    """
+    from .services.ai_assistant_service import get_ai_provider
+
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    tone = request.query_params.get("tone", "professional")
+    provider = get_ai_provider()
+    similar = provider.find_similar_tickets(ticket)
+
+    return Response({
+        "root_cause": provider.suggest_root_cause(ticket),
+        "resolution": provider.suggest_resolution(ticket),
+        "related_articles": KBArticleListSerializer(provider.find_related_articles(ticket), many=True).data,
+        "similar_tickets": [
+            {
+                "id": str(t.id),
+                "ticket_number": t.ticket_number,
+                "title": t.title,
+                "status": t.status,
+            }
+            for t in similar
+        ],
+        "draft_reply": provider.draft_reply(ticket, tone=tone),
+    })
+
+
+@api_view(["POST"])
+@permission_classes([IsTicketManagementStaff])
+def ai_assistant_log_insert(request, ticket_id):
+    """POST /api/tickets/{id}/ai-assistant/log-insert/ — record that an agent inserted the AI draft reply."""
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    tone = request.data.get("tone", "professional")
+    TicketActivityLog.objects.create(
+        ticket=ticket, actor=request.user, action="ai_suggestion_used",
+        note=f"AI draft reply inserted (tone={tone}).",
+    )
+    return Response(status=status.HTTP_204_NO_CONTENT)

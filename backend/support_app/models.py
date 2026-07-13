@@ -228,7 +228,7 @@ class Freelancer(models.Model):
         on_delete=models.CASCADE,
         related_name="freelancer_profile",
     )
-    skills = models.TextField(blank=True, help_text="Comma-separated skill tags, e.g. linux,sap,vmware")
+    skills = models.TextField(blank=True, help_text="Comma-separated skill tags, e.g. aws,kubernetes,server_admin")
     availability = models.CharField(max_length=32, choices=AVAILABILITY_CHOICES, default="ad_hoc")
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.0)
     active = models.BooleanField(default=True)
@@ -570,6 +570,8 @@ class TicketActivityLog(models.Model):
         ("reopened",         "Reopened"),
         ("sla_breached",     "SLA Breached"),
         ("escalated",        "Escalated"),
+        ("kb_article_linked", "Knowledge Base Article Linked"),
+        ("ai_suggestion_used", "AI Suggestion Used"),
     ]
 
     id     = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -1070,7 +1072,7 @@ class Service(models.Model):
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="active")
     required_skills = models.CharField(
         max_length=500, blank=True,
-        help_text="Comma-separated skill tags, e.g. linux,sap,vmware",
+        help_text="Comma-separated skill tags, e.g. aws,kubernetes,server_admin",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1080,3 +1082,88 @@ class Service(models.Model):
 
     class Meta:
         ordering = ["name"]
+
+
+class KBArticle(models.Model):
+    """
+    A Knowledge Base article — self-service help content plus internal
+    agent-assist reference material.
+
+    Categories reuse the service catalogue keys (support_app/services/
+    service_catalog.py) so articles line up with the same taxonomy customers
+    already see when raising a ticket, plus one catch-all "general" bucket.
+
+    Published articles are visible to every authenticated role (customer,
+    freelancer, staff) — the KB is customer-facing self-service, not an
+    internal-only tool. Drafts are staff-only.
+    """
+
+    CATEGORY_CHOICES = _SERVICE_CHOICES + [("general", "General")]
+    STATUS_CHOICES = [
+        ("draft",     "Draft"),
+        ("published", "Published"),
+    ]
+
+    id    = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=255)
+    # slug is derived from title on save (see signals.py) — not user-editable directly.
+    slug  = models.SlugField(max_length=255, unique=True, blank=True)
+    body  = models.TextField(blank=True, help_text="Article content, written in Markdown.")
+
+    category = models.CharField(max_length=32, choices=CATEGORY_CHOICES, default="general")
+    tags     = models.CharField(max_length=500, blank=True, help_text="Comma-separated tags")
+    status   = models.CharField(max_length=16, choices=STATUS_CHOICES, default="draft")
+
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="kb_articles",
+    )
+
+    view_count = models.PositiveIntegerField(default=0)
+
+    created_at   = models.DateTimeField(auto_now_add=True)
+    updated_at   = models.DateTimeField(auto_now=True)
+    # published_at is stamped the first time status transitions draft -> published (signals.py).
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        ordering = ["-updated_at"]
+        indexes = [
+            models.Index(fields=["status", "category"], name="idx_kb_status_category"),
+        ]
+
+
+class KBArticleTicketLink(models.Model):
+    """
+    Links a Knowledge Base article to a ticket.
+
+    A through-table (rather than a bare ManyToManyField) so we record who
+    linked the article and when — the same "always track who+when"
+    convention already used by TicketAssignment and TicketAttachment.
+    """
+
+    id      = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    article = models.ForeignKey(KBArticle, on_delete=models.CASCADE, related_name="ticket_links")
+    ticket  = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="kb_links")
+
+    linked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="kb_links_made",
+    )
+    linked_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.article.title} ↔ {self.ticket.ticket_number}"
+
+    class Meta:
+        ordering = ["-linked_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["article", "ticket"], name="uniq_kb_article_ticket_link"),
+        ]

@@ -50,14 +50,14 @@ DEMO_CUSTOMERS = [
 # ── Demo engineer definitions ─────────────────────────────────────
 
 DEMO_ENGINEERS = [
-    {"email": "arjun.verma@engineers.demo",   "first_name": "Arjun",   "last_name": "Verma",   "skills": "windows,active_directory,dns,dhcp,gpo,outlook",  "availability": "full_time",  "rating": "4.80"},
-    {"email": "kavita.rao@engineers.demo",    "first_name": "Kavita",  "last_name": "Rao",     "skills": "linux,server_admin,bash,nginx,ubuntu,centos",     "availability": "full_time",  "rating": "4.90"},
-    {"email": "nitin.chawla@engineers.demo",  "first_name": "Nitin",   "last_name": "Chawla",  "skills": "security,cis_hardening,firewall,palo_alto,cisco", "availability": "full_time",  "rating": "4.75"},
-    {"email": "pooja.desai@engineers.demo",   "first_name": "Pooja",   "last_name": "Desai",   "skills": "vmware,esxi,windows_server,patching,hyper_v",     "availability": "full_time",  "rating": "4.85"},
-    {"email": "sanjay.kumar@engineers.demo",  "first_name": "Sanjay",  "last_name": "Kumar",   "skills": "sap,sap_basis,sap_erp,server_admin,oracle",       "availability": "part_time",  "rating": "4.70"},
-    {"email": "ritika.sharma@engineers.demo", "first_name": "Ritika",  "last_name": "Sharma",  "skills": "desktop,windows,patching,endpoint,antivirus",     "availability": "full_time",  "rating": "4.95"},
-    {"email": "dev.malhotra@engineers.demo",  "first_name": "Dev",     "last_name": "Malhotra","skills": "security,linux,siem,endpoint_security,hardening", "availability": "full_time",  "rating": "4.88"},
-    {"email": "anita.pillai@engineers.demo",  "first_name": "Anita",   "last_name": "Pillai",  "skills": "linux,patching,bash,networking,bind9,postfix",    "availability": "ad_hoc",     "rating": "4.65"},
+    {"email": "arjun.verma@engineers.demo",   "first_name": "Arjun",   "last_name": "Verma",   "skills": "server_admin,active_directory,windows_server,dns,dhcp,gpo",  "availability": "full_time",  "rating": "4.80"},
+    {"email": "kavita.rao@engineers.demo",    "first_name": "Kavita",  "last_name": "Rao",     "skills": "aws,ec2,vpc,iam,cloudwatch,s3",                              "availability": "full_time",  "rating": "4.90"},
+    {"email": "nitin.chawla@engineers.demo",  "first_name": "Nitin",   "last_name": "Chawla",  "skills": "azure,azure_ad,virtual_machines,networking,resource_groups", "availability": "full_time",  "rating": "4.75"},
+    {"email": "pooja.desai@engineers.demo",   "first_name": "Pooja",   "last_name": "Desai",   "skills": "kubernetes,docker,helm,ingress,containers",                  "availability": "full_time",  "rating": "4.85"},
+    {"email": "sanjay.kumar@engineers.demo",  "first_name": "Sanjay",  "last_name": "Kumar",   "skills": "database,postgresql,mysql,sql_server,backup,tuning",         "availability": "part_time",  "rating": "4.70"},
+    {"email": "ritika.sharma@engineers.demo", "first_name": "Ritika",  "last_name": "Sharma",  "skills": "laptop_desktop,windows,endpoint,antivirus,troubleshooting",  "availability": "full_time",  "rating": "4.95"},
+    {"email": "dev.malhotra@engineers.demo",  "first_name": "Dev",     "last_name": "Malhotra","skills": "devops_cicd,github_actions,jenkins,docker,ci_cd",            "availability": "full_time",  "rating": "4.88"},
+    {"email": "anita.pillai@engineers.demo",  "first_name": "Anita",   "last_name": "Pillai",  "skills": "infra_automation,terraform,ansible,provisioning,scripting", "availability": "ad_hoc",     "rating": "4.65"},
 ]
 
 
@@ -71,173 +71,176 @@ DEMO_TICKETS = [
     # ── Open — 3 tickets (paid, waiting for assignment) ──────────────
     (
         "DEMO_01",
-        "Emails bouncing for company domain after DNS migration",
-        "linux", "high", "open",
+        "S3 bucket ACL misconfigured — customer files publicly accessible",
+        "aws", "high", "open",
         0, None, 2, 2000,
-        "Since yesterday evening, all outbound emails from our company domain are bouncing "
-        "with 'Relay access denied' errors. Multiple staff have received NDR messages. "
-        "MX records appear to have changed after migrating to a new domain registrar last week. "
-        "Inbound mail is also affected — external senders get delivery failures.",
+        "Our AWS S3 bucket 'techforge-customer-docs' was found to have public read access "
+        "after a bucket policy update three days ago meant to support a new reporting Lambda "
+        "function. Security scanning flagged that customer invoice PDFs are accessible via "
+        "direct URL with no authentication. We need the bucket locked down immediately, the "
+        "offending policy statement identified, and an audit of what may have been accessed "
+        "externally via CloudTrail.",
     ),
     (
         "DEMO_02",
-        "VPN connection dropping for all remote staff",
-        "security", "high", "open",
+        "Production pods crash-looping after node pool upgrade",
+        "kubernetes", "high", "open",
         1, None, 1, 2500,
-        "Our Cisco AnyConnect VPN has been dropping connections for all 25 remote staff "
-        "since this morning. Users authenticate successfully but sessions drop within 2-3 minutes. "
-        "The issue started after the network team patched the ASA firewall last night. "
-        "Business-critical ERP access is blocked. Need urgent resolution.",
+        "Since upgrading our EKS node pool to a new AMI version yesterday, three deployments "
+        "in the 'checkout' namespace are stuck in CrashLoopBackOff. Pods start, fail a readiness "
+        "probe within 15 seconds, and restart repeatedly. Rolling back the deployment image "
+        "didn't help, so this looks tied to the node upgrade rather than application code. "
+        "Checkout traffic is failing for roughly 30% of customers during peak hours.",
     ),
     (
         "DEMO_03",
-        "Windows login failure blocking 15 users after GPO policy change",
-        "desktop", "medium", "open",
+        "40 staff laptops failing Windows Hello login after policy push",
+        "laptop_desktop", "medium", "open",
         2, None, 3, 1500,
-        "15 out of 40 staff cannot log into their Windows workstations after a Group Policy "
-        "update was pushed this morning. Users see 'The sign-in method you are trying to use '  "
-        "is not allowed. Contact your IT administrator.' The GPO was applied to all users instead "
-        "of just the pilot OU. Affected users are locked out of their desktops.",
+        "After an Intune configuration policy was pushed this morning, 40 out of 65 staff "
+        "laptops are rejecting Windows Hello PIN sign-in with 'Something went wrong' errors. "
+        "Password login still works as a fallback but employees are locked out of Hello-gated "
+        "apps. The policy was intended to enforce stronger PIN complexity for a 5-person pilot "
+        "group but appears to have applied to the whole device group instead.",
     ),
 
     # ── Assigned — 3 tickets (engineer assigned, not yet in progress) ─
     (
         "DEMO_04",
-        "Windows Server 2019 CPU pegged at 100% under normal load",
-        "windows", "high", "assigned",
-        3, 3, 5, 3000,
-        "Our primary Windows Server 2019 file server has been running at 95-100% CPU "
-        "for 3 days. Normal load averages 30-40%. Performance Monitor shows "
-        "'System' and 'svchost.exe (WaasMedicSvc)' consuming most cycles. "
-        "Server is sluggish and file access is impacting 60 users. "
-        "No recent software changes were made before the degradation began.",
+        "Linux file server CPU pegged at 100%, NFS mounts timing out",
+        "server_admin", "high", "assigned",
+        3, 0, 5, 3000,
+        "Our primary Ubuntu 22.04 file server (fileserver01) has been running at 95-100% CPU "
+        "for the past two days. NFS clients across the warehouse network are experiencing "
+        "mount timeouts and stale handle errors. 'top' shows nfsd and rsync processes consuming "
+        "most cycles, but no obvious runaway job was scheduled. Around 60 warehouse staff depend "
+        "on these shares for scanning and logistics software.",
     ),
     (
         "DEMO_05",
-        "SSL certificate expired on customer portal — HTTPS broken",
-        "security", "critical", "assigned",
+        "Azure VM unreachable after NSG rule change — production app down",
+        "azure", "critical", "assigned",
         4, 2, 4, 2500,
-        "The SSL/TLS certificate for our customer-facing portal (portal.kratosfintech.com) "
-        "expired 6 hours ago. Customers are seeing 'Your connection is not private' warnings. "
-        "This is directly impacting customer onboarding and payment flows. "
-        "The cert was issued via Let's Encrypt but the auto-renewal cron appears to have failed. "
-        "We need immediate certificate renewal and monitoring setup.",
+        "Our production application VM (kratos-app-prod-01) in Azure has been unreachable via "
+        "RDP and HTTPS since a Network Security Group rule was modified by our network team "
+        "last night. The VM shows as 'Running' in the Azure Portal but all inbound traffic on "
+        "ports 443 and 3389 is timing out. This is directly blocking customer access to our "
+        "payment onboarding portal. We need connectivity restored immediately.",
     ),
     (
         "DEMO_06",
-        "SAP system log full — users getting login errors after policy change",
-        "sap", "high", "assigned",
+        "PostgreSQL replication lag growing, read replicas falling behind",
+        "database", "high", "assigned",
         5, 4, 3, 4000,
-        "Following our IT security team's password policy enforcement in SAP, "
-        "users are seeing SM21 log entries indicating the system log (dev_w0) is full. "
-        "Approximately 30 SAP users cannot log in, receiving 'System is currently not available'. "
-        "The SM21 system log reached 100% capacity and is blocking new sessions. "
-        "This may be related to the recent BASIS team changes to security audit logging.",
+        "Our primary PostgreSQL 14 database has three streaming replicas used for reporting "
+        "and patient record lookups. Over the past 48 hours, replication lag has grown from "
+        "under a second to over 20 minutes and is steadily increasing. Reporting dashboards "
+        "built on the replicas are now showing stale data, and WAL segment retention on the "
+        "primary is climbing — we're worried about disk space if this isn't resolved soon.",
     ),
 
     # ── In Progress — 3 tickets (engineer actively working) ──────────
     (
         "DEMO_07",
-        "Linux server disk at 97% — automated backup cron alerts firing",
-        "linux", "high", "in_progress",
-        6, 1, 7, 2000,
-        "Our Ubuntu 22.04 application server has disk usage at 97% on the / partition. "
-        "Automated monitoring alerts have been firing since last night. "
-        "Preliminary check shows /var/log has grown to 45GB due to verbose application logging. "
-        "Backup cron jobs are also failing to write because of the space constraint. "
-        "Need immediate disk cleanup and log rotation policy implementation.",
+        "GitHub Actions deployment pipeline failing on every merge to main",
+        "devops_cicd", "high", "in_progress",
+        6, 6, 7, 2000,
+        "Our GitHub Actions deployment workflow has failed on every merge to main for the "
+        "last four days, blocking all releases. The failure occurs at the 'docker build and "
+        "push' step with an authentication error against our container registry, even though "
+        "the registry credentials secret hasn't changed recently. Engineers are currently "
+        "deploying manually as a workaround, which is error-prone and slow.",
     ),
     (
         "DEMO_08",
-        "VMware ESXi host purple screen (PSOD) after patch update",
-        "vmware", "critical", "in_progress",
+        "Ingress controller crash causing intermittent 502s in production",
+        "kubernetes", "critical", "in_progress",
         7, 3, 8, 5000,
-        "Our VMware ESXi 7.0 U3 host experienced a Purple Screen of Death (PSOD) "
-        "after applying patch ESXi700-202310001. The host crashed at 2:15 AM and restarted. "
-        "The crash dump indicates a memory heap corruption in the storage driver. "
-        "Three production VMs were affected — two restarted automatically on a secondary host "
-        "but one SAP VM is still offline. Business continuity is impacted.",
+        "Our NGINX ingress controller in the production Kubernetes cluster has been "
+        "crash-restarting roughly every 20 minutes since a config map change was applied two "
+        "days ago. During each restart window, customers hit intermittent 502 Bad Gateway "
+        "errors for 30-60 seconds. Pod logs show the controller running out of memory shortly "
+        "before each crash, affecting order placement on our manufacturing portal.",
     ),
     (
         "DEMO_09",
-        "Windows shared drive permissions broken — department folders inaccessible",
-        "desktop", "medium", "in_progress",
+        "Shared drive permissions broken after desktop migration to new AD group",
+        "laptop_desktop", "medium", "in_progress",
         8, 5, 6, 1500,
-        "The Finance and HR departments cannot access their network shared drives "
-        "after our Windows admin restructured the file server folder hierarchy. "
-        "Users see 'Access Denied' on folders they previously owned. "
-        "The domain admin can access everything fine. "
-        "This is blocking budget approval workflows and HR document processing.",
+        "As part of migrating staff desktops to a new Active Directory OU, the Faculty and "
+        "Admin departments lost access to their shared network drives. Users see 'Access "
+        "Denied' on folders they previously owned, though IT admin accounts can access "
+        "everything fine. This is blocking grade submission and admissions document processing "
+        "for around 25 staff members.",
     ),
 
     # ── In progress, awaiting customer info — 2 tickets ──────────────
     (
         "DEMO_10",
-        "Remote desktop access lost after firewall rule change",
-        "windows", "medium", "in_progress",
-        9, 6, 10, 2000,
-        "Remote Desktop Protocol (RDP) access to our on-premise servers has been blocked "
-        "since the network team modified the perimeter firewall rules on Wednesday. "
-        "Internal RDP still works but all remote access via VPN + RDP is failing. "
-        "Netstat shows port 3389 is listening but connections timeout from outside. "
-        "We need the firewall rules reviewed and RDP access restored for 10 remote admins.",
+        "RDS instance CPU credits exhausted, queries timing out",
+        "aws", "medium", "in_progress",
+        9, 1, 10, 2000,
+        "Our AWS RDS MySQL instance (db.t3.medium) has been running at sustained high CPU for "
+        "the past three days, and CloudWatch shows the CPU credit balance has hit zero. "
+        "Booking queries that normally complete in under 200ms are now timing out entirely "
+        "during peak hours. We suspect an inefficient query introduced in a recent release but "
+        "need help confirming the root cause and right-sizing the instance.",
     ),
     (
         "DEMO_11",
         "DNS records pointing to wrong IP after domain registrar migration",
-        "linux", "high", "in_progress",
-        0, 7, 9, 2000,
-        "After migrating our domain from GoDaddy to Cloudflare, several DNS records "
-        "are pointing to the old server IP (203.0.113.45) instead of our new server (198.51.100.22). "
-        "The www and mail subdomains are affected. Website loads the old server content "
-        "for approximately 40% of users depending on their DNS cache. "
-        "Our IT team can see both IPs in Cloudflare but the propagation seems stuck.",
+        "server_admin", "high", "in_progress",
+        0, 0, 9, 2000,
+        "After migrating our domain from GoDaddy to Cloudflare, several DNS records are "
+        "pointing to the old server IP (203.0.113.45) instead of our new server (198.51.100.22). "
+        "The www and mail subdomains are affected. Website loads the old server content for "
+        "approximately 40% of users depending on their DNS cache. Our IT team can see both IPs "
+        "in Cloudflare but the propagation seems stuck.",
     ),
 
     # ── Resolved — 4 tickets ─────────────────────────────────────────
     (
         "DEMO_12",
-        "Ransomware indicators found on 3 employee workstations",
-        "security", "critical", "resolved",
-        1, 2, 20, 5000,
-        "Our endpoint detection tool flagged suspicious file encryption activity on "
-        "3 workstations in the sales department. Files in shared network drives show "
-        "unusual .encrypted extensions. The affected machines have been isolated from "
-        "the network. We need immediate malware analysis, containment, and recovery. "
-        "Backups are available from 48 hours ago. Please treat this as top priority.",
+        "Terraform state corruption blocking all infrastructure deploys",
+        "infra_automation", "critical", "resolved",
+        1, 7, 20, 5000,
+        "Our Terraform state file for the production AWS account became corrupted after a CI "
+        "job was interrupted mid-apply during a network outage. Every subsequent 'terraform "
+        "plan' now fails with a state lock and resource drift errors, blocking all "
+        "infrastructure changes including an urgent security patch rollout. We need the state "
+        "file recovered or rebuilt without destroying existing resources.",
     ),
     (
         "DEMO_13",
-        "Company domain blacklisted — outbound emails flagged as spam",
-        "linux", "high", "resolved",
-        2, 0, 18, 2500,
-        "Clients are reporting our emails land in spam or get bounced entirely. "
-        "MXToolbox shows cloudbridge.in is listed on Spamhaus ZEN and Barracuda BRBL. "
-        "This appears to be caused by a compromised email account that sent bulk messages "
-        "last weekend. We need the blacklisting removed, SPF/DKIM/DMARC policies strengthened, "
-        "and the compromised account secured.",
+        "Docker image builds failing in Jenkins pipeline after base image update",
+        "devops_cicd", "high", "resolved",
+        2, 6, 18, 2500,
+        "Our Jenkins CI pipeline started failing all Docker image builds after the team "
+        "updated the base image tag in the Dockerfile last week. The build fails at the "
+        "'npm install' layer with a Node ABI mismatch error. This is blocking every deployment "
+        "for the platform team, currently forcing them to deploy from local builds.",
     ),
     (
         "DEMO_14",
-        "Network drive mappings lost after Windows Update KB5034441",
-        "windows", "low", "resolved",
-        3, 1, 15, 1500,
-        "After Windows Update KB5034441 was applied on 15 workstations last Tuesday, "
-        "all users lost their mapped network drives (Z:, Y:). "
-        "Manually re-mapping works temporarily but drives disappear after reboot. "
-        "The group policy for drive mapping shows the correct configuration. "
-        "This appears to be a known issue with the SMB client in the KB update.",
+        "Azure AD conditional access policy locking out remote staff",
+        "azure", "low", "resolved",
+        3, 2, 15, 1500,
+        "A new Conditional Access policy requiring compliant devices was enabled in Azure AD "
+        "last week, and it's now blocking 12 remote logistics staff who use personal devices "
+        "from signing into Microsoft 365. The policy was intended to apply only to the finance "
+        "security group but appears to have been scoped to 'All Users' instead. Affected staff "
+        "cannot access email or the shipment tracking app.",
     ),
     (
         "DEMO_15",
-        "Cloud backup silently failing for 3 days — recovery risk",
-        "security", "high", "resolved",
-        4, 3, 12, 3000,
-        "Our AWS S3 backup job has been returning exit code 0 (success) but no files "
-        "are being transferred. The backup agent logs show successful API authentication "
-        "but 0 bytes uploaded. This has been silently failing for 72 hours. "
-        "S3 bucket policy was recently updated by a new DevOps team member. "
-        "We currently have no valid offsite backup. Please investigate immediately.",
+        "MySQL backup silently failing for 3 days — recovery risk",
+        "database", "high", "resolved",
+        4, 4, 12, 3000,
+        "Our MySQL backup job has been returning exit code 0 (success) but no dump files have "
+        "actually been written for the past three days. The backup script logs show a "
+        "successful connection but zero bytes written to the S3 destination. A recent IAM "
+        "policy change on the backup role is the suspected cause. We currently have no valid "
+        "recent backup and need this treated as top priority.",
     ),
 ]
 
@@ -247,81 +250,81 @@ DEMO_TICKETS = [
 # author_type: "customer" | "engineer" | "staff"
 
 DEMO_COMMENTS = [
-    # DEMO_01 — Open: emails bouncing
-    ("DEMO_01", "customer", "Adding more context: our domain registrar is Bigrock. The migration happened 6 days ago. SPF record looks correct in Bigrock but something in the MX chain is wrong.", False, 1),
-    ("DEMO_01", "staff", "Checked MXToolbox. MX records are present but TTL still propagating from old nameserver. Will verify once ticket is assigned.", True, 2),
+    # DEMO_01 — Open: S3 bucket publicly exposed
+    ("DEMO_01", "customer", "Adding more detail: the bucket policy change was made by our new analytics contractor. We've since revoked their write access. Can you confirm if any files were actually downloaded by an outside party?", False, 1),
+    ("DEMO_01", "staff", "Checked CloudTrail sample — public GetObject calls visible from unfamiliar IPs starting two days ago. Escalating for immediate remediation once assigned.", True, 2),
 
-    # DEMO_02 — Open: VPN dropping
-    ("DEMO_02", "customer", "Update: we collected the AnyConnect log. The disconnect reason code is 'Keepalive timer expired'. Attaching the DART bundle from one affected user.", False, 0.5),
+    # DEMO_02 — Open: EKS pods crash-looping
+    ("DEMO_02", "customer", "Update: we found the new node AMI uses containerd 1.7 instead of 1.6. Not sure if that's related, but flagging in case it helps. Attaching pod logs from one of the crash-looping pods.", False, 0.5),
 
-    # DEMO_03 — Open: GPO login failure
-    ("DEMO_03", "customer", "Our IT admin accidentally applied the GPO to all users instead of just the pilot OU. Is there a way to temporarily roll back while you investigate?", False, 1),
-    ("DEMO_03", "staff", "Checked Group Policy Management Console. The policy is linked at domain level affecting all users. Will need to re-scope to the correct OU. Waiting for assignment.", True, 1.5),
+    # DEMO_03 — Open: Windows Hello login failures
+    ("DEMO_03", "customer", "Our IT admin confirms the policy was meant for a 5-person pilot group but the Intune group assignment included the whole 'All Staff' device group by mistake. Is there a way to roll back the policy while you investigate?", False, 1),
+    ("DEMO_03", "staff", "Confirmed via Intune portal — PIN complexity policy scoped to 'All Devices' dynamic group instead of 'Pilot-WindowsHello'. Will need to fix group scoping once assigned.", True, 1.5),
 
-    # DEMO_04 — Assigned: Windows Server CPU
-    ("DEMO_04", "customer", "The server is our primary file server FS01. It runs DFS-N, DFSR, and Backup Exec. We can schedule a maintenance window from 11 PM to 5 AM if needed.", False, 1),
-    ("DEMO_04", "engineer", "Reviewing the task list. WaasMedicSvc (Windows Update Medic Service) is consuming 45% CPU. This is a known issue with Windows Update stuck in a loop. Will disable and run sfc /scannow first.", False, 5),
-    ("DEMO_04", "staff", "Assigned to Pooja Desai. Estimated resolution: 4 hours from start.", True, 4),
+    # DEMO_04 — Assigned: Linux file server CPU
+    ("DEMO_04", "customer", "fileserver01 also runs our nightly rsync backup to a secondary NAS. We can schedule a maintenance window from 11 PM to 5 AM if a restart is needed.", False, 1),
+    ("DEMO_04", "engineer", "Reviewing the process list — rsync appears stuck in a retry loop against the secondary NAS, which seems to be dropping the connection mid-transfer. This is likely compounding with nfsd load. Will check NAS-side logs next.", False, 5),
+    ("DEMO_04", "staff", "Assigned to Arjun Verma. Estimated resolution: 4 hours from start.", True, 4),
 
-    # DEMO_05 — Assigned: SSL expired
-    ("DEMO_05", "customer", "The cert renewal cron was set up 8 months ago. It's running as the www-data user. We can provide SSH access immediately.", False, 0.5),
-    ("DEMO_05", "engineer", "Connecting via SSH. I can see certbot is installed. Running 'certbot renew --dry-run' to check the issue. Will report back in 10 minutes.", False, 4),
-    ("DEMO_05", "staff", "CRITICAL ticket — cert expired. Nitin assigned. Monitor resolution closely.", True, 3),
+    # DEMO_05 — Assigned: Azure VM unreachable
+    ("DEMO_05", "customer", "The NSG change was made by our network vendor for a compliance audit. We can provide read access to the NSG flow logs and the change ticket immediately.", False, 0.5),
+    ("DEMO_05", "engineer", "Reviewing the NSG. Found a new deny-all inbound rule with a higher priority than the existing allow rules for 443/3389. This looks like an ordering mistake rather than an intentional block.", False, 4),
+    ("DEMO_05", "staff", "CRITICAL — production app down. Nitin assigned, monitor closely.", True, 3),
 
-    # DEMO_06 — Assigned: SAP log full
-    ("DEMO_06", "customer", "The BASIS admin who made the changes is on leave today. We can provide Emergency access credentials (S_A.SYSLOG authorisation) for direct system log management.", False, 1),
-    ("DEMO_06", "engineer", "Logging into SAP via SAP GUI. SM21 confirms dev_w0 is 100% full. Will use SM50/SM66 to check active work processes and then clear log via SM21 > Reorganise.", False, 3),
+    # DEMO_06 — Assigned: PostgreSQL replication lag
+    ("DEMO_06", "customer", "Our DBA who set up replication is on leave. We can provide superuser access to the primary if that speeds up diagnosis.", False, 1),
+    ("DEMO_06", "engineer", "Connected to the primary. pg_stat_replication shows replica 2 has fallen furthest behind — its WAL receiver appears to be reconnecting repeatedly, likely a network blip between AZs. Checking replication slot retention next to prevent WAL bloat.", False, 3),
 
-    # DEMO_07 — In Progress: Linux disk
-    ("DEMO_07", "customer", "Happy to give sudo access. Please let me know what you need. We can also create a new EBS volume if the cleanup isn't enough.", False, 0.5),
-    ("DEMO_07", "engineer", "Connected to server. Running 'du -sh /var/log/* | sort -rh | head -20'. Found /var/log/nginx/access.log at 38GB — no rotation configured. Also found 7GB of old .gz backup staging files in /tmp.", False, 7),
-    ("DEMO_07", "engineer", "Cleared /tmp backup staging (7GB recovered). Set up logrotate for nginx (daily, 7-day retention, compress). Disk now at 61%. Implementing log rotation across all app logs next.", False, 8),
-    ("DEMO_07", "staff", "Good progress. Ask customer if they want us to also review the application logging level — looks like DEBUG is on in production.", True, 8.5),
+    # DEMO_07 — In Progress: GitHub Actions pipeline failing
+    ("DEMO_07", "customer", "Happy to grant repo admin access if useful. We've also noticed the failure only happens on the 'build-and-push' job, not on PR checks.", False, 0.5),
+    ("DEMO_07", "engineer", "Reproduced locally — the registry credential secret is valid, but the workflow is using an outdated version of docker/login-action that no longer supports our registry's auth flow.", False, 7),
+    ("DEMO_07", "engineer", "Bumped docker/login-action and docker/build-push-action to current versions and re-ran the pipeline successfully on a test branch. Rolling the fix out to the main workflow file now.", False, 8),
+    ("DEMO_07", "staff", "Good progress. Ask customer if they want us to also add a pipeline status Slack alert so this is caught faster next time.", True, 8.5),
 
-    # DEMO_08 — In Progress: VMware PSOD
-    ("DEMO_08", "customer", "The crash dump is available at /scratch/log/vmkernel.log on the host. We can provide root SSH access. Secondary host (ESXI-02) has capacity to run all VMs if needed.", False, 1),
-    ("DEMO_08", "engineer", "Reviewing the PSOD dump. Error points to a null pointer dereference in vmw_pvscsi driver (version 1.0.8.0). This is a known issue fixed in VMware KB 87697. Need to patch to ESXi 7.0 U3d or apply the driver workaround.", False, 9),
-    ("DEMO_08", "engineer", "Applied the pvscsi driver workaround from KB 87697 on ESXI-01 without requiring a reboot. SAP VM successfully vMotion'd back to ESXI-01. Monitoring stability — no further PSODs in 2 hours.", False, 10),
-    ("DEMO_08", "staff", "ESXI-01 stable after workaround. Schedule patching to 7.0 U3d during the next maintenance window. Documenting the workaround steps for the customer KB.", True, 11),
+    # DEMO_08 — In Progress: Ingress controller crashing
+    ("DEMO_08", "customer", "We can provide kubectl access to the affected namespace. A secondary cluster in another region has spare capacity if failover is needed.", False, 1),
+    ("DEMO_08", "engineer", "Reviewing OOMKilled events — the ingress controller's memory limit wasn't raised when the config map change added a large custom error page. Current limit is 256Mi, usage spikes to 300Mi+ under load.", False, 9),
+    ("DEMO_08", "engineer", "Raised the ingress controller memory limit to 512Mi and reverted the oversized custom error page. No crashes in the last 2 hours, monitoring continues.", False, 10),
+    ("DEMO_08", "staff", "Ingress stable after fix. Documenting root cause and recommending a HorizontalPodAutoscaler review for the customer KB.", True, 11),
 
-    # DEMO_09 — In Progress: Windows shared drive permissions
-    ("DEMO_09", "customer", "The Windows admin who restructured the folders is available for a remote session if helpful. We can screen-share the File Server Resource Manager.", False, 1),
-    ("DEMO_09", "engineer", "Checked Active Directory and NTFS permissions. The Finance shared drive inheritance was broken — it now points to a different security group. The 'Finance-Users' AD group was removed from the folder ACL. Restoring now.", False, 6),
-    ("DEMO_09", "engineer", "Finance folder permissions restored. Testing HR shared drive access now. HR has a more complex structure with nested sub-folders and explicit deny rules. May take another 30 minutes.", False, 6.5),
+    # DEMO_09 — In Progress: Shared drive permissions after desktop migration
+    ("DEMO_09", "customer", "The IT admin who ran the OU migration is available for a screen-share session if that helps speed things up.", False, 1),
+    ("DEMO_09", "engineer", "Checked AD and NTFS permissions — the Faculty share's security group reference wasn't updated during the OU move, so it's still pointing at the old group SID. Restoring the correct group mapping now.", False, 6),
+    ("DEMO_09", "engineer", "Faculty share access restored and verified. Admin share has a more complex nested folder structure with explicit deny rules — working through those now, ETA 30 minutes.", False, 6.5),
 
-    # DEMO_10 — Waiting on Customer: RDP blocked
-    ("DEMO_10", "customer", "The firewall is a Fortinet FortiGate 100F. Our network admin can provide read-only access to the firewall audit logs if needed.", False, 1),
-    ("DEMO_10", "engineer", "I've reviewed the FortiGate logs you shared. The RDP traffic is hitting policy ID 47 which was changed from ALLOW to DENY on Wednesday. I need the following to proceed: (1) Confirm the source IPs for your remote admins, (2) Confirm if split-tunnelling is enabled on your VPN. This will determine the correct fix — either a new firewall rule or a VPN policy change.", False, 10),
-    ("DEMO_10", "engineer", "Waiting on customer to provide the remote admin IP list and VPN configuration details. Ticket placed in 'Waiting on Customer' status.", False, 10.5),
+    # DEMO_10 — Waiting on Customer: RDS CPU credits exhausted
+    ("DEMO_10", "customer", "We can authorize a temporary instance class upgrade if that's the fastest fix — just need to know the expected downtime.", False, 1),
+    ("DEMO_10", "engineer", "Confirmed CPU credit exhaustion from CloudWatch metrics. Also found one query missing an index on the bookings.created_at column, which is likely the main driver. Need to know if a brief maintenance window is available to add the index.", False, 10),
+    ("DEMO_10", "engineer", "Waiting on customer to confirm a maintenance window for the index build — it will briefly lock the bookings table.", False, 10.5),
 
     # DEMO_11 — Waiting on Customer: DNS wrong IP
     ("DEMO_11", "customer", "We can see in Cloudflare that both the old and new A records exist. But only Cloudflare's nameservers are authoritative now. Our old GoDaddy DNS still shows for some resolvers.", False, 1),
     ("DEMO_11", "engineer", "I've run dig queries from 5 global DNS resolvers. 3 of 5 now return the correct IP. The issue is at the old GoDaddy authoritative NS — it's still serving the old IP and some resolvers are caching it (TTL 3600). Two things I need from you: (1) Confirm GoDaddy delegation was updated to Cloudflare nameservers at the registrar level (not just DNS settings), (2) Share a screenshot of your Cloudflare DNS page so I can confirm no conflicting records exist.", False, 9),
     ("DEMO_11", "staff", "Customer needs to check their GoDaddy registrar NS records. The Cloudflare DNS is correct but if GoDaddy is still authoritative, that's the root cause.", True, 9.5),
 
-    # DEMO_12 — Resolved: Ransomware
-    ("DEMO_12", "customer", "The 3 affected machines are in the sales bay — SALES-PC-01, SALES-PC-02, SALES-PC-03. They share a mapped drive to \\\\FILESERVER\\Sales. We've physically disconnected them from the network.", False, 0.5),
-    ("DEMO_12", "engineer", "Confirmed ransomware strain: Rhysida variant. Encryption limited to the mapped \\Sales share — local drives are clean. Containment is complete. Identified patient-zero: SALES-PC-01, initial infection via phishing email with macro-enabled DOCX. Beginning recovery from clean backup (48h ago). ETA 2 hours.", False, 4),
-    ("DEMO_12", "engineer", "File recovery from backup complete. 847 files restored to the \\Sales share. Running full AV sweep with CrowdStrike on all 3 workstations before reconnecting to network. Hardening macro policy via Windows Group Policy to block auto-execution.", False, 6),
-    ("DEMO_12", "engineer", "All 3 workstations clean. Network restored. Delivered incident report with IOCs (Indicators of Compromise) and hardening recommendations. Macro execution policy restricted via GPO. Ticket resolved.", False, 8),
-    ("DEMO_12", "customer", "Thank you! The incident report is very thorough. We are scheduling security awareness training for the team based on your recommendations.", False, 10),
+    # DEMO_12 — Resolved: Terraform state corruption
+    ("DEMO_12", "customer", "This is blocking an urgent CVE patch rollout for our payment service. We can provide AWS console access and the last known-good state backup from our CI artifacts if that helps.", False, 0.5),
+    ("DEMO_12", "engineer", "Located a state backup from the CI job just before the interrupted apply. Cross-referencing it against 'terraform plan' output on the live AWS resources to check for drift before restoring.", False, 4),
+    ("DEMO_12", "engineer", "Restored state from the CI backup and reconciled two resources that had drifted (a security group rule and an IAM policy). 'terraform plan' now shows zero unexpected changes.", False, 6),
+    ("DEMO_12", "engineer", "Ran the pending security patch apply successfully. Added a remote state locking check to the CI pipeline to prevent this from recurring on interrupted runs.", False, 8),
+    ("DEMO_12", "customer", "Excellent — the patch deployed cleanly and we can see infrastructure is back to a known state. Thanks for the fast turnaround.", False, 10),
 
-    # DEMO_13 — Resolved: Domain blacklisted
-    ("DEMO_13", "customer", "Confirmed the compromised account was accounts@cloudbridge.in — it sent 4,200 emails between Saturday 11 PM and Sunday 3 AM. We've reset the password and enabled MFA.", False, 1),
-    ("DEMO_13", "engineer", "SPF record updated to use -all (hard fail) instead of ~all. DKIM selector 'dkim2024' created and published. DMARC policy set to p=quarantine. Submitted delisting request to Spamhaus and Barracuda with proof of remediation.", False, 6),
-    ("DEMO_13", "engineer", "Spamhaus ZEN delisting confirmed (4-6 hours after submission). Barracuda BRBL delisting confirmed. Test emails from cloudbridge.in now land in inbox. DMARC report monitoring configured via Postmaster Tools.", False, 14),
-    ("DEMO_13", "customer", "Excellent work! We can confirm emails are being delivered normally. Please also invoice us for the DMARC monitoring setup — happy to pay for that additional work.", False, 16),
+    # DEMO_13 — Resolved: Docker builds failing after base image update
+    ("DEMO_13", "customer", "The base image bump was meant to pick up a security patch. Happy to revert it if that unblocks things faster while you investigate.", False, 1),
+    ("DEMO_13", "engineer", "Confirmed — the new base image ships Node 20 while the app's native dependencies were built against Node 18's ABI. Rebuilding the lockfile against the new image resolves the mismatch.", False, 6),
+    ("DEMO_13", "engineer", "Updated package-lock.json and the Dockerfile to pin compatible native dependency versions. Full pipeline run succeeded end-to-end including the deploy stage.", False, 14),
+    ("DEMO_13", "customer", "Confirmed deploys are working again. Please also invoice us for updating our onboarding docs to reflect the new base image — happy to pay for that.", False, 16),
 
-    # DEMO_14 — Resolved: Network drive lost
-    ("DEMO_14", "customer", "The affected workstations are all running Windows 11 22H2. Group policy for drive mapping is in the 'User Configuration > Preferences > Drive Maps' section.", False, 1),
-    ("DEMO_14", "engineer", "KB5034441 breaks SMBv1 NTLM authentication in certain domain configurations. Confirmed the GPO drive maps are using UNC paths with NTLM. Fix: applied 'SMB client require secure negotiate = off' via GPO for the specific OU. Drive maps now persist after reboot on all 15 machines. Tested on 3 workstations, deploying to all 15 via GPO now.", False, 8),
-    ("DEMO_14", "customer", "Confirmed — all 15 workstations have their network drives back after reboot. Thank you for the fast turnaround!", False, 10),
+    # DEMO_14 — Resolved: Azure AD conditional access lockout
+    ("DEMO_14", "customer", "Confirmed the policy was meant to apply only to our Finance security group in Azure AD.", False, 1),
+    ("DEMO_14", "engineer", "Reviewed the Conditional Access policy — the assignment target was set to 'All Users' instead of the Finance group, likely a dropdown selection error during setup. Corrected the scope and confirmed non-compliant devices outside Finance are no longer blocked.", False, 8),
+    ("DEMO_14", "customer", "Confirmed — all 12 staff can sign in again from their personal devices. Thank you for the quick fix.", False, 10),
 
-    # DEMO_15 — Resolved: Cloud backup failing
-    ("DEMO_15", "customer", "The S3 bucket policy change was made by our junior DevOps engineer. The bucket is 'vertex-prod-backups-ap-south-1'. I can share the current bucket policy via secure link.", False, 1),
-    ("DEMO_15", "engineer", "Found the issue: the new bucket policy added a condition block 'StringNotEquals: aws:RequestedRegion: ap-south-1' but the backup agent authenticates from us-east-1 (hardcoded in config). The policy is blocking cross-region PutObject calls while returning HTTP 200 (a quirk of S3 conditions + IAM role passthrough). Fixed: updated bucket policy condition to allow the backup agent's IAM role explicitly. Running test backup now.", False, 5),
-    ("DEMO_15", "engineer", "Test backup successful: 2.3GB transferred, hash verified. Scheduled backup ran at 2 AM — completed successfully with 47GB transferred. Configured CloudWatch alarm for backup job failures. Delivered root-cause analysis document.", False, 18),
-    ("DEMO_15", "customer", "All good — backups are running normally. The CloudWatch alarm is a great addition. We'll implement this across all our backup jobs.", False, 20),
+    # DEMO_15 — Resolved: MySQL backup silently failing
+    ("DEMO_15", "customer", "The IAM policy change was made by a new team member setting up a separate reporting role. I can share the current backup role policy via secure link.", False, 1),
+    ("DEMO_15", "engineer", "Found the issue — the updated IAM policy added a condition restricting s3:PutObject to a specific prefix that doesn't match the backup script's target path, so writes were silently denied while the script still exited 0. Corrected the policy condition and ran a manual test backup.", False, 5),
+    ("DEMO_15", "engineer", "Test backup succeeded and the scheduled job at 2 AM completed normally with a full dump verified against checksum. Added a CloudWatch alarm so silent failures like this trigger an alert going forward.", False, 18),
+    ("DEMO_15", "customer", "All good — backups are running normally again and we appreciate the alarm being added. Will look at adding similar monitoring for our other jobs.", False, 20),
 ]
 
 

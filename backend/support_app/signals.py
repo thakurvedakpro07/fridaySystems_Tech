@@ -10,11 +10,14 @@ Signals registered here:
   1. auto_generate_ticket_number  — set TKT-XXXXX before first save
   2. log_ticket_changes           — write TicketActivityLog on status/severity changes
   3. set_ticket_resolved_at       — stamp resolved_at when status → resolved
+  4. auto_generate_kb_article_slug — set a unique slug before first save
+  5. stamp_kb_article_published_at — set published_at on draft -> published
 """
 
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
+from django.utils.text import slugify
 
 
 # ── Signal 1: Ticket number generation ───────────────────────────
@@ -140,3 +143,43 @@ def log_ticket_created(sender, instance, created, **kwargs):
             from_value = "",
             to_value   = instance.status,
         )
+
+
+# ── Signal 5: Knowledge Base article slug ────────────────────────
+# pre_save, mirrors auto_generate_ticket_number: derive a URL-safe slug
+# from the title once, uniquify on collision with a numeric suffix.
+
+@receiver(pre_save, sender="support_app.KBArticle")
+def auto_generate_kb_article_slug(sender, instance, **kwargs):
+    if instance.slug:
+        return
+
+    base_slug = slugify(instance.title)[:240] or "article"
+    slug = base_slug
+    suffix = 2
+    while sender.objects.filter(slug=slug).exclude(pk=instance.pk).exists():
+        slug = f"{base_slug}-{suffix}"
+        suffix += 1
+    instance.slug = slug
+
+
+# ── Signal 6: Knowledge Base article published_at stamp ──────────
+# pre_save — mirrors log_ticket_changes' "fetch old row, compare" idiom.
+
+@receiver(pre_save, sender="support_app.KBArticle")
+def stamp_kb_article_published_at(sender, instance, **kwargs):
+    if instance.status != "published" or instance.published_at:
+        return
+
+    if not instance.pk:
+        instance.published_at = timezone.now()
+        return
+
+    try:
+        old = sender.objects.get(pk=instance.pk)
+    except sender.DoesNotExist:
+        instance.published_at = timezone.now()
+        return
+
+    if old.status != "published":
+        instance.published_at = timezone.now()

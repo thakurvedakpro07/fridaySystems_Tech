@@ -160,4 +160,15 @@ urlpatterns = [
 
     # ── Ops: Analytics (role-scoped) ──────────────────────────────
     path("ops/analytics/",                                  views.ops_analytics,                    name="ops-analytics"),
+
+    # ── Knowledge Base ──────────────────────────────────────────
+    path("kb/articles/",                                    views.KBArticleListCreateView.as_view(), name="kb-article-list"),
+    path("kb/articles/<uuid:pk>/",                          views.KBArticleDetailView.as_view(),     name="kb-article-detail"),
+    path("kb/categories/",                                  views.kb_categories,                     name="kb-categories"),
+    path("tickets/<uuid:ticket_id>/kb-articles/",           views.ticket_kb_articles,                name="ticket-kb-articles"),
+    path("tickets/<uuid:ticket_id>/kb-articles/<uuid:article_id>/link/", views.kb_link_article,       name="kb-article-link"),
+
+    # ── AI Assistant (internal staff only) ────────────────────────
+    path("tickets/<uuid:ticket_id>/ai-assistant/",          views.ai_assistant_view,                 name="ticket-ai-assistant"),
+    path("tickets/<uuid:ticket_id>/ai-assistant/log-insert/", views.ai_assistant_log_insert,          name="ticket-ai-assistant-log-insert"),
 ]

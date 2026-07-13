@@ -116,13 +116,14 @@ function Card({ title, children }) {
 }
 
 const SERVICE_LABELS = {
-  desktop:      "Desktop",
-  linux:        "Linux",
-  windows:      "Windows",
-  patching:     "Patching",
-  security:     "Security",
-  vmware:       "VMware",
-  sap:          "SAP",
+  laptop_desktop:   "Laptop / Desktop",
+  server_admin:     "Server Admin",
+  aws:              "AWS",
+  azure:            "Azure",
+  kubernetes:       "Kubernetes",
+  database:         "Database",
+  devops_cicd:      "DevOps CI/CD",
+  infra_automation: "Infra Automation",
 };
 
 const SEVERITY_COLORS = {

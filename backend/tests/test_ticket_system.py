@@ -59,7 +59,7 @@ def freelancer_user(db):
     )
     Freelancer.objects.create(
         user=user,
-        skills="linux,vmware",
+        skills="server_admin,kubernetes",
         onboarding_status="approved",
         active=True,
     )
@@ -82,7 +82,7 @@ def ticket(db, customer_user):
     return Ticket.objects.create(
         customer=customer_user.customer_profile,
         title="Linux server down",
-        service_type="linux",
+        service_type="server_admin",
         severity="high",
         status="open",
     )
@@ -99,7 +99,7 @@ def test_ticket_creation_logs_activity(customer_user):
         customer=customer_user.customer_profile,
         validated_data={
             "title": "SSH broken",
-            "service_type": "linux",
+            "service_type": "server_admin",
             "severity": "high",
         },
     )
@@ -175,7 +175,7 @@ def test_reassignment_closes_old_assignment(ticket, freelancer_user, admin_user,
     )
     freelancer_b = Freelancer.objects.create(
         user=freelancer_b_user,
-        skills="sap",
+        skills="database",
         onboarding_status="approved",
         active=True,
     )

@@ -16,7 +16,7 @@ def mock_ticket():
     ticket = MagicMock()
     ticket.ticket_number = "TKT-0001"
     ticket.severity = "medium"
-    ticket.service_type = "linux"
+    ticket.service_type = "server_admin"
     ticket.sla_breach_notified = False
     ticket.due_at = None
     return ticket
@@ -202,7 +202,7 @@ def _make_open_ticket(email: str):
     ticket = Ticket.objects.create(
         customer=customer,
         title="SLA test ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="medium",
         status="open",
     )
@@ -234,7 +234,7 @@ def test_set_ticket_due_at_respects_severity(severity, expected_order):
     ticket = Ticket.objects.create(
         customer=customer,
         title=f"SLA {severity} test",
-        service_type="linux",
+        service_type="server_admin",
         severity=severity,
         status="open",
     )
@@ -344,7 +344,7 @@ def test_payment_verified_initializes_sla():
     ticket = Ticket.objects.create(
         customer=customer,
         title="SLA payment test",
-        service_type="linux",
+        service_type="server_admin",
         severity="high",
         status="pending_payment",
     )
@@ -412,7 +412,7 @@ def test_first_response_due_at_exact_timing(severity, expected_minutes, expected
     ticket = Ticket.objects.create(
         customer=customer,
         title=f"SLA timing test — {severity}",
-        service_type="linux",
+        service_type="server_admin",
         severity=severity,
         status="open",
     )
@@ -450,7 +450,7 @@ def test_closed_ticket_excluded_from_sla_check():
     ticket = Ticket.objects.create(
         customer=customer,
         title="Closed SLA ticket",
-        service_type="linux",
+        service_type="server_admin",
         severity="critical",
         status="closed",
         due_at=timezone.now() - datetime.timedelta(hours=10),

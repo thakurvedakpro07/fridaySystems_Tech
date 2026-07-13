@@ -154,7 +154,7 @@ class Command(BaseCommand):
                 _, p_created = Freelancer.objects.get_or_create(
                     user=user,
                     defaults={
-                        "skills":            "linux,networking,sap",
+                        "skills":            "server_admin,aws,database",
                         "availability":      "full_time",
                         "onboarding_status": "approved",
                         "active":            True,

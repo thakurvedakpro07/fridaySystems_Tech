@@ -58,7 +58,7 @@ function ServiceModal({ open, onClose, onSave, initial, loading }) {
             <Input
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="e.g. Linux Provisioning"
+              placeholder="e.g. Kubernetes Support"
             />
           </div>
 
@@ -78,7 +78,7 @@ function ServiceModal({ open, onClose, onSave, initial, loading }) {
             <Input
               value={form.required_skills}
               onChange={(e) => setForm((f) => ({ ...f, required_skills: e.target.value }))}
-              placeholder="e.g. linux, bash, vmware (comma-separated)"
+              placeholder="e.g. aws, kubernetes, server_admin (comma-separated)"
             />
           </div>
 
