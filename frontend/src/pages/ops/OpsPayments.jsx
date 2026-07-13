@@ -12,15 +12,7 @@ import {
 import { extractErrorMessage } from "../../utils/apiError";
 import Badge from "../../components/ui/Badge";
 import PageHeader from "../../components/ui/PageHeader";
-
-function SummaryCard({ label, value }) {
-  return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5">
-      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-2xl font-bold text-slate-800">{value}</p>
-    </div>
-  );
-}
+import StatTile from "../../components/dashboard/StatTile";
 
 export default function OpsPayments() {
   usePageTitle("Payments — ResolveHQ");
@@ -93,9 +85,9 @@ export default function OpsPayments() {
         {/* Summary cards — Finance Manager + Super Admin only */}
         {canWrite && summary && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <SummaryCard label="Total Revenue" value={`₹${summary.total_revenue?.toLocaleString("en-IN") ?? "—"}`} />
-            <SummaryCard label="Refunds" value={summary.refund_count ?? "—"} />
-            <SummaryCard label="Payment Types" value={summary.by_type?.length ?? "—"} />
+            <StatTile label="Total Revenue" value={`₹${summary.total_revenue?.toLocaleString("en-IN") ?? "—"}`} />
+            <StatTile label="Refunds" value={summary.refund_count ?? "—"} />
+            <StatTile label="Payment Types" value={summary.by_type?.length ?? "—"} />
           </div>
         )}
 

@@ -1,6 +1,7 @@
 // Temporary placeholder contact information. Replace before production launch.
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import Alert from "../components/ui/Alert";
 import Button from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
 import { usePageTitle } from "../hooks/usePageTitle";
@@ -326,18 +327,13 @@ export default function RegisterCustomer() {
             )}
 
             {errors.length > 0 && (
-              <div className="flex items-start gap-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl px-4 py-3 mb-5">
-                <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                </svg>
-                <div>
-                  {errors.length === 1 ? errors[0] : (
-                    <ul className="list-disc list-inside space-y-0.5">
-                      {errors.map((e, i) => <li key={i}>{e}</li>)}
-                    </ul>
-                  )}
-                </div>
-              </div>
+              <Alert severity="error" className="mb-5">
+                {errors.length === 1 ? errors[0] : (
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {errors.map((e, i) => <li key={i}>{e}</li>)}
+                  </ul>
+                )}
+              </Alert>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">

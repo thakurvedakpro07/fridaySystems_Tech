@@ -12,6 +12,7 @@ import {
 import Badge from "../../components/ui/Badge";
 import PageHeader from "../../components/ui/PageHeader";
 import Alert from "../../components/ui/Alert";
+import TableCard from "../../components/table/TableCard";
 
 // ── Constants ─────────────────────────────────────────────────────
 // Human-readable role labels — kept here (rather than only inside Badge's
@@ -337,92 +338,81 @@ export default function OpsUsers() {
         {error && <Alert severity="error">{error}</Alert>}
 
         {/* Table */}
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-          {/* Table header */}
-          <div className="grid grid-cols-[1fr_1.5fr_1fr_0.7fr_1fr_auto] gap-4 px-6 py-3 border-b border-slate-100 bg-slate-50">
-            {["Name", "Email", "Role", "Status", "Joined", "Actions"].map((h) => (
-              <p key={h} className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">{h}</p>
-            ))}
-          </div>
-
-          {loading ? (
-            <div className="p-6 space-y-3">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-12 bg-slate-50 animate-pulse rounded-xl" />
-              ))}
-            </div>
-          ) : users.length === 0 ? (
+        <TableCard
+          columns={["Name", "Email", "Role", "Status", "Joined", "Actions"]}
+          gridColsClassName="grid-cols-[1fr_1.5fr_1fr_0.7fr_1fr_auto]"
+          loading={loading}
+          isEmpty={users.length === 0}
+          emptyState={
             <div className="py-16 text-center">
               <p className="text-sm font-semibold text-slate-700">No users found</p>
               <p className="text-xs text-slate-500 mt-1">Try adjusting your search or filters.</p>
             </div>
-          ) : (
-            <div className="divide-y divide-slate-50">
-              {users.map((u) => {
-                const isSelf = u.id === currentUser?.id;
-                return (
-                  <motion.div
-                    key={u.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="grid grid-cols-[1fr_1.5fr_1fr_0.7fr_1fr_auto] gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 truncate">
-                        {u.full_name || "—"}
-                        {isSelf && <span className="ml-1.5 text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">(you)</span>}
-                      </p>
-                    </div>
-                    <p className="text-sm text-slate-500 truncate">{u.email}</p>
-                    <Badge domain="role" label={u.role} />
-                    <Badge domain="active" label={u.is_active ? "active" : "inactive"} />
-                    <p className="text-xs text-slate-500">{fmtDate(u.date_joined)}</p>
+          }
+        >
+          {users.map((u) => {
+            const isSelf = u.id === currentUser?.id;
+            return (
+              <motion.div
+                key={u.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="grid grid-cols-[1fr_1.5fr_1fr_0.7fr_1fr_auto] gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 truncate">
+                    {u.full_name || "—"}
+                    {isSelf && <span className="ml-1.5 text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">(you)</span>}
+                  </p>
+                </div>
+                <p className="text-sm text-slate-500 truncate">{u.email}</p>
+                <Badge domain="role" label={u.role} />
+                <Badge domain="active" label={u.is_active ? "active" : "inactive"} />
+                <p className="text-xs text-slate-500">{fmtDate(u.date_joined)}</p>
 
-                    {/* Action buttons — Super Admin only */}
-                    <div className="flex items-center gap-2 justify-end shrink-0">
-                      {isSuperAdmin && !isSelf && (
-                        <>
-                          <button
-                            onClick={() => setRoleModal({ open: true, user: u })}
-                            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 border border-indigo-200 hover:border-indigo-400 px-2.5 py-1.5 rounded-lg transition-colors"
-                          >
-                            Change Role
-                          </button>
-                          {u.is_active ? (
-                            <button
-                              onClick={() => setConfirmModal({
-                                open: true, action: "deactivate", user: u, danger: true,
-                                label: "Deactivate",
-                                body: `Deactivate ${u.email}? They will not be able to log in.`,
-                              })}
-                              className="text-xs font-semibold text-rose-600 hover:text-rose-800 border border-rose-200 hover:border-rose-300 px-2.5 py-1.5 rounded-lg transition-colors"
-                            >
-                              Deactivate
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => setConfirmModal({
-                                open: true, action: "reactivate", user: u, danger: false,
-                                label: "Reactivate",
-                                body: `Reactivate ${u.email}? They will be able to log in again.`,
-                              })}
-                              className="text-xs font-semibold text-emerald-600 hover:text-emerald-800 border border-emerald-200 hover:border-emerald-300 px-2.5 py-1.5 rounded-lg transition-colors"
-                            >
-                              Reactivate
-                            </button>
-                          )}
-                        </>
+                {/* Action buttons — Super Admin only */}
+                <div className="flex items-center gap-2 justify-end shrink-0">
+                  {isSuperAdmin && !isSelf && (
+                    <>
+                      <button
+                        onClick={() => setRoleModal({ open: true, user: u })}
+                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 border border-indigo-200 hover:border-indigo-400 px-2.5 py-1.5 rounded-lg transition-colors"
+                      >
+                        Change Role
+                      </button>
+                      {u.is_active ? (
+                        <button
+                          onClick={() => setConfirmModal({
+                            open: true, action: "deactivate", user: u, danger: true,
+                            label: "Deactivate",
+                            body: `Deactivate ${u.email}? They will not be able to log in.`,
+                          })}
+                          className="text-xs font-semibold text-rose-600 hover:text-rose-800 border border-rose-200 hover:border-rose-300 px-2.5 py-1.5 rounded-lg transition-colors"
+                        >
+                          Deactivate
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmModal({
+                            open: true, action: "reactivate", user: u, danger: false,
+                            label: "Reactivate",
+                            body: `Reactivate ${u.email}? They will be able to log in again.`,
+                          })}
+                          className="text-xs font-semibold text-emerald-600 hover:text-emerald-800 border border-emerald-200 hover:border-emerald-300 px-2.5 py-1.5 rounded-lg transition-colors"
+                        >
+                          Reactivate
+                        </button>
                       )}
-                      {(!isSuperAdmin || isSelf) && (
-                        <span className="text-xs text-slate-500 italic">View only</span>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                    </>
+                  )}
+                  {(!isSuperAdmin || isSelf) && (
+                    <span className="text-xs text-slate-500 italic">View only</span>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </TableCard>
 
       </div>
 

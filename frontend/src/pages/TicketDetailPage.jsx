@@ -4,6 +4,7 @@ import TicketDetail from "../components/tickets/TicketDetail";
 import MainLayout from "../components/layouts/MainLayout";
 import Spinner from "../components/ui/Spinner";
 import Alert from "../components/ui/Alert";
+import Skeleton from "../components/ui/Skeleton";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useRoleTicketFetcher } from "../hooks/useRoleTicketFetcher";
 
@@ -59,34 +60,34 @@ export default function TicketDetailPage() {
         <div className="animate-fade-in space-y-4">
           {/* Back button + hero header placeholder — keeps the loaded state from jumping */}
           <div className="space-y-2">
-            <div className="h-4 w-28 shimmer rounded-full" />
+            <Skeleton className="h-4 w-28 rounded-full" />
             <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5">
-              <div className="h-3 w-24 shimmer rounded-full mb-1.5" />
-              <div className="h-9 w-2/3 shimmer rounded-full mb-2" />
-              <div className="h-3 w-4/5 shimmer rounded-full mb-3" />
+              <Skeleton className="h-3 w-24 rounded-full mb-1.5" />
+              <Skeleton className="h-9 w-2/3 rounded-full mb-2" />
+              <Skeleton className="h-3 w-4/5 rounded-full mb-3" />
               <div className="flex gap-1.5">
-                <div className="h-5 w-16 shimmer rounded-md" />
-                <div className="h-5 w-16 shimmer rounded-md" />
-                <div className="h-5 w-16 shimmer rounded-md" />
+                <Skeleton className="h-5 w-16 rounded-md" />
+                <Skeleton className="h-5 w-16 rounded-md" />
+                <Skeleton className="h-5 w-16 rounded-md" />
               </div>
             </div>
           </div>
 
           <div className="ticket-detail-grid">
             <div className="ticket-grid-conversation bg-white border border-slate-200 rounded-2xl p-6">
-              <div className="h-4 w-32 shimmer rounded-full mb-4" />
+              <Skeleton className="h-4 w-32 rounded-full mb-4" />
               <div className="space-y-2.5">
-                <div className="h-3 shimmer rounded-full" />
-                <div className="h-3 w-4/5 shimmer rounded-full" />
-                <div className="h-3 w-3/5 shimmer rounded-full" />
+                <Skeleton className="h-3 rounded-full" />
+                <Skeleton className="h-3 w-4/5 rounded-full" />
+                <Skeleton className="h-3 w-3/5 rounded-full" />
               </div>
             </div>
             <div className="ticket-grid-sidebar bg-white border border-slate-200 rounded-2xl p-5">
-              <div className="h-3 w-28 shimmer rounded-full mb-4" />
+              <Skeleton className="h-3 w-28 rounded-full mb-4" />
               <div className="space-y-2.5">
-                <div className="h-3 shimmer rounded-full" />
-                <div className="h-3 w-4/5 shimmer rounded-full" />
-                <div className="h-3 w-3/5 shimmer rounded-full" />
+                <Skeleton className="h-3 rounded-full" />
+                <Skeleton className="h-3 w-4/5 rounded-full" />
+                <Skeleton className="h-3 w-3/5 rounded-full" />
               </div>
             </div>
           </div>

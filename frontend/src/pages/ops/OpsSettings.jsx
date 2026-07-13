@@ -1,4 +1,5 @@
 import AppShell from "../../components/layout/AppShell";
+import PageHeader from "../../components/ui/PageHeader";
 import { usePageTitle } from "../../hooks/usePageTitle";
 
 export default function OpsSettings() {
@@ -7,8 +8,7 @@ export default function OpsSettings() {
   return (
     <AppShell>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-2xl font-bold text-slate-800">Platform Settings</h1>
-        <p className="text-sm text-slate-500 mt-1">Super Admin configuration for platform-wide settings.</p>
+        <PageHeader title="Platform Settings" description="Super Admin configuration for platform-wide settings." />
         <div className="mt-8 bg-white border border-slate-200 rounded-xl p-6 text-slate-500 text-sm">
           Platform settings coming soon.
         </div>

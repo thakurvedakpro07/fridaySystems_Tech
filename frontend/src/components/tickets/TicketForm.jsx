@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { listServices } from "../../api/tickets";
+import Alert from "../ui/Alert";
 import Button from "../ui/Button";
 
 const GST_RATE = 0.18;
@@ -137,12 +138,7 @@ export default function TicketForm({ onSubmit, loading }) {
           What do you need help with? <span className="text-rose-500">*</span>
         </label>
         {serviceError ? (
-          <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl px-4 py-3">
-            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-            </svg>
-            Could not load services. Please refresh the page.
-          </div>
+          <Alert severity="error">Could not load services. Please refresh the page.</Alert>
         ) : !catalog ? (
           <div className="h-10 bg-slate-100 rounded-xl animate-pulse" />
         ) : (

@@ -6,6 +6,7 @@ import { getOpsRoleAudit } from "../../api/ops";
 import Badge from "../../components/ui/Badge";
 import PageHeader from "../../components/ui/PageHeader";
 import Alert from "../../components/ui/Alert";
+import TableCard from "../../components/table/TableCard";
 
 function RolePill({ role }) {
   return <Badge domain="role" label={role} />;
@@ -79,21 +80,12 @@ export default function OpsRoles() {
         {error && <Alert severity="error">{error}</Alert>}
 
         {/* Timeline */}
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-          {/* Column headers */}
-          <div className="grid grid-cols-[1.5fr_0.9fr_0.9fr_1.2fr_1fr] gap-4 px-6 py-3 border-b border-slate-100 bg-slate-50">
-            {["User", "From", "To", "Changed By", "Date"].map((h) => (
-              <p key={h} className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">{h}</p>
-            ))}
-          </div>
-
-          {loading ? (
-            <div className="p-6 space-y-3">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-12 bg-slate-50 animate-pulse rounded-xl" />
-              ))}
-            </div>
-          ) : entries.length === 0 ? (
+        <TableCard
+          columns={["User", "From", "To", "Changed By", "Date"]}
+          gridColsClassName="grid-cols-[1.5fr_0.9fr_0.9fr_1.2fr_1fr]"
+          loading={loading}
+          isEmpty={entries.length === 0}
+          emptyState={
             <div className="py-16 text-center">
               <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
                 <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -104,36 +96,34 @@ export default function OpsRoles() {
               <p className="text-sm font-semibold text-slate-700">No role changes recorded</p>
               <p className="text-xs text-slate-500 mt-1">Every role promotion and demotion will appear here.</p>
             </div>
-          ) : (
-            <div className="divide-y divide-slate-50">
-              {entries.map((entry, idx) => (
-                <motion.div
-                  key={entry.id}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.03 }}
-                  className="grid grid-cols-[1.5fr_0.9fr_0.9fr_1.2fr_1fr] gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">{entry.target_email}</p>
-                    {entry.note && (
-                      <p className="text-[11px] text-slate-500 italic truncate mt-0.5">"{entry.note}"</p>
-                    )}
-                  </div>
-                  <RolePill role={entry.old_role} />
-                  <div className="flex items-center gap-1">
-                    <svg className="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                    </svg>
-                    <RolePill role={entry.new_role} />
-                  </div>
-                  <p className="text-xs text-slate-500 truncate">{entry.changed_by_email}</p>
-                  <p className="text-xs text-slate-500">{fmtDateTime(entry.timestamp)}</p>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
+          }
+        >
+          {entries.map((entry, idx) => (
+            <motion.div
+              key={entry.id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.03 }}
+              className="grid grid-cols-[1.5fr_0.9fr_0.9fr_1.2fr_1fr] gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900 truncate">{entry.target_email}</p>
+                {entry.note && (
+                  <p className="text-[11px] text-slate-500 italic truncate mt-0.5">"{entry.note}"</p>
+                )}
+              </div>
+              <RolePill role={entry.old_role} />
+              <div className="flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+                <RolePill role={entry.new_role} />
+              </div>
+              <p className="text-xs text-slate-500 truncate">{entry.changed_by_email}</p>
+              <p className="text-xs text-slate-500">{fmtDateTime(entry.timestamp)}</p>
+            </motion.div>
+          ))}
+        </TableCard>
 
       </div>
     </AppShell>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import apiClient from "../api/client";
+import Alert from "../components/ui/Alert";
 import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function ForgotPassword() {
@@ -44,11 +45,7 @@ export default function ForgotPassword() {
             </div>
           ) : (
             <>
-              {error && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl px-4 py-3 mb-4">
-                  {error}
-                </div>
-              )}
+              {error && <Alert severity="error" className="mb-4">{error}</Alert>}
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label htmlFor="fp-email" className="block text-sm font-medium text-slate-700 mb-1.5">

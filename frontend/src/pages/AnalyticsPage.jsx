@@ -4,6 +4,7 @@ import MainLayout from "../components/layouts/MainLayout";
 import { SkeletonCard } from "../components/ui/Spinner";
 import Alert from "../components/ui/Alert";
 import PageHeader from "../components/ui/PageHeader";
+import Skeleton from "../components/ui/Skeleton";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useAuthStore } from "../store/authStore";
 
@@ -159,8 +160,8 @@ export default function AnalyticsPage() {
     return (
       <MainLayout maxWidth="max-w-5xl">
         <div className="mb-6">
-          <div className="h-6 w-48 shimmer rounded-full mb-2" />
-          <div className="h-4 w-64 shimmer rounded-full" />
+          <Skeleton className="h-6 w-48 rounded-full mb-2" />
+          <Skeleton className="h-4 w-64 rounded-full" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[1,2,3,4].map((n) => <SkeletonCard key={n} />)}

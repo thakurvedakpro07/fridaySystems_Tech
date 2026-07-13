@@ -76,6 +76,56 @@ test.describe("Staff / admin pages", () => {
     await page.getByRole("button", { name: "Security" }).click();
     await expect(page.getByText("Change Password")).toBeVisible();
   });
+
+  // Phase 3: hand-rolled <h1> replaced with the shared PageHeader.
+  test("OpsSettings renders a shared PageHeader", async ({ page }) => {
+    await page.goto("/operations/settings");
+    await expect(page.locator('[data-ds="page-header"]')).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Platform Settings" })).toBeVisible();
+  });
+
+  // Phase 3: OpsUsers/OpsRoles' verbatim-duplicated table wrapper + column
+  // header + skeleton block extracted into components/table/TableCard.jsx.
+  test("OpsUsers and OpsRoles render via the shared TableCard shell", async ({ page }) => {
+    await page.goto("/operations/users");
+    await expect(page.getByText("Name", { exact: true })).toBeVisible();
+    await expect(page.getByText("Actions", { exact: true })).toBeVisible();
+
+    await page.goto("/operations/roles");
+    await expect(page.getByText("Changed By", { exact: true })).toBeVisible();
+  });
+
+  // Phase 3: OpsAnalytics' StatCard and OpsPayments' SummaryCard (identical
+  // markup, different names) merged into components/dashboard/StatTile.jsx.
+  test("OpsAnalytics and OpsPayments render the merged StatTile", async ({ page }) => {
+    await page.goto("/operations/analytics");
+    await expect(page.getByText("Total (30d)")).toBeVisible();
+
+    await page.goto("/operations/payments");
+    await expect(page.getByText("Total Revenue")).toBeVisible();
+  });
+});
+
+// Phase 3: hand-rolled rose error banners (identical to Alert severity="error")
+// replaced across auth pages. The login request is mocked with a 400 (not
+// 401) response: client.js's response interceptor treats *any* 401 —
+// including from the login endpoint itself on bad credentials — as a
+// session-expiry and hard-redirects to /login?session_expired=1 before React
+// can render the error state (a pre-existing bug, unrelated to this phase,
+// out of scope to fix here). A 400 avoids that interceptor path entirely
+// while still exercising the real component code that renders the Alert.
+test.describe("Auth pages", () => {
+  test("Login shows a shared Alert on a failed sign-in", async ({ page }) => {
+    await page.route("**/api/auth/login/", (route) =>
+      route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ detail: "Invalid credentials." }) })
+    );
+    await page.goto("/login");
+    await page.fill('input[name="email"]', "customer@resolvehq.dev");
+    await page.fill('input[name="password"]', "wrong-password-123");
+    await page.click('button[type="submit"]');
+    await expect(page.locator('[data-ds="alert"]')).toBeVisible();
+    await expect(page.locator('[data-ds="alert"]')).toContainText("Invalid credentials.");
+  });
 });
 
 // Phase 2: shared PageHeader / Card adoption on the customer-facing
@@ -95,6 +145,19 @@ test.describe("Customer-facing pages", () => {
     await expect(page.locator('[data-ds="page-header"]')).toBeVisible();
     await expect(page.locator('[data-ds="card"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "Payment history" })).toBeVisible();
+  });
+
+  // Phase 3: NewTicket/TicketForm's hand-rolled error banner replaced with
+  // Alert — smoke-checks the page still renders correctly with the new import.
+  test("New Ticket page renders correctly with the shared Alert import", async ({ page }) => {
+    await page.goto("/tickets/new");
+    await expect(page.getByRole("heading", { name: "Open a Support Ticket" })).toBeVisible();
+  });
+
+  // Phase 3: raw shimmer divs replaced with the shared Skeleton component.
+  test("Analytics page renders correctly after the Skeleton migration", async ({ page }) => {
+    await page.goto("/analytics");
+    await expect(page.getByRole("heading", { name: "My Ticket Analytics" })).toBeVisible();
   });
 });
 

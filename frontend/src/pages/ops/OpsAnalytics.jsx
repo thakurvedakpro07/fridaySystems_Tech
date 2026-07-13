@@ -6,6 +6,7 @@ import { useToast } from "../../context/ToastContext";
 import { getOpsAnalytics } from "../../api/ops";
 import { extractErrorMessage } from "../../utils/apiError";
 import PageHeader from "../../components/ui/PageHeader";
+import StatTile from "../../components/dashboard/StatTile";
 
 const SEVERITY_COLORS = {
   low:      "#10b981",
@@ -25,16 +26,6 @@ const TICKET_STATUS_LABELS = {
   assigned:    "Ready to Start",
   in_progress: "Work Started",
 };
-
-function StatCard({ label, value, sub }) {
-  return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5">
-      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-2xl font-bold text-slate-800">{value ?? "—"}</p>
-      {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
-    </div>
-  );
-}
 
 function SectionHeader({ title, description }) {
   return (
@@ -87,11 +78,11 @@ export default function OpsAnalytics() {
           <section>
             <SectionHeader title="Operational Overview" description="Ticket activity over the last 30 days." />
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-              <StatCard label="Total (30d)"  value={ops.total_last_30_days} />
-              <StatCard label="Open"         value={ops.by_status?.open ?? 0} />
-              <StatCard label="Ready to Start" value={ops.by_status?.assigned ?? 0} />
-              <StatCard label="Work Started" value={ops.by_status?.in_progress ?? 0} />
-              <StatCard label="Avg Resolution" value={ops.avg_resolution_hours != null ? `${ops.avg_resolution_hours}h` : "—"} sub="Mean time to resolve" />
+              <StatTile label="Total (30d)"  value={ops.total_last_30_days} />
+              <StatTile label="Open"         value={ops.by_status?.open ?? 0} />
+              <StatTile label="Ready to Start" value={ops.by_status?.assigned ?? 0} />
+              <StatTile label="Work Started" value={ops.by_status?.in_progress ?? 0} />
+              <StatTile label="Avg Resolution" value={ops.avg_resolution_hours != null ? `${ops.avg_resolution_hours}h` : "—"} sub="Mean time to resolve" />
             </div>
             {ops.by_status && (
               <div className="mt-4 bg-white border border-slate-200 rounded-xl p-5">
@@ -183,12 +174,12 @@ export default function OpsAnalytics() {
           <section>
             <SectionHeader title="Financial Overview" description="Revenue and payment metrics." />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <StatCard label="Total Revenue"       value={`₹${fin.total_revenue?.toLocaleString("en-IN")}`} />
-              <StatCard label="Refund Count"        value={fin.refund_count} />
-              <StatCard label="Pending Payouts"
+              <StatTile label="Total Revenue"       value={`₹${fin.total_revenue?.toLocaleString("en-IN")}`} />
+              <StatTile label="Refund Count"        value={fin.refund_count} />
+              <StatTile label="Pending Payouts"
                         value={`₹${Math.round(fin.pending_payouts_total ?? 0).toLocaleString("en-IN")}`}
                         sub="Awaiting bank transfer" />
-              <StatCard label="Monthly Periods"     value={fin.monthly_revenue?.length} sub="Months with revenue" />
+              <StatTile label="Monthly Periods"     value={fin.monthly_revenue?.length} sub="Months with revenue" />
             </div>
             {fin.monthly_revenue?.length > 0 && (
               <div className="mt-4 bg-white border border-slate-200 rounded-xl p-5">
