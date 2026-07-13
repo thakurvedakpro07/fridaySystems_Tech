@@ -160,6 +160,7 @@ urlpatterns = [
 
     # ── Ops: Analytics (role-scoped) ──────────────────────────────
     path("ops/analytics/",                                  views.ops_analytics,                    name="ops-analytics"),
+    path("ops/executive-analytics/",                        views.executive_analytics,              name="ops-executive-analytics"),
 
     # ── Knowledge Base ──────────────────────────────────────────
     path("kb/articles/",                                    views.KBArticleListCreateView.as_view(), name="kb-article-list"),

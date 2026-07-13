@@ -6,11 +6,14 @@ Run with:
   pytest tests/test_tickets.py -v
 """
 
+from datetime import timedelta
+
 import pytest
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework.test import APIClient
 
-from support_app.models import Customer, Ticket
+from support_app.models import Customer, Freelancer, Ticket, TicketComment
 
 User = get_user_model()
 
@@ -293,3 +296,205 @@ def test_csat_returns_404_for_other_customers_ticket(db):
         format="json",
     )
     assert response.status_code == 404
+
+
+# ── Customer Workspace Phase 1 — SLA status & reply-ownership signals ──
+
+def _make_customer(email):
+    """Helper: create a customer User + Customer profile, return the User."""
+    user = User.objects.create_user(email=email, password="StrongPass123!", role="customer")
+    Customer.objects.create(user=user, company="Co")
+    return user
+
+
+def _make_freelancer(email):
+    """Helper: create a freelancer User + Freelancer profile, return the User."""
+    user = User.objects.create_user(email=email, password="StrongPass123!", role="freelancer")
+    Freelancer.objects.create(
+        user=user, skills="server_admin", onboarding_status="approved", active=True
+    )
+    return user
+
+
+def _client_for(user):
+    client = APIClient()
+    client.force_authenticate(user=user)
+    return client
+
+
+@pytest.mark.django_db
+def test_customer_list_includes_sla_and_ownership_fields(db):
+    """
+    GET /api/tickets/ must include sla_status plus the reply-ownership
+    fields for a ticket whose due_at has already passed.
+    """
+    customer = _make_customer("sla_a@example.com")
+    Ticket.objects.create(
+        customer=customer.customer_profile,
+        title="Overdue ticket",
+        service_type="server_admin",
+        severity="high",
+        status="in_progress",
+        due_at=timezone.now() - timedelta(hours=1),
+    )
+
+    response = _client_for(customer).get("/api/tickets/")
+    assert response.status_code == 200
+    ticket_data = response.data["results"][0]
+    assert ticket_data["sla_status"] == "overdue"
+    for field in (
+        "updated_at", "due_at", "first_response_due_at", "assigned_to",
+        "waiting_on_customer", "awaiting_engineer_reply",
+        "waiting_on_internal", "last_public_comment_at",
+    ):
+        assert field in ticket_data
+
+
+@pytest.mark.django_db
+def test_customer_list_sla_status_ok_and_due_soon(db):
+    """sla_status must distinguish a far-future deadline (ok) from one within 2h (due_soon)."""
+    customer = _make_customer("sla_b@example.com")
+    ok_ticket = Ticket.objects.create(
+        customer=customer.customer_profile,
+        title="Plenty of time",
+        service_type="server_admin",
+        severity="medium",
+        status="open",
+        due_at=timezone.now() + timedelta(hours=24),
+    )
+    due_soon_ticket = Ticket.objects.create(
+        customer=customer.customer_profile,
+        title="Cutting it close",
+        service_type="server_admin",
+        severity="medium",
+        status="open",
+        due_at=timezone.now() + timedelta(minutes=30),
+    )
+
+    response = _client_for(customer).get("/api/tickets/")
+    assert response.status_code == 200
+    by_id = {t["id"]: t for t in response.data["results"]}
+    assert by_id[str(ok_ticket.id)]["sla_status"] == "ok"
+    assert by_id[str(due_soon_ticket.id)]["sla_status"] == "due_soon"
+
+
+@pytest.mark.django_db
+def test_customer_list_waiting_on_customer_true(db):
+    """
+    When the latest public comment was posted by the engineer, the ticket
+    is waiting on the customer to reply.
+    """
+    customer = _make_customer("sla_c@example.com")
+    freelancer = _make_freelancer("sla_c_engineer@example.com")
+    ticket = Ticket.objects.create(
+        customer=customer.customer_profile,
+        title="Engineer replied",
+        service_type="server_admin",
+        severity="medium",
+        status="in_progress",
+        assigned_to=freelancer.freelancer_profile,
+    )
+    TicketComment.objects.create(
+        ticket=ticket, author=freelancer, body="Looking into it", is_internal=False
+    )
+
+    response = _client_for(customer).get("/api/tickets/")
+    ticket_data = response.data["results"][0]
+    assert ticket_data["waiting_on_customer"] is True
+    assert ticket_data["awaiting_engineer_reply"] is False
+    assert ticket_data["assigned_to"]["email"] == freelancer.email
+
+
+@pytest.mark.django_db
+def test_customer_list_awaiting_engineer_reply_true(db):
+    """
+    When the latest public comment was posted by the customer, the ticket
+    is awaiting the engineer's reply.
+    """
+    customer = _make_customer("sla_d@example.com")
+    freelancer = _make_freelancer("sla_d_engineer@example.com")
+    ticket = Ticket.objects.create(
+        customer=customer.customer_profile,
+        title="Customer replied",
+        service_type="server_admin",
+        severity="medium",
+        status="in_progress",
+        assigned_to=freelancer.freelancer_profile,
+    )
+    TicketComment.objects.create(
+        ticket=ticket, author=customer, body="Any update?", is_internal=False
+    )
+
+    response = _client_for(customer).get("/api/tickets/")
+    ticket_data = response.data["results"][0]
+    assert ticket_data["awaiting_engineer_reply"] is True
+    assert ticket_data["waiting_on_customer"] is False
+
+
+@pytest.mark.django_db
+def test_customer_list_exclude_status(db):
+    """?exclude_status=closed must omit closed tickets from the list."""
+    customer = _make_customer("sla_e@example.com")
+    open_ticket = Ticket.objects.create(
+        customer=customer.customer_profile, title="Still open",
+        service_type="server_admin", severity="low", status="open",
+    )
+    closed_ticket = Ticket.objects.create(
+        customer=customer.customer_profile, title="Already closed",
+        service_type="server_admin", severity="low", status="closed",
+    )
+
+    response = _client_for(customer).get("/api/tickets/?exclude_status=closed")
+    assert response.status_code == 200
+    ids = {t["id"] for t in response.data["results"]}
+    assert str(open_ticket.id) in ids
+    assert str(closed_ticket.id) not in ids
+
+
+@pytest.mark.django_db
+def test_customer_list_page_size_param(db):
+    """?page_size= must be honored (previously capped at 20 regardless)."""
+    customer = _make_customer("sla_f@example.com")
+    for i in range(25):
+        Ticket.objects.create(
+            customer=customer.customer_profile, title=f"Ticket {i}",
+            service_type="server_admin", severity="low", status="open",
+        )
+
+    response = _client_for(customer).get("/api/tickets/?page_size=50")
+    assert response.status_code == 200
+    assert len(response.data["results"]) > 20
+
+
+@pytest.mark.django_db
+def test_customer_cannot_see_another_customers_ticket_in_list(db):
+    """The richer list payload must still be scoped to the requesting customer only."""
+    customer_a = _make_customer("sla_g_a@example.com")
+    customer_b = _make_customer("sla_g_b@example.com")
+    ticket_a = Ticket.objects.create(
+        customer=customer_a.customer_profile, title="A's ticket",
+        service_type="server_admin", severity="low", status="open",
+    )
+    ticket_b = Ticket.objects.create(
+        customer=customer_b.customer_profile, title="B's ticket",
+        service_type="server_admin", severity="low", status="open",
+    )
+
+    response = _client_for(customer_b).get("/api/tickets/")
+    ids = {t["id"] for t in response.data["results"]}
+    assert str(ticket_b.id) in ids
+    assert str(ticket_a.id) not in ids
+
+
+@pytest.mark.django_db
+def test_ticket_detail_includes_sla_status(db):
+    """GET /api/tickets/{id}/ must include a computed sla_status field."""
+    customer = _make_customer("sla_h@example.com")
+    ticket = Ticket.objects.create(
+        customer=customer.customer_profile, title="Detail check",
+        service_type="server_admin", severity="low", status="open",
+    )
+
+    response = _client_for(customer).get(f"/api/tickets/{ticket.id}/")
+    assert response.status_code == 200
+    assert response.data["sla_status"] in {"no_deadline", "overdue", "due_soon", "ok"}

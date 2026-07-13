@@ -219,6 +219,23 @@ class IsPaymentReader(BasePermission):
         )
 
 
+class IsExecutiveAnalytics(BasePermission):
+    """Allow Ops Manager, Finance Manager, and Super Admin to view the executive dashboard.
+
+    Same role set as IsPaymentReader today, but kept as its own class so
+    executive-dashboard access can evolve independently of payment-read
+    access later.
+    """
+    message = "Only Operations Managers, Finance Managers, or Super Admins can access executive analytics."
+
+    def has_permission(self, request, view):
+        return (
+            is_operations_manager(request.user)
+            or is_finance_manager(request.user)
+            or is_super_admin(request.user)
+        )
+
+
 class IsOwnerOrAdmin(BasePermission):
     """
     Object-level permission.

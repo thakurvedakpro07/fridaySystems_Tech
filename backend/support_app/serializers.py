@@ -239,6 +239,32 @@ class SLAStatusMixin:
         return "ok"
 
 
+class ReplyOwnershipSignalsMixin:
+    """
+    Computes "who does the ball sit with" signals for any ticket-list
+    serializer whose queryset was annotated via
+    services.ticket_signals.annotate_reply_ownership_signals. Viewer-agnostic:
+    same meaning whether the freelancer or the customer is asking.
+    """
+    _ACTIVE_STATUSES = {"open", "assigned", "in_progress"}
+
+    def get_waiting_on_customer(self, obj):
+        role = getattr(obj, "_latest_public_comment_role", None)
+        return bool(role and role != "customer" and obj.status in self._ACTIVE_STATUSES)
+
+    def get_awaiting_engineer_reply(self, obj):
+        return getattr(obj, "_latest_public_comment_role", None) == "customer"
+
+    def get_waiting_on_internal(self, obj):
+        return (
+            obj.status != "closed"
+            and getattr(obj, "_latest_relevant_activity_action", None) == "escalated"
+        )
+
+    def get_last_public_comment_at(self, obj):
+        return getattr(obj, "_latest_public_comment_at", None)
+
+
 class OpsTicketListSerializer(SLAStatusMixin, TicketListSerializer):
     """Extends TicketListSerializer with assignment info and SLA status for the ops ticket queue."""
     freelancer = serializers.SerializerMethodField()
@@ -260,7 +286,9 @@ class OpsTicketListSerializer(SLAStatusMixin, TicketListSerializer):
         ]
 
 
-class FreelancerTicketListSerializer(SLAStatusMixin, TicketListSerializer):
+class FreelancerTicketListSerializer(
+    SLAStatusMixin, ReplyOwnershipSignalsMixin, TicketListSerializer
+):
     """
     Extends TicketListSerializer with SLA status for a freelancer's own ticket
     queue. No `freelancer` field — an engineer viewing their own assignments
@@ -278,24 +306,6 @@ class FreelancerTicketListSerializer(SLAStatusMixin, TicketListSerializer):
     waiting_on_internal = serializers.SerializerMethodField()
     last_public_comment_at = serializers.SerializerMethodField()
 
-    _ACTIVE_STATUSES = {"open", "assigned", "in_progress"}
-
-    def get_waiting_on_customer(self, obj):
-        role = getattr(obj, "_latest_public_comment_role", None)
-        return bool(role and role != "customer" and obj.status in self._ACTIVE_STATUSES)
-
-    def get_awaiting_engineer_reply(self, obj):
-        return getattr(obj, "_latest_public_comment_role", None) == "customer"
-
-    def get_waiting_on_internal(self, obj):
-        return (
-            obj.status != "closed"
-            and getattr(obj, "_latest_relevant_activity_action", None) == "escalated"
-        )
-
-    def get_last_public_comment_at(self, obj):
-        return getattr(obj, "_latest_public_comment_at", None)
-
     class Meta(TicketListSerializer.Meta):
         fields = TicketListSerializer.Meta.fields + [
             "updated_at", "due_at", "first_response_due_at", "sla_status",
@@ -304,7 +314,34 @@ class FreelancerTicketListSerializer(SLAStatusMixin, TicketListSerializer):
         ]
 
 
-class TicketDetailSerializer(serializers.ModelSerializer):
+class CustomerTicketListSerializer(
+    SLAStatusMixin, ReplyOwnershipSignalsMixin, TicketListSerializer
+):
+    """
+    Extends TicketListSerializer with SLA status, assignment, and reply-
+    ownership signals for the customer-facing ticket list (Customer Workspace
+    Phase 1). waiting_on_customer/awaiting_engineer_reply/waiting_on_internal/
+    last_public_comment_at carry the same meaning as on
+    FreelancerTicketListSerializer — see ReplyOwnershipSignalsMixin and
+    TicketListCreateView.get_queryset's use of
+    services.ticket_signals.annotate_reply_ownership_signals.
+    """
+    sla_status = serializers.SerializerMethodField()
+    assigned_to = FreelancerPublicSerializer(read_only=True)
+    waiting_on_customer = serializers.SerializerMethodField()
+    awaiting_engineer_reply = serializers.SerializerMethodField()
+    waiting_on_internal = serializers.SerializerMethodField()
+    last_public_comment_at = serializers.SerializerMethodField()
+
+    class Meta(TicketListSerializer.Meta):
+        fields = TicketListSerializer.Meta.fields + [
+            "updated_at", "due_at", "first_response_due_at", "sla_status", "assigned_to",
+            "waiting_on_customer", "awaiting_engineer_reply",
+            "waiting_on_internal", "last_public_comment_at",
+        ]
+
+
+class TicketDetailSerializer(SLAStatusMixin, serializers.ModelSerializer):
     """Full serializer for the ticket detail view (customer-facing and staff-facing)."""
     # Use the public subset — customers must not see contract_signed etc.
     assigned_to = FreelancerPublicSerializer(read_only=True)
@@ -317,6 +354,7 @@ class TicketDetailSerializer(serializers.ModelSerializer):
     # assigned_at: timestamp from the active TicketAssignment row.
     # Used by EngineerAssignedInfoCard to show when the engineer was assigned.
     assigned_at = serializers.SerializerMethodField()
+    sla_status = serializers.SerializerMethodField()
 
     def get_csat_score(self, obj):
         try:
@@ -350,13 +388,13 @@ class TicketDetailSerializer(serializers.ModelSerializer):
             "assigned_to", "customer", "remote_session_url",
             "created_at", "updated_at", "resolved_at",
             "first_response_at", "first_response_due_at", "due_at", "csat_score",
-            "communication_preference", "preferred_language", "assigned_at",
+            "communication_preference", "preferred_language", "assigned_at", "sla_status",
         ]
         read_only_fields = [
             "id", "ticket_number", "status", "assigned_to", "customer",
             "created_at", "updated_at", "resolved_at",
             "first_response_at", "first_response_due_at", "due_at", "csat_score",
-            "assigned_at",
+            "assigned_at", "sla_status",
         ]
         # communication_preference and preferred_language are intentionally writable
         # so the customer can PATCH them via TicketDetailView.

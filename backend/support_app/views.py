@@ -73,6 +73,7 @@ from .permissions import (
     IsAdminUser,
     IsAnyStaffRole,
     IsCustomer,
+    IsExecutiveAnalytics,
     IsFinanceManager,
     IsFinanceManagerOrSuperAdmin,
     IsFreelancer,
@@ -96,6 +97,7 @@ from .serializers import (
     AdminStatusSerializer,
     CSATSurveySerializer,
     CustomerSerializer,
+    CustomerTicketListSerializer,
     FreelancerCreateSerializer,
     FreelancerSerializer,
     FreelancerStatusSerializer,
@@ -479,17 +481,21 @@ class TicketListCreateView(generics.ListCreateAPIView):
 
     Query params for filtering:
       ?status=open
+      ?exclude_status=closed  (used by the Customer Workspace to fetch all
+                                active tickets in one page via ?page_size=)
       ?service_type=linux
       ?severity=high
       ?search=<text>     (searches title and description)
       ?ordering=created_at,-severity
+      ?page_size=<n>     (up to 100 — default 20)
     """
     permission_classes = [permissions.IsAuthenticated, IsCustomer]
+    pagination_class = OpsPageNumberPagination  # adds ?page_size= (max 100), matches freelancer
 
     def get_serializer_class(self):
         if self.request.method == "POST":
             return TicketCreateSerializer
-        return TicketListSerializer
+        return CustomerTicketListSerializer
 
     def get_queryset(self):
         qs = Ticket.objects.filter(
@@ -499,6 +505,10 @@ class TicketListCreateView(generics.ListCreateAPIView):
         status_filter = self.request.query_params.get("status")
         if status_filter:
             qs = qs.filter(status=status_filter)
+
+        exclude_status = self.request.query_params.get("exclude_status")
+        if exclude_status:
+            qs = qs.exclude(status=exclude_status)
 
         service_filter = self.request.query_params.get("service_type")
         if service_filter:
@@ -519,6 +529,8 @@ class TicketListCreateView(generics.ListCreateAPIView):
         if ordering in allowed_orderings:
             qs = qs.order_by(ordering)
 
+        from .services.ticket_signals import annotate_reply_ownership_signals
+        qs = annotate_reply_ownership_signals(qs)
         return qs
 
     def create(self, request, *args, **kwargs):
@@ -1238,21 +1250,8 @@ class FreelancerTicketListView(generics.ListAPIView):
             from django.db.models import Q
             qs = qs.filter(Q(title__icontains=search) | Q(ticket_number__icontains=search))
 
-        from django.db.models import OuterRef, Subquery
-
-        latest_public_comment = TicketComment.objects.filter(
-            ticket=OuterRef("pk"), is_internal=False
-        ).order_by("-created_at")
-        qs = qs.annotate(
-            _latest_public_comment_role=Subquery(latest_public_comment.values("author__role")[:1]),
-            _latest_public_comment_at=Subquery(latest_public_comment.values("created_at")[:1]),
-            _latest_relevant_activity_action=Subquery(
-                TicketActivityLog.objects.filter(
-                    ticket=OuterRef("pk"),
-                    action__in=["escalated", "comment_added", "status_changed"],
-                ).order_by("-created_at").values("action")[:1]
-            ),
-        )
+        from .services.ticket_signals import annotate_reply_ownership_signals
+        qs = annotate_reply_ownership_signals(qs)
         return qs
 
 
@@ -2981,6 +2980,34 @@ def ops_analytics(request):
         }
 
     return Response(data)
+
+
+# ══════════════════════════════════════════════════════════════════
+# EXECUTIVE ANALYTICS (Super Admin + Ops Manager + Finance Manager)
+# ══════════════════════════════════════════════════════════════════
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, IsExecutiveAnalytics])
+@throttle_classes_dec([AnalyticsRateThrottle])
+def executive_analytics(request):
+    """
+    GET /api/ops/executive-analytics/
+    Unified cross-functional analytics for Super Admin, Ops Manager, and
+    Finance Manager — a single payload (not role-partitioned, since access
+    is already restricted to those three roles).
+
+    Query params:
+      period  — "7d" | "30d" (default) | "90d" | "all"
+      start, end — ISO date strings; override `period` when both are given
+    """
+    from .services.executive_analytics_service import build_executive_analytics_payload
+
+    payload = build_executive_analytics_payload(
+        period=request.query_params.get("period"),
+        start_param=request.query_params.get("start"),
+        end_param=request.query_params.get("end"),
+    )
+    return Response(payload)
 
 
 # ── Knowledge Base ──────────────────────────────────────────────
