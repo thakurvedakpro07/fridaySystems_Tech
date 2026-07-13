@@ -60,3 +60,15 @@ test("Ops pages render a shared PageHeader consistently", async ({ page }) => {
   await page.goto("/operations/payments");
   await expect(page.locator('[data-ds="page-header"]')).toBeVisible();
 });
+
+// Phase 1 primitives: FormSection (extracted from SettingsPage's local
+// SectionCard) and Skeleton (wrapping the .shimmer utility).
+test("Settings page renders form sections and profile fields", async ({ page }) => {
+  await page.goto("/settings");
+  await expect(page.locator('[data-ds="page-header"]')).toBeVisible();
+  await expect(page.getByText("Personal Information")).toBeVisible();
+  await expect(page.locator('input[placeholder="Rahul"]')).toBeVisible();
+
+  await page.getByRole("button", { name: "Security" }).click();
+  await expect(page.getByText("Change Password")).toBeVisible();
+});

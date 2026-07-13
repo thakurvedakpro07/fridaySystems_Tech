@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { changePassword, getProfile, updateProfile } from "../api/settings";
 import MainLayout from "../components/layouts/MainLayout";
 import Button from "../components/ui/Button";
+import FormSection from "../components/ui/FormSection";
 import PageHeader from "../components/ui/PageHeader";
+import Skeleton from "../components/ui/Skeleton";
 import { useToast } from "../context/ToastContext";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useAuthStore } from "../store/authStore";
@@ -12,24 +14,6 @@ const TABS = [
   { id: "profile",  label: "Profile",  icon: "👤" },
   { id: "security", label: "Security", icon: "🔒" },
 ];
-
-function SectionCard({ title, description, children }) {
-  return (
-    <div
-      className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
-      style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}
-    >
-      <div className="h-0.5 bg-brand-gradient" />
-      <div className="p-6">
-        <div className="mb-5">
-          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-          {description && <p className="text-sm text-slate-500 mt-0.5">{description}</p>}
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 function FieldRow({ label, children }) {
   return (
@@ -102,7 +86,7 @@ function ProfileTab({ profile, setProfile, role }) {
 
   return (
     <form onSubmit={handleSave} className="space-y-5">
-      <SectionCard title="Personal Information" description="Your name as it appears across ResolveHQ.">
+      <FormSection title="Personal Information" description="Your name as it appears across ResolveHQ.">
         <FieldRow label="First name">
           <input className="input-base w-full" value={form.first_name} onChange={set("first_name")} placeholder="Rahul" />
         </FieldRow>
@@ -119,10 +103,10 @@ function ProfileTab({ profile, setProfile, role }) {
             {profile?.is_staff ? "Admin" : profile?.role || "—"}
           </span>
         </FieldRow>
-      </SectionCard>
+      </FormSection>
 
       {role === "customer" && (
-        <SectionCard title="Business Details" description="Used for invoicing and GST compliance.">
+        <FormSection title="Business Details" description="Used for invoicing and GST compliance.">
           <FieldRow label="Company name">
             <input className="input-base w-full" value={form.company} onChange={set("company")} placeholder="Acme Technologies Pvt. Ltd." />
           </FieldRow>
@@ -148,11 +132,11 @@ function ProfileTab({ profile, setProfile, role }) {
             />
             <p className="text-xs text-slate-500 mt-1">15-digit GST registration number (required for B2B invoices).</p>
           </FieldRow>
-        </SectionCard>
+        </FormSection>
       )}
 
       {role === "freelancer" && (
-        <SectionCard title="Engineer Profile" description="Your skills and current availability.">
+        <FormSection title="Engineer Profile" description="Your skills and current availability.">
           <FieldRow label="Skills">
             <input
               className="input-base w-full"
@@ -170,7 +154,7 @@ function ProfileTab({ profile, setProfile, role }) {
               <option value="unavailable">Unavailable</option>
             </select>
           </FieldRow>
-        </SectionCard>
+        </FormSection>
       )}
 
       <div className="flex justify-end">
@@ -219,7 +203,7 @@ function SecurityTab() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <SectionCard title="Change Password" description="Choose a strong password of at least 10 characters.">
+      <FormSection title="Change Password" description="Choose a strong password of at least 10 characters.">
         <FieldRow label="Current password">
           <input
             type="password"
@@ -261,9 +245,9 @@ function SecurityTab() {
             {error}
           </div>
         )}
-      </SectionCard>
+      </FormSection>
 
-      <SectionCard title="Security Tips" description="">
+      <FormSection title="Security Tips" description="">
         <ul className="space-y-2">
           {[
             "Use a password manager to generate and store passwords securely.",
@@ -277,7 +261,7 @@ function SecurityTab() {
             </li>
           ))}
         </ul>
-      </SectionCard>
+      </FormSection>
 
       <div className="flex justify-end">
         <Button type="submit" loading={saving}>Update Password</Button>
@@ -333,7 +317,7 @@ export default function SettingsPage() {
         {loadingProfile ? (
           <div className="space-y-4">
             {[1, 2, 3].map((n) => (
-              <div key={n} className="h-12 shimmer rounded-xl" />
+              <Skeleton key={n} className="h-12 rounded-xl" />
             ))}
           </div>
         ) : activeTab === "profile" ? (
