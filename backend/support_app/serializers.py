@@ -265,12 +265,42 @@ class FreelancerTicketListSerializer(SLAStatusMixin, TicketListSerializer):
     Extends TicketListSerializer with SLA status for a freelancer's own ticket
     queue. No `freelancer` field — an engineer viewing their own assignments
     already knows the tickets are theirs.
+
+    waiting_on_customer/awaiting_engineer_reply/waiting_on_internal are
+    read-only, derived from existing TicketComment/TicketActivityLog rows
+    (see FreelancerTicketListView.get_queryset's Subquery annotations) — not
+    stored fields. They power the Engineer Workspace triage sections without
+    any new Ticket columns or migrations.
     """
     sla_status = serializers.SerializerMethodField()
+    waiting_on_customer = serializers.SerializerMethodField()
+    awaiting_engineer_reply = serializers.SerializerMethodField()
+    waiting_on_internal = serializers.SerializerMethodField()
+    last_public_comment_at = serializers.SerializerMethodField()
+
+    _ACTIVE_STATUSES = {"open", "assigned", "in_progress"}
+
+    def get_waiting_on_customer(self, obj):
+        role = getattr(obj, "_latest_public_comment_role", None)
+        return bool(role and role != "customer" and obj.status in self._ACTIVE_STATUSES)
+
+    def get_awaiting_engineer_reply(self, obj):
+        return getattr(obj, "_latest_public_comment_role", None) == "customer"
+
+    def get_waiting_on_internal(self, obj):
+        return (
+            obj.status != "closed"
+            and getattr(obj, "_latest_relevant_activity_action", None) == "escalated"
+        )
+
+    def get_last_public_comment_at(self, obj):
+        return getattr(obj, "_latest_public_comment_at", None)
 
     class Meta(TicketListSerializer.Meta):
         fields = TicketListSerializer.Meta.fields + [
-            "due_at", "first_response_due_at", "sla_status",
+            "updated_at", "due_at", "first_response_due_at", "sla_status",
+            "waiting_on_customer", "awaiting_engineer_reply",
+            "waiting_on_internal", "last_public_comment_at",
         ]
 
 

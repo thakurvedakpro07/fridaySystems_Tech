@@ -20,7 +20,7 @@ import ForbiddenPage from "./pages/ForbiddenPage";
 const Landing              = lazy(() => import("./pages/Landing"));
 const AnalyticsPage        = lazy(() => import("./pages/AnalyticsPage"));
 const SettingsPage         = lazy(() => import("./pages/SettingsPage"));
-const FreelancerDashboard  = lazy(() => import("./pages/freelancer/FreelancerDashboard"));
+const EngineerWorkspace  = lazy(() => import("./pages/freelancer/EngineerWorkspace"));
 const FreelancerList       = lazy(() => import("./pages/admin/FreelancerList"));
 const BillingPage          = lazy(() => import("./pages/BillingPage"));
 const PaymentsDashboard    = lazy(() => import("./pages/admin/PaymentsDashboard"));
@@ -257,7 +257,7 @@ export default function App() {
           {/* Freelancer pages — require login + role=freelancer */}
           <Route
             path="/freelancer"
-            element={<PrivateRoute><FreelancerRoute><FreelancerDashboard /></FreelancerRoute></PrivateRoute>}
+            element={<PrivateRoute><FreelancerRoute><EngineerWorkspace /></FreelancerRoute></PrivateRoute>}
           />
 
           {/* Admin pages — require login + is_staff */}

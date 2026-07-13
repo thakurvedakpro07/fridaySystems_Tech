@@ -57,6 +57,12 @@ export const adminGetTicket = (ticketId) =>
 export const freelancerListTickets = (params = {}) =>
   apiClient.get("/freelancer/tickets/", { params });
 
+// Engineer Workspace: fetch all of the engineer's active (non-closed)
+// tickets in one page — bucketing/sorting into triage sections happens
+// client-side (see utils/ticketPriority.js), not via server-side filters.
+export const freelancerListActiveTickets = () =>
+  freelancerListTickets({ exclude_status: "closed", page_size: 100 });
+
 export const freelancerGetTicket = (ticketId) =>
   apiClient.get(`/freelancer/tickets/${ticketId}/`);
 

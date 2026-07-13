@@ -1,28 +1,8 @@
-import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import SortableColumnHeader from "../../table/SortableColumnHeader";
 import Badge from "../../ui/Badge";
 import EmptyState from "../../ui/EmptyState";
-
-// Plain checkbox that also supports the (non-JSX-expressible) indeterminate
-// state, needed for the header's "select all visible" control.
-function RowCheckbox({ checked, indeterminate = false, onChange, ariaLabel }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    if (ref.current) ref.current.indeterminate = indeterminate;
-  }, [indeterminate]);
-
-  return (
-    <input
-      ref={ref}
-      type="checkbox"
-      checked={checked}
-      onChange={onChange}
-      aria-label={ariaLabel}
-      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-400 cursor-pointer"
-    />
-  );
-}
+import RowCheckbox from "../../ui/RowCheckbox";
 
 // Column key → backend `ordering` field name. Only these four header cells
 // are sortable per the current requirement.

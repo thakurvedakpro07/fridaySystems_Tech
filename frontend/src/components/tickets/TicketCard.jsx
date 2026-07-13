@@ -7,12 +7,24 @@ function humanize(str) {
   return str.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export default function TicketCard({ ticket }) {
+// Waiting-state chip config. These three fields only exist on the
+// Engineer Workspace's serializer (FreelancerTicketListSerializer) — the
+// customer-facing Dashboard.jsx's serializer never returns them, so this
+// stays a no-op there rather than needing a separate ticket-card variant.
+const WAITING_STATE_CHIPS = [
+  { key: "waiting_on_internal", label: "Escalated", classes: "bg-orange-50 text-orange-700 border-orange-200" },
+  { key: "awaiting_engineer_reply", label: "Awaiting your reply", classes: "bg-rose-50 text-rose-700 border-rose-200" },
+  { key: "waiting_on_customer", label: "Waiting on customer", classes: "bg-slate-100 text-slate-600 border-slate-200" },
+];
+
+export default function TicketCard({ ticket, reasonLabel }) {
   const createdAt = new Date(ticket.created_at).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
+
+  const waitingChip = WAITING_STATE_CHIPS.find((c) => ticket[c.key]);
 
   return (
     <Link
@@ -37,6 +49,18 @@ export default function TicketCard({ ticket }) {
 
           {/* Service type */}
           <p className="text-xs text-slate-500 mt-1">{humanize(ticket.service_type)}</p>
+
+          {/* Waiting-state chip + optional reason (Engineer Workspace only) */}
+          {(waitingChip || reasonLabel) && (
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              {waitingChip && (
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${waitingChip.classes}`}>
+                  {waitingChip.label}
+                </span>
+              )}
+              {reasonLabel && <span className="text-[11px] text-slate-400">{reasonLabel}</span>}
+            </div>
+          )}
 
           {/* Assigned to */}
           {ticket.assigned_to && (

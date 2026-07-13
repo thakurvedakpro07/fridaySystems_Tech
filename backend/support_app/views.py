@@ -1214,10 +1214,14 @@ class FreelancerTicketListView(generics.ListAPIView):
     Lists all tickets currently assigned to this freelancer.
 
     Query params:
-      ?status=in_progress   — filter by status
+      ?status=in_progress    — filter by status
+      ?exclude_status=closed — exclude a status (used by the Engineer
+                                Workspace to fetch all active tickets in
+                                one page via ?page_size=)
     """
     serializer_class = FreelancerTicketListSerializer
     permission_classes = [permissions.IsAuthenticated, IsFreelancer]
+    pagination_class = OpsPageNumberPagination  # reuse: gives ?page_size= up to 100
 
     def get_queryset(self):
         qs = Ticket.objects.filter(
@@ -1226,10 +1230,29 @@ class FreelancerTicketListView(generics.ListAPIView):
         status_filter = self.request.query_params.get("status")
         if status_filter:
             qs = qs.filter(status=status_filter)
+        exclude_status = self.request.query_params.get("exclude_status")
+        if exclude_status:
+            qs = qs.exclude(status=exclude_status)
         search = self.request.query_params.get("search")
         if search:
             from django.db.models import Q
             qs = qs.filter(Q(title__icontains=search) | Q(ticket_number__icontains=search))
+
+        from django.db.models import OuterRef, Subquery
+
+        latest_public_comment = TicketComment.objects.filter(
+            ticket=OuterRef("pk"), is_internal=False
+        ).order_by("-created_at")
+        qs = qs.annotate(
+            _latest_public_comment_role=Subquery(latest_public_comment.values("author__role")[:1]),
+            _latest_public_comment_at=Subquery(latest_public_comment.values("created_at")[:1]),
+            _latest_relevant_activity_action=Subquery(
+                TicketActivityLog.objects.filter(
+                    ticket=OuterRef("pk"),
+                    action__in=["escalated", "comment_added", "status_changed"],
+                ).order_by("-created_at").values("action")[:1]
+            ),
+        )
         return qs
 
 
