@@ -4,6 +4,7 @@ import { getAnalytics } from "../api/analytics";
 import { getProfile } from "../api/settings";
 import AppShell from "../components/layout/AppShell";
 import TicketCard from "../components/tickets/TicketCard";
+import TicketSectionList from "../components/tickets/queue/TicketSectionList";
 import { SkeletonCard } from "../components/ui/Spinner";
 import Alert from "../components/ui/Alert";
 import Card from "../components/ui/Card";
@@ -15,6 +16,7 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useToast } from "../context/ToastContext";
 import { getDisplayName } from "../utils/displayName";
+import { bucketCustomerTickets } from "../utils/customerTicketPriority";
 import { CONTACT } from "../config/contact";
 
 const STATUS_OPTIONS = [
@@ -26,12 +28,50 @@ const STATUS_OPTIONS = [
   { value: "closed",           label: "Closed" },
 ];
 
-// Ticket statuses that require the customer to act next — payment or a
-// resolution confirm/rate. Everything else is "with the engineer". This is
-// a status-based approximation, not a true last-reply-owner signal (the
-// backend has no such field — see backend/support_app/migrations/
-// 0024_remove_waiting_customer_status.py), agreed as the v1 approach.
-const WAITING_ON_CUSTOMER = new Set(["pending_payment", "resolved"]);
+// Fetches every non-closed ticket in one page so the triage sections below
+// can bucket/sort client-side — same "fetch-all-once" strategy as the
+// Engineer Workspace's freelancerListActiveTickets(). Module-level constant
+// so useTickets's JSON.stringify(filters) dependency sees a stable value.
+const ACTIVE_TICKETS_PARAMS = { exclude_status: "closed", page_size: 100 };
+
+const TRIAGE_SECTION_DEFS = [
+  {
+    key: "needsYourAction",
+    header: "Needs Your Attention",
+    description: "Payment or resolution confirmation only you can complete.",
+    emptyMessage: "Nothing needs your action right now.",
+  },
+  {
+    key: "overdue",
+    header: "Overdue",
+    description: "Past the promised response or resolution window.",
+    emptyMessage: "No overdue tickets.",
+  },
+  {
+    key: "waitingOnYou",
+    header: "Waiting On You",
+    description: "The engineer replied — your turn to respond.",
+    emptyMessage: "Nothing waiting on your reply.",
+  },
+  {
+    key: "withEngineer",
+    header: "With Engineer",
+    description: "Your support engineer is working on these.",
+    emptyMessage: "Nothing currently with an engineer.",
+  },
+  {
+    key: "recentlyUpdated",
+    header: "Recently Updated",
+    description: "Freshest activity across your tickets.",
+    emptyMessage: "No recent activity.",
+  },
+];
+
+const TRIAGE_REASON_BY_SECTION = {
+  needsYourAction: (t) => (t.status === "pending_payment" ? "Payment pending" : "Confirm & rate"),
+  overdue: () => "SLA overdue",
+  waitingOnYou: () => "Awaiting your reply",
+};
 
 function salutation(name) {
   const h = new Date().getHours();
@@ -41,38 +81,6 @@ function salutation(name) {
 
 function humanizeStatus(status) {
   return (status ?? "").replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-// ── Action Required — tickets needing the customer to do something ──
-function ActionRequired({ tickets }) {
-  const actionable = tickets.filter((t) => WAITING_ON_CUSTOMER.has(t.status));
-  if (actionable.length === 0) return null;
-
-  return (
-    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
-      <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-widest mb-3">
-        Action Required
-      </p>
-      <div className="space-y-2">
-        {actionable.slice(0, 4).map((t) => (
-          <Link
-            key={t.id}
-            to={`/tickets/${t.id}`}
-            className="flex items-center justify-between gap-3 bg-white border border-amber-100 rounded-xl
-                       px-4 py-2.5 hover:border-amber-300 transition-colors"
-          >
-            <div className="min-w-0">
-              <span className="text-xs font-mono text-slate-500">{t.ticket_number}</span>
-              <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
-            </div>
-            <span className="text-xs font-semibold text-amber-700 shrink-0">
-              {t.status === "pending_payment" ? "Payment pending" : "Confirm & rate"}
-            </span>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 // ── Recent Activity — tickets opened in the last 24 hours ───────────
@@ -442,30 +450,29 @@ function TicketsEmptyState({ hasFilters }) {
   );
 }
 
-// ── Ticket list split — "Waiting For You" vs "With Engineer" ───────
-function TicketGroups({ tickets }) {
-  const waiting = tickets.filter((t) => WAITING_ON_CUSTOMER.has(t.status));
-  const withEngineer = tickets.filter((t) => !WAITING_ON_CUSTOMER.has(t.status));
-
-  const renderGroup = (label, group) => (
-    <div className="mb-6 last:mb-0">
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">
-        {label} ({group.length})
-      </p>
-      <div className="space-y-2.5">
-        {group.map((ticket, i) => (
-          <div key={ticket.id} className="animate-fade-in" style={{ animationDelay: `${i * 35}ms` }}>
-            <TicketCard ticket={ticket} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+// ── Ticket triage sections — Needs Your Attention / Overdue / Waiting On
+// You / With Engineer / Recently Updated, from the customer's point of view.
+// Mirrors the Engineer Workspace's Card+TicketSectionList triage layout
+// (see pages/freelancer/EngineerWorkspace.jsx) — same components, different
+// bucketing (utils/customerTicketPriority.js).
+function CustomerTicketSections({ tickets }) {
+  const buckets = useMemo(() => bucketCustomerTickets(tickets), [tickets]);
 
   return (
-    <div>
-      {waiting.length > 0 && renderGroup("Waiting For You", waiting)}
-      {withEngineer.length > 0 && renderGroup("With Engineer", withEngineer)}
+    <div className="space-y-6">
+      {TRIAGE_SECTION_DEFS.map((section) => {
+        const sectionTickets = buckets[section.key];
+        if (section.key === "recentlyUpdated" && sectionTickets.length === 0) return null;
+        return (
+          <Card key={section.key} header={section.header} description={section.description}>
+            <TicketSectionList
+              tickets={sectionTickets}
+              emptyMessage={section.emptyMessage}
+              reasonFor={TRIAGE_REASON_BY_SECTION[section.key]}
+            />
+          </Card>
+        );
+      })}
     </div>
   );
 }
@@ -505,6 +512,12 @@ function CustomerDashboard() {
   if (status) filters.status = status;
 
   const { tickets, loading, error } = useTickets(filters);
+
+  // Unfiltered triage view: all active (non-closed) tickets in one page,
+  // bucketed/sorted client-side — kept separate from `tickets` above so
+  // RecentActivity's data source/trigger conditions are untouched.
+  const { tickets: activeTickets, loading: activeLoading, error: activeError } =
+    useTickets(ACTIVE_TICKETS_PARAMS);
 
   const [stats, setStats]               = useState({ total: 0, open: 0, inProgress: 0, resolved: 0 });
   const [statsLoading, setStatsLoading] = useState(true);
@@ -553,13 +566,8 @@ function CustomerDashboard() {
       {/* ── Getting started — zero-ticket accounts ──────────── */}
       {!statsLoading && stats.total === 0 && <GettingStarted />}
 
-      {/* ── Action required + recent activity — unfiltered view only ── */}
-      {!hasFilters && !loading && !error && (
-        <>
-          <ActionRequired tickets={tickets} />
-          <RecentActivity tickets={tickets} />
-        </>
-      )}
+      {/* ── Recent activity — unfiltered view only ────────────── */}
+      {!hasFilters && !loading && !error && <RecentActivity tickets={tickets} />}
 
       {/* ── Two-column layout ──────────────────────────────────── */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-8 items-start">
@@ -609,30 +617,42 @@ function CustomerDashboard() {
           </div>
 
           {/* Content */}
-          {loading && (
-            <div className="space-y-3">
-              {[1, 2, 3].map((n) => <SkeletonCard key={n} />)}
-            </div>
-          )}
-
-          {error && <Alert severity="error">Failed to load tickets. Please refresh.</Alert>}
-
-          {!loading && !error && tickets.length === 0 && (
-            <TicketsEmptyState hasFilters={hasFilters} />
-          )}
-
-          {!loading && !error && tickets.length > 0 && (
-            hasFilters ? (
-              <div className="space-y-2.5">
-                {tickets.map((ticket, i) => (
-                  <div key={ticket.id} className="animate-fade-in" style={{ animationDelay: `${i * 35}ms` }}>
-                    <TicketCard ticket={ticket} />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <TicketGroups tickets={tickets} />
-            )
+          {hasFilters ? (
+            <>
+              {loading && (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((n) => <SkeletonCard key={n} />)}
+                </div>
+              )}
+              {error && <Alert severity="error">Failed to load tickets. Please refresh.</Alert>}
+              {!loading && !error && tickets.length === 0 && (
+                <TicketsEmptyState hasFilters={hasFilters} />
+              )}
+              {!loading && !error && tickets.length > 0 && (
+                <div className="space-y-2.5">
+                  {tickets.map((ticket, i) => (
+                    <div key={ticket.id} className="animate-fade-in" style={{ animationDelay: `${i * 35}ms` }}>
+                      <TicketCard ticket={ticket} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {activeLoading && (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((n) => <SkeletonCard key={n} />)}
+                </div>
+              )}
+              {activeError && <Alert severity="error">Failed to load tickets. Please refresh.</Alert>}
+              {!activeLoading && !activeError && activeTickets.length === 0 && (
+                <TicketsEmptyState hasFilters={false} />
+              )}
+              {!activeLoading && !activeError && activeTickets.length > 0 && (
+                <CustomerTicketSections tickets={activeTickets} />
+              )}
+            </>
           )}
         </div>
 

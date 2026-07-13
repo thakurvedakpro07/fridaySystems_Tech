@@ -7,10 +7,11 @@ function humanize(str) {
   return str.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-// Waiting-state chip config. These three fields only exist on the
-// Engineer Workspace's serializer (FreelancerTicketListSerializer) — the
-// customer-facing Dashboard.jsx's serializer never returns them, so this
-// stays a no-op there rather than needing a separate ticket-card variant.
+// Waiting-state chip config. These three fields are computed server-side
+// (ReplyOwnershipSignalsMixin) and returned by both FreelancerTicketListSerializer
+// (Engineer Workspace) and CustomerTicketListSerializer (Customer Workspace) —
+// same meaning either side, viewer-agnostic. Absent fields are simply falsy,
+// so this stays a no-op for any endpoint that doesn't return them.
 const WAITING_STATE_CHIPS = [
   { key: "waiting_on_internal", label: "Escalated", classes: "bg-orange-50 text-orange-700 border-orange-200" },
   { key: "awaiting_engineer_reply", label: "Awaiting your reply", classes: "bg-rose-50 text-rose-700 border-rose-200" },
