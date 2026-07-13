@@ -6,6 +6,8 @@ import AppShell from "../../components/layout/AppShell";
 import TicketCard from "../../components/tickets/TicketCard";
 import { SkeletonCard } from "../../components/ui/Spinner";
 import Alert from "../../components/ui/Alert";
+import Card from "../../components/ui/Card";
+import PageHeader from "../../components/ui/PageHeader";
 import KpiRow from "../../components/dashboard/KpiRow";
 import SLACountdown from "../../components/dashboard/SLACountdown";
 import { useAuthStore } from "../../store/authStore";
@@ -70,11 +72,7 @@ function FreelancerInfoPanel({ csatAvg, avgHours, csatLoading }) {
   return (
     <div className="space-y-4">
       {/* CSAT score */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5"
-           style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
-          Your CSAT Score
-        </p>
+      <Card title="Your CSAT Score">
         {csatLoading ? (
           <div className="h-8 w-24 shimmer rounded-lg" />
         ) : csatAvg != null ? (
@@ -101,29 +99,21 @@ function FreelancerInfoPanel({ csatAvg, avgHours, csatLoading }) {
         ) : (
           <p className="text-sm text-slate-500">No ratings yet</p>
         )}
-      </div>
+      </Card>
 
       {/* Avg resolution */}
       {avgHours != null && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-5"
-             style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-2">
-            Avg. Resolution Time
-          </p>
+        <Card title="Avg. Resolution Time">
           <div className="flex items-end gap-1.5">
             <span className="text-4xl font-black text-emerald-600 leading-none">{avgHours}</span>
             <span className="text-sm text-slate-500 mb-1">hrs</span>
           </div>
           <p className="text-xs text-slate-500 mt-1.5">Average hours to close a ticket</p>
-        </div>
+        </Card>
       )}
 
       {/* Quick actions */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5"
-           style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
-          Quick Actions
-        </p>
+      <Card title="Quick Actions">
         <div className="space-y-2">
           <Link
             to="/analytics"
@@ -148,7 +138,7 @@ function FreelancerInfoPanel({ csatAvg, avgHours, csatLoading }) {
             Notifications
           </Link>
         </div>
-      </div>
+      </Card>
 
       {/* Support contact */}
       <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
@@ -321,14 +311,12 @@ export default function FreelancerDashboard() {
 
       {/* ── Greeting ─────────────────────────────────────────── */}
       <div className="mb-8">
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">
-          {salutation(name)}
-        </h1>
-        <p className="text-base text-slate-500 mt-1.5">
-          {!loading
+        <PageHeader
+          title={salutation(name)}
+          description={!loading
             ? `You have ${count} ticket${count !== 1 ? "s" : ""} assigned.`
             : "Loading your assignments…"}
-        </p>
+        />
       </div>
 
       {/* ── KPI cards ────────────────────────────────────────── */}
@@ -357,7 +345,7 @@ export default function FreelancerDashboard() {
         {/* ── Left: ticket list ─────────────────────────────── */}
         <div className="min-w-0">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-slate-900">Today&apos;s Queue</h2>
+            <h2 className="text-section-title">Today&apos;s Queue</h2>
           </div>
 
           <div className="flex flex-wrap gap-2.5 mb-5">

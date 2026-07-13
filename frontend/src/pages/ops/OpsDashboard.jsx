@@ -17,6 +17,7 @@ import BarRow from "../../components/dashboard/charts/BarRow";
 import Badge from "../../components/ui/Badge";
 import Alert from "../../components/ui/Alert";
 import PageHeader from "../../components/ui/PageHeader";
+import Skeleton from "../../components/ui/Skeleton";
 
 // ── Shared tokens ─────────────────────────────────────────────────
 const KPI_STYLES = {
@@ -349,7 +350,7 @@ export default function OpsDashboard() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }}>
             <DashboardSection title="Tickets by Status" description="Current distribution across the pipeline">
               {statsLoading ? (
-                <div className="h-24 shimmer rounded-lg" />
+                <Skeleton className="h-24 rounded-lg" />
               ) : (
                 <Donut segments={STATUS_CHART_SEGMENTS.map((s) => ({ label: s.label, value: stats?.[s.key] ?? 0, color: s.color }))} />
               )}
@@ -359,7 +360,7 @@ export default function OpsDashboard() {
             <DashboardSection title="Tickets by Service Type" description="Ticket volume per service, busiest first">
               {derivedLoading ? (
                 <div className="space-y-3">
-                  {[1, 2, 3].map((n) => <div key={n} className="h-6 shimmer rounded-lg" />)}
+                  {[1, 2, 3].map((n) => <Skeleton key={n} className="h-6 rounded-lg" />)}
                 </div>
               ) : serviceTypeChartData.every((d) => d.value === 0) ? (
                 <p className="text-sm text-slate-500 text-center py-6">No data yet</p>
@@ -495,7 +496,7 @@ export default function OpsDashboard() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }}>
               <DashboardSection title="Revenue Trend" description="Completed payments by month">
                 {analyticsLoading ? (
-                  <div className="h-16 shimmer rounded-lg" />
+                  <Skeleton className="h-16 rounded-lg" />
                 ) : (
                   <Sparkline
                     data={(financial?.monthly_revenue ?? []).map((m) => ({ label: m.month, value: m.total }))}
@@ -508,7 +509,7 @@ export default function OpsDashboard() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.36 }}>
               <DashboardSection title="Payment Type Split" description="Revenue by payment type">
                 {analyticsLoading ? (
-                  <div className="h-16 shimmer rounded-lg" />
+                  <Skeleton className="h-16 rounded-lg" />
                 ) : (
                   <Donut
                     segments={(financial?.revenue_by_type ?? []).map((r) => ({

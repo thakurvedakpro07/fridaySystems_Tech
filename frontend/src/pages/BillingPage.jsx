@@ -14,6 +14,7 @@ import MainLayout from "../components/layouts/MainLayout";
 import { CONTACT } from "../config/contact";
 import { usePageTitle } from "../hooks/usePageTitle";
 import Badge from "../components/ui/Badge";
+import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
 import EmptyState from "../components/ui/EmptyState";
 
@@ -189,12 +190,7 @@ export default function BillingPage() {
       </div>
 
       {/* Payment list */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
-           style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
-        <div className="px-5 py-4 border-b border-slate-100">
-          <h2 className="text-sm font-semibold text-slate-900">Payment history</h2>
-        </div>
-
+      <Card header="Payment history" padded={false}>
         {loading && (
           <div className="divide-y divide-slate-50">
             <SkeletonRow /><SkeletonRow /><SkeletonRow />
@@ -240,7 +236,7 @@ export default function BillingPage() {
             {payments.map((p) => <PaymentRow key={p.id} payment={p} />)}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* GST note */}
       {payments.length > 0 && (

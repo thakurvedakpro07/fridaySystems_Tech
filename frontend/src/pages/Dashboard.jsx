@@ -6,6 +6,8 @@ import AppShell from "../components/layout/AppShell";
 import TicketCard from "../components/tickets/TicketCard";
 import { SkeletonCard } from "../components/ui/Spinner";
 import Alert from "../components/ui/Alert";
+import Card from "../components/ui/Card";
+import PageHeader from "../components/ui/PageHeader";
 import KpiRow from "../components/dashboard/KpiRow";
 import { useAuthStore } from "../store/authStore";
 import { useTickets } from "../hooks/useTickets";
@@ -88,11 +90,7 @@ function RecentActivity({ tickets }) {
   if (recent.length === 0) return null;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6"
-         style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
-        Recent Activity
-      </p>
+    <Card title="Recent Activity" className="mb-6">
       <div className="space-y-2.5">
         {recent.slice(0, 4).map((t) => (
           <Link key={t.id} to={`/tickets/${t.id}`} className="flex items-center gap-2.5 text-sm hover:text-indigo-700 transition-colors">
@@ -104,7 +102,7 @@ function RecentActivity({ tickets }) {
           </Link>
         ))}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -115,11 +113,7 @@ function InfoPanel() {
   return (
     <div className="space-y-4">
       {/* Consultation response */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5"
-           style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
-          Consultation Response
-        </p>
+      <Card title="Consultation Response">
         <div className="space-y-3.5">
           {[
             { label: "Critical",  value: "30 min", pct: 100, color: "bg-rose-500" },
@@ -141,14 +135,10 @@ function InfoPanel() {
         <p className="text-[10px] text-slate-500 mt-3 leading-snug">
           Priority sets how quickly a Support Agent contacts you — not resolution speed.
         </p>
-      </div>
+      </Card>
 
       {/* Quick actions */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5"
-           style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
-          Quick Actions
-        </p>
+      <Card title="Quick Actions">
         <div className="space-y-2">
           <Link
             to="/tickets/new"
@@ -183,7 +173,7 @@ function InfoPanel() {
             Analytics
           </Link>
         </div>
-      </div>
+      </Card>
 
       {/* Support contact */}
       <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
@@ -543,12 +533,7 @@ function CustomerDashboard() {
     <AppShell>
       {/* ── Greeting ───────────────────────────────────────────── */}
       <div className="mb-6">
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">
-          {salutation(name)}
-        </h1>
-        <p className="text-base text-slate-500 mt-1.5">
-          Here&apos;s your support overview for today.
-        </p>
+        <PageHeader title={salutation(name)} description="Here's your support overview for today." />
       </div>
 
       {/* ── Trust bar ──────────────────────────────────────────── */}
@@ -583,7 +568,7 @@ function CustomerDashboard() {
         <div className="min-w-0">
           {/* Section header + filters */}
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-slate-900">My Tickets</h2>
+            <h2 className="text-section-title">My Tickets</h2>
           </div>
 
           <div className="flex flex-wrap gap-2.5 mb-5">
