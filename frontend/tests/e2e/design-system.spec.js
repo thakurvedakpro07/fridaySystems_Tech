@@ -159,6 +159,20 @@ test.describe("Customer-facing pages", () => {
     await page.goto("/analytics");
     await expect(page.getByRole("heading", { name: "My Ticket Analytics" })).toBeVisible();
   });
+
+  // Phase 4: CustomerOnboarding's page shell, per-step header, and footer
+  // nav extracted into shared OnboardingShell/OnboardingStepHeader/
+  // OnboardingFooterNav components (components/onboarding/).
+  test("Customer onboarding renders via the shared Onboarding components and advances steps", async ({ page }) => {
+    await page.goto("/onboarding/customer");
+    await expect(page.getByRole("heading", { name: "Tell us about your company" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.getByRole("heading", { name: "What industry are you in?" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.getByRole("heading", { name: "How large is your team?" })).toBeVisible();
+  });
 });
 
 // Phase 2: shared PageHeader / Card adoption on the freelancer dashboard.
@@ -170,5 +184,18 @@ test.describe("Engineer-facing pages", () => {
     await expect(page.locator('[data-ds="page-header"]')).toBeVisible();
     await expect(page.locator('[data-ds="card"]').first()).toBeVisible();
     await expect(page.getByText("Today's Queue")).toBeVisible();
+  });
+
+  // Phase 4: FreelancerOnboarding's page shell, per-step header, and footer
+  // nav extracted into the same shared Onboarding components, themed violet.
+  test("Freelancer onboarding renders via the shared Onboarding components and advances steps", async ({ page }) => {
+    await page.goto("/onboarding/freelancer");
+    await expect(page.getByRole("heading", { name: "Confirm your skills" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.getByRole("heading", { name: "How much experience do you have?" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.getByRole("heading", { name: "What's your availability?" })).toBeVisible();
   });
 });
