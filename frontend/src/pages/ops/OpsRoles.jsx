@@ -7,6 +7,7 @@ import Badge from "../../components/ui/Badge";
 import PageHeader from "../../components/ui/PageHeader";
 import Alert from "../../components/ui/Alert";
 import TableCard from "../../components/table/TableCard";
+import EmptyState from "../../components/ui/EmptyState";
 
 function RolePill({ role }) {
   return <Badge domain="role" label={role} />;
@@ -86,16 +87,17 @@ export default function OpsRoles() {
           loading={loading}
           isEmpty={entries.length === 0}
           emptyState={
-            <div className="py-16 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
+            <EmptyState
+              size="compact"
+              icon={
                 <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                   <path strokeLinecap="round" strokeLinejoin="round"
                     d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                 </svg>
-              </div>
-              <p className="text-sm font-semibold text-slate-700">No role changes recorded</p>
-              <p className="text-xs text-slate-500 mt-1">Every role promotion and demotion will appear here.</p>
-            </div>
+              }
+              title="No role changes recorded"
+              description="Every role promotion and demotion will appear here."
+            />
           }
         >
           {entries.map((entry, idx) => (

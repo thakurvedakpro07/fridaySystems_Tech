@@ -5,6 +5,7 @@ import { getOpsFreelancers } from "../../api/ops";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import Alert from "../../components/ui/Alert";
 import PageHeader from "../../components/ui/PageHeader";
+import EmptyState from "../../components/ui/EmptyState";
 
 const AVAIL_OPTIONS = [
   { value: "", label: "All Availability" },
@@ -243,15 +244,18 @@ export default function OpsFreelancers() {
             ))}
           </div>
         ) : freelancers.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl py-20 text-center"
+          <div className="bg-white border border-slate-200 rounded-2xl"
                style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
-            <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-              <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-              </svg>
-            </div>
-            <p className="text-sm font-semibold text-slate-700">No engineers found</p>
-            <p className="text-xs text-slate-500 mt-1">Try adjusting your filters.</p>
+            <EmptyState
+              size="compact"
+              icon={
+                <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                </svg>
+              }
+              title="No engineers found"
+              description="Try adjusting your filters."
+            />
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

@@ -104,6 +104,41 @@ test.describe("Staff / admin pages", () => {
     await page.goto("/operations/payments");
     await expect(page.getByText("Total Revenue")).toBeVisible();
   });
+
+  // Phase 5: four independently hand-rolled "compact empty state" blocks
+  // (OpsFreelancers, OpsServices, OpsRoles, TicketQueueTable) replaced with
+  // <EmptyState size="compact">. Each is driven to zero results by mocking
+  // its list API to return an empty array, rather than relying on the
+  // page's own search/filter UI to produce zero matches (OpsFreelancers'
+  // skill-search filter turned out not to actually filter results server- or
+  // client-side against the seeded demo data — a pre-existing app behavior,
+  // out of scope for this design-system phase — so driving it through the
+  // UI was unreliable; mocking the API directly isolates what's actually
+  // being verified here: the EmptyState markup, not the search feature).
+  test("OpsFreelancers, OpsServices, and OpsRoles render the compact EmptyState on zero results", async ({ page }) => {
+    await page.route("**/ops/freelancers/**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) })
+    );
+    await page.goto("/operations/freelancers");
+    await expect(page.getByText("No engineers found")).toBeVisible();
+
+    await page.route("**/ops/services/**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) })
+    );
+    await page.goto("/operations/services");
+    await expect(page.getByText("No services found")).toBeVisible();
+
+    await page.route("**/ops/role-audit/**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) })
+    );
+    await page.goto("/operations/roles");
+    await expect(page.getByText("No role changes recorded")).toBeVisible();
+  });
+
+  test("Ticket Queue renders the compact EmptyState on zero results", async ({ page }) => {
+    await page.goto("/operations/tickets?search=zzznomatchxyz123");
+    await expect(page.getByText("No tickets found")).toBeVisible();
+  });
 });
 
 // Phase 3: hand-rolled rose error banners (identical to Alert severity="error")
@@ -145,6 +180,18 @@ test.describe("Customer-facing pages", () => {
     await expect(page.locator('[data-ds="page-header"]')).toBeVisible();
     await expect(page.locator('[data-ds="card"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "Payment history" })).toBeVisible();
+  });
+
+  // Phase 5 regression check: EmptyState's default (full) size, used by
+  // BillingPage's empty payment history, must render unchanged after adding
+  // the "compact" size variant — the default size's styles were untouched.
+  test("Billing page's default-size EmptyState is unaffected by the compact variant", async ({ page }) => {
+    await page.route("**/customers/me/payments/**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ results: [] }) })
+    );
+    await page.goto("/billing");
+    await expect(page.getByText("No payments yet")).toBeVisible();
+    await expect(page.getByText("Open a support ticket")).toBeVisible();
   });
 
   // Phase 3: NewTicket/TicketForm's hand-rolled error banner replaced with

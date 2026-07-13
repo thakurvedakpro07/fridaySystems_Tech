@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import SortableColumnHeader from "../../table/SortableColumnHeader";
 import Badge from "../../ui/Badge";
+import EmptyState from "../../ui/EmptyState";
 
 // Plain checkbox that also supports the (non-JSX-expressible) indeterminate
 // state, needed for the header's "select all visible" control.
@@ -77,15 +78,16 @@ export default function TicketQueueTable({
           ))}
         </div>
       ) : tickets.length === 0 ? (
-        <div className="py-20 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+        <EmptyState
+          size="compact"
+          icon={
             <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" />
             </svg>
-          </div>
-          <p className="text-sm font-semibold text-slate-700">No tickets found</p>
-          <p className="text-xs text-slate-500 mt-1">Try adjusting your filters or search.</p>
-        </div>
+          }
+          title="No tickets found"
+          description="Try adjusting your filters or search."
+        />
       ) : (
         <div className="divide-y divide-slate-50">
           {tickets.map((t) => {
