@@ -71,7 +71,7 @@ function FreelancerCard({ f, index }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04, duration: 0.24 }}
-      className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-4 hover:-translate-y-0.5 transition-all duration-200"
+      className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-4"
       style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.06)" }}>
 
       {/* Top row: avatar + name + availability */}

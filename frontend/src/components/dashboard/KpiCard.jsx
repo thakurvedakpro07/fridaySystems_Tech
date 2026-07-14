@@ -23,7 +23,7 @@ export default function KpiCard({ label, value, sub, color = "indigo", icon, loa
   const inner = (
     <div
       className={`bg-white border ${s.border} rounded-2xl px-6 py-5 flex items-start justify-between gap-3
-                 hover:-translate-y-0.5 transition-all duration-200 h-full ${to ? "" : "cursor-default"}`}
+                 transition-all duration-200 h-full ${to ? "hover:-translate-y-0.5" : "cursor-default"}`}
       style={{ boxShadow: "0 1px 4px 0 rgb(0 0 0 / 0.07), 0 0 0 1px rgb(0 0 0 / 0.02)" }}
     >
       <div className="min-w-0">

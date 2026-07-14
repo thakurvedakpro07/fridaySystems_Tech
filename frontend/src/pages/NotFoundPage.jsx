@@ -4,8 +4,10 @@ import { useAuthStore } from "../store/authStore";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useToast } from "../context/ToastContext";
 import { CONTACT } from "../config/contact";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function NotFoundPage() {
+  usePageTitle("Page Not Found");
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isMobile = useIsMobile();

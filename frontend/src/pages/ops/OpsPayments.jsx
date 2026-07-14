@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { motion } from "framer-motion";
 import AppShell from "../../components/layout/AppShell";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useRoles } from "../../hooks/useRoles";
@@ -13,6 +14,7 @@ import { extractErrorMessage } from "../../utils/apiError";
 import Badge from "../../components/ui/Badge";
 import PageHeader from "../../components/ui/PageHeader";
 import StatTile from "../../components/dashboard/StatTile";
+import Skeleton from "../../components/ui/Skeleton";
 
 export default function OpsPayments() {
   usePageTitle("Payments — ResolveHQ");
@@ -84,11 +86,12 @@ export default function OpsPayments() {
 
         {/* Summary cards — Finance Manager + Super Admin only */}
         {canWrite && summary && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
+            className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <StatTile label="Total Revenue" value={`₹${summary.total_revenue?.toLocaleString("en-IN") ?? "—"}`} />
             <StatTile label="Refunds" value={summary.refund_count ?? "—"} />
             <StatTile label="Payment Types" value={summary.by_type?.length ?? "—"} />
-          </div>
+          </motion.div>
         )}
 
         {/* Filters */}
@@ -118,9 +121,12 @@ export default function OpsPayments() {
         </div>
 
         {/* Table */}
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+          className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
           {loading ? (
-            <div className="flex items-center justify-center h-40 text-slate-500 text-sm">Loading payments…</div>
+            <div className="p-6 space-y-3">
+              {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-10 rounded-lg" />)}
+            </div>
           ) : payments.length === 0 ? (
             <div className="flex items-center justify-center h-40 text-slate-500 text-sm">No payments found.</div>
           ) : (
@@ -176,7 +182,7 @@ export default function OpsPayments() {
               </table>
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
     </AppShell>
   );

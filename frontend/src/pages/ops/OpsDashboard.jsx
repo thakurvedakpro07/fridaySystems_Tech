@@ -46,15 +46,18 @@ const PAYMENT_TYPE_COLOR = {
 };
 
 // "Tickets by Status" donut — reuses the exact counts already returned by
-// GET /api/ops/dashboard/ (no extra request), just labeled/colored to match
-// this app's existing status badge palette (Badge's "ticketStatus" domain).
+// GET /api/ops/dashboard/ (no extra request), colored to match this app's
+// existing status badge palette (Badge's "ticketStatus" domain: open=blue,
+// assigned=violet, in_progress=indigo, pending_payment=amber, resolved=emerald,
+// closed=slate) so this chart never disagrees with the Badge pills rendered
+// for the same statuses elsewhere on this page.
 const STATUS_CHART_SEGMENTS = [
-  { key: "open",             label: "Open (Unassigned)", color: "#4f46e5" },
-  { key: "assigned",         label: "Ready to Start",    color: "#7c3aed" },
-  { key: "in_progress",      label: "Work Started",      color: "#d97706" },
-  { key: "pending_payment",  label: "Pending Payment",   color: "#e11d48" },
-  { key: "resolved",         label: "Resolved",          color: "#059669" },
-  { key: "closed",           label: "Closed",            color: "#64748b" },
+  { key: "open",             label: "Open (Unassigned)", color: "#3b82f6" },
+  { key: "assigned",         label: "Ready to Start",    color: "#8b5cf6" },
+  { key: "in_progress",      label: "Work Started",      color: "#4f46e5" },
+  { key: "pending_payment",  label: "Pending Payment",   color: "#f59e0b" },
+  { key: "resolved",         label: "Resolved",          color: "#10b981" },
+  { key: "closed",           label: "Closed",            color: "#94a3b8" },
 ];
 
 // ── Icons ─────────────────────────────────────────────────────────

@@ -52,8 +52,8 @@ export default function NewTicket() {
     <MainLayout maxWidth="max-w-xl">
       {/* Page header */}
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900 mb-1">Open a Support Ticket</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-page-title">Open a Support Ticket</h1>
+        <p className="text-page-subtitle">
           Describe your issue and a Support Agent will contact you within your chosen response window.
         </p>
       </div>

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import Header from "../components/layout/Header";
 import LandingFooter from "../components/layout/LandingFooter";
 import { CONTACT } from "../config/contact";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 const SECTIONS = [
   { id: "acceptance",      label: "Acceptance of Terms" },
@@ -29,6 +30,7 @@ function Section({ id, title, children }) {
 }
 
 export default function TermsPage() {
+  usePageTitle("Terms of Service");
   return (
     <div className="min-h-screen bg-white">
       <Header />

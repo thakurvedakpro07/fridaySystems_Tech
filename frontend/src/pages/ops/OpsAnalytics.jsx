@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import AppShell from "../../components/layout/AppShell";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useRoles } from "../../hooks/useRoles";
@@ -7,12 +8,16 @@ import { getOpsAnalytics } from "../../api/ops";
 import { extractErrorMessage } from "../../utils/apiError";
 import PageHeader from "../../components/ui/PageHeader";
 import StatTile from "../../components/dashboard/StatTile";
+import Skeleton from "../../components/ui/Skeleton";
 
+// Matches Badge's "severity" domain (low=slate/neutral, medium=amber,
+// high=orange, critical=rose) so this chart never disagrees with the Badge
+// pills rendered for the same severities elsewhere in the app.
 const SEVERITY_COLORS = {
-  low:      "#10b981",
+  low:      "#94a3b8",
   medium:   "#f59e0b",
   high:     "#f97316",
-  critical: "#ef4444",
+  critical: "#f43f5e",
 };
 
 const SEVERITY_LABELS = {
@@ -51,14 +56,6 @@ export default function OpsAnalytics() {
       .finally(() => setLoading(false));
   }, [showToast]);
 
-  if (loading) {
-    return (
-      <AppShell>
-        <div className="flex items-center justify-center h-64 text-slate-500 text-sm">Loading analytics…</div>
-      </AppShell>
-    );
-  }
-
   const showOperational = isSuperAdmin || isOpsManager;
   const showFinancial   = isSuperAdmin || isFinanceManager;
 
@@ -73,9 +70,21 @@ export default function OpsAnalytics() {
           description={isSuperAdmin ? "Full platform overview." : isFinanceManager ? "Financial metrics." : "Operational metrics."}
         />
 
+        {loading && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Skeleton className="h-40 rounded-xl" />
+              <Skeleton className="h-40 rounded-xl" />
+            </div>
+          </div>
+        )}
+
         {/* Operational section */}
-        {showOperational && ops && (
-          <section>
+        {!loading && showOperational && ops && (
+          <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
             <SectionHeader title="Operational Overview" description="Ticket activity over the last 30 days." />
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
               <StatTile label="Total (30d)"  value={ops.total_last_30_days} />
@@ -166,12 +175,12 @@ export default function OpsAnalytics() {
                 )}
               </div>
             )}
-          </section>
+          </motion.section>
         )}
 
         {/* Financial section */}
-        {showFinancial && fin && (
-          <section>
+        {!loading && showFinancial && fin && (
+          <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
             <SectionHeader title="Financial Overview" description="Revenue and payment metrics." />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <StatTile label="Total Revenue"       value={`₹${fin.total_revenue?.toLocaleString("en-IN")}`} />
@@ -205,10 +214,10 @@ export default function OpsAnalytics() {
                 </div>
               </div>
             )}
-          </section>
+          </motion.section>
         )}
 
-        {!showOperational && !showFinancial && (
+        {!loading && !showOperational && !showFinancial && (
           <div className="flex items-center justify-center h-40 text-slate-500 text-sm">
             No analytics available for your role.
           </div>

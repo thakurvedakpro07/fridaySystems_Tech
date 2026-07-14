@@ -118,11 +118,14 @@ export default function FreelancerList() {
   const [freelancers, setFreelancers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   const load = () => {
     setLoading(true);
+    setLoadError("");
     apiClient.get("/admin/freelancers/")
       .then(({ data }) => setFreelancers(data.results ?? data))
+      .catch(() => setLoadError("Failed to load freelancers. Please refresh the page."))
       .finally(() => setLoading(false));
   };
 
@@ -167,11 +170,13 @@ export default function FreelancerList() {
         />
       )}
 
+      {loadError && <Alert severity="error" className="mb-4">{loadError}</Alert>}
+
       {loading ? (
         <div className="space-y-2.5">
           {[1, 2, 3].map((n) => <SkeletonCard key={n} />)}
         </div>
-      ) : freelancers.length === 0 ? (
+      ) : loadError ? null : freelancers.length === 0 ? (
         <EmptyState
           icon="👷"
           title="No freelancers yet"

@@ -3,6 +3,7 @@ import Header from "../components/layout/Header";
 import LandingFooter from "../components/layout/LandingFooter";
 import { CONTACT } from "../config/contact";
 import { CONSULTING_FEE, SERVICE_FEES, calcResolutionFee, fmtINR } from "../data/pricing";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 const HOW_IT_WORKS = [
   {
@@ -82,6 +83,7 @@ function FaqItem({ q, a }) {
 }
 
 export default function PricingPage() {
+  usePageTitle("Pricing");
   return (
     <div className="min-h-screen bg-white">
       <Header />

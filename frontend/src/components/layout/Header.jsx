@@ -20,7 +20,8 @@ function UserAvatar({ user }) {
   return (
     <span
       className="inline-flex items-center justify-center w-8 h-8 rounded-full
-                 bg-indigo-100 text-indigo-700 text-xs font-semibold select-none shrink-0"
+                 bg-indigo-100 text-indigo-700 text-xs font-semibold select-none shrink-0
+                 transition-colors group-hover:bg-indigo-200"
       title={user?.email}
       aria-label={`Signed in as ${user?.email}`}
     >
@@ -169,7 +170,7 @@ export default function Header() {
                 <NotificationBell />
               </div>
 
-              <Link to="/settings" title="Account settings" className="ml-1">
+              <Link to="/settings" title="Account settings" className="ml-1 group">
                 <UserAvatar user={user} />
               </Link>
 

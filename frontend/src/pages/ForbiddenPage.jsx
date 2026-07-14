@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function ForbiddenPage() {
+  usePageTitle("Access Denied");
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 

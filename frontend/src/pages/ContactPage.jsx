@@ -5,6 +5,7 @@ import LandingFooter from "../components/layout/LandingFooter";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useToast } from "../context/ToastContext";
 import { CONTACT } from "../config/contact";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 const CONTACT_CHANNELS = [
   {
@@ -46,6 +47,7 @@ const CONTACT_CHANNELS = [
 ];
 
 export default function ContactPage() {
+  usePageTitle("Contact");
   const [form, setForm] = useState({ name: "", email: "", company: "", subject: "", message: "" });
   const [sent, setSent] = useState(false);
   const isMobile = useIsMobile();

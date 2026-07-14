@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import LandingFooter from "../components/layout/LandingFooter";
 import Header from "../components/layout/Header";
 import { SERVICES, ACCENTS } from "../data/services";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 // ── Animation variants ────────────────────────────────────────────
 const fadeUp = {
@@ -1476,6 +1477,7 @@ function BottomCTASection() {
 // ROOT
 // ══════════════════════════════════════════════════════════════════
 export default function Landing() {
+  usePageTitle();
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Header />

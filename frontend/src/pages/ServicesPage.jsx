@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Header from "../components/layout/Header";
 import LandingFooter from "../components/layout/LandingFooter";
 import { SERVICES, CATALOG_CATEGORIES, ACCENTS } from "../data/services";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 // ── Category filter ───────────────────────────────────────────────
 const ALL = "All";
@@ -66,6 +67,7 @@ function ServiceCard({ service }) {
 
 // ── Page ──────────────────────────────────────────────────────────
 export default function ServicesPage() {
+  usePageTitle("Services");
   const [active, setActive] = useState(ALL);
 
   const filtered = active === ALL

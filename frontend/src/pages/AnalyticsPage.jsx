@@ -126,11 +126,14 @@ const SERVICE_LABELS = {
   infra_automation: "Infra Automation",
 };
 
+// Matches Badge's "severity" domain (low=slate/neutral, medium=amber,
+// high=orange, critical=rose) so this chart never disagrees with the Badge
+// pills rendered for the same severities elsewhere in the app.
 const SEVERITY_COLORS = {
-  low:      "#10b981",
+  low:      "#94a3b8",
   medium:   "#f59e0b",
   high:     "#f97316",
-  critical: "#ef4444",
+  critical: "#f43f5e",
 };
 
 const SEVERITY_LABELS = {
