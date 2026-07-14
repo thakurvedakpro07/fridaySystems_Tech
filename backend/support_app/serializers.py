@@ -341,20 +341,46 @@ class CustomerTicketListSerializer(
         ]
 
 
-class TicketDetailSerializer(SLAStatusMixin, serializers.ModelSerializer):
-    """Full serializer for the ticket detail view (customer-facing and staff-facing)."""
+class TicketDetailSerializer(
+    SLAStatusMixin, ReplyOwnershipSignalsMixin, serializers.ModelSerializer
+):
+    """
+    Full serializer for the ticket detail view (customer-facing and staff-facing).
+
+    waiting_on_customer/awaiting_engineer_reply/waiting_on_internal/
+    last_public_comment_at are only accurate when the instance came from
+    TicketDetailView.get_queryset() or FreelancerTicketDetailView.get_queryset()
+    (both annotate via services.ticket_signals.annotate_reply_ownership_signals).
+    Other endpoints that build this serializer directly from a bare
+    get_object_or_404(Ticket, ...) — e.g. accept_resolution, admin/ops
+    assign/status/unassign — will get the mixin's safe getattr(..., None)
+    defaults instead of real values. Do not treat those as accurate.
+    """
     # Use the public subset — customers must not see contract_signed etc.
     assigned_to = FreelancerPublicSerializer(read_only=True)
     # csat_score: None if no survey submitted yet; 1-5 once submitted.
     # Used by CSATWidget to show "already rated" state after page refresh.
     csat_score = serializers.SerializerMethodField()
-    # Customer info — name, email, company. Always safe to include: customers already
-    # know their own details; internal staff need it for triage and assignment decisions.
+    # Customer info — name, email, company, phone, plan. Always safe to include:
+    # customers already know their own details; internal staff need it for triage
+    # and assignment decisions. phone is included because communication_preference
+    # can be "phone" and there's no in-app calling feature — the assigned engineer
+    # needs the number to act on it. address/gstin/mfa_enabled are deliberately
+    # excluded — no operational need for them here, more billing/security-sensitive.
     customer = serializers.SerializerMethodField()
     # assigned_at: timestamp from the active TicketAssignment row.
     # Used by EngineerAssignedInfoCard to show when the engineer was assigned.
     assigned_at = serializers.SerializerMethodField()
     sla_status = serializers.SerializerMethodField()
+    # service: display metadata (name/scope/resolution_fee) for service_type,
+    # looked up from service_catalog.SERVICE_CATALOG at request time — never
+    # hardcode a parallel category dict (see ReplyOwnershipSignalsMixin sibling
+    # convention in this file for why).
+    service = serializers.SerializerMethodField()
+    waiting_on_customer = serializers.SerializerMethodField()
+    awaiting_engineer_reply = serializers.SerializerMethodField()
+    waiting_on_internal = serializers.SerializerMethodField()
+    last_public_comment_at = serializers.SerializerMethodField()
 
     def get_csat_score(self, obj):
         try:
@@ -370,6 +396,8 @@ class TicketDetailSerializer(SLAStatusMixin, serializers.ModelSerializer):
             "email":   u.email,
             "name":    f"{first} {last}".strip() or u.email.split("@")[0],
             "company": getattr(obj.customer, "company", None) or "",
+            "phone":   getattr(obj.customer, "phone", None) or "",
+            "plan":    getattr(obj.customer, "plan", None) or "",
         }
 
     def get_assigned_at(self, obj):
@@ -380,21 +408,37 @@ class TicketDetailSerializer(SLAStatusMixin, serializers.ModelSerializer):
         )
         return assignment.assigned_at if assignment else None
 
+    def get_service(self, obj):
+        from .services.service_catalog import SERVICE_CATALOG
+        entry = next((s for s in SERVICE_CATALOG if s["key"] == obj.service_type), None)
+        if not entry:
+            return None
+        return {
+            "key":            entry["key"],
+            "name":           entry["name"],
+            "scope":          entry["scope"],
+            "resolution_fee": entry["resolution_fee"],
+        }
+
     class Meta:
         model = Ticket
         fields = [
             "id", "ticket_number", "title", "description",
-            "service_type", "severity", "status",
+            "service_type", "service", "severity", "status",
             "assigned_to", "customer", "remote_session_url",
             "created_at", "updated_at", "resolved_at",
             "first_response_at", "first_response_due_at", "due_at", "csat_score",
             "communication_preference", "preferred_language", "assigned_at", "sla_status",
+            "waiting_on_customer", "awaiting_engineer_reply",
+            "waiting_on_internal", "last_public_comment_at",
         ]
         read_only_fields = [
             "id", "ticket_number", "status", "assigned_to", "customer",
             "created_at", "updated_at", "resolved_at",
             "first_response_at", "first_response_due_at", "due_at", "csat_score",
-            "assigned_at", "sla_status",
+            "assigned_at", "sla_status", "service",
+            "waiting_on_customer", "awaiting_engineer_reply",
+            "waiting_on_internal", "last_public_comment_at",
         ]
         # communication_preference and preferred_language are intentionally writable
         # so the customer can PATCH them via TicketDetailView.

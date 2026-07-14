@@ -498,3 +498,217 @@ def test_ticket_detail_includes_sla_status(db):
     response = _client_for(customer).get(f"/api/tickets/{ticket.id}/")
     assert response.status_code == 200
     assert response.data["sla_status"] in {"no_deadline", "overdue", "due_soon", "ok"}
+
+
+# ── Ticket Detail Experience Phase 1 ────────────────────────────────
+
+@pytest.mark.django_db
+def test_ticket_detail_includes_reply_ownership_fields_for_customer(db):
+    """
+    GET /api/tickets/{id}/ must include the same reply-ownership signals
+    the list endpoints already have — the engineer replied last, so the
+    ball is in the customer's court.
+    """
+    customer = _make_customer("detail_a@example.com")
+    freelancer = _make_freelancer("detail_a_engineer@example.com")
+    ticket = Ticket.objects.create(
+        customer=customer.customer_profile, title="Engineer replied",
+        service_type="server_admin", severity="medium", status="in_progress",
+        assigned_to=freelancer.freelancer_profile,
+    )
+    TicketComment.objects.create(
+        ticket=ticket, author=freelancer, body="Looking into it", is_internal=False
+    )
+
+    response = _client_for(customer).get(f"/api/tickets/{ticket.id}/")
+    assert response.status_code == 200
+    assert response.data["waiting_on_customer"] is True
+    assert response.data["awaiting_engineer_reply"] is False
+    assert "waiting_on_internal" in response.data
+    assert "last_public_comment_at" in response.data
+
+
+@pytest.mark.django_db
+def test_ticket_detail_includes_reply_ownership_fields_for_freelancer(db):
+    """
+    GET /api/freelancer/tickets/{id}/ must include the same signals —
+    the customer replied last, so the ball is with the engineer.
+    """
+    customer = _make_customer("detail_b@example.com")
+    freelancer = _make_freelancer("detail_b_engineer@example.com")
+    ticket = Ticket.objects.create(
+        customer=customer.customer_profile, title="Customer replied",
+        service_type="server_admin", severity="medium", status="in_progress",
+        assigned_to=freelancer.freelancer_profile,
+    )
+    TicketComment.objects.create(
+        ticket=ticket, author=customer, body="Any update?", is_internal=False
+    )
+
+    response = _client_for(freelancer).get(f"/api/freelancer/tickets/{ticket.id}/")
+    assert response.status_code == 200
+    assert response.data["awaiting_engineer_reply"] is True
+    assert response.data["waiting_on_customer"] is False
+
+
+@pytest.mark.django_db
+def test_ticket_detail_customer_info_includes_phone_and_plan(db):
+    """
+    Ticket detail's customer object must include phone/plan, and must NOT
+    include address/gstin/mfa_enabled (deliberate exclusion).
+    """
+    customer = _make_customer("detail_c@example.com")
+    profile = customer.customer_profile
+    profile.phone = "+91-9876543210"
+    profile.plan = "gold"
+    profile.address = "221B Baker Street"
+    profile.gstin = "29ABCDE1234F1Z5"
+    profile.save()
+    ticket = Ticket.objects.create(
+        customer=profile, title="Customer info check",
+        service_type="server_admin", severity="low", status="open",
+    )
+
+    response = _client_for(customer).get(f"/api/tickets/{ticket.id}/")
+    assert response.status_code == 200
+    customer_data = response.data["customer"]
+    assert customer_data["phone"] == "+91-9876543210"
+    assert customer_data["plan"] == "gold"
+    assert "address" not in customer_data
+    assert "gstin" not in customer_data
+    assert "mfa_enabled" not in customer_data
+
+
+@pytest.mark.django_db
+def test_ticket_detail_service_field(db):
+    """The service field must mirror the matching SERVICE_CATALOG entry."""
+    from support_app.services.service_catalog import SERVICE_CATALOG
+
+    customer = _make_customer("detail_d@example.com")
+    ticket = Ticket.objects.create(
+        customer=customer.customer_profile, title="Service check",
+        service_type="server_admin", severity="low", status="open",
+    )
+    expected = next(s for s in SERVICE_CATALOG if s["key"] == "server_admin")
+
+    response = _client_for(customer).get(f"/api/tickets/{ticket.id}/")
+    assert response.status_code == 200
+    assert response.data["service"] == {
+        "key": expected["key"],
+        "name": expected["name"],
+        "scope": expected["scope"],
+        "resolution_fee": expected["resolution_fee"],
+    }
+
+
+@pytest.mark.django_db
+def test_ticket_detail_service_field_unknown_service_type_returns_none(db):
+    """An out-of-catalog service_type must not crash — service is None."""
+    customer = _make_customer("detail_e@example.com")
+    ticket = Ticket.objects.create(
+        customer=customer.customer_profile, title="Unknown service",
+        service_type="legacy_unknown", severity="low", status="open",
+    )
+
+    response = _client_for(customer).get(f"/api/tickets/{ticket.id}/")
+    assert response.status_code == 200
+    assert response.data["service"] is None
+
+
+# ── Related tickets ──────────────────────────────────────────────
+
+@pytest.mark.django_db
+def test_related_tickets_same_customer_only(db):
+    """/related/ must only include the requesting customer's own other tickets."""
+    customer_a = _make_customer("related_a@example.com")
+    customer_b = _make_customer("related_b@example.com")
+    target = Ticket.objects.create(
+        customer=customer_a.customer_profile, title="Target",
+        service_type="server_admin", severity="low", status="open",
+    )
+    other_a = Ticket.objects.create(
+        customer=customer_a.customer_profile, title="A's other ticket",
+        service_type="server_admin", severity="low", status="open",
+    )
+    other_b = Ticket.objects.create(
+        customer=customer_b.customer_profile, title="B's ticket",
+        service_type="server_admin", severity="low", status="open",
+    )
+
+    response = _client_for(customer_a).get(f"/api/tickets/{target.id}/related/")
+    assert response.status_code == 200
+    ids = {t["id"] for t in response.data}
+    assert str(other_a.id) in ids
+    assert str(target.id) not in ids
+    assert str(other_b.id) not in ids
+
+
+@pytest.mark.django_db
+def test_related_tickets_capped_at_five(db):
+    """/related/ must never return more than 5 tickets."""
+    customer = _make_customer("related_c@example.com")
+    target = Ticket.objects.create(
+        customer=customer.customer_profile, title="Target",
+        service_type="server_admin", severity="low", status="open",
+    )
+    for i in range(6):
+        Ticket.objects.create(
+            customer=customer.customer_profile, title=f"Other {i}",
+            service_type="server_admin", severity="low", status="open",
+        )
+
+    response = _client_for(customer).get(f"/api/tickets/{target.id}/related/")
+    assert response.status_code == 200
+    assert len(response.data) == 5
+
+
+@pytest.mark.django_db
+def test_related_tickets_denied_for_other_customer(db):
+    """A different customer must not be able to fetch another customer's related tickets."""
+    customer_a = _make_customer("related_d_a@example.com")
+    customer_b = _make_customer("related_d_b@example.com")
+    target = Ticket.objects.create(
+        customer=customer_a.customer_profile, title="Target",
+        service_type="server_admin", severity="low", status="open",
+    )
+
+    response = _client_for(customer_b).get(f"/api/tickets/{target.id}/related/")
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_related_tickets_accessible_to_assigned_freelancer(db):
+    """
+    The assigned freelancer can see the customer's other tickets too — scope
+    is customer-wide once you can see the target ticket, not assignment-wide.
+    """
+    customer = _make_customer("related_e@example.com")
+    freelancer = _make_freelancer("related_e_engineer@example.com")
+    target = Ticket.objects.create(
+        customer=customer.customer_profile, title="Target",
+        service_type="server_admin", severity="low", status="open",
+        assigned_to=freelancer.freelancer_profile,
+    )
+    other = Ticket.objects.create(
+        customer=customer.customer_profile, title="Other, unassigned",
+        service_type="server_admin", severity="low", status="open",
+    )
+
+    response = _client_for(freelancer).get(f"/api/tickets/{target.id}/related/")
+    assert response.status_code == 200
+    ids = {t["id"] for t in response.data}
+    assert str(other.id) in ids
+
+
+@pytest.mark.django_db
+def test_related_tickets_denied_for_unassigned_freelancer(db):
+    """A freelancer not assigned to the target ticket must get 404."""
+    customer = _make_customer("related_f@example.com")
+    freelancer = _make_freelancer("related_f_engineer@example.com")
+    target = Ticket.objects.create(
+        customer=customer.customer_profile, title="Target",
+        service_type="server_admin", severity="low", status="open",
+    )
+
+    response = _client_for(freelancer).get(f"/api/tickets/{target.id}/related/")
+    assert response.status_code == 404

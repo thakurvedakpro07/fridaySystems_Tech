@@ -558,7 +558,10 @@ class TicketDetailView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrStaff]
 
     def get_queryset(self):
-        qs = Ticket.objects.select_related("customer__user", "assigned_to__user")
+        from .services.ticket_signals import annotate_reply_ownership_signals
+        qs = annotate_reply_ownership_signals(
+            Ticket.objects.select_related("customer__user", "assigned_to__user")
+        )
         user = self.request.user
         if user.is_staff or is_internal_staff(user):
             return qs
@@ -1265,9 +1268,11 @@ class FreelancerTicketDetailView(generics.RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticated, IsFreelancer]
 
     def get_queryset(self):
-        return Ticket.objects.filter(
+        from .services.ticket_signals import annotate_reply_ownership_signals
+        qs = Ticket.objects.filter(
             assigned_to=self.request.user.freelancer_profile
         ).select_related("customer__user", "assigned_to__user")
+        return annotate_reply_ownership_signals(qs)
 
 
 @api_view(["POST"])
@@ -1911,6 +1916,31 @@ def ticket_attachment_delete(request, ticket_id, attachment_id):
         attachment.file.delete(save=False)
     attachment.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ── Related Tickets ─────────────────────────────────────────────
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def ticket_related(request, ticket_id):
+    """
+    GET /api/tickets/{id}/related/
+    Returns up to 5 other tickets belonging to the same customer as this
+    ticket, most recent first. Access follows the same rule as the ticket
+    itself — see _get_ticket_for_user.
+
+    Deliberately "same customer", not "same service_type across customers"
+    — the latter is the existing staff-only AI panel's find_similar_tickets
+    and is out of scope here.
+    """
+    ticket = _get_ticket_for_user(request.user, ticket_id)
+
+    related_qs = (
+        Ticket.objects.filter(customer=ticket.customer)
+        .exclude(id=ticket.id)
+        .order_by("-created_at")[:5]
+    )
+    return Response(TicketListSerializer(related_qs, many=True).data)
 
 
 # ── Email Verification ────────────────────────────────────────────
