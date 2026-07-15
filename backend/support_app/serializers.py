@@ -265,10 +265,24 @@ class ReplyOwnershipSignalsMixin:
         return getattr(obj, "_latest_public_comment_at", None)
 
 
-class OpsTicketListSerializer(SLAStatusMixin, TicketListSerializer):
-    """Extends TicketListSerializer with assignment info and SLA status for the ops ticket queue."""
+class OpsTicketListSerializer(SLAStatusMixin, ReplyOwnershipSignalsMixin, TicketListSerializer):
+    """
+    Extends TicketListSerializer with assignment info, SLA status, and
+    reply-ownership signals for the ops ticket queue and the Operations
+    Command Center (Live Incident Queue / SLA Risk Board / Escalation
+    Queue). waiting_on_customer/awaiting_engineer_reply/waiting_on_internal/
+    last_public_comment_at are only accurate when the queryset was annotated
+    via services.ticket_signals.annotate_reply_ownership_signals — see
+    OpsTicketListView.get_queryset() and ops_command_center_service.py's
+    three queryset-returning functions.
+    """
     freelancer = serializers.SerializerMethodField()
     sla_status = serializers.SerializerMethodField()
+    waiting_on_customer = serializers.SerializerMethodField()
+    awaiting_engineer_reply = serializers.SerializerMethodField()
+    waiting_on_internal = serializers.SerializerMethodField()
+    last_public_comment_at = serializers.SerializerMethodField()
+    escalated_at = serializers.SerializerMethodField()
 
     def get_freelancer(self, obj):
         if not obj.assigned_to:
@@ -280,9 +294,17 @@ class OpsTicketListSerializer(SLAStatusMixin, TicketListSerializer):
             "email": u.email,
         }
 
+    def get_escalated_at(self, obj):
+        # Only set on querysets annotated with _escalated_at (the Command
+        # Center Escalation Queue) — None everywhere else, including the
+        # plain ops ticket queue.
+        return getattr(obj, "_escalated_at", None)
+
     class Meta(TicketListSerializer.Meta):
         fields = TicketListSerializer.Meta.fields + [
             "freelancer", "due_at", "first_response_due_at", "sla_status",
+            "waiting_on_customer", "awaiting_engineer_reply",
+            "waiting_on_internal", "last_public_comment_at", "escalated_at",
         ]
 
 
@@ -594,6 +616,22 @@ class TicketActivityLogSerializer(serializers.ModelSerializer):
         fields = [
             "id", "actor_email", "action", "action_display",
             "from_value", "to_value", "note", "created_at",
+        ]
+
+
+class OpsActivityLogSerializer(TicketActivityLogSerializer):
+    """
+    TicketActivityLogSerializer + a ticket reference, for the Operations
+    Command Center's cross-ticket Activity Timeline (vs. ops_ticket_history's
+    per-ticket-only feed, which doesn't need to repeat the ticket on every row).
+    """
+    ticket_id = serializers.UUIDField(source="ticket.id", read_only=True)
+    ticket_number = serializers.CharField(source="ticket.ticket_number", read_only=True)
+    ticket_title = serializers.CharField(source="ticket.title", read_only=True)
+
+    class Meta(TicketActivityLogSerializer.Meta):
+        fields = TicketActivityLogSerializer.Meta.fields + [
+            "ticket_id", "ticket_number", "ticket_title",
         ]
 
 

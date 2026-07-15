@@ -106,6 +106,7 @@ from .serializers import (
     KBArticleListSerializer,
     KBArticleWriteSerializer,
     NotificationSerializer,
+    OpsActivityLogSerializer,
     OpsPaymentSerializer,
     OpsUserSerializer,
     PaymentSerializer,
@@ -2216,7 +2217,10 @@ class OpsTicketListView(generics.ListAPIView):
     ordering = ["-created_at"]  # unchanged default — matches prior manual behavior
 
     def get_queryset(self):
+        from .services.ticket_signals import annotate_reply_ownership_signals
+
         qs = Ticket.objects.select_related("customer__user", "assigned_to__user")
+        qs = annotate_reply_ownership_signals(qs)
 
         search = self.request.query_params.get("search")
         if search:
@@ -2888,6 +2892,83 @@ def ops_ticket_escalate(request, ticket_id):
         note=note,
     )
     return Response({"detail": "Ticket escalated.", "ticket_id": str(ticket.id)})
+
+
+# ══════════════════════════════════════════════════════════════════
+# OPERATIONS COMMAND CENTER (/operations) — all 4 staff roles
+# ══════════════════════════════════════════════════════════════════
+#
+# Split into two endpoints because only 3 of the 10 Command Center widgets
+# need frequent polling (Live Incident Queue, SLA Risk Board, Activity
+# Timeline). A single unified payload would force re-running Engineer
+# Capacity/Service Health/Critical Customers/Ticket Flow's queries on every
+# poll tick for no UX benefit — see ops_command_center_live below.
+#
+# Neither endpoint exposes revenue/financial figures, so — unlike
+# ops_dashboard's Support-Agent revenue omission — no per-role field
+# gating is needed inside either view; IsAnyStaffRole alone is sufficient.
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, IsAnyStaffRole])
+def ops_command_center_core(request):
+    """
+    GET /api/ops/command-center/
+    Load-once payload for the Operations Command Center: Escalation Queue,
+    Engineer Capacity, Service Health, Critical Customers, Ticket Flow.
+    None of these need 30-60s polling — see ops_command_center_live for the
+    three that do.
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from .services import ops_command_center_service as svc
+
+    now = timezone.now()
+    window_start = now - timedelta(days=7)
+
+    escalation_qs = svc.get_escalation_queryset(limit=50)
+
+    return Response({
+        "escalation_queue": OpsTicketListSerializer(
+            escalation_qs, many=True, context={"request": request}
+        ).data,
+        "engineer_capacity": svc.get_engineer_capacity(),
+        "service_health": svc.get_service_health(window_start, now),
+        "critical_customers": svc.get_critical_customers(limit=10),
+        "ticket_flow": svc.get_ticket_flow(hours=24),
+        "generated_at": now.isoformat(),
+    })
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, IsAnyStaffRole])
+def ops_command_center_live(request):
+    """
+    GET /api/ops/command-center/live/
+    The 3 time-sensitive Operations Command Center widgets, meant to be
+    polled every 30-60s by the frontend: Live Incident Queue, SLA Risk
+    Board, Activity Timeline.
+    """
+    from django.utils import timezone
+
+    from .services import ops_command_center_service as svc
+
+    now = timezone.now()
+    incident_qs = svc.get_incident_queue_queryset(limit=50)
+    sla_qs = svc.get_sla_risk_queryset(horizon_hours=4, limit=50)
+    activity_qs = svc.get_recent_activity(hours=4, limit=30)
+
+    return Response({
+        "incident_queue": OpsTicketListSerializer(
+            incident_qs, many=True, context={"request": request}
+        ).data,
+        "sla_risk_board": OpsTicketListSerializer(
+            sla_qs, many=True, context={"request": request}
+        ).data,
+        "activity_timeline": OpsActivityLogSerializer(activity_qs, many=True).data,
+        "generated_at": now.isoformat(),
+    })
 
 
 # ══════════════════════════════════════════════════════════════════

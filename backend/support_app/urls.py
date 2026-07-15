@@ -161,6 +161,10 @@ urlpatterns = [
     # ── Ops: Ticket Escalation (Ops Manager + Support Agent + Super Admin) ──
     path("ops/tickets/<uuid:ticket_id>/escalate/",          views.ops_ticket_escalate,              name="ops-ticket-escalate"),
 
+    # ── Ops: Command Center (all 4 staff roles) ────────────────────
+    path("ops/command-center/",                             views.ops_command_center_core,          name="ops-command-center-core"),
+    path("ops/command-center/live/",                        views.ops_command_center_live,          name="ops-command-center-live"),
+
     # ── Ops: Analytics (role-scoped) ──────────────────────────────
     path("ops/analytics/",                                  views.ops_analytics,                    name="ops-analytics"),
     path("ops/executive-analytics/",                        views.executive_analytics,              name="ops-executive-analytics"),
