@@ -67,6 +67,52 @@ for (const roleKey of STAFF_ROLE_KEYS) {
       await expect(page.getByText("Payment Type Split")).toHaveCount(0);
       await expect(page.getByText("Quick Actions")).toHaveCount(0);
     });
+
+    // Phase F2: the `live` payload (Live Incident Queue / SLA Risk Board /
+    // Activity Timeline) polls every 45s; `core` loads once. Role-agnostic
+    // behavior — only tested once here (admin) rather than duplicated
+    // across all 4 staff describe blocks. Uses Playwright's fake clock so
+    // this doesn't require actually waiting 90+ real seconds.
+    if (roleKey === "admin") {
+      test("live endpoint polls every 45s while core loads only once", async ({ page }) => {
+        let liveCallCount = 0;
+        let coreCallCount = 0;
+        await page.route("**/api/ops/command-center/**", (route) => {
+          const url = route.request().url();
+          if (url.includes("/command-center/live/")) liveCallCount++;
+          else coreCallCount++;
+          route.continue();
+        });
+
+        await page.clock.install();
+        await page.goto(OPS_PATH);
+        await expect(page.getByRole("heading", { name: "Operations Command Center" })).toBeVisible();
+
+        // React 18 StrictMode double-invokes effects in dev (mount → cleanup
+        // → remount), so the settled initial call count here may be 1 or 2
+        // depending on environment — that's a dev-only framework quirk, not
+        // this code's behavior (the `cancelled` guard in OpsDashboard.jsx
+        // exists precisely to make the cleaned-up first mount's response a
+        // no-op). What actually matters, and is asserted below: `live`
+        // increments by exactly 1 per 45s tick and `core` never polls again.
+        await expect.poll(() => liveCallCount).toBeGreaterThanOrEqual(1);
+        // Real-time (not fake-clock) settle window so StrictMode's second
+        // dispatch, if any, lands before the baseline is captured below.
+        await page.waitForTimeout(300);
+        const initialLiveCount = liveCallCount;
+        const settledCoreCount = coreCallCount;
+        expect(settledCoreCount).toBeGreaterThanOrEqual(1);
+
+        await page.clock.fastForward(45_000);
+        await expect.poll(() => liveCallCount).toBe(initialLiveCount + 1);
+
+        await page.clock.fastForward(45_000);
+        await expect.poll(() => liveCallCount).toBe(initialLiveCount + 2);
+
+        // `core` never polls, regardless of how many times `live` has.
+        expect(coreCallCount).toBe(settledCoreCount);
+      });
+    }
   });
 }
 

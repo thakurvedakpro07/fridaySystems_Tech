@@ -107,9 +107,10 @@ def test_payload_has_expected_top_level_sections(super_admin):
     assert resp.status_code == 200
     for key in [
         "period", "summary", "operational_health", "sla", "engineer_utilization",
-        "ticket_aging", "priority_distribution", "service_category_distribution",
-        "csat", "top_problem_categories", "recently_breached_tickets",
-        "most_active_customers", "revenue",
+        "ticket_aging", "priority_distribution", "ticket_status_distribution",
+        "service_category_distribution", "csat", "top_problem_categories",
+        "recently_breached_tickets", "most_active_customers", "revenue",
+        "sla_trend", "insights",
     ]:
         assert key in resp.data, f"missing '{key}' in payload"
 
@@ -224,3 +225,77 @@ def test_explicit_start_end_overrides_period(super_admin, customer_user):
     resp = _client(super_admin).get(URL, {"start": start, "end": end})
     assert resp.status_code == 200
     assert resp.data["summary"]["total_tickets"] >= 1
+
+
+# ── Active customers ──────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_summary_includes_active_customers_and_change_pct(super_admin, customer_user):
+    _make_ticket(customer_user.customer_profile, status="open")
+
+    resp = _client(super_admin).get(URL, {"period": "7d"})
+    assert resp.status_code == 200
+    summary = resp.data["summary"]
+    assert summary["active_customers"] >= 1
+    assert "active_customers_change_pct" in summary
+
+
+# ── Ticket status distribution ─────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_ticket_status_distribution_groups_by_status(super_admin, customer_user):
+    _make_ticket(customer_user.customer_profile, status="open")
+    _make_ticket(customer_user.customer_profile, status="resolved")
+
+    resp = _client(super_admin).get(URL)
+    assert resp.status_code == 200
+    by_status = {r["status"]: r["count"] for r in resp.data["ticket_status_distribution"]}
+    assert by_status.get("open", 0) >= 1
+    assert by_status.get("resolved", 0) >= 1
+
+
+# ── SLA trend ────────────────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_sla_trend_bucket_reflects_resolution_compliance(super_admin, customer_user):
+    now = timezone.now()
+    _make_ticket(
+        customer_user.customer_profile, status="resolved",
+        due_at=now + datetime.timedelta(hours=2), resolved_at=now,
+    )
+    _make_ticket(
+        customer_user.customer_profile, status="resolved",
+        due_at=now - datetime.timedelta(hours=2), resolved_at=now,
+    )
+
+    resp = _client(super_admin).get(URL, {"period": "7d"})
+    assert resp.status_code == 200
+    trend = resp.data["sla_trend"]
+    assert len(trend) >= 1
+    today_bucket = next((b for b in trend if b["bucket"] == now.date().isoformat()), None)
+    assert today_bucket is not None
+    assert today_bucket["met"] >= 1
+    assert today_bucket["missed"] >= 1
+
+
+# ── Executive insights ─────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_insights_is_nonempty_list_of_strings(super_admin, customer_user):
+    now = timezone.now()
+    _make_ticket(
+        customer_user.customer_profile, status="resolved",
+        due_at=now + datetime.timedelta(hours=2), resolved_at=now,
+    )
+
+    resp = _client(super_admin).get(URL, {"period": "7d"})
+    assert resp.status_code == 200
+    insights = resp.data["insights"]
+    assert isinstance(insights, list)
+    assert len(insights) >= 1
+    assert all(isinstance(line, str) for line in insights)
+    assert any("95%" in line for line in insights)

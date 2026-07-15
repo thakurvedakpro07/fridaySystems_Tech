@@ -44,6 +44,12 @@ _AVAILABILITY_CAPACITY = {
     "unavailable": 0,
 }
 
+# Executive Insights thresholds — plain constants, not stored/configurable
+# yet, same status as _AVAILABILITY_CAPACITY above.
+SLA_TARGET_PCT = 95
+CSAT_TARGET = 4.0  # CSATSurvey.score is 1 (very unhappy) to 5 (very happy)
+HIGH_UTILIZATION_THRESHOLD_PCT = 80
+
 
 def _bucket_key(value):
     """Normalize a TruncDate/TruncWeek annotation value to a 'YYYY-MM-DD' string."""
@@ -170,6 +176,13 @@ def get_summary(start, end, prev_start, prev_end):
     sla = get_sla_metrics(start, end)
     csat = get_csat_metrics(start, end)
 
+    active_customers = Customer.objects.filter(
+        tickets__created_at__gte=start, tickets__created_at__lte=end
+    ).distinct().count()
+    prev_active_customers = Customer.objects.filter(
+        tickets__created_at__gte=prev_start, tickets__created_at__lte=prev_end
+    ).distinct().count()
+
     return {
         "total_tickets": total,
         "total_tickets_change_pct": _pct_change(prev_total, total),
@@ -179,6 +192,8 @@ def get_summary(start, end, prev_start, prev_end):
         "total_revenue_change_pct": _pct_change(prev_revenue, revenue),
         "sla_compliance_pct": sla["resolution_compliance_pct"],
         "csat_avg": csat["avg_score"],
+        "active_customers": active_customers,
+        "active_customers_change_pct": _pct_change(prev_active_customers, active_customers),
     }
 
 
@@ -296,6 +311,49 @@ def get_priority_distribution(start, end):
         .order_by("severity")
     )
     return [{"severity": r["severity"], "count": r["count"]} for r in rows]
+
+
+def get_ticket_status_distribution(start, end):
+    rows = (
+        Ticket.objects.filter(created_at__gte=start, created_at__lte=end)
+        .values("status")
+        .annotate(count=Count("id"))
+        .order_by("status")
+    )
+    return [{"status": r["status"], "count": r["count"]} for r in rows]
+
+
+def get_sla_trend(start, end):
+    """
+    Weekly/daily bucketed resolution-SLA compliance %, mirroring the
+    resolved_at-vs-due_at comparison in get_sla_metrics() (never SLALog —
+    see the module docstring for why), bucketed the same way
+    get_csat_metrics()'s trend is.
+    """
+    granularity = _trend_granularity(start, end)
+    trunc_fn = TruncDate if granularity == "date" else TruncWeek
+
+    rows = (
+        Ticket.objects.filter(resolved_at__gte=start, resolved_at__lte=end, due_at__isnull=False)
+        .annotate(bucket=trunc_fn("resolved_at"))
+        .values("bucket")
+        .annotate(
+            met=Count("id", filter=Q(resolved_at__lte=F("due_at"))),
+            missed=Count("id", filter=Q(resolved_at__gt=F("due_at"))),
+        )
+        .order_by("bucket")
+    )
+
+    trend = []
+    for r in rows:
+        total = r["met"] + r["missed"]
+        trend.append({
+            "bucket": _bucket_key(r["bucket"]),
+            "compliance_pct": round(r["met"] / total * 100, 1) if total else None,
+            "met": r["met"],
+            "missed": r["missed"],
+        })
+    return trend
 
 
 def get_service_category_distribution(start, end):
@@ -470,11 +528,99 @@ def get_revenue_metrics(start, end):
     }
 
 
+def get_executive_insights(payload):
+    """
+    Deterministic, template-generated plain-English summaries derived
+    entirely from sections already present in `payload` — no new DB
+    queries. Each sentence is only appended if its inputs are available,
+    so this degrades gracefully on sparse data instead of crashing or
+    emitting a nonsensical sentence. Must be called last, after every
+    other section of the payload has been assembled.
+    """
+    insights = []
+
+    summary = payload["summary"]
+    sla = payload["sla"]
+    csat = payload["csat"]
+    categories = payload["service_category_distribution"]
+    engineers = payload["engineer_utilization"]
+    breached = payload["recently_breached_tickets"]
+    aging = payload["ticket_aging"]
+
+    compliance = sla.get("resolution_compliance_pct")
+    if compliance is not None:
+        if compliance >= SLA_TARGET_PCT:
+            insights.append(
+                f"SLA compliance remains above target at {compliance}% (target {SLA_TARGET_PCT}%)."
+            )
+        else:
+            insights.append(
+                f"SLA compliance is at {compliance}%, below the {SLA_TARGET_PCT}% target and needs attention."
+            )
+
+    total_tickets = summary.get("total_tickets") or 0
+    if categories and total_tickets:
+        top = categories[:2]
+        names = " and ".join(c["label"] for c in top)
+        share = round(sum(c["count"] for c in top) / total_tickets * 100, 1)
+        insights.append(
+            f"{names} {'are' if len(top) > 1 else 'is'} the leading ticket "
+            f"categor{'ies' if len(top) > 1 else 'y'} this period, together accounting for {share}% of volume."
+        )
+
+    utilizations = [e["utilization_pct"] for e in engineers if e.get("utilization_pct") is not None]
+    if utilizations:
+        overloaded = sum(1 for u in utilizations if u > HIGH_UTILIZATION_THRESHOLD_PCT)
+        if overloaded == 0:
+            insights.append("Engineer workload is balanced with no engineers above 80% utilization.")
+        elif overloaded == 1:
+            insights.append("Engineer workload is balanced with only one engineer above 80% utilization.")
+        else:
+            insights.append(
+                f"Engineer capacity is under strain — {overloaded} of {len(utilizations)} "
+                f"engineers are above 80% utilization."
+            )
+
+    breach_count = len(breached)
+    aged_backlog = aging.get("7d_plus", 0)
+    if breach_count:
+        insights.append(
+            f"{breach_count} ticket{'s' if breach_count != 1 else ''} recently breached SLA "
+            f"and require immediate attention."
+        )
+    elif aged_backlog:
+        insights.append(
+            f"{aged_backlog} open ticket{'s' if aged_backlog != 1 else ''} have been aging beyond 7 days."
+        )
+    else:
+        insights.append("No recent SLA breaches — ticket backlog is healthy.")
+
+    deltas = {
+        "revenue": summary.get("total_revenue_change_pct"),
+        "ticket volume": summary.get("total_tickets_change_pct"),
+        "active customers": summary.get("active_customers_change_pct"),
+    }
+    deltas = {k: v for k, v in deltas.items() if v is not None}
+    if deltas:
+        label, pct = max(deltas.items(), key=lambda kv: abs(kv[1]))
+        direction = "grew" if pct >= 0 else "declined"
+        insights.append(f"{label.capitalize()} {direction} {abs(pct)}% versus the prior period.")
+
+    avg_score = csat.get("avg_score")
+    if avg_score is not None:
+        if avg_score >= CSAT_TARGET:
+            insights.append(f"Customer satisfaction is strong at {avg_score}/5.")
+        else:
+            insights.append(f"Customer satisfaction is {avg_score}/5, below the {CSAT_TARGET}/5 target.")
+
+    return insights
+
+
 def build_executive_analytics_payload(period=None, start_param=None, end_param=None):
     """Compose the full executive dashboard payload for the given period."""
     start, end, prev_start, prev_end = resolve_period(period, start_param, end_param)
 
-    return {
+    payload = {
         "period": {
             "start": start.isoformat(),
             "end": end.isoformat(),
@@ -486,10 +632,14 @@ def build_executive_analytics_payload(period=None, start_param=None, end_param=N
         "engineer_utilization": get_engineer_utilization(start, end),
         "ticket_aging": get_ticket_aging(),
         "priority_distribution": get_priority_distribution(start, end),
+        "ticket_status_distribution": get_ticket_status_distribution(start, end),
         "service_category_distribution": get_service_category_distribution(start, end),
         "csat": get_csat_metrics(start, end),
         "top_problem_categories": get_top_problem_categories(start, end),
         "recently_breached_tickets": get_recently_breached_tickets(),
         "most_active_customers": get_most_active_customers(start, end),
         "revenue": get_revenue_metrics(start, end),
+        "sla_trend": get_sla_trend(start, end),
     }
+    payload["insights"] = get_executive_insights(payload)
+    return payload

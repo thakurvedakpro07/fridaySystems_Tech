@@ -109,10 +109,9 @@ export default function OpsDashboard() {
   const [live, setLive] = useState(null);
   const [liveLoading, setLiveLoading] = useState(true);
 
-  // Single fetch on mount for both — polling every 30-60s for the `live`
-  // payload is deliberately deferred to the next phase so this phase's
-  // data plumbing and every new component can be reviewed as one
-  // self-contained, non-timer-dependent chunk.
+  // `core` loads once — Escalation Queue, Engineer Capacity, Service
+  // Health, Critical Customers, and Ticket Flow don't need frequent
+  // refreshing.
   useEffect(() => {
     getOpsCommandCenterCore()
       .then((res) => setCore(res.data))
@@ -120,11 +119,32 @@ export default function OpsDashboard() {
       .finally(() => setCoreLoading(false));
   }, [showToast]);
 
+  // `live` (Live Incident Queue, SLA Risk Board, Activity Timeline) polls
+  // every 45s — the middle of the 30-60s band this was designed for — so
+  // staff keeping this page open during an incident see current data
+  // without a manual reload. `cancelled` guards against setting state
+  // after unmount; a plain setInterval is enough here since these are
+  // simple polling GETs with no user-triggered cancellation need and no
+  // WebSocket/Channels infrastructure exists in this codebase.
   useEffect(() => {
-    getOpsCommandCenterLive()
-      .then((res) => setLive(res.data))
-      .catch((err) => showToast(extractErrorMessage(err, "Failed to load live operations data."), "error"))
-      .finally(() => setLiveLoading(false));
+    let cancelled = false;
+
+    const fetchLive = () => {
+      getOpsCommandCenterLive()
+        .then((res) => { if (!cancelled) setLive(res.data); })
+        .catch((err) => {
+          if (!cancelled) showToast(extractErrorMessage(err, "Failed to load live operations data."), "error");
+        })
+        .finally(() => { if (!cancelled) setLiveLoading(false); });
+    };
+
+    fetchLive();
+    const intervalId = setInterval(fetchLive, 45000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
   }, [showToast]);
 
   // ── Operations Health Banner + AI Operations Summary ────────────

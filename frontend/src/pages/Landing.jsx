@@ -1142,6 +1142,7 @@ function SLASection() {
 // SECTION 9: RECENT SUPPORT ACTIVITY
 // ══════════════════════════════════════════════════════════════════
 const SEVERITY_COLORS = {
+  Critical: { dot: "bg-red-600",   badge: "bg-red-50 text-red-700 border-red-100"      },
   High:   { dot: "bg-rose-500",   badge: "bg-rose-50 text-rose-600 border-rose-100"   },
   Medium: { dot: "bg-amber-500",  badge: "bg-amber-50 text-amber-600 border-amber-100"  },
   Low:    { dot: "bg-slate-300",  badge: "bg-slate-50 text-slate-500 border-slate-100" },
