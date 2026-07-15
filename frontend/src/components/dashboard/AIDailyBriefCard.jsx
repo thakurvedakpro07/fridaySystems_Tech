@@ -8,7 +8,14 @@ import Badge from "../ui/Badge";
 // call, no LLM. Badge copy deliberately avoids "Mock provider": that phrase
 // belongs to ai_assistant_service.py's swappable-AI abstraction, which this
 // feature doesn't use.
-export default function AIDailyBriefCard({ brief }) {
+//
+// `renderBullet(bullet)` is an optional override for the text next to the
+// bold count. Default renders "N ticket(s) {text}" (Engineer Workspace's
+// usage, via utils/dailyBrief.js). The Operations Command Center passes
+// full-sentence bullet text (via utils/operationsBrief.js) that isn't
+// always about a ticket count (e.g. "engineers are over capacity"), so it
+// overrides with `(b) => b.text` instead of forcing the "ticket(s)" noun.
+export default function AIDailyBriefCard({ brief, renderBullet }) {
   const { bullets, focusTicket } = brief;
 
   return (
@@ -24,7 +31,7 @@ export default function AIDailyBriefCard({ brief }) {
           {bullets.map((b) => (
             <li key={b.text} className="flex items-start gap-2 text-xs text-slate-700 leading-relaxed">
               <span className="font-bold text-indigo-600 shrink-0">{b.count}</span>
-              <span>ticket{b.count !== 1 ? "s" : ""} {b.text}</span>
+              <span>{renderBullet ? renderBullet(b) : `ticket${b.count !== 1 ? "s" : ""} ${b.text}`}</span>
             </li>
           ))}
         </ul>

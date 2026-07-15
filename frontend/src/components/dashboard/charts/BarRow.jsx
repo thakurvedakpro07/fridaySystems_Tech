@@ -3,6 +3,11 @@
 // Workload" (active ticket count per engineer) and similar ranked lists.
 // Visual language matches AnalyticsPage.jsx's existing chart primitives
 // (same stroke/track colors) so old and new dashboards don't drift apart.
+//
+// valueFormatter receives (value, row) — the row is passed so callers with
+// richer per-row data (e.g. EngineerCapacityBoard's utilization_pct) can
+// build a fuller label without a second lookup. Existing single-arg
+// callers are unaffected since they simply ignore the second argument.
 export default function BarRow({ data, color = "#4f46e5", valueFormatter = (v) => v }) {
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
@@ -11,7 +16,7 @@ export default function BarRow({ data, color = "#4f46e5", valueFormatter = (v) =
         <div key={d.label}>
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-700 font-medium truncate">{d.label}</span>
-            <span className="text-sm font-semibold text-slate-900 shrink-0 ml-2">{valueFormatter(d.value)}</span>
+            <span className="text-sm font-semibold text-slate-900 shrink-0 ml-2">{valueFormatter(d.value, d)}</span>
           </div>
           <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
             <div
