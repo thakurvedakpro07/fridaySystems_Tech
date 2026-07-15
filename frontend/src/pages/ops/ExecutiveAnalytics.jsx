@@ -12,7 +12,9 @@ import KpiCard from "../../components/dashboard/KpiCard";
 import Donut from "../../components/dashboard/charts/Donut";
 import BarRow from "../../components/dashboard/charts/BarRow";
 import Sparkline from "../../components/dashboard/charts/Sparkline";
+import ProgressBar from "../../components/dashboard/charts/ProgressBar";
 import TableCard from "../../components/table/TableCard";
+import Badge from "../../components/ui/Badge";
 import Skeleton from "../../components/ui/Skeleton";
 
 function fmtCurrency(n) {
@@ -120,6 +122,39 @@ export default function ExecutiveAnalytics() {
     { label: "Ticket Growth", value: fmtGrowth(summary?.total_tickets_change_pct), color: "indigo", loading },
     { label: "Customer Growth", value: fmtGrowth(summary?.active_customers_change_pct), color: "sky", loading },
   ];
+
+  // engineer_utilization has no server-side limit (44 rows on the seeded
+  // demo dataset) — capped client-side to keep this an executive-glance
+  // widget, consistent with the other list widgets on this page (Recently
+  // Breached Tickets/Top Customers are both server-capped at 10).
+  const mostActiveEngineers = (data?.engineer_utilization ?? []).slice(0, 8);
+
+  // utilization_pct is a rough capacity heuristic that can read well over
+  // 100% on this dataset (a known, documented calibration gap — see
+  // executive_analytics_service.py). Ranked/filtered separately from Most
+  // Active Engineers (which sorts by active ticket count, not utilization).
+  const highestWorkload = (data?.engineer_utilization ?? [])
+    .filter((e) => e.utilization_pct != null)
+    .slice()
+    .sort((a, b) => b.utilization_pct - a.utilization_pct)
+    .slice(0, 8);
+
+  function utilizationTone(pct) {
+    if (pct == null) return { bar: "bg-slate-300", text: "text-slate-500" };
+    if (pct > 100) return { bar: "bg-rose-500", text: "text-rose-600" };
+    if (pct > 80) return { bar: "bg-amber-500", text: "text-amber-600" };
+    return { bar: "bg-indigo-500", text: "text-slate-700" };
+  }
+
+  const recentlyBreached = data?.recently_breached_tickets ?? [];
+
+  function fmtBreachedBy(minutes) {
+    if (minutes == null) return "—";
+    const abs = Math.abs(minutes);
+    return abs >= 60 ? `${Math.round(abs / 60)}h` : `${abs}m`;
+  }
+
+  const topServiceCategories = data?.top_problem_categories ?? [];
 
   const operationalItems = [
     { label: "Avg Resolution Time", value: sla?.avg_resolution_hours != null ? `${sla.avg_resolution_hours}h` : undefined, color: "sky", loading },
@@ -269,7 +304,123 @@ export default function ExecutiveAnalytics() {
           </TableCard>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+            <div className="mb-3">
+              <h2 className="text-section-title">Most Active Engineers</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Highest active ticket load, busiest first</p>
+            </div>
+            <TableCard
+              columns={["Engineer", "Active", "Resolved", "Avg Res.", "Util."]}
+              gridColsClassName="grid-cols-[1.3fr_0.6fr_0.7fr_0.7fr_0.7fr]"
+              loading={loading}
+              isEmpty={!loading && mostActiveEngineers.length === 0}
+              emptyState={
+                <div className="py-12 text-center">
+                  <p className="text-sm font-semibold text-slate-700">No engineer activity yet</p>
+                  <p className="text-xs text-slate-500 mt-1">Engineer stats will appear here once tickets are assigned.</p>
+                </div>
+              }
+            >
+              {mostActiveEngineers.map((e) => {
+                const tone = utilizationTone(e.utilization_pct);
+                return (
+                  <div key={e.id} className="grid grid-cols-[1.3fr_0.6fr_0.7fr_0.7fr_0.7fr] gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors">
+                    <p className="text-sm font-semibold text-slate-900 truncate">{e.name}</p>
+                    <p className="text-sm text-slate-700">{e.active_ticket_count}</p>
+                    <p className="text-sm text-slate-700">{e.resolved_count}</p>
+                    <p className="text-sm text-slate-700">{e.avg_resolution_hours != null ? `${e.avg_resolution_hours}h` : "—"}</p>
+                    <p className={`text-sm font-semibold ${tone.text}`}>{e.utilization_pct != null ? `${e.utilization_pct}%` : "—"}</p>
+                  </div>
+                );
+              })}
+            </TableCard>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}>
+            <DashboardSection title="Highest Workload" description="Utilization %, busiest first">
+              {loading ? (
+                <div className="space-y-4">{[1, 2, 3, 4].map((n) => <Skeleton key={n} className="h-8 rounded-lg" />)}</div>
+              ) : highestWorkload.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-6">No utilization data yet</p>
+              ) : (
+                <div className="space-y-4">
+                  {highestWorkload.map((e) => {
+                    const tone = utilizationTone(e.utilization_pct);
+                    return (
+                      <div key={e.id}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-slate-700 font-medium truncate">{e.name}</span>
+                          <span className={`text-sm font-semibold shrink-0 ml-2 ${tone.text}`}>{e.utilization_pct}%</span>
+                        </div>
+                        <ProgressBar pct={e.utilization_pct} color={tone.bar} />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </DashboardSection>
+          </motion.div>
+        </div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }}>
+          <div className="mb-3">
+            <h2 className="text-section-title">Recently Breached Tickets</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Most recent SLA breaches requiring attention</p>
+          </div>
+          <TableCard
+            columns={["Ticket", "Title", "Severity", "Status", "Customer", "Engineer", "Breached By"]}
+            gridColsClassName="grid-cols-[0.9fr_1.6fr_0.8fr_0.9fr_1.1fr_1.1fr_0.9fr]"
+            loading={loading}
+            isEmpty={!loading && recentlyBreached.length === 0}
+            emptyState={
+              <div className="py-12 text-center">
+                <p className="text-sm font-semibold text-slate-700">No SLA breaches</p>
+                <p className="text-xs text-slate-500 mt-1">Breached tickets will appear here if any occur.</p>
+              </div>
+            }
+          >
+            {recentlyBreached.map((t) => (
+              <div key={t.id} className="grid grid-cols-[0.9fr_1.6fr_0.8fr_0.9fr_1.1fr_1.1fr_0.9fr] gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors">
+                <p className="text-xs font-mono font-semibold text-slate-500 truncate">{t.ticket_number}</p>
+                <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
+                <Badge domain="severity" label={t.severity} />
+                <Badge domain="ticketStatus" label={t.status} />
+                <p className="text-sm text-slate-700 truncate">{t.customer}</p>
+                <p className="text-sm text-slate-700 truncate">{t.engineer ?? "Unassigned"}</p>
+                <p className="text-sm font-semibold text-rose-600">{fmtBreachedBy(t.breached_by_minutes)}</p>
+              </div>
+            ))}
+          </TableCard>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.36 }}>
+          <div className="mb-3">
+            <h2 className="text-section-title">Top Service Categories</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Highest ticket volume by category, with average resolution time</p>
+          </div>
+          <TableCard
+            columns={["Category", "Tickets", "Avg Resolution"]}
+            gridColsClassName="grid-cols-[1.5fr_0.7fr_1fr]"
+            loading={loading}
+            isEmpty={!loading && topServiceCategories.length === 0}
+            emptyState={
+              <div className="py-12 text-center">
+                <p className="text-sm font-semibold text-slate-700">No category data yet</p>
+              </div>
+            }
+          >
+            {topServiceCategories.map((c) => (
+              <div key={c.service_type} className="grid grid-cols-[1.5fr_0.7fr_1fr] gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors">
+                <p className="text-sm font-semibold text-slate-900 truncate">{c.label}</p>
+                <p className="text-sm text-slate-700">{c.count}</p>
+                <p className="text-sm text-slate-700">{c.avg_resolution_hours != null ? `${c.avg_resolution_hours}h` : "—"}</p>
+              </div>
+            ))}
+          </TableCard>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
           <DashboardSection title="Executive Insights" description="AI-style summary generated from this period's metrics">
             {loading ? (
               <div className="space-y-2.5">
