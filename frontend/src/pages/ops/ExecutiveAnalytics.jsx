@@ -8,8 +8,11 @@ import { extractErrorMessage } from "../../utils/apiError";
 import PageHeader from "../../components/ui/PageHeader";
 import DashboardSection from "../../components/dashboard/DashboardSection";
 import KpiRow from "../../components/dashboard/KpiRow";
+import KpiCard from "../../components/dashboard/KpiCard";
 import Donut from "../../components/dashboard/charts/Donut";
+import BarRow from "../../components/dashboard/charts/BarRow";
 import Sparkline from "../../components/dashboard/charts/Sparkline";
+import TableCard from "../../components/table/TableCard";
 import Skeleton from "../../components/ui/Skeleton";
 
 function fmtCurrency(n) {
@@ -101,6 +104,23 @@ export default function ExecutiveAnalytics() {
   const createdTrendData = (data?.operational_health?.trend ?? []).map((r) => ({ label: r.bucket, value: r.created }));
   const resolvedTrendData = (data?.operational_health?.trend ?? []).map((r) => ({ label: r.bucket, value: r.resolved }));
 
+  const revenueTrendData = (data?.revenue?.trend ?? []).map((r) => ({ label: r.bucket, value: r.total }));
+  // Full distribution (not top-5) — deliberately differs from Operations'
+  // "Top Service Categories" table later in the page.
+  const serviceCategoryBarData = (data?.service_category_distribution ?? []).map((c) => ({ label: c.label, value: c.count }));
+  const topCustomers = data?.most_active_customers ?? [];
+
+  function fmtGrowth(pct) {
+    if (pct === null || pct === undefined) return undefined;
+    return `${pct > 0 ? "+" : ""}${pct}%`;
+  }
+
+  const growthItems = [
+    { label: "Revenue Growth", value: fmtGrowth(summary?.total_revenue_change_pct), color: "teal", loading },
+    { label: "Ticket Growth", value: fmtGrowth(summary?.total_tickets_change_pct), color: "indigo", loading },
+    { label: "Customer Growth", value: fmtGrowth(summary?.active_customers_change_pct), color: "sky", loading },
+  ];
+
   const operationalItems = [
     { label: "Avg Resolution Time", value: sla?.avg_resolution_hours != null ? `${sla.avg_resolution_hours}h` : undefined, color: "sky", loading },
     { label: "Avg First Response", value: sla?.avg_first_response_hours != null ? `${sla.avg_first_response_hours}h` : undefined, color: "sky", loading },
@@ -187,6 +207,69 @@ export default function ExecutiveAnalytics() {
         </div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}>
+          <DashboardSection title="Business Metrics" description="Revenue, category mix, and growth for the selected period">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Revenue Trend</p>
+                {loading ? (
+                  <Skeleton className="h-16 rounded-lg" />
+                ) : (
+                  <Sparkline data={revenueTrendData} color="#0d9488" valueFormatter={fmtCurrency} />
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Tickets by Service Category</p>
+                {loading ? (
+                  <div className="space-y-3">{[1, 2, 3].map((n) => <Skeleton key={n} className="h-6 rounded-lg" />)}</div>
+                ) : serviceCategoryBarData.length === 0 ? (
+                  <p className="text-sm text-slate-500 text-center py-6">No data yet</p>
+                ) : (
+                  <BarRow data={serviceCategoryBarData} color="#4f46e5" valueFormatter={(v) => `${v} ticket${v !== 1 ? "s" : ""}`} />
+                )}
+              </div>
+            </div>
+
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Growth Metrics</p>
+            {/* KpiRow's mobile default is always 2 columns (its `columns` prop
+                only changes the lg: breakpoint), which is too narrow for a
+                signed decimal percentage at KpiCard's text-4xl — confirmed by
+                measuring real overflow (166px content in an 80px tile) during
+                manual review. Single column until lg: gives each tile the
+                full-width room a value like "+258.3%" needs. */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {growthItems.map((item) => <KpiCard key={item.label} {...item} />)}
+            </div>
+          </DashboardSection>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}>
+          <div className="mb-3">
+            <h2 className="text-section-title">Top Customers</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Highest ticket volume and revenue for the selected period</p>
+          </div>
+          <TableCard
+            columns={["Name", "Tickets", "Revenue"]}
+            gridColsClassName="grid-cols-[1.5fr_0.7fr_1fr]"
+            loading={loading}
+            isEmpty={!loading && topCustomers.length === 0}
+            emptyState={
+              <div className="py-12 text-center">
+                <p className="text-sm font-semibold text-slate-700">No customer activity yet</p>
+                <p className="text-xs text-slate-500 mt-1">Top customers will appear here once tickets are created.</p>
+              </div>
+            }
+          >
+            {topCustomers.map((c) => (
+              <div key={c.id} className="grid grid-cols-[1.5fr_0.7fr_1fr] gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors">
+                <p className="text-sm font-semibold text-slate-900 truncate">{c.name}</p>
+                <p className="text-sm text-slate-700">{c.ticket_count}</p>
+                <p className="text-sm font-semibold text-slate-900">{fmtCurrency(c.revenue)}</p>
+              </div>
+            ))}
+          </TableCard>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <DashboardSection title="Executive Insights" description="AI-style summary generated from this period's metrics">
             {loading ? (
               <div className="space-y-2.5">

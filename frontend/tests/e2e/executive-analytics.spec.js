@@ -57,6 +57,21 @@ for (const roleKey of ALLOWED_ROLE_KEYS) {
       await expect(page.getByText("Executive Insights")).toBeVisible();
       expect(consoleErrors, `console errors on ${EXEC_ANALYTICS_PATH}: ${consoleErrors.join("; ")}`).toEqual([]);
     });
+
+    test("renders Business Metrics section and Top Customers table without console errors", async ({ page }) => {
+      const consoleErrors = [];
+      page.on("console", (msg) => {
+        if (msg.type() === "error") consoleErrors.push(msg.text());
+      });
+
+      await page.goto(EXEC_ANALYTICS_PATH);
+      await expect(page.getByText("Business Metrics")).toBeVisible();
+      await expect(page.getByText("Revenue Trend")).toBeVisible();
+      await expect(page.getByText("Tickets by Service Category")).toBeVisible();
+      await expect(page.getByText("Growth Metrics")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Top Customers" })).toBeVisible();
+      expect(consoleErrors, `console errors on ${EXEC_ANALYTICS_PATH}: ${consoleErrors.join("; ")}`).toEqual([]);
+    });
   });
 }
 
