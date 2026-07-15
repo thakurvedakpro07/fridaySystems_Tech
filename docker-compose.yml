@@ -30,6 +30,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      # Postgres startup can take well over a minute after a non-graceful
+      # stop (mandatory data-directory fsync + WAL crash recovery), but
+      # interval*retries alone only gives 50s before Docker marks the
+      # container unhealthy. Without start_period, that race aborted
+      # `docker compose up` with "dependency failed to start: db is
+      # unhealthy" even though Postgres was recovering normally.
+      start_period: 90s
 
   # ── Redis ────────────────────────────────────────────────────────
   redis:
@@ -91,6 +98,17 @@ services:
       redis:
         condition: service_healthy
     command: celery -A supportmitra worker --loglevel=info
+    healthcheck:
+      # Dockerfile.backend bakes in an HTTP healthcheck against :8000, which
+      # doesn't apply here — this container runs no web server. Overriding
+      # it with a real functional check: `inspect ping` round-trips through
+      # the broker and confirms the worker is actually consuming tasks, not
+      # just alive.
+      test: ["CMD-SHELL", "celery -A supportmitra inspect ping --timeout=5"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # ── Celery Beat (Scheduler) ──────────────────────────────────────
   # Fires recurring tasks on a schedule (e.g. SLA breach checks every 5 min)
@@ -106,6 +124,16 @@ services:
     depends_on:
       - celery
     command: celery -A supportmitra beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    healthcheck:
+      # Same override rationale as `celery` above. Beat has no RPC ping to
+      # ask a broker-side question, so this instead confirms PID 1 in the
+      # container is actually the beat scheduler process (liveness, not a
+      # functional check) — image has no `ps`, but /proc is always there.
+      test: ["CMD-SHELL", "grep -q beat /proc/1/cmdline"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # ── React Frontend ───────────────────────────────────────────────
   frontend:
