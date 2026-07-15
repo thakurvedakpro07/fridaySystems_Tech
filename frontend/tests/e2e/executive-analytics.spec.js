@@ -38,8 +38,23 @@ for (const roleKey of ALLOWED_ROLE_KEYS) {
       await expect(page.getByRole("heading", { name: "Executive Analytics" })).toBeVisible();
       await expect(page.getByText("Executive Summary")).toBeVisible();
       await expect(page.getByText("Operational Health")).toBeVisible();
-      await expect(page.getByText("Total Tickets")).toBeVisible();
+      await expect(page.getByText("Active Customers")).toBeVisible();
       await expect(page.getByText("Avg Resolution Time")).toBeVisible();
+      expect(consoleErrors, `console errors on ${EXEC_ANALYTICS_PATH}: ${consoleErrors.join("; ")}`).toEqual([]);
+    });
+
+    test("renders Operational Health charts and Executive Insights without console errors", async ({ page }) => {
+      const consoleErrors = [];
+      page.on("console", (msg) => {
+        if (msg.type() === "error") consoleErrors.push(msg.text());
+      });
+
+      await page.goto(EXEC_ANALYTICS_PATH);
+      await expect(page.getByText("Ticket Status Distribution")).toBeVisible();
+      await expect(page.getByText("Priority Distribution")).toBeVisible();
+      await expect(page.getByText("SLA Trend")).toBeVisible();
+      await expect(page.getByText("Weekly Ticket Volume")).toBeVisible();
+      await expect(page.getByText("Executive Insights")).toBeVisible();
       expect(consoleErrors, `console errors on ${EXEC_ANALYTICS_PATH}: ${consoleErrors.join("; ")}`).toEqual([]);
     });
   });
