@@ -42,6 +42,7 @@ const OpsFreelancers    = lazy(() => import("./pages/ops/OpsFreelancers"));
 const OpsAssignments    = lazy(() => import("./pages/ops/OpsAssignments"));
 const OpsUsers          = lazy(() => import("./pages/ops/OpsUsers"));
 const OpsRoles          = lazy(() => import("./pages/ops/OpsRoles"));
+const OpsAuditLog       = lazy(() => import("./pages/ops/OpsAuditLog"));
 const OpsServices       = lazy(() => import("./pages/ops/OpsServices"));
 const OpsPayments       = lazy(() => import("./pages/ops/OpsPayments"));
 const OpsAnalytics      = lazy(() => import("./pages/ops/OpsAnalytics"));
@@ -350,6 +351,7 @@ export default function App() {
           {/* Platform Management — Ops Manager + Super Admin (write gated inside page + backend) */}
           <Route path="/operations/users"       element={<OpsManagerRoute><OpsUsers /></OpsManagerRoute>} />
           <Route path="/operations/roles"       element={<SuperAdminOpsRoute><OpsRoles /></SuperAdminOpsRoute>} />
+          <Route path="/operations/audit-log"   element={<SuperAdminOpsRoute><OpsAuditLog /></SuperAdminOpsRoute>} />
           <Route path="/operations/settings"    element={<SuperAdminOpsRoute><OpsSettings /></SuperAdminOpsRoute>} />
 
           {/* Named error pages */}

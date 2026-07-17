@@ -117,6 +117,32 @@ const DOMAINS = {
       inactive: { tone: "rose",    label: "Inactive" },
     },
   },
+  // System Audit Log (pages/ops/OpsAuditLog.jsx) — one entry per AuditLog.action
+  // value written by services/audit_service.py::log_action(). Destructive/negative
+  // actions (deactivated, disabled, refunded) get rose; positive/neutral ones
+  // get emerald/indigo/amber, mirroring the tone conventions above.
+  auditAction: {
+    shape: "soft",
+    entries: {
+      user_deactivated:  { tone: "rose",    label: "User Deactivated" },
+      user_reactivated:  { tone: "emerald", label: "User Reactivated" },
+      service_created:   { tone: "indigo",  label: "Service Created" },
+      service_updated:   { tone: "amber",   label: "Service Updated" },
+      service_enabled:   { tone: "emerald", label: "Service Enabled" },
+      service_disabled:  { tone: "rose",    label: "Service Disabled" },
+      payment_confirmed: { tone: "emerald", label: "Payment Confirmed" },
+      payment_refunded:  { tone: "violet",  label: "Payment Refunded" },
+    },
+  },
+  // System Audit Log's "Entity" column — matches the `entity` value passed to log_action().
+  auditEntity: {
+    shape: "pill",
+    entries: {
+      user:    { tone: "slate",  label: "User" },
+      service: { tone: "indigo", label: "Service" },
+      payment: { tone: "teal",   label: "Payment" },
+    },
+  },
 };
 
 const SIZES = {

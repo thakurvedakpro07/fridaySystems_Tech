@@ -146,6 +146,9 @@ urlpatterns = [
     # ── Role Change Audit Log ────────────────────────────────────
     path("ops/role-audit/",                                 views.OpsRoleAuditListView.as_view(),   name="ops-role-audit"),
 
+    # ── System Audit Log ─────────────────────────────────────────
+    path("ops/audit-log/",                                  views.OpsAuditLogListView.as_view(),    name="ops-audit-log"),
+
     # ── Services Management ──────────────────────────────────────
     # NOTE: toggle/ must precede <uuid:pk>/ to avoid UUID parsing
     path("ops/services/",                                   views.OpsServiceListCreateView.as_view(), name="ops-service-list"),

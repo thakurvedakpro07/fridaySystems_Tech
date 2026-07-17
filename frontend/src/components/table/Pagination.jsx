@@ -25,7 +25,7 @@ function getPageWindow(current, total, delta = 2) {
   return pages;
 }
 
-export default function Pagination({ page, pageSize, count, hasPrevious, hasNext, loading, onPageChange, onPageSizeChange }) {
+export default function Pagination({ page, pageSize, count, hasPrevious, hasNext, loading, onPageChange, onPageSizeChange, itemLabel = "ticket" }) {
   if (loading || count === 0) return null;
 
   const totalPages = Math.max(1, Math.ceil(count / pageSize));
@@ -74,7 +74,7 @@ export default function Pagination({ page, pageSize, count, hasPrevious, hasNext
 
       <div className="flex items-center gap-4">
         <p className="text-xs text-slate-500">
-          Showing {startItem}–{endItem} of {count} ticket{count !== 1 ? "s" : ""}
+          Showing {startItem}–{endItem} of {count} {itemLabel}{count !== 1 ? "s" : ""}
         </p>
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-500 whitespace-nowrap">Rows per page</span>

@@ -53,7 +53,15 @@ class CustomUserAdmin(UserAdmin):
     fieldsets = (
         (None,              {"fields": ("email", "password")}),
         ("Personal info",   {"fields": ("first_name", "last_name")}),
-        ("Role",            {"fields": ("role",)}),
+        ("Role",            {
+            "fields": ("role",),
+            "description": (
+                "To change a user's role, use Operations → Users → Change Role "
+                "in the app instead — that flow is audited (RoleChangeAudit) and "
+                "enforces valid role transitions. This field is locked here to prevent "
+                "silently bypassing that audit trail."
+            ),
+        }),
         ("Permissions",     {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
     )
@@ -63,6 +71,16 @@ class CustomUserAdmin(UserAdmin):
             "fields":  ("email", "role", "password1", "password2"),
         }),
     )
+
+    def get_readonly_fields(self, request, obj=None):
+        # `role` must only change through the audited ops_change_role endpoint
+        # (writes RoleChangeAudit + enforces the transition matrix) — never
+        # directly here, which would silently bypass both. `obj` is None on the
+        # "add user" page (add_fieldsets), where role must stay editable; lock
+        # it only once the user already exists.
+        if obj is not None:
+            return (*self.readonly_fields, "role")
+        return self.readonly_fields
 
 
 # ── Customer / Freelancer ─────────────────────────────────────────
@@ -312,8 +330,10 @@ class NotificationAdmin(admin.ModelAdmin):
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
     list_display   = ["user_type", "user_id", "entity", "action", "created_at"]
-    list_filter    = ["user_type", "action"]
+    list_filter    = ["user_type", "entity", "action"]
+    search_fields  = ["user_id", "entity_id", "action"]
     readonly_fields = ["created_at"]
+    date_hierarchy  = "created_at"
 
     def has_add_permission(self, request):
         return False

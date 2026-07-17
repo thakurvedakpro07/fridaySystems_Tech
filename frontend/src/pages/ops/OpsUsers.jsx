@@ -13,6 +13,7 @@ import Badge from "../../components/ui/Badge";
 import PageHeader from "../../components/ui/PageHeader";
 import Alert from "../../components/ui/Alert";
 import TableCard from "../../components/table/TableCard";
+import Pagination from "../../components/table/Pagination";
 
 // ── Constants ─────────────────────────────────────────────────────
 // Human-readable role labels — kept here (rather than only inside Badge's
@@ -214,6 +215,12 @@ export default function OpsUsers() {
   const [roleFilter, setRoleFilter] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
 
+  const [page, setPage]         = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [count, setCount]       = useState(0);
+  const [next, setNext]         = useState(null);
+  const [previous, setPrevious] = useState(null);
+
   const [roleModal, setRoleModal]   = useState({ open: false, user: null });
   const [confirmModal, setConfirmModal] = useState({ open: false, action: null, user: null, label: "", body: "", danger: false });
   const [actionLoading, setActionLoading] = useState(false);
@@ -228,18 +235,23 @@ export default function OpsUsers() {
     setLoading(true);
     setError(null);
     try {
-      const params = {};
+      const params = { page, page_size: pageSize };
       if (search)      params.search    = search;
       if (roleFilter)  params.role      = roleFilter;
       if (activeFilter !== "") params.is_active = activeFilter;
       const res = await getOpsUsers(params);
-      setUsers(res.data?.results ?? res.data ?? []);
+      const data = res.data ?? {};
+      const results = data.results ?? (Array.isArray(data) ? data : []);
+      setUsers(results);
+      setCount(data.count ?? results.length);
+      setNext(data.next ?? null);
+      setPrevious(data.previous ?? null);
     } catch (e) {
       setError(e?.response?.data?.detail ?? "Failed to load users.");
     } finally {
       setLoading(false);
     }
-  }, [search, roleFilter, activeFilter]);
+  }, [search, roleFilter, activeFilter, page, pageSize]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -306,13 +318,13 @@ export default function OpsUsers() {
         <div className="flex flex-wrap gap-3">
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             placeholder="Search by name or email…"
             className="flex-1 min-w-[200px] text-sm border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
           />
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
+            onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
             className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
           >
             <option value="">All Roles</option>
@@ -325,7 +337,7 @@ export default function OpsUsers() {
           </select>
           <select
             value={activeFilter}
-            onChange={(e) => setActiveFilter(e.target.value)}
+            onChange={(e) => { setActiveFilter(e.target.value); setPage(1); }}
             className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
           >
             <option value="">All Status</option>
@@ -413,6 +425,18 @@ export default function OpsUsers() {
             );
           })}
         </TableCard>
+
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          count={count}
+          hasPrevious={Boolean(previous)}
+          hasNext={Boolean(next)}
+          loading={loading}
+          onPageChange={setPage}
+          onPageSizeChange={(v) => { setPageSize(Number(v)); setPage(1); }}
+          itemLabel="user"
+        />
 
       </div>
 

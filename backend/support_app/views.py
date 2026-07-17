@@ -53,6 +53,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView as BaseTokenObtainPairView
 
 from .models import (
+    AuditLog,
     CSATSurvey,
     Customer,
     Freelancer,
@@ -95,6 +96,7 @@ from .serializers import (
     AdminAssignSerializer,
     AdminPaymentSerializer,
     AdminStatusSerializer,
+    AuditLogSerializer,
     CSATSurveySerializer,
     CustomerSerializer,
     CustomerTicketListSerializer,
@@ -2454,6 +2456,7 @@ class OpsUserListView(generics.ListAPIView):
     """
     serializer_class = OpsUserSerializer
     permission_classes = [permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin]
+    pagination_class = OpsPageNumberPagination  # adds ?page_size= (max 100), matches freelancer
 
     def get_queryset(self):
         qs = User.objects.all().order_by("-date_joined")
@@ -2578,6 +2581,8 @@ def ops_deactivate_user(request, user_id):
     POST /api/ops/users/{id}/deactivate/
     Super Admin only. Prevent a user from logging in.
     """
+    from .services.audit_service import log_action
+
     target = get_object_or_404(User, pk=user_id)
 
     if target.pk == request.user.pk:
@@ -2595,6 +2600,11 @@ def ops_deactivate_user(request, user_id):
     target.is_active = False
     target.save(update_fields=["is_active"])
 
+    log_action(
+        user=request.user, entity="user", action="user_deactivated",
+        entity_id=target.pk, metadata={"target_email": target.email}, request=request,
+    )
+
     return Response({
         "detail": f"{target.email} has been deactivated.",
         "user": OpsUserSerializer(target).data,
@@ -2608,6 +2618,8 @@ def ops_reactivate_user(request, user_id):
     POST /api/ops/users/{id}/reactivate/
     Super Admin only. Re-enable a previously deactivated account.
     """
+    from .services.audit_service import log_action
+
     target = get_object_or_404(User, pk=user_id)
 
     if target.is_active:
@@ -2618,6 +2630,11 @@ def ops_reactivate_user(request, user_id):
 
     target.is_active = True
     target.save(update_fields=["is_active"])
+
+    log_action(
+        user=request.user, entity="user", action="user_reactivated",
+        entity_id=target.pk, metadata={"target_email": target.email}, request=request,
+    )
 
     return Response({
         "detail": f"{target.email} has been reactivated.",
@@ -2655,6 +2672,51 @@ class OpsRoleAuditListView(generics.ListAPIView):
 
 
 # ══════════════════════════════════════════════════════════════════
+# SYSTEM AUDIT LOG
+# ══════════════════════════════════════════════════════════════════
+
+class OpsAuditLogListView(generics.ListAPIView):
+    """
+    GET /api/ops/audit-log/
+    Paginated, filterable system-wide audit trail. Readable by both ops roles.
+    """
+    serializer_class = AuditLogSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin]
+    pagination_class = OpsPageNumberPagination  # adds ?page_size= (max 100)
+
+    def get_queryset(self):
+        from django.db.models import OuterRef, Subquery
+
+        email_subquery = User.objects.filter(pk=OuterRef("user_id")).values("email")[:1]
+        qs = AuditLog.objects.annotate(
+            user_email=Subquery(email_subquery)
+        ).order_by("-created_at")
+
+        entity_filter = self.request.query_params.get("entity")
+        if entity_filter:
+            qs = qs.filter(entity=entity_filter)
+
+        action_filter = self.request.query_params.get("action")
+        if action_filter:
+            qs = qs.filter(action=action_filter)
+
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            import uuid as _uuid
+            from django.db.models import Q
+
+            matching_user_ids = User.objects.filter(email__icontains=search).values_list("pk", flat=True)
+            search_filter = Q(user_id__in=matching_user_ids)
+            try:
+                search_filter |= Q(entity_id=_uuid.UUID(search))
+            except ValueError:
+                pass  # search term isn't a UUID — skip the entity_id match
+            qs = qs.filter(search_filter)
+
+        return qs
+
+
+# ══════════════════════════════════════════════════════════════════
 # SERVICES MANAGEMENT
 # ══════════════════════════════════════════════════════════════════
 
@@ -2678,6 +2740,15 @@ class OpsServiceListCreateView(generics.ListCreateAPIView):
             qs = qs.filter(Q(name__icontains=search) | Q(description__icontains=search))
         return qs
 
+    def perform_create(self, serializer):
+        from .services.audit_service import log_action
+
+        service = serializer.save()
+        log_action(
+            user=self.request.user, entity="service", action="service_created",
+            entity_id=service.pk, metadata={"name": service.name}, request=self.request,
+        )
+
 
 class OpsServiceDetailView(generics.RetrieveUpdateAPIView):
     """
@@ -2688,6 +2759,15 @@ class OpsServiceDetailView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin]
     queryset = Service.objects.all()
 
+    def perform_update(self, serializer):
+        from .services.audit_service import log_action
+
+        service = serializer.save()
+        log_action(
+            user=self.request.user, entity="service", action="service_updated",
+            entity_id=service.pk, metadata={"name": service.name}, request=self.request,
+        )
+
 
 @api_view(["POST"])
 @permission_classes([permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin])
@@ -2696,9 +2776,19 @@ def ops_service_toggle(request, pk):
     POST /api/ops/services/{id}/toggle/
     Toggle a service between active and inactive.
     """
+    from .services.audit_service import log_action
+
     service = get_object_or_404(Service, pk=pk)
     service.status = "inactive" if service.status == "active" else "active"
     service.save(update_fields=["status", "updated_at"])
+
+    log_action(
+        user=request.user,
+        entity="service",
+        action="service_enabled" if service.status == "active" else "service_disabled",
+        entity_id=service.pk, metadata={"name": service.name}, request=request,
+    )
+
     return Response(ServiceSerializer(service).data)
 
 
@@ -2737,6 +2827,8 @@ def ops_payment_confirm(request, pk):
     POST /api/ops/payments/{id}/confirm/
     Manually mark a payment as completed and move the linked ticket to 'open'.
     """
+    from .services.audit_service import log_action
+
     payment = get_object_or_404(Payment, pk=pk)
     if payment.status != "pending":
         return Response(
@@ -2763,6 +2855,11 @@ def ops_payment_confirm(request, pk):
             payment.ticket.status = "open"
             payment.ticket.save(update_fields=["status", "updated_at"])
 
+    log_action(
+        user=request.user, entity="payment", action="payment_confirmed",
+        entity_id=payment.pk, metadata={"invoice_number": payment.invoice_number}, request=request,
+    )
+
     return Response(OpsPaymentSerializer(payment).data)
 
 
@@ -2780,6 +2877,7 @@ def ops_payment_refund(request, pk):
     On gateway failure the payment is left in 'completed' status and 502 is returned
     so the admin can retry.
     """
+    from .services.audit_service import log_action
     from .services.payment_service import issue_refund as _issue_refund
 
     payment = get_object_or_404(
@@ -2820,6 +2918,11 @@ def ops_payment_refund(request, pk):
             },
             status=status.HTTP_502_BAD_GATEWAY,
         )
+
+    log_action(
+        user=request.user, entity="payment", action="payment_refunded",
+        entity_id=updated.pk, metadata={"invoice_number": updated.invoice_number}, request=request,
+    )
 
     return Response(OpsPaymentSerializer(updated).data)
 

@@ -48,6 +48,11 @@ export const opsReactivateUser = (userId) =>
 export const getOpsRoleAudit = (params = {}) =>
   apiClient.get("/ops/role-audit/", { params });
 
+// ── System Audit Log ───────────────────────────────────────────────
+
+export const getOpsAuditLog = (params = {}) =>
+  apiClient.get("/ops/audit-log/", { params });
+
 // ── Services Management ───────────────────────────────────────────
 
 export const getOpsServices = (params = {}) =>

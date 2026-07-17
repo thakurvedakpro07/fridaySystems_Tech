@@ -808,6 +808,31 @@ class RoleChangeAuditSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class AuditLogSerializer(serializers.ModelSerializer):
+    """
+    Read-only serializer for the system-wide audit log.
+
+    `user_email` is populated by the view's queryset annotation (a Subquery
+    against `user_id`, which is a raw UUIDField, not a FK — see AuditLog's
+    model docstring) rather than a per-row SerializerMethodField lookup,
+    to avoid an N+1 query on every page of results.
+    """
+    user_type_display = serializers.SerializerMethodField()
+    user_email = serializers.CharField(read_only=True, allow_null=True)
+
+    def get_user_type_display(self, obj):
+        return _ROLE_DISPLAY.get(obj.user_type, obj.user_type)
+
+    class Meta:
+        model = AuditLog
+        fields = [
+            "id", "user_email", "user_type", "user_type_display",
+            "entity", "entity_id", "action", "metadata",
+            "ip_address", "created_at",
+        ]
+        read_only_fields = fields
+
+
 class ServiceSerializer(serializers.ModelSerializer):
     """Serializer for the platform services catalogue."""
 
