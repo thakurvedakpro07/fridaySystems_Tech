@@ -29,8 +29,9 @@ function UserAvatar({ user }) {
 
 // ── AppShell ──────────────────────────────────────────────────────
 // Authenticated app layout: fixed sidebar (desktop) + slim topbar + content.
-// Replaces MainLayout for dashboard pages.
-export default function AppShell({ children }) {
+// The single shell for every authenticated page — `maxWidth`/`noPad` mirror
+// MainLayout's API so pages keep their existing content width after swapping.
+export default function AppShell({ children, maxWidth, noPad = false }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const user = useAuthStore((s) => s.user);
 
@@ -89,7 +90,7 @@ export default function AppShell({ children }) {
         </header>
 
         {/* ── Page content ─────────────────────────────────────── */}
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
+        <main className={`flex-1 w-full mx-auto ${maxWidth ?? ""} ${noPad ? "" : "px-4 sm:px-6 lg:px-8 py-8"}`}>
           {children}
         </main>
 

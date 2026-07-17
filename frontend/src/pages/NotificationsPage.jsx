@@ -1,21 +1,13 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import MainLayout from "../components/layouts/MainLayout";
+import AppShell from "../components/layout/AppShell";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useNotifications } from "../hooks/useNotifications";
 import { useToast } from "../context/ToastContext";
 import { formatAbsoluteTime, formatRelativeTime, groupByDate } from "../utils/time";
 import PageHeader from "../components/ui/PageHeader";
-
-const CATEGORY_META = {
-  ticket_assigned:   { icon: "📋", colour: "bg-indigo-100 text-indigo-700",  ring: "ring-indigo-200" },
-  ticket_resolved:   { icon: "✅", colour: "bg-emerald-100 text-emerald-700", ring: "ring-emerald-200" },
-  comment_added:     { icon: "💬", colour: "bg-slate-100 text-slate-600",     ring: "ring-slate-200" },
-  status_changed:    { icon: "🔄", colour: "bg-amber-100 text-amber-700",     ring: "ring-amber-200" },
-  sla_breach:        { icon: "⚠️", colour: "bg-red-100 text-red-700",         ring: "ring-red-200" },
-  payment_confirmed: { icon: "💳", colour: "bg-teal-100 text-teal-700",       ring: "ring-teal-200" },
-};
-const DEFAULT_META = { icon: "🔔", colour: "bg-slate-100 text-slate-600", ring: "ring-slate-200" };
+import { CATEGORY_META, DEFAULT_CATEGORY_META } from "../components/ui/notificationCategoryMeta";
+import { BellIcon } from "../components/tickets/ActionIcons";
 
 function SkeletonRow() {
   return (
@@ -30,7 +22,7 @@ function SkeletonRow() {
 }
 
 function NotificationRow({ n, onMarkRead, onNavigate }) {
-  const meta = CATEGORY_META[n.category] ?? DEFAULT_META;
+  const meta = CATEGORY_META[n.category] ?? DEFAULT_CATEGORY_META;
   return (
     <div
       role="button"
@@ -44,9 +36,9 @@ function NotificationRow({ n, onMarkRead, onNavigate }) {
       ].join(" ")}
     >
       <span
-        className={`w-9 h-9 rounded-full flex items-center justify-center text-sm shrink-0 ring-1 ${meta.colour} ${meta.ring}`}
+        className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ring-1 ${meta.colour} ${meta.ring}`}
       >
-        {meta.icon}
+        <meta.Icon className="w-4 h-4" />
       </span>
       <div className="flex-1 min-w-0">
         <p className={`text-sm leading-snug ${n.is_read ? "text-slate-500" : "text-slate-900 font-medium"}`}>
@@ -105,7 +97,7 @@ export default function NotificationsPage() {
   const grouped = groupByDate(notifications, (n) => n.created_at);
 
   return (
-    <MainLayout maxWidth="max-w-2xl">
+    <AppShell maxWidth="max-w-2xl">
       {/* Page header */}
       <div className="flex items-center justify-between mb-6">
         <PageHeader
@@ -182,6 +174,6 @@ export default function NotificationsPage() {
           Showing {notifications.length} notification{notifications.length !== 1 ? "s" : ""}
         </p>
       )}
-    </MainLayout>
+    </AppShell>
   );
 }

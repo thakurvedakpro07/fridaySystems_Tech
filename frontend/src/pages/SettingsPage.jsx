@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { changePassword, getProfile, updateProfile } from "../api/settings";
-import MainLayout from "../components/layouts/MainLayout";
+import AppShell from "../components/layout/AppShell";
 import Button from "../components/ui/Button";
 import FormSection from "../components/ui/FormSection";
 import PageHeader from "../components/ui/PageHeader";
@@ -9,10 +9,11 @@ import { useToast } from "../context/ToastContext";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useAuthStore } from "../store/authStore";
 import { getDisplayName } from "../utils/displayName";
+import { UserCircleIcon, LockClosedIcon } from "../components/tickets/ActionIcons";
 
 const TABS = [
-  { id: "profile",  label: "Profile",  icon: "👤" },
-  { id: "security", label: "Security", icon: "🔒" },
+  { id: "profile",  label: "Profile",  Icon: UserCircleIcon },
+  { id: "security", label: "Security", Icon: LockClosedIcon },
 ];
 
 function FieldRow({ label, children }) {
@@ -287,7 +288,7 @@ export default function SettingsPage() {
   const role = user?.is_staff ? "admin" : (user?.role || "customer");
 
   return (
-    <MainLayout maxWidth="max-w-2xl">
+    <AppShell maxWidth="max-w-2xl">
       {/* Page header */}
       <div className="mb-6">
         <PageHeader title={getDisplayName(user, "full") || "Account Settings"} description={user?.email} />
@@ -306,7 +307,7 @@ export default function SettingsPage() {
                 : "text-slate-500 hover:text-slate-700"
               }`}
           >
-            <span>{tab.icon}</span>
+            <tab.Icon className="w-4 h-4" />
             {tab.label}
           </button>
         ))}
@@ -326,6 +327,6 @@ export default function SettingsPage() {
           <SecurityTab />
         )}
       </div>
-    </MainLayout>
+    </AppShell>
   );
 }

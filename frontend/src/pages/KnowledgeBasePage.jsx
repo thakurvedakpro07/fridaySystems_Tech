@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import MainLayout from "../components/layouts/MainLayout";
+import AppShell from "../components/layout/AppShell";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { listArticles, listCategories } from "../api/knowledgeBase";
 import PageHeader from "../components/ui/PageHeader";
@@ -9,6 +9,7 @@ import Skeleton from "../components/ui/Skeleton";
 import Alert from "../components/ui/Alert";
 import ArticleCard from "../components/kb/ArticleCard";
 import { useRoles } from "../hooks/useRoles";
+import { BookOpenIcon } from "../components/tickets/ActionIcons";
 
 export default function KnowledgeBasePage() {
   usePageTitle("Knowledge Base");
@@ -52,7 +53,7 @@ export default function KnowledgeBasePage() {
   ];
 
   return (
-    <MainLayout wide>
+    <AppShell maxWidth="max-w-7xl">
       <div className="space-y-6">
         <PageHeader
           title="Knowledge Base"
@@ -84,7 +85,7 @@ export default function KnowledgeBasePage() {
         ) : articles.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-2xl">
             <EmptyState
-              icon="📄"
+              icon={<BookOpenIcon className="w-8 h-8 text-slate-500" />}
               title="No articles found"
               description={search || category ? "Try a different search or category." : "No Knowledge Base articles have been published yet."}
             />
@@ -95,6 +96,6 @@ export default function KnowledgeBasePage() {
           </div>
         )}
       </div>
-    </MainLayout>
+    </AppShell>
   );
 }

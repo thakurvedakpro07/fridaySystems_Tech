@@ -17,17 +17,8 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "../../context/ToastContext";
 import { useNotifications } from "../../hooks/useNotifications";
 import { formatAbsoluteTime, formatRelativeTime, groupByDate } from "../../utils/time";
-
-// ── Category metadata ────────────────────────────────────────────────────────
-const CATEGORY_META = {
-  ticket_assigned:   { icon: "📋", colour: "bg-indigo-100 text-indigo-700",  ring: "ring-indigo-200" },
-  ticket_resolved:   { icon: "✅", colour: "bg-emerald-100 text-emerald-700", ring: "ring-emerald-200" },
-  comment_added:     { icon: "💬", colour: "bg-slate-100 text-slate-600",     ring: "ring-slate-200" },
-  status_changed:    { icon: "🔄", colour: "bg-amber-100 text-amber-700",     ring: "ring-amber-200" },
-  sla_breach:        { icon: "⚠️", colour: "bg-red-100 text-red-700",         ring: "ring-red-200" },
-  payment_confirmed: { icon: "💳", colour: "bg-teal-100 text-teal-700",       ring: "ring-teal-200" },
-};
-const DEFAULT_META = { icon: "🔔", colour: "bg-slate-100 text-slate-600", ring: "ring-slate-200" };
+import { CATEGORY_META, DEFAULT_CATEGORY_META } from "./notificationCategoryMeta";
+import { BellIcon } from "../tickets/ActionIcons";
 
 // ── Skeleton row ─────────────────────────────────────────────────────────────
 function SkeletonRow() {
@@ -44,7 +35,7 @@ function SkeletonRow() {
 
 // ── Single notification row ──────────────────────────────────────────────────
 function NotificationRow({ n, onMarkRead, onNavigate }) {
-  const meta = CATEGORY_META[n.category] ?? DEFAULT_META;
+  const meta = CATEGORY_META[n.category] ?? DEFAULT_CATEGORY_META;
 
   return (
     <div
@@ -62,10 +53,10 @@ function NotificationRow({ n, onMarkRead, onNavigate }) {
     >
       {/* Category icon */}
       <span
-        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0
+        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0
                     ring-1 ${meta.colour} ${meta.ring}`}
       >
-        {meta.icon}
+        <meta.Icon className="w-4 h-4" />
       </span>
 
       {/* Content */}
@@ -235,7 +226,7 @@ export default function NotificationBell() {
             {/* Empty state */}
             {!listLoading && listFetched && notifications.length === 0 && (
               <div className="flex flex-col items-center gap-3 py-10 px-4">
-                <span className="text-3xl select-none" aria-hidden="true">🔔</span>
+                <BellIcon className="w-8 h-8 text-slate-400" />
                 <p className="text-sm text-slate-500 font-medium text-center">You're all caught up!</p>
                 <p className="text-xs text-slate-500 text-center">New notifications will appear here.</p>
               </div>

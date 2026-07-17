@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import MainLayout from "../components/layouts/MainLayout";
+import AppShell from "../components/layout/AppShell";
 import TicketForm from "../components/tickets/TicketForm";
 import Alert from "../components/ui/Alert";
 import { createTicket } from "../api/tickets";
@@ -49,7 +49,7 @@ export default function NewTicket() {
   };
 
   return (
-    <MainLayout maxWidth="max-w-xl">
+    <AppShell maxWidth="max-w-xl">
       {/* Page header */}
       <div className="mb-6">
         <h1 className="text-page-title">Open a Support Ticket</h1>
@@ -72,6 +72,6 @@ export default function NewTicket() {
            style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
         <TicketForm onSubmit={handleSubmit} loading={loading} />
       </div>
-    </MainLayout>
+    </AppShell>
   );
 }

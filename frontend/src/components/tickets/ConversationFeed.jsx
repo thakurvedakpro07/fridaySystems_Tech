@@ -16,6 +16,11 @@ import { formatAbsoluteTime, formatRelativeTime } from "../../utils/time";
 import Spinner from "../ui/Spinner";
 import Badge from "../ui/Badge";
 import FileTypeBadge from "../ui/FileTypeBadge";
+import {
+  TicketIcon, ArrowsPathIcon, ChartBarIcon, UserPlusIcon, UserMinusIcon,
+  ChatBubbleIcon, SuccessCheckIcon, WarningTriangleIcon, LockOpenIcon,
+  ExclamationCircleIcon,
+} from "./ActionIcons";
 
 const MAX_SIZE_MB = 5;
 const ALLOWED_EXT = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".txt", ".csv", ".zip", ".xls", ".xlsx"];
@@ -45,20 +50,19 @@ const LockIcon = (p) => (
 );
 
 const ACTION_META = {
-  created:          "🎫",
-  status_changed:   "🔄",
-  severity_changed: "📊",
-  assigned:         "👤",
-  reassigned:       "↔️",
-  unassigned:       "👤",
-  comment_added:    "💬",
-  resolved:         "✅",
-  closed:           "🔒",
-  reopened:         "🔓",
-  sla_breached:     "⚠️",
-  escalated:        "🚨",
+  created:          TicketIcon,
+  status_changed:   ArrowsPathIcon,
+  severity_changed: ChartBarIcon,
+  assigned:         UserPlusIcon,
+  reassigned:       ArrowsPathIcon,
+  unassigned:       UserMinusIcon,
+  comment_added:    ChatBubbleIcon,
+  resolved:         SuccessCheckIcon,
+  closed:           LockIcon,
+  reopened:         LockOpenIcon,
+  sla_breached:     WarningTriangleIcon,
+  escalated:        ExclamationCircleIcon,
 };
-const DEFAULT_ICON = "•";
 
 function statusPill(value) {
   if (!value) return null;
@@ -282,14 +286,16 @@ function FeedAttachmentCard({ attachment, ticket, canDelete, onDelete }) {
 }
 
 function FeedActivityDivider({ entry, currentUser }) {
-  const icon = ACTION_META[entry.action] ?? DEFAULT_ICON;
+  const ActionIconComp = ACTION_META[entry.action];
   const hasTransition = entry.from_value && entry.to_value;
 
   return (
     <div className="flex items-center gap-3 py-0.5">
       <div className="flex-1 h-px bg-slate-200" />
       <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs text-slate-500 shrink-0">
-        <span className="text-sm leading-none">{icon}</span>
+        {ActionIconComp
+          ? <ActionIconComp className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          : <span className="text-sm leading-none">•</span>}
         <span>
           <span className="font-medium text-slate-600">{actorLabel(entry.actor_email, currentUser)}</span>
           {" "}{(entry.action_display ?? entry.action).toLowerCase()}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import MainLayout from "../components/layouts/MainLayout";
+import AppShell from "../components/layout/AppShell";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useToast } from "../context/ToastContext";
@@ -110,7 +110,7 @@ export default function HelpCenterPage() {
   }
 
   return (
-    <MainLayout maxWidth="max-w-4xl">
+    <AppShell maxWidth="max-w-4xl">
       {/* ── Page header ──────────────────────────────────────────── */}
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-3">
@@ -489,6 +489,6 @@ export default function HelpCenterPage() {
           ))}
         </nav>
       </div>
-    </MainLayout>
+    </AppShell>
   );
 }

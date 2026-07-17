@@ -10,13 +10,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { downloadInvoice, listMyPayments } from "../api/payments";
-import MainLayout from "../components/layouts/MainLayout";
+import AppShell from "../components/layout/AppShell";
 import { CONTACT } from "../config/contact";
 import { usePageTitle } from "../hooks/usePageTitle";
 import Badge from "../components/ui/Badge";
 import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
 import EmptyState from "../components/ui/EmptyState";
+import { CreditCardIcon } from "../components/tickets/ActionIcons";
 
 // ── Stat card ─────────────────────────────────────────────────────
 function StatCard({ icon, label, value, sub, colour }) {
@@ -66,8 +67,8 @@ function PaymentRow({ payment }) {
   return (
     <div className="flex items-center gap-3 px-5 py-4 hover:bg-slate-50/60 transition-colors">
       {/* Icon */}
-      <span className="w-9 h-9 rounded-full bg-teal-50 border border-teal-100 flex items-center justify-center text-base shrink-0">
-        💳
+      <span className="w-9 h-9 rounded-full bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0">
+        <CreditCardIcon className="w-4 h-4 text-teal-600" />
       </span>
 
       {/* Details */}
@@ -147,7 +148,7 @@ export default function BillingPage() {
   const failedCount  = payments.filter((p) => p.status === "failed").length;
 
   return (
-    <MainLayout maxWidth="max-w-3xl">
+    <AppShell maxWidth="max-w-3xl">
       {/* Page header */}
       <div className="mb-6">
         <PageHeader title="Billing" description="Payment history and invoices for your account." />
@@ -248,6 +249,6 @@ export default function BillingPage() {
           for invoice queries. All completed payments include a downloadable PDF tax invoice.
         </p>
       )}
-    </MainLayout>
+    </AppShell>
   );
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import TicketDetail from "../components/tickets/TicketDetail";
-import MainLayout from "../components/layouts/MainLayout";
+import AppShell from "../components/layout/AppShell";
 import Spinner from "../components/ui/Spinner";
 import Alert from "../components/ui/Alert";
 import Skeleton from "../components/ui/Skeleton";
@@ -54,7 +54,7 @@ export default function TicketDetailPage() {
   }, [ticket?.status, role, loadTicket]);
 
   return (
-    <MainLayout maxWidth="max-w-7xl" noPad>
+    <AppShell maxWidth="max-w-7xl" noPad>
     <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-8">
       {loading && (
         <div className="animate-fade-in space-y-4">
@@ -102,6 +102,6 @@ export default function TicketDetailPage() {
         </div>
       )}
     </div>
-    </MainLayout>
+    </AppShell>
   );
 }

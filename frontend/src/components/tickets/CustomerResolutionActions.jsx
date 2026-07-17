@@ -13,6 +13,7 @@ import { useToast } from "../../context/ToastContext";
 import { useAuthStore } from "../../store/authStore";
 import { CONTACT } from "../../config/contact";
 import Button from "../ui/Button";
+import { CreditCardIcon } from "./ActionIcons";
 
 // ── Razorpay loader ───────────────────────────────────────────────
 function loadRazorpayScript() {
@@ -195,7 +196,7 @@ export default function CustomerResolutionActions({ ticket, onUpdate }) {
       <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4"
            style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
         <div className="flex items-center gap-2">
-          <span className="text-lg">💳</span>
+          <CreditCardIcon className="w-4 h-4 text-slate-600" />
           <p className="text-sm font-semibold text-slate-800">Resolution Fee</p>
         </div>
         <p className="text-xs text-slate-500 -mt-2">

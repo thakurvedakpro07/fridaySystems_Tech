@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { getAnalytics } from "../api/analytics";
-import MainLayout from "../components/layouts/MainLayout";
+import AppShell from "../components/layout/AppShell";
 import { SkeletonCard } from "../components/ui/Spinner";
 import Alert from "../components/ui/Alert";
 import PageHeader from "../components/ui/PageHeader";
 import Skeleton from "../components/ui/Skeleton";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useAuthStore } from "../store/authStore";
+import {
+  TicketIcon, EnvelopeIcon, BoltIcon, SuccessCheckIcon, ClockIcon, StarIcon, CreditCardIcon,
+} from "../components/tickets/ActionIcons";
 
 // ── Mini chart components (no external library) ───────────────────
 
@@ -95,7 +98,7 @@ function StatCard({ label, value, sub, color = "indigo", icon }) {
         {sub && <p className="text-xs text-slate-500 mt-1.5">{sub}</p>}
       </div>
       {icon && (
-        <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0 ${bg}`}>
+        <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${bg} ${text}`}>
           {icon}
         </span>
       )}
@@ -162,7 +165,7 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <MainLayout maxWidth="max-w-5xl">
+      <AppShell maxWidth="max-w-5xl">
         <div className="mb-6">
           <Skeleton className="h-6 w-48 rounded-full mb-2" />
           <Skeleton className="h-4 w-64 rounded-full" />
@@ -173,15 +176,15 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {[1,2].map((n) => <SkeletonCard key={n} />)}
         </div>
-      </MainLayout>
+      </AppShell>
     );
   }
 
   if (error) {
     return (
-      <MainLayout maxWidth="max-w-5xl">
+      <AppShell maxWidth="max-w-5xl">
         <Alert severity="error">{error}</Alert>
-      </MainLayout>
+      </AppShell>
     );
   }
 
@@ -195,7 +198,7 @@ export default function AnalyticsPage() {
   const serviceMax = Math.max(...(data.service_breakdown?.map((s) => s.n) ?? [1]), 1);
 
   return (
-    <MainLayout maxWidth="max-w-5xl">
+    <AppShell maxWidth="max-w-5xl">
       {/* Header */}
       <div className="mb-6">
         <PageHeader
@@ -206,10 +209,10 @@ export default function AnalyticsPage() {
 
       {/* Top stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <StatCard label="Total Tickets"    value={data.total}       color="indigo"  icon="🎫" />
-        <StatCard label="Open"             value={data.open}        color="amber"   icon="📬" />
-        <StatCard label="Work Started"     value={data.in_progress} color="violet"  icon="⚡" />
-        <StatCard label="Resolved"         value={data.resolved}    color="emerald" icon="✅" />
+        <StatCard label="Total Tickets"    value={data.total}       color="indigo"  icon={<TicketIcon className="w-4 h-4" />} />
+        <StatCard label="Open"             value={data.open}        color="amber"   icon={<EnvelopeIcon className="w-4 h-4" />} />
+        <StatCard label="Work Started"     value={data.in_progress} color="violet"  icon={<BoltIcon className="w-4 h-4" />} />
+        <StatCard label="Resolved"         value={data.resolved}    color="emerald" icon={<SuccessCheckIcon className="w-4 h-4" />} />
       </div>
 
       {/* Second row stats */}
@@ -218,7 +221,7 @@ export default function AnalyticsPage() {
           label="Avg Resolution"
           value={data.avg_resolution_hours != null ? `${data.avg_resolution_hours}h` : "—"}
           color="violet"
-          icon="⏱️"
+          icon={<ClockIcon className="w-4 h-4" />}
           sub="average hours to resolve"
         />
         {data.csat_avg != null && (
@@ -226,7 +229,7 @@ export default function AnalyticsPage() {
             label="CSAT Score"
             value={`${data.csat_avg}/5`}
             color="emerald"
-            icon="⭐"
+            icon={<StarIcon className="w-4 h-4" />}
             sub={`${data.csat_count} rating${data.csat_count !== 1 ? "s" : ""} received`}
           />
         )}
@@ -234,7 +237,7 @@ export default function AnalyticsPage() {
           label="Pending Payment"
           value={data.pending_payment}
           color="amber"
-          icon="💳"
+          icon={<CreditCardIcon className="w-4 h-4" />}
           sub="awaiting payment confirmation"
         />
       </div>
@@ -341,8 +344,9 @@ export default function AnalyticsPage() {
                       <p className="text-sm font-medium text-slate-800 truncate">{displayName}</p>
                       <p className="text-xs text-slate-500">{fl.assigned} assigned · {fl.resolved} resolved</p>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-amber-500">★ {fl.rating}</p>
+                    <div className="shrink-0 flex items-center gap-1 text-amber-500">
+                      <StarIcon className="w-3.5 h-3.5" />
+                      <p className="text-sm font-bold">{fl.rating}</p>
                     </div>
                   </div>
                 );
@@ -351,6 +355,6 @@ export default function AnalyticsPage() {
           </Card>
         </div>
       )}
-    </MainLayout>
+    </AppShell>
   );
 }

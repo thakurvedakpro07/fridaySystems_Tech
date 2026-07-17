@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import MainLayout from "../components/layouts/MainLayout";
+import AppShell from "../components/layout/AppShell";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { getArticle } from "../api/knowledgeBase";
 import Card from "../components/ui/Card";
@@ -31,7 +31,7 @@ export default function KnowledgeBaseArticlePage() {
   }, [id]);
 
   return (
-    <MainLayout maxWidth="max-w-3xl">
+    <AppShell maxWidth="max-w-3xl">
       <div className="space-y-4">
         <Link to="/knowledge-base" className="text-sm font-semibold text-slate-500 hover:text-slate-800 inline-flex items-center gap-1">
           ← Back to Knowledge Base
@@ -84,6 +84,6 @@ export default function KnowledgeBaseArticlePage() {
           </>
         )}
       </div>
-    </MainLayout>
+    </AppShell>
   );
 }

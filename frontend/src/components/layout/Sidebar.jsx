@@ -102,6 +102,12 @@ const IC = {
         d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l5.654-4.654m5.905-2.72c.174-.168.35-.337.518-.512a5.29 5.29 0 00-7.497-7.497c-.175.168-.344.343-.512.518" />
     </svg>
   ),
+  auditLog: (
+    <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M9 12h3.75M9 15h3.75M9 18h3.75M3.75 6.75h16.5M3.75 6.75v10.5A2.25 2.25 0 006 19.5h12a2.25 2.25 0 002.25-2.25V6.75M3.75 6.75L6 3.75h12l2.25 3" />
+    </svg>
+  ),
   knowledgeBase: (
     <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round"
@@ -188,11 +194,13 @@ function UserChip({ user, onLogout }) {
 export default function Sidebar({ open, onClose }) {
   const { logout } = useAuth();
   const { user, isSuperAdmin, isOpsManager, isFinanceManager, isSupportAgent, isEngineer, isCustomer, isAnyStaff } = useRoles();
-  const { pathname } = useLocation();
 
-  const isOnOpsPath = pathname.startsWith("/operations");
-  // All four internal staff roles see the ops sidebar when on /operations/*
-  const showOpsNav  = isAnyStaff && isOnOpsPath;
+  // All four internal staff roles see the ops sidebar, regardless of path —
+  // matches Header.jsx's existing role-only nav logic. Must be path-independent:
+  // shared pages (TicketDetailPage, NotificationsPage, SettingsPage, AnalyticsPage)
+  // are reachable by staff outside /operations/* (e.g. /tickets/:id, /admin/analytics),
+  // and a path-gated check would render an empty sidebar there.
+  const showOpsNav = isAnyStaff;
 
   return (
     <aside
@@ -296,9 +304,10 @@ export default function Sidebar({ open, onClose }) {
               <NavSection label="Platform">
                 {isSuperAdmin && (
                   <>
-                    <NavItem to="/operations/users"    icon={IC.users}    label="Users" />
-                    <NavItem to="/operations/roles"    icon={IC.roles}    label="Roles" />
-                    <NavItem to="/operations/settings" icon={IC.settings} label="Settings" />
+                    <NavItem to="/operations/users"     icon={IC.users}    label="Users" />
+                    <NavItem to="/operations/roles"     icon={IC.roles}    label="Roles" />
+                    <NavItem to="/operations/audit-log" icon={IC.auditLog} label="Audit Log" />
+                    <NavItem to="/operations/settings"  icon={IC.settings} label="Settings" />
                   </>
                 )}
                 {!isSuperAdmin && isOpsManager && (
