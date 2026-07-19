@@ -8,6 +8,8 @@ import TicketSectionList from "../components/tickets/queue/TicketSectionList";
 import { SkeletonCard } from "../components/ui/Spinner";
 import Alert from "../components/ui/Alert";
 import Card from "../components/ui/Card";
+import Badge from "../components/ui/Badge";
+import EmptyState from "../components/ui/EmptyState";
 import PageHeader from "../components/ui/PageHeader";
 import KpiRow from "../components/dashboard/KpiRow";
 import { useAuthStore } from "../store/authStore";
@@ -120,26 +122,25 @@ function InfoPanel() {
   const addToast = useToast();
   return (
     <div className="space-y-4">
-      {/* Consultation response */}
+      {/* Consultation response — static SLA reference, not a progress meter:
+          every row previously rendered a "progress" bar hardcoded to 100%
+          regardless of any real data, which read as broken/confusing on
+          close inspection. Reuses Badge's severity domain (the single
+          source of truth for severity colors) instead of a bespoke bar. */}
       <Card title="Consultation Response">
-        <div className="space-y-3.5">
+        <dl className="space-y-2.5">
           {[
-            { label: "Critical",  value: "30 min", pct: 100, color: "bg-rose-500" },
-            { label: "High",      value: "1 hr",   pct: 100, color: "bg-amber-500" },
-            { label: "Medium",    value: "2 hrs",  pct: 100, color: "bg-indigo-500" },
-            { label: "Low",       value: "4 hrs",  pct: 100, color: "bg-slate-400" },
-          ].map(({ label, value, pct, color }) => (
-            <div key={label}>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs text-slate-500 font-medium">{label}</span>
-                <span className="text-xs font-bold text-slate-700">{value}</span>
-              </div>
-              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                <div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%` }} />
-              </div>
+            { severity: "critical", value: "30 min" },
+            { severity: "high",     value: "1 hr" },
+            { severity: "medium",   value: "2 hrs" },
+            { severity: "low",      value: "4 hrs" },
+          ].map(({ severity, value }) => (
+            <div key={severity} className="flex items-center justify-between">
+              <Badge label={severity} domain="severity" />
+              <span className="text-xs font-bold text-slate-700">{value}</span>
             </div>
           ))}
-        </div>
+        </dl>
         <p className="text-[10px] text-slate-500 mt-3 leading-snug">
           Priority sets how quickly a Support Agent contacts you — not resolution speed.
         </p>
@@ -395,58 +396,63 @@ function GettingStarted() {
 }
 
 // ── Rich empty state ──────────────────────────────────────────────
+// Consolidated onto the shared EmptyState primitive (previously hand-rolled
+// here, duplicating its wrapper/title/description structure). The zero-
+// ticket illustration keeps its distinctive indigo icon-box + emerald
+// "plus" badge overlay via EmptyState's iconBoxClassName escape hatch —
+// visually unchanged, just no longer duplicating shared chrome.
 function TicketsEmptyState({ hasFilters }) {
   if (hasFilters) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-        <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-5">
+      <EmptyState
+        icon={
           <svg className="w-8 h-8 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round"
               d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
-        </div>
-        <p className="text-slate-800 font-semibold text-base mb-2">No tickets match your filters</p>
-        <p className="text-slate-500 text-sm max-w-xs">
-          Try adjusting your search or selecting a different status.
-        </p>
-      </div>
+        }
+        title="No tickets match your filters"
+        description="Try adjusting your search or selecting a different status."
+      />
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-      {/* Illustration */}
-      <div className="relative mb-6">
-        <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center">
+    <EmptyState
+      iconBoxClassName="relative w-20 h-20 bg-indigo-50 rounded-3xl mb-6"
+      icon={
+        <>
           <svg className="w-10 h-10 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.3}>
             <path strokeLinecap="round" strokeLinejoin="round"
               d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" />
           </svg>
-        </div>
-        <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-emerald-100 rounded-xl flex items-center justify-center">
-          <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-        </div>
-      </div>
-      <p className="text-slate-900 font-bold text-lg mb-2">No support tickets yet</p>
-      <p className="text-slate-500 text-sm max-w-sm mb-6 leading-relaxed">
-        When you need IT help, create a ticket and a Support Agent will contact you within your chosen response window.
-      </p>
-      <Link
-        to="/tickets/new"
-        className="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold
-                   px-6 py-3 rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-        </svg>
-        Open your first ticket
-      </Link>
-      <p className="text-xs text-slate-500 mt-4">
-        ₹299 consulting fee · Priority consultation response · No resolution fee until your issue is fixed
-      </p>
-    </div>
+          <span className="absolute -bottom-1 -right-1 w-7 h-7 bg-emerald-100 rounded-xl flex items-center justify-center">
+            <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </span>
+        </>
+      }
+      title="No support tickets yet"
+      description="When you need IT help, create a ticket and a Support Agent will contact you within your chosen response window."
+      action={
+        <>
+          <Link
+            to="/tickets/new"
+            className="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold
+                       px-6 py-3 rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Open your first ticket
+          </Link>
+          <p className="text-xs text-slate-500 mt-4">
+            ₹299 consulting fee · Priority consultation response · No resolution fee until your issue is fixed
+          </p>
+        </>
+      }
+    />
   );
 }
 
