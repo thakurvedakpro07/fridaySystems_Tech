@@ -13,6 +13,69 @@ function RolePill({ role }) {
   return <Badge domain="role" label={role} />;
 }
 
+// Read-only reference matrix — mirrors the actual permission classes in
+// backend/support_app/permissions.py. Not fetched from an API: the six
+// roles and their capabilities are fixed/hardcoded on the backend today
+// (no custom-role system exists), so a static mirror is the simplest
+// correct source here. Keep in sync with permissions.py if that file's
+// role predicates change.
+const ROLE_CAPABILITIES = [
+  {
+    role: "customer",
+    summary: "Self-service ticket submission and billing.",
+    capabilities: [
+      "Create and track own support tickets",
+      "View own invoices and billing history",
+      "Submit CSAT ratings on resolved tickets",
+    ],
+  },
+  {
+    role: "freelancer",
+    summary: "Resolves tickets assigned by Operations.",
+    capabilities: [
+      "View and resolve only tickets assigned to them",
+      "Post public and internal-only comments",
+      "Submit a resolution for customer approval",
+    ],
+  },
+  {
+    role: "support_agent",
+    summary: "Front-line ticket management, no financial or user access.",
+    capabilities: [
+      "View, assign, reassign, and escalate any ticket",
+      "Update ticket status",
+      "No access to payments, users, or platform settings",
+    ],
+  },
+  {
+    role: "finance_manager",
+    summary: "Financial visibility and payment actions only.",
+    capabilities: [
+      "Confirm and refund payments",
+      "View financial and executive analytics",
+      "Cannot assign tickets, change status, or manage users",
+    ],
+  },
+  {
+    role: "operations_manager",
+    summary: "Everything Support Agent can do, plus platform configuration.",
+    capabilities: [
+      "Everything Support Agent can do",
+      "Manage Engineers, Services, and SLA Policies",
+      "Read-only visibility into Users and Payments (cannot write)",
+    ],
+  },
+  {
+    role: "admin",
+    summary: "Full platform access — the only role that can change roles.",
+    capabilities: [
+      "Everything every other role can do",
+      "Change any user's role and deactivate/reactivate accounts (audited)",
+      "Only role with access to Platform Settings and the System Audit Log",
+    ],
+  },
+];
+
 function fmtDateTime(iso) {
   if (!iso) return "—";
   return new Intl.DateTimeFormat("en-IN", {
@@ -22,7 +85,7 @@ function fmtDateTime(iso) {
 }
 
 export default function OpsRoles() {
-  usePageTitle("Role Audit Log — ResolveHQ");
+  usePageTitle("Roles — ResolveHQ");
 
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +116,35 @@ export default function OpsRoles() {
       <div className="max-w-5xl mx-auto space-y-6">
 
         {/* Header */}
-        <PageHeader title="Role Change Audit" description="Immutable log of every role promotion and demotion." />
+        <PageHeader title="Roles" description="What each role can do, and the immutable history of every role change." />
+
+        {/* Role Capability Matrix */}
+        <div>
+          <h2 className="text-sm font-bold text-slate-900 mb-3">What Each Role Can Do</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {ROLE_CAPABILITIES.map((r) => (
+              <div key={r.role} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <div className="mb-3">
+                  <RolePill role={r.role} />
+                </div>
+                <p className="text-xs text-slate-500 mb-3">{r.summary}</p>
+                <ul className="space-y-2">
+                  {r.capabilities.map((c) => (
+                    <li key={c} className="flex items-start gap-2 text-xs text-slate-600">
+                      <svg className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                      <span>{c}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Role Change Audit */}
+        <h2 className="text-sm font-bold text-slate-900 pt-2">Role Change Audit</h2>
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3">

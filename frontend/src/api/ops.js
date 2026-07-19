@@ -67,6 +67,20 @@ export const updateOpsService = (serviceId, data) =>
 export const toggleOpsService = (serviceId) =>
   apiClient.post(`/ops/services/${serviceId}/toggle/`);
 
+// ── SLA Policy Management ───────────────────────────────────────────
+
+export const getOpsSLAPolicies = (params = {}) =>
+  apiClient.get("/ops/sla-policies/", { params });
+
+export const createOpsSLAPolicy = (data) =>
+  apiClient.post("/ops/sla-policies/", data);
+
+export const updateOpsSLAPolicy = (policyId, data) =>
+  apiClient.patch(`/ops/sla-policies/${policyId}/`, data);
+
+export const deleteOpsSLAPolicy = (policyId) =>
+  apiClient.delete(`/ops/sla-policies/${policyId}/`);
+
 // ── Payments (Finance Manager write; Ops Manager read) ────────────
 
 export const getOpsPayments = (params = {}) =>

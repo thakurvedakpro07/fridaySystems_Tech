@@ -155,6 +155,10 @@ urlpatterns = [
     path("ops/services/<uuid:pk>/toggle/",                  views.ops_service_toggle,               name="ops-service-toggle"),
     path("ops/services/<uuid:pk>/",                         views.OpsServiceDetailView.as_view(),   name="ops-service-detail"),
 
+    # ── SLA Policy Management ─────────────────────────────────────
+    path("ops/sla-policies/",                               views.OpsSLAPolicyListCreateView.as_view(), name="ops-sla-policy-list"),
+    path("ops/sla-policies/<uuid:pk>/",                     views.OpsSLAPolicyDetailView.as_view(), name="ops-sla-policy-detail"),
+
     # ── Ops: Payments (Finance Manager write; Ops Manager read) ───
     path("ops/payments/summary/",                           views.ops_payment_summary,              name="ops-payment-summary"),
     path("ops/payments/<uuid:pk>/confirm/",                 views.ops_payment_confirm,              name="ops-payment-confirm"),

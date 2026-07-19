@@ -132,6 +132,9 @@ const DOMAINS = {
       service_disabled:  { tone: "rose",    label: "Service Disabled" },
       payment_confirmed: { tone: "emerald", label: "Payment Confirmed" },
       payment_refunded:  { tone: "violet",  label: "Payment Refunded" },
+      sla_policy_created: { tone: "indigo", label: "SLA Policy Created" },
+      sla_policy_updated: { tone: "amber",  label: "SLA Policy Updated" },
+      sla_policy_deleted: { tone: "rose",   label: "SLA Policy Deleted" },
     },
   },
   // System Audit Log's "Entity" column — matches the `entity` value passed to log_action().
@@ -141,6 +144,7 @@ const DOMAINS = {
       user:    { tone: "slate",  label: "User" },
       service: { tone: "indigo", label: "Service" },
       payment: { tone: "teal",   label: "Payment" },
+      sla_policy: { tone: "violet", label: "SLA Policy" },
     },
   },
 };

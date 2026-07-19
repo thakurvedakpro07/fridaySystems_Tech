@@ -64,6 +64,7 @@ from .models import (
     Payout,
     RoleChangeAudit,
     Service,
+    SLAPolicy,
     Subscription,
     Ticket,
     TicketActivityLog,
@@ -118,6 +119,7 @@ from .serializers import (
     RoleChangeAuditSerializer,
     RoleChangeSerializer,
     ServiceSerializer,
+    SLAPolicySerializer,
     SubscriptionSerializer,
     TicketActivityLogSerializer,
     TicketAttachmentSerializer,
@@ -2790,6 +2792,86 @@ def ops_service_toggle(request, pk):
     )
 
     return Response(ServiceSerializer(service).data)
+
+
+# ══════════════════════════════════════════════════════════════════
+# SLA POLICY MANAGEMENT
+# ══════════════════════════════════════════════════════════════════
+#
+# SLAPolicy rows are overrides looked up by sla_service.get_sla_policy()
+# (service_type + severity + plan) with hardcoded fallback defaults when no
+# row matches — deleting a policy here reverts that combo to the default,
+# there is no separate active/inactive flag the way Service has.
+
+class OpsSLAPolicyListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /api/ops/sla-policies/ — list all SLA policy overrides
+    POST /api/ops/sla-policies/ — create a new override
+    Same visibility as Services: both Ops Manager and Super Admin manage these.
+    """
+    serializer_class = SLAPolicySerializer
+    permission_classes = [permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin]
+
+    def get_queryset(self):
+        qs = SLAPolicy.objects.all().order_by("service_type", "severity", "plan")
+
+        service_type = self.request.query_params.get("service_type")
+        if service_type:
+            qs = qs.filter(service_type=service_type)
+
+        severity = self.request.query_params.get("severity")
+        if severity:
+            qs = qs.filter(severity=severity)
+
+        plan = self.request.query_params.get("plan")
+        if plan:
+            qs = qs.filter(plan=plan)
+
+        return qs
+
+    def perform_create(self, serializer):
+        from .services.audit_service import log_action
+
+        policy = serializer.save()
+        log_action(
+            user=self.request.user, entity="sla_policy", action="sla_policy_created",
+            entity_id=policy.pk,
+            metadata={"service_type": policy.service_type, "severity": policy.severity, "plan": policy.plan},
+            request=self.request,
+        )
+
+
+class OpsSLAPolicyDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET    /api/ops/sla-policies/{id}/ — retrieve a policy
+    PATCH  /api/ops/sla-policies/{id}/ — update its thresholds
+    DELETE /api/ops/sla-policies/{id}/ — remove the override (reverts to default)
+    """
+    serializer_class = SLAPolicySerializer
+    permission_classes = [permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin]
+    queryset = SLAPolicy.objects.all()
+
+    def perform_update(self, serializer):
+        from .services.audit_service import log_action
+
+        policy = serializer.save()
+        log_action(
+            user=self.request.user, entity="sla_policy", action="sla_policy_updated",
+            entity_id=policy.pk,
+            metadata={"service_type": policy.service_type, "severity": policy.severity, "plan": policy.plan},
+            request=self.request,
+        )
+
+    def perform_destroy(self, instance):
+        from .services.audit_service import log_action
+
+        metadata = {"service_type": instance.service_type, "severity": instance.severity, "plan": instance.plan}
+        policy_id = instance.pk
+        instance.delete()
+        log_action(
+            user=self.request.user, entity="sla_policy", action="sla_policy_deleted",
+            entity_id=policy_id, metadata=metadata, request=self.request,
+        )
 
 
 # ══════════════════════════════════════════════════════════════════

@@ -26,6 +26,7 @@ from .models import (
     RoleChangeAudit,
     Service,
     SLALog,
+    SLAPolicy,
     Subscription,
     Ticket,
     TicketActivityLog,
@@ -843,6 +844,66 @@ class ServiceSerializer(serializers.ModelSerializer):
             "required_skills", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class SLAPolicySerializer(serializers.ModelSerializer):
+    """
+    Serializer for admin-managed SLA policy overrides.
+
+    service_type/severity are validated against the same SERVICE_CHOICES/
+    SEVERITY_CONFIG used everywhere else (never a parallel hardcoded list —
+    see get_service() above for why) so a policy can never be created for a
+    service/severity combo that doesn't actually exist.
+    """
+    service_type_display = serializers.SerializerMethodField()
+    severity_display = serializers.SerializerMethodField()
+
+    def get_service_type_display(self, obj):
+        from .services.service_catalog import SERVICE_CHOICES
+        return dict(SERVICE_CHOICES).get(obj.service_type, obj.service_type)
+
+    def get_severity_display(self, obj):
+        from .services.service_catalog import SEVERITY_CONFIG
+        entry = SEVERITY_CONFIG.get(obj.severity)
+        return entry["label"] if entry else obj.severity
+
+    def validate_service_type(self, value):
+        from .services.service_catalog import SERVICE_CHOICES
+        valid_keys = {key for key, _ in SERVICE_CHOICES}
+        if value not in valid_keys:
+            raise serializers.ValidationError(f"'{value}' is not a valid service type.")
+        return value
+
+    def validate_severity(self, value):
+        from .services.service_catalog import SEVERITY_CONFIG
+        if value not in SEVERITY_CONFIG:
+            raise serializers.ValidationError(f"'{value}' is not a valid severity.")
+        return value
+
+    def validate(self, data):
+        first_response = data.get("first_response_seconds", getattr(self.instance, "first_response_seconds", None))
+        resolution = data.get("resolution_seconds", getattr(self.instance, "resolution_seconds", None))
+        if first_response is not None and resolution is not None and first_response > resolution:
+            raise serializers.ValidationError(
+                "First response target cannot be longer than the resolution target."
+            )
+        return data
+
+    class Meta:
+        model = SLAPolicy
+        fields = [
+            "id", "service_type", "service_type_display",
+            "severity", "severity_display", "plan",
+            "first_response_seconds", "resolution_seconds",
+        ]
+        read_only_fields = ["id"]
+        validators = [
+            serializers.UniqueTogetherValidator(
+                queryset=SLAPolicy.objects.all(),
+                fields=["service_type", "severity", "plan"],
+                message="A policy for this service, severity, and plan already exists — edit it instead of creating a duplicate.",
+            )
+        ]
 
 
 # ── Knowledge Base ──────────────────────────────────────────────

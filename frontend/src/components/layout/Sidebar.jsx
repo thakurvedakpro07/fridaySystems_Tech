@@ -108,6 +108,11 @@ const IC = {
         d="M9 12h3.75M9 15h3.75M9 18h3.75M3.75 6.75h16.5M3.75 6.75v10.5A2.25 2.25 0 006 19.5h12a2.25 2.25 0 002.25-2.25V6.75M3.75 6.75L6 3.75h12l2.25 3" />
     </svg>
   ),
+  slaPolicy: (
+    <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+    </svg>
+  ),
   knowledgeBase: (
     <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round"
@@ -313,8 +318,9 @@ export default function Sidebar({ open, onClose }) {
                 {!isSuperAdmin && isOpsManager && (
                   <NavItem to="/operations/users" icon={IC.users} label="Users" />
                 )}
-                <NavItem to="/operations/freelancers" icon={IC.engineers} label="Engineers" />
-                <NavItem to="/operations/services"    icon={IC.services}  label="Services" />
+                <NavItem to="/operations/freelancers"   icon={IC.engineers}  label="Engineers" />
+                <NavItem to="/operations/services"      icon={IC.services}   label="Services" />
+                <NavItem to="/operations/sla-policies"  icon={IC.slaPolicy}  label="SLA Policies" />
               </NavSection>
             )}
 

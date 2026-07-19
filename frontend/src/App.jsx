@@ -44,6 +44,7 @@ const OpsUsers          = lazy(() => import("./pages/ops/OpsUsers"));
 const OpsRoles          = lazy(() => import("./pages/ops/OpsRoles"));
 const OpsAuditLog       = lazy(() => import("./pages/ops/OpsAuditLog"));
 const OpsServices       = lazy(() => import("./pages/ops/OpsServices"));
+const OpsSLAPolicies    = lazy(() => import("./pages/ops/OpsSLAPolicies"));
 const OpsPayments       = lazy(() => import("./pages/ops/OpsPayments"));
 const OpsAnalytics      = lazy(() => import("./pages/ops/OpsAnalytics"));
 const ExecutiveAnalytics = lazy(() => import("./pages/ops/ExecutiveAnalytics"));
@@ -338,6 +339,7 @@ export default function App() {
           <Route path="/operations/freelancers" element={<OpsManagerRoute><OpsFreelancers /></OpsManagerRoute>} />
           <Route path="/operations/assignments" element={<OpsManagerRoute><OpsAssignments /></OpsManagerRoute>} />
           <Route path="/operations/services"    element={<OpsManagerRoute><OpsServices /></OpsManagerRoute>} />
+          <Route path="/operations/sla-policies" element={<OpsManagerRoute><OpsSLAPolicies /></OpsManagerRoute>} />
 
           {/* Operations — Finance Manager + Ops Manager + Super Admin */}
           <Route path="/operations/payments"    element={<PaymentRoute><OpsPayments /></PaymentRoute>} />

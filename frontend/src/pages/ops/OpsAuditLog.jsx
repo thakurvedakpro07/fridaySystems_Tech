@@ -16,6 +16,7 @@ const ENTITY_OPTIONS = [
   { value: "user", label: "User" },
   { value: "service", label: "Service" },
   { value: "payment", label: "Payment" },
+  { value: "sla_policy", label: "SLA Policy" },
 ];
 
 const ACTION_OPTIONS = [
@@ -28,6 +29,9 @@ const ACTION_OPTIONS = [
   { value: "service_disabled", label: "Service Disabled" },
   { value: "payment_confirmed", label: "Payment Confirmed" },
   { value: "payment_refunded", label: "Payment Refunded" },
+  { value: "sla_policy_created", label: "SLA Policy Created" },
+  { value: "sla_policy_updated", label: "SLA Policy Updated" },
+  { value: "sla_policy_deleted", label: "SLA Policy Deleted" },
 ];
 
 // metadata keys are written by services/audit_service.py call sites — pick
@@ -37,6 +41,7 @@ function formatDetails(metadata) {
   if (metadata.target_email) return metadata.target_email;
   if (metadata.invoice_number) return `Invoice ${metadata.invoice_number}`;
   if (metadata.name) return metadata.name;
+  if (metadata.service_type) return `${metadata.service_type} / ${metadata.severity} (${metadata.plan})`;
   return "—";
 }
 
