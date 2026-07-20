@@ -1,13 +1,26 @@
 """
-ResolveHQ Service Catalog — single source of truth.
+ResolveHQ Service Catalog — severity/pricing constants, plus a LEGACY
+service list.
 
-Import SERVICE_CHOICES into models.py (Ticket.service_type).
-Import RESOLUTION_FEES into payment_service.py.
-Import SERVICE_CATALOG into views.py (services_list endpoint).
-Import get_resolution_fee() wherever a per-ticket fee breakdown is needed.
+As of the Admin Portal audit's Phase 3 (Service Catalog Management), the
+customer-facing catalog — what services exist, their price, and whether
+they're currently orderable — is no longer this hardcoded SERVICE_CATALOG
+list. It's the `Service` Django model (support_app/models.py), managed via
+Operations → Services or the /api/ops/services/ REST API, so admins can
+add/edit/archive/mark-unavailable services without a code change or deploy.
 
-Adding or removing a service: edit this file only.
-Changing severity surcharges: edit SEVERITY_CONFIG only.
+SERVICE_CATALOG/SERVICE_CHOICES/RESOLUTION_FEES below are kept ONLY as a
+static fallback for two things that are intentionally out of this phase's
+scope and still expect a fixed, code-defined taxonomy:
+  - KBArticle.category choices (models.py) and GET /api/kb/categories/
+  - Executive Analytics / Operations Command Center label lookups
+    (services/executive_analytics_service.py, ops_command_center_service.py)
+Do NOT add a new entry here expecting it to appear as an orderable service —
+use the Service model for that. This list only needs to change if you want
+a new Knowledge Base category or analytics label.
+
+get_resolution_fee() now reads the base fee from the live `Service` row
+(see below) — SEVERITY_CONFIG/GST_RATE/CONSULTING_FEE are unchanged.
 """
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -122,8 +135,23 @@ def get_resolution_fee(service_key: str, severity: str) -> dict:
     Example:
       Server Administration Support (₹999) + High (₹500) = subtotal ₹1499
       GST 18% = ₹270  →  total ₹1769
+
+    base_fee is read from the live Service row (Service.resolution_fee) —
+    falls back to the legacy RESOLUTION_FEES dict if no Service with this
+    key exists, OR if the DB can't be reached at all (this function was
+    historically pure/DB-free, and some callers — e.g. invoice PDF
+    generation's tests — still call it in contexts with no database access;
+    falling back keeps that contract rather than raising a DB-access error
+    from what looks like a simple pricing calculation).
+    Raises KeyError if the key is unknown to the fallback dict too, matching
+    this function's pre-existing behavior of raising on an invalid
+    service_key rather than silently returning a zero fee.
     """
-    base       = Decimal(str(RESOLUTION_FEES[service_key]))
+    from ..models import Service
+    try:
+        base = Decimal(str(Service.objects.get(key=service_key).resolution_fee))
+    except Exception:
+        base = Decimal(str(RESOLUTION_FEES[service_key]))
     surcharge  = Decimal(str(SEVERITY_CONFIG[severity]["surcharge"]))
     subtotal   = base + surcharge
     gst        = (subtotal * GST_RATE).quantize(Decimal("1"), rounding=ROUND_HALF_UP)

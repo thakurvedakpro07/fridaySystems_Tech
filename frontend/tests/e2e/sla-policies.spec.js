@@ -46,12 +46,21 @@ for (const roleKey of ALLOWED_ROLE_KEYS) {
       // Playwright runs (unlike pytest's per-run test DB), so a prior
       // attempt's row for this exact combo could still exist and trip the
       // backend's unique_together validator on create. Clear it first.
+      //
+      // Which service is "first" (and so the modal's default) depends on
+      // live catalog state — other specs' leftover services (sorted by
+      // display_order/name) can outrank the seeded canonical ones — so this
+      // asks the same /api/services/ the UI itself uses rather than
+      // assuming "laptop_desktop", to stay correct regardless of ordering.
       const { accessToken } = JSON.parse(
         fs.readFileSync(path.join(__dirname, ".auth", `${roleKey}-session.json`), "utf-8")
       );
       const authHeaders = { Authorization: `Bearer ${accessToken}` };
+      const catalogRes = await request.get("/api/services/");
+      const defaultServiceKey = (await catalogRes.json()).services[0].key;
+
       const existing = await request.get("/api/ops/sla-policies/", {
-        headers: authHeaders, params: { service_type: "laptop_desktop", severity: "medium", plan: "default" },
+        headers: authHeaders, params: { service_type: defaultServiceKey, severity: "medium", plan: "default" },
       });
       const existingResults = (await existing.json()).results ?? [];
       for (const row of existingResults) {
@@ -63,8 +72,9 @@ for (const roleKey of ALLOWED_ROLE_KEYS) {
 
       const dialog = page.getByRole("dialog");
       await expect(dialog.getByRole("heading", { name: "New SLA Policy" })).toBeVisible();
-      // Service/severity/plan are left at their defaults (laptop_desktop/medium/default) —
-      // scoping to the dialog avoids accidentally interacting with the page's own filter selects.
+      // Service/severity/plan are left at their defaults (whatever the
+      // catalog's first service is / medium / default) — scoping to the
+      // dialog avoids accidentally interacting with the page's own filter selects.
       await dialog.getByPlaceholder("e.g. 1").fill("2");
       await dialog.getByPlaceholder("e.g. 24").fill("48");
       await dialog.getByRole("button", { name: "Create Policy" }).click();

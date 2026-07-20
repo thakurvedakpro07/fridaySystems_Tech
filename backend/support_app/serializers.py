@@ -432,15 +432,17 @@ class TicketDetailSerializer(
         return assignment.assigned_at if assignment else None
 
     def get_service(self, obj):
-        from .services.service_catalog import SERVICE_CATALOG
-        entry = next((s for s in SERVICE_CATALOG if s["key"] == obj.service_type), None)
-        if not entry:
+        service = Service.objects.filter(key=obj.service_type).first()
+        if not service:
+            # Preserves pre-Phase-3 behavior: a ticket whose service_type
+            # doesn't match any known service (e.g. very old/legacy data)
+            # returns None rather than raising.
             return None
         return {
-            "key":            entry["key"],
-            "name":           entry["name"],
-            "scope":          entry["scope"],
-            "resolution_fee": entry["resolution_fee"],
+            "key":            service.key,
+            "name":           service.name,
+            "scope":          service.description,
+            "resolution_fee": service.resolution_fee,
         }
 
     class Meta:
@@ -468,7 +470,28 @@ class TicketDetailSerializer(
 
 
 class TicketCreateSerializer(serializers.ModelSerializer):
-    """Validates the fields a customer sends when opening a ticket."""
+    """
+    Validates the fields a customer sends when opening a ticket.
+
+    service_type has no model-level `choices=` (see Ticket.service_type's
+    comment) since valid values are whatever Service rows are currently
+    active — validated here instead, against the live table, so this is
+    the enforcement point for "can't create a ticket against an archived
+    or temporarily-unavailable service."
+    """
+
+    def validate_service_type(self, value):
+        try:
+            service = Service.objects.get(key=value)
+        except Service.DoesNotExist:
+            raise serializers.ValidationError("This service does not exist.")
+        if not service.is_active:
+            raise serializers.ValidationError("This service is no longer offered.")
+        if not service.is_available:
+            raise serializers.ValidationError(
+                "This service is temporarily unavailable. Please check back later or contact support."
+            )
+        return value
 
     class Meta:
         model = Ticket
@@ -835,13 +858,53 @@ class AuditLogSerializer(serializers.ModelSerializer):
 
 
 class ServiceSerializer(serializers.ModelSerializer):
-    """Serializer for the platform services catalogue."""
+    """
+    Serializer for the platform service catalogue — the live source of
+    truth for GET /api/services/, ticket creation, and pricing.
+
+    `key` is optional on create (auto-generated from `name` via slugify if
+    omitted) and immutable after creation — Ticket.service_type stores it,
+    so changing it out from under existing tickets would silently break
+    their pricing/detail lookups.
+    """
+    key = serializers.SlugField(required=False, allow_blank=True)
+    # Explicit default=True (not just required=False): DRF's BooleanField
+    # treats a key missing from an HTML-form/multipart request as an
+    # unchecked checkbox (False), not "use the model default" — only a
+    # JSON body omitting the key falls back to the model's default=True.
+    # An explicit serializer-level default makes both request styles behave
+    # the same (and matches this model's actual default).
+    is_active = serializers.BooleanField(required=False, default=True)
+    is_available = serializers.BooleanField(required=False, default=True)
+
+    def validate(self, data):
+        if self.instance is not None and "key" in data and data["key"] != self.instance.key:
+            raise serializers.ValidationError({"key": "Key cannot be changed after creation."})
+        return data
+
+    def create(self, validated_data):
+        if not validated_data.get("key"):
+            validated_data["key"] = self._generate_unique_key(validated_data["name"])
+        return super().create(validated_data)
+
+    @staticmethod
+    def _generate_unique_key(name):
+        from django.utils.text import slugify
+        base = slugify(name).replace("-", "_")[:64] or "service"
+        candidate = base
+        suffix = 1
+        while Service.objects.filter(key=candidate).exists():
+            suffix += 1
+            candidate = f"{base}_{suffix}"[:64]
+        return candidate
 
     class Meta:
         model = Service
         fields = [
-            "id", "name", "description", "status",
-            "required_skills", "created_at", "updated_at",
+            "id", "key", "name", "category", "description", "icon",
+            "display_order", "is_active", "is_available", "featured",
+            "estimated_response_minutes", "estimated_resolution_minutes",
+            "resolution_fee", "required_skills", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
@@ -850,17 +913,19 @@ class SLAPolicySerializer(serializers.ModelSerializer):
     """
     Serializer for admin-managed SLA policy overrides.
 
-    service_type/severity are validated against the same SERVICE_CHOICES/
-    SEVERITY_CONFIG used everywhere else (never a parallel hardcoded list —
-    see get_service() above for why) so a policy can never be created for a
-    service/severity combo that doesn't actually exist.
+    service_type is validated against the live Service model (Operations →
+    Services) — NOT the legacy static SERVICE_CHOICES list — so an SLA
+    policy can be defined for any service an admin has added, not just the
+    original 8 built-in ones. severity still validates against
+    SEVERITY_CONFIG, which is unrelated to the Service Catalog Management
+    work and stays a fixed 4-tier enum.
     """
     service_type_display = serializers.SerializerMethodField()
     severity_display = serializers.SerializerMethodField()
 
     def get_service_type_display(self, obj):
-        from .services.service_catalog import SERVICE_CHOICES
-        return dict(SERVICE_CHOICES).get(obj.service_type, obj.service_type)
+        service = Service.objects.filter(key=obj.service_type).values_list("name", flat=True).first()
+        return service or obj.service_type
 
     def get_severity_display(self, obj):
         from .services.service_catalog import SEVERITY_CONFIG
@@ -868,9 +933,7 @@ class SLAPolicySerializer(serializers.ModelSerializer):
         return entry["label"] if entry else obj.severity
 
     def validate_service_type(self, value):
-        from .services.service_catalog import SERVICE_CHOICES
-        valid_keys = {key for key, _ in SERVICE_CHOICES}
-        if value not in valid_keys:
+        if not Service.objects.filter(key=value).exists():
             raise serializers.ValidationError(f"'{value}' is not a valid service type.")
         return value
 

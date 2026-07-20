@@ -117,6 +117,18 @@ const DOMAINS = {
       inactive: { tone: "rose",    label: "Inactive" },
     },
   },
+  // pages/ops/OpsServices.jsx's tri-state — mirrors Service model's
+  // is_active/is_available docstring (models.py): archived is a harder-off
+  // state than unavailable, hence rose vs. amber rather than both rose.
+  serviceStatus: {
+    shape: "pill",
+    dot: true,
+    entries: {
+      active:      { tone: "emerald", label: "Active" },
+      unavailable: { tone: "amber",   label: "Unavailable" },
+      archived:    { tone: "rose",    label: "Archived" },
+    },
+  },
   // System Audit Log (pages/ops/OpsAuditLog.jsx) — one entry per AuditLog.action
   // value written by services/audit_service.py::log_action(). Destructive/negative
   // actions (deactivated, disabled, refunded) get rose; positive/neutral ones
@@ -126,10 +138,12 @@ const DOMAINS = {
     entries: {
       user_deactivated:  { tone: "rose",    label: "User Deactivated" },
       user_reactivated:  { tone: "emerald", label: "User Reactivated" },
-      service_created:   { tone: "indigo",  label: "Service Created" },
-      service_updated:   { tone: "amber",   label: "Service Updated" },
-      service_enabled:   { tone: "emerald", label: "Service Enabled" },
-      service_disabled:  { tone: "rose",    label: "Service Disabled" },
+      service_created:            { tone: "indigo",  label: "Service Created" },
+      service_updated:             { tone: "amber",   label: "Service Updated" },
+      service_archived:            { tone: "rose",    label: "Service Archived" },
+      service_marked_unavailable:  { tone: "orange",  label: "Service Marked Unavailable" },
+      service_reactivated:         { tone: "emerald", label: "Service Reactivated" },
+      service_deleted:             { tone: "rose",    label: "Service Deleted" },
       payment_confirmed: { tone: "emerald", label: "Payment Confirmed" },
       payment_refunded:  { tone: "violet",  label: "Payment Refunded" },
       sla_policy_created: { tone: "indigo", label: "SLA Policy Created" },

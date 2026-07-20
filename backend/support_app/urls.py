@@ -150,9 +150,11 @@ urlpatterns = [
     path("ops/audit-log/",                                  views.OpsAuditLogListView.as_view(),    name="ops-audit-log"),
 
     # ── Services Management ──────────────────────────────────────
-    # NOTE: toggle/ must precede <uuid:pk>/ to avoid UUID parsing
+    # NOTE: action sub-paths must precede <uuid:pk>/ to avoid UUID parsing
     path("ops/services/",                                   views.OpsServiceListCreateView.as_view(), name="ops-service-list"),
-    path("ops/services/<uuid:pk>/toggle/",                  views.ops_service_toggle,               name="ops-service-toggle"),
+    path("ops/services/<uuid:pk>/archive/",                 views.ops_service_archive,              name="ops-service-archive"),
+    path("ops/services/<uuid:pk>/mark-unavailable/",        views.ops_service_mark_unavailable,     name="ops-service-mark-unavailable"),
+    path("ops/services/<uuid:pk>/reactivate/",              views.ops_service_reactivate,           name="ops-service-reactivate"),
     path("ops/services/<uuid:pk>/",                         views.OpsServiceDetailView.as_view(),   name="ops-service-detail"),
 
     # ── SLA Policy Management ─────────────────────────────────────

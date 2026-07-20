@@ -67,7 +67,10 @@ def target_user(db):
 
 @pytest.fixture
 def a_service(db):
-    return Service.objects.create(name="Kubernetes Support", description="", status="active")
+    return Service.objects.create(
+        key="kubernetes_support_audit_test", name="Kubernetes Support (audit test)",
+        description="", resolution_fee=100,
+    )
 
 
 @pytest.fixture
@@ -177,14 +180,10 @@ def test_service_update_writes_audit_log(super_admin, a_service):
     ).exists()
 
 
-@pytest.mark.django_db
-def test_service_toggle_writes_audit_log(super_admin, a_service):
-    assert a_service.status == "active"
-    resp = _client(super_admin).post(f"/api/ops/services/{a_service.id}/toggle/")
-    assert resp.status_code == 200
-    assert AuditLog.objects.filter(
-        entity="service", action="service_disabled", entity_id=a_service.id
-    ).exists()
+# Note: the old toggle-based test that used to live here was superseded by
+# Phase 3 (Service Catalog Management) — ops_service_toggle was replaced by
+# separate archive/mark-unavailable/reactivate endpoints. That state-machine
+# + audit-log coverage now lives in test_service_catalog.py.
 
 
 @pytest.mark.django_db

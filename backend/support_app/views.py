@@ -459,20 +459,41 @@ class CustomerMeView(generics.RetrieveUpdateAPIView):
 @api_view(["GET"])
 @permission_classes([permissions.AllowAny])
 def services_list(request):
-    """GET /api/services/ — approved service types with resolution fees and severity surcharges."""
-    from .services.service_catalog import SERVICE_CATALOG, SEVERITY_CONFIG, CONSULTING_FEE
+    """
+    GET /api/services/ — the live customer-facing service catalog, resolution
+    fees, and severity surcharges.
+
+    Reads from the Service model (Operations → Services), not a hardcoded
+    list — includes both available AND is_active-but-unavailable services
+    (the customer UI is expected to grey out the latter and block ticket
+    creation against them; see Service.is_available's docstring). Archived
+    services (is_active=False) are excluded entirely.
+
+    `key`/`name`/`resolution_fee`/`scope` are the original fields any
+    existing consumer already relies on — is_available/icon/category/
+    featured/estimated_response_minutes/estimated_resolution_minutes are
+    additive.
+    """
+    from .services.service_catalog import SEVERITY_CONFIG, CONSULTING_FEE
     severity_surcharges = {k: v["surcharge"] for k, v in SEVERITY_CONFIG.items()}
+    services = Service.objects.filter(is_active=True).order_by("display_order", "name")
     return Response({
         "consulting_fee": CONSULTING_FEE,
         "severity_surcharges": severity_surcharges,
         "services": [
             {
-                "key":               s["key"],
-                "name":              s["name"],
-                "resolution_fee":    s["resolution_fee"],
-                "scope":             s["scope"],
+                "key":                          s.key,
+                "name":                         s.name,
+                "resolution_fee":               s.resolution_fee,
+                "scope":                        s.description,
+                "is_available":                 s.is_available,
+                "icon":                         s.icon,
+                "category":                     s.category,
+                "featured":                     s.featured,
+                "estimated_response_minutes":   s.estimated_response_minutes,
+                "estimated_resolution_minutes": s.estimated_resolution_minutes,
             }
-            for s in SERVICE_CATALOG
+            for s in services
         ],
     })
 
@@ -2724,7 +2745,8 @@ class OpsAuditLogListView(generics.ListAPIView):
 
 class OpsServiceListCreateView(generics.ListCreateAPIView):
     """
-    GET  /api/ops/services/ — list all services
+    GET  /api/ops/services/ — list all services (any state — archived and
+         unavailable included, so the Operations UI can manage them)
     POST /api/ops/services/ — create a new service
     Both roles can manage services.
     """
@@ -2733,13 +2755,25 @@ class OpsServiceListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         qs = Service.objects.all()
+
+        # Computed tri-state filter mirroring the model's docstring:
+        # active (is_active & is_available) / unavailable (is_active, !is_available) / archived (!is_active)
         status_filter = self.request.query_params.get("status")
-        if status_filter:
-            qs = qs.filter(status=status_filter)
+        if status_filter == "active":
+            qs = qs.filter(is_active=True, is_available=True)
+        elif status_filter == "unavailable":
+            qs = qs.filter(is_active=True, is_available=False)
+        elif status_filter == "archived":
+            qs = qs.filter(is_active=False)
+
+        category = self.request.query_params.get("category")
+        if category:
+            qs = qs.filter(category=category)
+
         search = self.request.query_params.get("search", "").strip()
         if search:
             from django.db.models import Q
-            qs = qs.filter(Q(name__icontains=search) | Q(description__icontains=search))
+            qs = qs.filter(Q(name__icontains=search) | Q(description__icontains=search) | Q(key__icontains=search))
         return qs
 
     def perform_create(self, serializer):
@@ -2748,14 +2782,19 @@ class OpsServiceListCreateView(generics.ListCreateAPIView):
         service = serializer.save()
         log_action(
             user=self.request.user, entity="service", action="service_created",
-            entity_id=service.pk, metadata={"name": service.name}, request=self.request,
+            entity_id=service.pk, metadata={"name": service.name, "key": service.key}, request=self.request,
         )
 
 
-class OpsServiceDetailView(generics.RetrieveUpdateAPIView):
+class OpsServiceDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
-    GET   /api/ops/services/{id}/ — retrieve a service
-    PATCH /api/ops/services/{id}/ — update name, description, required_skills
+    GET    /api/ops/services/{id}/ — retrieve a service
+    PATCH  /api/ops/services/{id}/ — update its fields (key is immutable)
+    DELETE /api/ops/services/{id}/ — permanently remove a service
+
+    Delete is blocked (400) if any ticket references this service's key —
+    use Archive instead for a service that's been ordered before; Delete is
+    for cleaning up a service that was never actually used.
     """
     serializer_class = ServiceSerializer
     permission_classes = [permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin]
@@ -2767,31 +2806,70 @@ class OpsServiceDetailView(generics.RetrieveUpdateAPIView):
         service = serializer.save()
         log_action(
             user=self.request.user, entity="service", action="service_updated",
-            entity_id=service.pk, metadata={"name": service.name}, request=self.request,
+            entity_id=service.pk, metadata={"name": service.name, "key": service.key}, request=self.request,
         )
+
+    def destroy(self, request, *args, **kwargs):
+        service = self.get_object()
+        if Ticket.objects.filter(service_type=service.key).exists():
+            return Response(
+                {"detail": "This service has existing tickets and cannot be deleted. Archive it instead."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from .services.audit_service import log_action
+
+        service_id, name, key = service.pk, service.name, service.key
+        service.delete()
+        log_action(
+            user=request.user, entity="service", action="service_deleted",
+            entity_id=service_id, metadata={"name": name, "key": key}, request=request,
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def _service_action(request, pk, *, is_active=None, is_available=None, action_name):
+    """Shared body for the archive/mark-unavailable/reactivate endpoints below."""
+    from .services.audit_service import log_action
+
+    service = get_object_or_404(Service, pk=pk)
+    update_fields = ["updated_at"]
+    if is_active is not None:
+        service.is_active = is_active
+        update_fields.append("is_active")
+    if is_available is not None:
+        service.is_available = is_available
+        update_fields.append("is_available")
+    service.save(update_fields=update_fields)
+
+    log_action(
+        user=request.user, entity="service", action=action_name,
+        entity_id=service.pk, metadata={"name": service.name, "key": service.key}, request=request,
+    )
+    return Response(ServiceSerializer(service).data)
 
 
 @api_view(["POST"])
 @permission_classes([permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin])
-def ops_service_toggle(request, pk):
-    """
-    POST /api/ops/services/{id}/toggle/
-    Toggle a service between active and inactive.
-    """
-    from .services.audit_service import log_action
+def ops_service_archive(request, pk):
+    """POST /api/ops/services/{id}/archive/ — hide from the customer catalog entirely."""
+    return _service_action(request, pk, is_active=False, is_available=False, action_name="service_archived")
 
-    service = get_object_or_404(Service, pk=pk)
-    service.status = "inactive" if service.status == "active" else "active"
-    service.save(update_fields=["status", "updated_at"])
 
-    log_action(
-        user=request.user,
-        entity="service",
-        action="service_enabled" if service.status == "active" else "service_disabled",
-        entity_id=service.pk, metadata={"name": service.name}, request=request,
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin])
+def ops_service_mark_unavailable(request, pk):
+    """POST /api/ops/services/{id}/mark-unavailable/ — still listed, greyed out, blocks new tickets."""
+    return _service_action(request, pk, is_available=False, action_name="service_marked_unavailable")
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsOpsManagerOrSuperAdmin])
+def ops_service_reactivate(request, pk):
+    """POST /api/ops/services/{id}/reactivate/ — undo either Archive or Mark Unavailable."""
+    return _service_action(
+        request, pk, is_active=True, is_available=True, action_name="service_reactivated",
     )
-
-    return Response(ServiceSerializer(service).data)
 
 
 # ══════════════════════════════════════════════════════════════════

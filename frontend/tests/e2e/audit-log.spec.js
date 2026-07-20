@@ -39,9 +39,13 @@ for (const roleKey of ALLOWED_ROLE_KEYS) {
     });
 
     test("recording a real admin action makes it appear in the Audit Log", async ({ page, request }) => {
-      // Create + toggle a service via the API using the same session (a real
-      // audited action, self-contained — doesn't depend on pre-seeded data),
-      // then confirm the new page surfaces it after a refresh.
+      // Create + mark-unavailable a service via the API using the same
+      // session (a real audited action, self-contained — doesn't depend on
+      // pre-seeded data), then confirm the new page surfaces it after a
+      // refresh. Deletes the service afterward (Phase 3 added a real DELETE
+      // endpoint) so this doesn't leave an orphan row that becomes some
+      // other test's default "first service" — see Service Catalog
+      // Management's Playwright specs for why that matters.
       const { accessToken } = JSON.parse(
         fs.readFileSync(path.join(__dirname, ".auth", `${roleKey}-session.json`), "utf-8")
       );
@@ -55,13 +59,19 @@ for (const roleKey of ALLOWED_ROLE_KEYS) {
       expect(createRes.ok()).toBeTruthy();
       const service = await createRes.json();
 
-      await request.post(`/api/ops/services/${service.id}/toggle/`, { headers: authHeaders });
+      try {
+        const unavailableRes = await request.post(`/api/ops/services/${service.id}/mark-unavailable/`, { headers: authHeaders });
+        expect(unavailableRes.ok()).toBeTruthy();
 
-      // Default sort is -created_at, so both new rows (service_created,
-      // service_disabled) land on page 1. The "Details" column renders the
-      // service name for service_* actions (see formatDetails() in OpsAuditLog.jsx).
-      await page.goto(AUDIT_LOG_PATH);
-      await expect(page.getByText(uniqueName).first()).toBeVisible();
+        // Default sort is -created_at, so both new rows (service_created,
+        // service_marked_unavailable) land on page 1. The "Details" column
+        // renders the service name for service_* actions (see
+        // formatDetails() in OpsAuditLog.jsx).
+        await page.goto(AUDIT_LOG_PATH);
+        await expect(page.getByText(uniqueName).first()).toBeVisible();
+      } finally {
+        await request.delete(`/api/ops/services/${service.id}/`, { headers: authHeaders });
+      }
     });
 
     test("sidebar shows an Audit Log link", async ({ page }) => {

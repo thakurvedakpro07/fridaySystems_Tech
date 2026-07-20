@@ -64,8 +64,17 @@ export const createOpsService = (data) =>
 export const updateOpsService = (serviceId, data) =>
   apiClient.patch(`/ops/services/${serviceId}/`, data);
 
-export const toggleOpsService = (serviceId) =>
-  apiClient.post(`/ops/services/${serviceId}/toggle/`);
+export const deleteOpsService = (serviceId) =>
+  apiClient.delete(`/ops/services/${serviceId}/`);
+
+export const archiveOpsService = (serviceId) =>
+  apiClient.post(`/ops/services/${serviceId}/archive/`);
+
+export const markOpsServiceUnavailable = (serviceId) =>
+  apiClient.post(`/ops/services/${serviceId}/mark-unavailable/`);
+
+export const reactivateOpsService = (serviceId) =>
+  apiClient.post(`/ops/services/${serviceId}/reactivate/`);
 
 // ── SLA Policy Management ───────────────────────────────────────────
 

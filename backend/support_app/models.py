@@ -283,11 +283,6 @@ class Ticket(models.Model):
     change while the engineer and customer are messaging each other.
     """
 
-    # ── Service catalogue ─────────────────────────────────────────
-    # Source of truth: support_app/services/service_catalog.py
-    # Do not add choices here — edit the catalog module instead.
-    SERVICE_CHOICES = _SERVICE_CHOICES
-
     # ── Severity — TECHNICAL impact ───────────────────────────────
     # How badly is the system broken?
     # "critical" = complete outage, all users blocked
@@ -337,7 +332,11 @@ class Ticket(models.Model):
     # ── Problem description ───────────────────────────────────────
     title       = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    service_type = models.CharField(max_length=32, choices=SERVICE_CHOICES)
+    # No choices= here — valid values are the `key`s of active Service rows,
+    # which change at runtime as admins manage the catalog (Operations →
+    # Services). Enforced dynamically in TicketCreateSerializer.validate_service_type(),
+    # not statically here. See support_app/models.py's Service model.
+    service_type = models.CharField(max_length=32)
 
     # ── Urgency fields ────────────────────────────────────────────
     severity = models.CharField(max_length=16, choices=SEVERITY_CHOICES, default="medium")
@@ -402,6 +401,19 @@ class Ticket(models.Model):
 
     def __str__(self):
         return f"{self.ticket_number} — {self.title}"
+
+    def get_service_type_display(self):
+        """
+        Human-readable service name for notifications/emails/invoices.
+
+        Django auto-generates a `get_FOO_display()` method for any field
+        with `choices=` — service_type intentionally has none (see its
+        comment above), since valid values are the Service model's live
+        `key`s, not a fixed list. This manually-defined method preserves
+        the exact same call-site API every caller already used.
+        """
+        service = Service.objects.filter(key=self.service_type).values_list("name", flat=True).first()
+        return service or self.service_type
 
     class Meta:
         ordering = ["-created_at"]
@@ -1058,18 +1070,53 @@ class RoleChangeAudit(models.Model):
 
 class Service(models.Model):
     """
-    Platform service catalogue entry.
-    Operations Managers and Super Admins can create, edit, enable, or disable services.
-    """
-    STATUS_CHOICES = [
-        ("active", "Active"),
-        ("inactive", "Inactive"),
-    ]
+    Platform service catalogue entry — the single source of truth for what
+    customers can order, what it costs, and whether it's currently offered.
 
+    `key` is the stable machine identifier `Ticket.service_type` stores
+    (e.g. "server_admin") — distinct from `name` (the editable display
+    label) precisely so renaming a service in the admin UI never breaks
+    existing tickets that reference it. `key` is set once at creation
+    (auto-slugified from `name` if not supplied) and never changes after.
+
+    Two independent flags control visibility/orderability, matching the
+    Operations → Services actions (Archive / Mark Unavailable / Reactivate):
+      is_active=False    → archived: hidden from the customer catalog entirely.
+      is_active=True,
+      is_available=False → temporarily unavailable: still shown to customers
+                            (greyed out, "Temporarily unavailable"), but new
+                            tickets cannot be created against it.
+      is_active=True,
+      is_available=True  → normal, orderable.
+    "Reactivate" sets both flags back to True regardless of which was off.
+    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    key = models.SlugField(max_length=64, unique=True)
     name = models.CharField(max_length=255, unique=True)
-    description = models.TextField(blank=True)
-    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="active")
+    category = models.CharField(max_length=100, blank=True)
+    description = models.TextField(
+        blank=True, help_text="Customer-facing description of what this service covers.",
+    )
+    icon = models.CharField(
+        max_length=8, blank=True, default="🛠️",
+        help_text="A single emoji shown next to the service name — no code change needed to add new icons.",
+    )
+    display_order = models.IntegerField(default=0, help_text="Lower numbers appear first in the catalog.")
+    is_active = models.BooleanField(default=True, help_text="False = archived, hidden from the customer catalog.")
+    is_available = models.BooleanField(
+        default=True,
+        help_text="False = temporarily unavailable — still listed but greyed out; blocks new tickets.",
+    )
+    featured = models.BooleanField(default=False, help_text="Highlight this service in the customer catalog.")
+    estimated_response_minutes = models.PositiveIntegerField(
+        null=True, blank=True, help_text="Typical first-response time shown to customers, in minutes.",
+    )
+    estimated_resolution_minutes = models.PositiveIntegerField(
+        null=True, blank=True, help_text="Typical resolution time shown to customers, in minutes.",
+    )
+    resolution_fee = models.PositiveIntegerField(
+        default=0, help_text="Base resolution fee in ₹ (pre-GST, before severity surcharge).",
+    )
     required_skills = models.CharField(
         max_length=500, blank=True,
         help_text="Comma-separated skill tags, e.g. aws,kubernetes,server_admin",
@@ -1078,10 +1125,13 @@ class Service(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.name} ({self.status})"
+        state = "active" if (self.is_active and self.is_available) else (
+            "unavailable" if self.is_active else "archived"
+        )
+        return f"{self.name} ({state})"
 
     class Meta:
-        ordering = ["name"]
+        ordering = ["display_order", "name"]
 
 
 class KBArticle(models.Model):
