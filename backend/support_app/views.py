@@ -45,7 +45,7 @@ _logger = logging.getLogger(__name__)
 User = get_user_model()
 from rest_framework import filters, generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes as throttle_classes_dec
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -60,6 +60,9 @@ from .models import (
     KBArticle,
     KBArticleTicketLink,
     Notification,
+    Organization,
+    OrganizationInvitation,
+    OrganizationMembership,
     Payment,
     Payout,
     RoleChangeAudit,
@@ -90,8 +93,11 @@ from .permissions import (
     IsTicketManagementStaff,
     is_finance_manager,
     is_internal_staff,
+    is_organization_admin,
+    is_organization_member,
     is_super_admin,
     is_support_agent,
+    organization_membership,
 )
 from .serializers import (
     AdminAssignSerializer,
@@ -108,10 +114,18 @@ from .serializers import (
     KBArticleDetailSerializer,
     KBArticleListSerializer,
     KBArticleWriteSerializer,
+    InvitationAcceptSerializer,
+    InvitationPreviewSerializer,
     NotificationSerializer,
     OpsActivityLogSerializer,
     OpsPaymentSerializer,
     OpsUserSerializer,
+    OrganizationInvitationCreateSerializer,
+    OrganizationInvitationSerializer,
+    OrganizationMembershipRoleUpdateSerializer,
+    OrganizationMembershipSerializer,
+    OrganizationSerializer,
+    OrganizationUpdateSerializer,
     PaymentSerializer,
     PaymentVerifySerializer,
     RegisterSerializer,
@@ -3582,3 +3596,308 @@ def ai_assistant_log_insert(request, ticket_id):
         note=f"AI draft reply inserted (tone={tone}).",
     )
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ── Organizations & Multi-Tenant Management ─────────────────────────
+# See models.py's section docstring for the overall design: additive layer
+# on top of Customer, no changes to ticket/payment ownership or queries in
+# this phase. Every write action here logs to the existing generic
+# AuditLog via log_action(entity="organization", ...) rather than a new
+# dedicated audit model — see services/audit_service.py, already
+# entity-agnostic.
+
+def _get_organization_for_member(user, org_id):
+    """Return the Organization if `user` has a membership in it, else 404/403."""
+    org = get_object_or_404(Organization, pk=org_id)
+    if not is_organization_member(user, org):
+        raise PermissionDenied("You are not a member of this organization.")
+    return org
+
+
+def _require_org_admin(user, organization):
+    if not is_organization_admin(user, organization):
+        raise PermissionDenied("Only an organization admin can perform this action.")
+
+
+class OrganizationMineView(generics.ListAPIView):
+    """GET /api/organizations/mine/ — every organization the current user
+    belongs to (via OrganizationMembership), for the org switcher."""
+    serializer_class = OrganizationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        from django.db.models import Count
+        return (
+            Organization.objects
+            .filter(memberships__user=self.request.user)
+            .annotate(member_count=Count("memberships", distinct=True))
+            .order_by("-created_at")
+        )
+
+
+class OrganizationDetailView(generics.RetrieveUpdateAPIView):
+    """
+    GET   /api/organizations/{org_id}/ — any member
+    PATCH /api/organizations/{org_id}/ — org_admin only
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    lookup_url_kwarg = "org_id"
+
+    def get_queryset(self):
+        from django.db.models import Count
+        return Organization.objects.annotate(member_count=Count("memberships", distinct=True))
+
+    def get_serializer_class(self):
+        return OrganizationUpdateSerializer if self.request.method == "PATCH" else OrganizationSerializer
+
+    def get_object(self):
+        org = super().get_object()
+        if not is_organization_member(self.request.user, org):
+            raise PermissionDenied("You are not a member of this organization.")
+        if self.request.method == "PATCH":
+            _require_org_admin(self.request.user, org)
+        return org
+
+    def perform_update(self, serializer):
+        from .services.audit_service import log_action
+        org = serializer.save()
+        log_action(
+            self.request.user, entity="organization", action="organization_updated",
+            entity_id=org.id, metadata={"name": org.name}, request=self.request,
+        )
+
+
+class OrganizationMembershipListView(generics.ListAPIView):
+    """GET /api/organizations/{org_id}/members/ — any member can view."""
+    serializer_class = OrganizationMembershipSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        org = _get_organization_for_member(self.request.user, self.kwargs["org_id"])
+        return org.memberships.select_related("user").order_by("-joined_at")
+
+
+@api_view(["PATCH", "DELETE"])
+@permission_classes([permissions.IsAuthenticated])
+def organization_membership_detail(request, org_id, user_id):
+    """
+    PATCH  /api/organizations/{org_id}/members/{user_id}/ — change role
+    DELETE /api/organizations/{org_id}/members/{user_id}/ — remove member
+    org_admin only for both. An org_admin cannot demote/remove themself if
+    they're the organization's LAST admin — would leave the org unmanageable.
+    """
+    from .services.audit_service import log_action
+
+    org = get_object_or_404(Organization, pk=org_id)
+    _require_org_admin(request.user, org)
+    membership = get_object_or_404(OrganizationMembership, organization=org, user_id=user_id)
+
+    is_last_admin = (
+        membership.role == "org_admin"
+        and org.memberships.filter(role="org_admin").count() == 1
+    )
+
+    if request.method == "PATCH":
+        if is_last_admin and request.data.get("role") != "org_admin":
+            raise ValidationError({"role": "Cannot demote the organization's only admin."})
+        serializer = OrganizationMembershipRoleUpdateSerializer(membership, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        log_action(
+            request.user, entity="organization", action="member_role_changed", entity_id=org.id,
+            metadata={"member_email": membership.user.email, "role": membership.role}, request=request,
+        )
+        return Response(OrganizationMembershipSerializer(membership).data)
+
+    # DELETE
+    if is_last_admin:
+        raise ValidationError({"detail": "Cannot remove the organization's only admin."})
+    member_email = membership.user.email
+    membership.delete()
+    log_action(
+        request.user, entity="organization", action="member_removed", entity_id=org.id,
+        metadata={"member_email": member_email}, request=request,
+    )
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class OrganizationInvitationListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /api/organizations/{org_id}/invitations/ — all invitations
+         (pending/accepted/revoked/expired), org_admin only
+    POST /api/organizations/{org_id}/invitations/ — send a new invitation,
+         org_admin only
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        return OrganizationInvitationCreateSerializer if self.request.method == "POST" else OrganizationInvitationSerializer
+
+    def _organization(self):
+        org = get_object_or_404(Organization, pk=self.kwargs["org_id"])
+        _require_org_admin(self.request.user, org)
+        return org
+
+    def get_queryset(self):
+        org = self._organization()
+        return org.invitations.select_related("invited_by").order_by("-created_at")
+
+    def create(self, request, *args, **kwargs):
+        import secrets
+        from datetime import timedelta
+        from django.utils import timezone
+        from .services.audit_service import log_action
+        from .services.email_service import send_organization_invitation
+
+        org = self._organization()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        role = serializer.validated_data.get("role", "org_member")
+
+        if org.memberships.filter(user__email__iexact=email).exists():
+            raise ValidationError({"email": "This person is already a member of the organization."})
+        if org.invitations.filter(email__iexact=email, status="pending").exists():
+            raise ValidationError({"email": "There's already a pending invitation for this email."})
+
+        invitation = OrganizationInvitation.objects.create(
+            organization=org, email=email, role=role, invited_by=request.user,
+            token=secrets.token_urlsafe(32),
+            expires_at=timezone.now() + timedelta(days=7),
+        )
+        send_organization_invitation(invitation)
+        log_action(
+            request.user, entity="organization", action="member_invited", entity_id=org.id,
+            metadata={"email": email, "role": role}, request=request,
+        )
+        return Response(OrganizationInvitationSerializer(invitation).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["DELETE"])
+@permission_classes([permissions.IsAuthenticated])
+def organization_invitation_revoke(request, org_id, invitation_id):
+    """DELETE /api/organizations/{org_id}/invitations/{id}/ — org_admin only."""
+    from .services.audit_service import log_action
+
+    org = get_object_or_404(Organization, pk=org_id)
+    _require_org_admin(request.user, org)
+    invitation = get_object_or_404(OrganizationInvitation, pk=invitation_id, organization=org)
+    invitation.status = "revoked"
+    invitation.save(update_fields=["status"])
+    log_action(
+        request.user, entity="organization", action="invitation_revoked", entity_id=org.id,
+        metadata={"email": invitation.email}, request=request,
+    )
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["GET"])
+@permission_classes([permissions.AllowAny])
+def invitation_preview(request, token):
+    """GET /api/organizations/invitations/{token}/ — no auth required, so
+    the invite-accept page can show what's being accepted before login."""
+    invitation = get_object_or_404(OrganizationInvitation, token=token)
+    return Response(InvitationPreviewSerializer(invitation).data)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.AllowAny])
+def invitation_accept(request):
+    """
+    POST /api/organizations/invitations/accept/
+    Body: { token, password?, first_name?, last_name? }
+
+    Two paths:
+      - Invitee already has an account: must already be logged in as that
+        exact email; just creates the membership.
+      - Invitee has no account: password required; creates the CustomUser
+        (role="customer", deliberately NO Customer/billing profile — see
+        models.py's Organization section docstring for why ticket/billing
+        access isn't part of this phase) + membership, then logs them in
+        (returns JWT tokens), same response shape as RegisterView.
+    """
+    from django.db import transaction
+    from django.utils import timezone
+    from .services.audit_service import log_action
+
+    serializer = InvitationAcceptSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    invitation = get_object_or_404(OrganizationInvitation, token=data["token"])
+    if invitation.status != "pending":
+        raise ValidationError({"detail": f"This invitation is {invitation.status}, not pending."})
+    if invitation.expires_at < timezone.now():
+        invitation.status = "expired"
+        invitation.save(update_fields=["status"])
+        raise ValidationError({"detail": "This invitation has expired."})
+
+    existing_user = User.objects.filter(email__iexact=invitation.email).first()
+
+    with transaction.atomic():
+        if existing_user:
+            if not request.user.is_authenticated or request.user.pk != existing_user.pk:
+                raise PermissionDenied("Please log in as the invited email address to accept this invitation.")
+            user = existing_user
+        else:
+            if not data.get("password"):
+                raise ValidationError({"password": "Set a password to create your account."})
+            from django.contrib.auth.password_validation import validate_password
+            from django.core.exceptions import ValidationError as DjangoValidationError
+            try:
+                validate_password(data["password"])
+            except DjangoValidationError as exc:
+                raise ValidationError({"password": list(exc.messages)})
+            # is_verified=True: receiving and clicking the emailed invite
+            # link already proves control of this inbox, same guarantee the
+            # standalone email-verification flow exists to provide.
+            user = User.objects.create_user(
+                email=invitation.email, password=data["password"], role="customer",
+                is_verified=True, first_name=data.get("first_name", ""), last_name=data.get("last_name", ""),
+            )
+
+        OrganizationMembership.objects.get_or_create(
+            organization=invitation.organization, user=user, defaults={"role": invitation.role},
+        )
+        invitation.status = "accepted"
+        invitation.accepted_at = timezone.now()
+        invitation.save(update_fields=["status", "accepted_at"])
+
+    log_action(
+        user, entity="organization", action="invitation_accepted", entity_id=invitation.organization.id,
+        metadata={"email": user.email, "role": invitation.role}, request=request,
+    )
+
+    refresh = RefreshToken.for_user(user)
+    return Response({
+        "access": str(refresh.access_token),
+        "refresh": str(refresh),
+        "user": {
+            "id": str(user.id), "email": user.email, "is_staff": user.is_staff,
+            "role": user.role, "is_verified": user.is_verified,
+            "first_name": user.first_name, "last_name": user.last_name,
+        },
+        "organization_id": str(invitation.organization.id),
+    }, status=status.HTTP_200_OK)
+
+
+class OrganizationAuditLogListView(generics.ListAPIView):
+    """GET /api/organizations/{org_id}/audit/ — org_admin only. Reuses the
+    same generic AuditLog table as the system-wide Ops audit log
+    (OpsAuditLogListView), scoped to entity='organization' + this org's id."""
+    serializer_class = AuditLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = OpsPageNumberPagination
+
+    def get_queryset(self):
+        from django.db.models import OuterRef, Subquery
+
+        org = get_object_or_404(Organization, pk=self.kwargs["org_id"])
+        _require_org_admin(self.request.user, org)
+        email_subquery = User.objects.filter(pk=OuterRef("user_id")).values("email")[:1]
+        return (
+            AuditLog.objects
+            .filter(entity="organization", entity_id=org.id)
+            .annotate(user_email=Subquery(email_subquery))
+            .order_by("-created_at")
+        )

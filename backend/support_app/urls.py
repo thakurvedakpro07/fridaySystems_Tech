@@ -188,4 +188,17 @@ urlpatterns = [
     # ── AI Assistant (internal staff only) ────────────────────────
     path("tickets/<uuid:ticket_id>/ai-assistant/",          views.ai_assistant_view,                 name="ticket-ai-assistant"),
     path("tickets/<uuid:ticket_id>/ai-assistant/log-insert/", views.ai_assistant_log_insert,          name="ticket-ai-assistant-log-insert"),
+
+    # ── Organizations & Multi-Tenant Management ────────────────────
+    # NOTE: "mine/" and "invitations/..." must precede <uuid:org_id>/ so
+    # Django doesn't try to parse those literal segments as a UUID.
+    path("organizations/mine/",                             views.OrganizationMineView.as_view(),     name="organization-mine"),
+    path("organizations/invitations/accept/",                views.invitation_accept,                 name="organization-invitation-accept"),
+    path("organizations/invitations/<str:token>/",           views.invitation_preview,                name="organization-invitation-preview"),
+    path("organizations/<uuid:org_id>/",                     views.OrganizationDetailView.as_view(),   name="organization-detail"),
+    path("organizations/<uuid:org_id>/members/",             views.OrganizationMembershipListView.as_view(), name="organization-member-list"),
+    path("organizations/<uuid:org_id>/members/<uuid:user_id>/", views.organization_membership_detail, name="organization-member-detail"),
+    path("organizations/<uuid:org_id>/invitations/",         views.OrganizationInvitationListCreateView.as_view(), name="organization-invitation-list"),
+    path("organizations/<uuid:org_id>/invitations/<uuid:invitation_id>/", views.organization_invitation_revoke, name="organization-invitation-revoke"),
+    path("organizations/<uuid:org_id>/audit/",                views.OrganizationAuditLogListView.as_view(), name="organization-audit-log"),
 ]

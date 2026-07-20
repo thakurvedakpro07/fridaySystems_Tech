@@ -29,6 +29,9 @@ from .models import (
     CustomUser,
     Freelancer,
     Notification,
+    Organization,
+    OrganizationInvitation,
+    OrganizationMembership,
     Payment,
     SLALog,
     SLAPolicy,
@@ -107,6 +110,29 @@ class FreelancerAdmin(admin.ModelAdmin):
         keys = sorted(obj.payout_details.keys())
         return f"[MASKED] fields present: {', '.join(keys)}"
     payout_summary.short_description = "Payout Details (masked)"
+
+
+@admin.register(Organization)
+class OrganizationAdmin(admin.ModelAdmin):
+    list_display   = ["name", "slug", "created_at"]
+    search_fields  = ["name", "slug"]
+    readonly_fields = ["created_at", "updated_at"]
+
+
+@admin.register(OrganizationMembership)
+class OrganizationMembershipAdmin(admin.ModelAdmin):
+    list_display   = ["user", "organization", "role", "joined_at"]
+    search_fields  = ["user__email", "organization__name"]
+    list_filter    = ["role"]
+    readonly_fields = ["joined_at"]
+
+
+@admin.register(OrganizationInvitation)
+class OrganizationInvitationAdmin(admin.ModelAdmin):
+    list_display   = ["email", "organization", "role", "status", "created_at", "expires_at"]
+    search_fields  = ["email", "organization__name"]
+    list_filter    = ["status", "role"]
+    readonly_fields = ["token", "created_at", "accepted_at"]
 
 
 # ── Ticket Admin — with inline activity log ───────────────────────

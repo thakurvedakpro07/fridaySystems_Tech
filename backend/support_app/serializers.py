@@ -22,6 +22,9 @@ from .models import (
     KBArticle,
     KBArticleTicketLink,
     Notification,
+    Organization,
+    OrganizationInvitation,
+    OrganizationMembership,
     Payment,
     RoleChangeAudit,
     Service,
@@ -33,6 +36,7 @@ from .models import (
     TicketAttachment,
     TicketComment,
 )
+from .permissions import organization_membership
 
 
 # ── Auth ──────────────────────────────────────────────────────────
@@ -104,7 +108,10 @@ class RegisterSerializer(serializers.ModelSerializer):
                     onboarding_status="pending",
                 )
             else:
-                Customer.objects.create(user=user, company=company, phone=phone)
+                from .services.organization_service import create_organization_for_customer
+                customer = Customer.objects.create(user=user, company=company, phone=phone)
+                customer.organization = create_organization_for_customer(user, company)
+                customer.save(update_fields=["organization"])
 
         return user
 
@@ -119,6 +126,102 @@ class CustomerSerializer(serializers.ModelSerializer):
         model = Customer
         fields = ["id", "email", "is_staff", "company", "phone", "address", "plan", "gstin", "mfa_enabled", "created_at"]
         read_only_fields = ["id", "email", "is_staff", "plan", "mfa_enabled", "created_at"]
+
+
+# ── Organizations ─────────────────────────────────────────────────
+
+class OrganizationSerializer(serializers.ModelSerializer):
+    member_count = serializers.IntegerField(read_only=True)
+    my_role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Organization
+        fields = ["id", "name", "slug", "settings", "member_count", "my_role", "created_at"]
+        read_only_fields = ["id", "slug", "member_count", "my_role", "created_at"]
+
+    def get_my_role(self, obj):
+        request = self.context.get("request")
+        if not request:
+            return None
+        membership = organization_membership(request.user, obj)
+        return membership.role if membership else None
+
+
+class OrganizationUpdateSerializer(serializers.ModelSerializer):
+    """PATCH /organizations/{id}/ — org_admin only (enforced in the view)."""
+    class Meta:
+        model = Organization
+        fields = ["name", "settings"]
+
+
+class OrganizationMemberUserSerializer(serializers.Serializer):
+    """Nested user summary — same shape convention as FreelancerPublicSerializer."""
+    id = serializers.UUIDField()
+    email = serializers.EmailField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+
+
+class OrganizationMembershipSerializer(serializers.ModelSerializer):
+    user = OrganizationMemberUserSerializer(read_only=True)
+
+    class Meta:
+        model = OrganizationMembership
+        fields = ["id", "user", "role", "joined_at"]
+        read_only_fields = ["id", "user", "joined_at"]
+
+
+class OrganizationMembershipRoleUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrganizationMembership
+        fields = ["role"]
+
+
+class OrganizationInvitationSerializer(serializers.ModelSerializer):
+    invited_by_email = serializers.EmailField(source="invited_by.email", read_only=True, default=None)
+
+    class Meta:
+        model = OrganizationInvitation
+        fields = ["id", "email", "role", "invited_by_email", "status", "created_at", "expires_at"]
+        read_only_fields = fields
+
+
+class OrganizationInvitationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrganizationInvitation
+        fields = ["email", "role"]
+
+    def validate_email(self, value):
+        return value.strip().lower()
+
+
+class InvitationPreviewSerializer(serializers.ModelSerializer):
+    """GET /organizations/invitations/{token}/ — no auth required, so an
+    invitee can see what they're accepting before logging in/registering."""
+    organization_name = serializers.CharField(source="organization.name", read_only=True)
+    invited_by_email = serializers.EmailField(source="invited_by.email", read_only=True, default=None)
+    account_exists = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrganizationInvitation
+        fields = ["email", "role", "organization_name", "invited_by_email", "status", "expires_at", "account_exists"]
+
+    def get_account_exists(self, obj):
+        return User.objects.filter(email__iexact=obj.email).exists()
+
+
+class InvitationAcceptSerializer(serializers.Serializer):
+    """POST /organizations/invitations/accept/
+
+    `password`/`first_name`/`last_name` are only required when the invited
+    email has no existing account yet — accepting then also creates it.
+    An already-registered invitee just needs to be logged in and pass the
+    token (see the view for exactly how that branch is chosen).
+    """
+    token = serializers.CharField()
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    first_name = serializers.CharField(required=False, allow_blank=True, default="")
+    last_name = serializers.CharField(required=False, allow_blank=True, default="")
 
 
 # ── Freelancer ────────────────────────────────────────────────────

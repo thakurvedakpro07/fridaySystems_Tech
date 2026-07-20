@@ -1,0 +1,18 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h1>You've been invited to join {{ organization_name }}</h1>
+<p>Hi,</p>
+<p>{{ invited_by_email }} has invited you to join <strong>{{ organization_name }}</strong> on ResolveHQ as a{% if role == "Organization Admin" %}n{% endif %} <strong>{{ role }}</strong>.</p>
+<div class="meta-box">
+  <div class="meta-row">
+    <span class="meta-label">Organization</span>
+    <span class="meta-value">{{ organization_name }}</span>
+  </div>
+  <div class="meta-row">
+    <span class="meta-label">Role</span>
+    <span class="meta-value"><span class="status-badge">{{ role }}</span></span>
+  </div>
+</div>
+<p>Click below to accept the invitation. This link expires in 7 days.</p>
+<a href="{{ accept_url }}" class="cta-btn">Accept Invitation →</a>
+{% endblock %}

@@ -79,6 +79,35 @@ def is_super_admin(user) -> bool:
     return bool(user and user.is_authenticated and user.is_staff and getattr(user, "role", None) == "admin")
 
 
+def organization_membership(user, organization):
+    """Return the user's OrganizationMembership row for `organization`, or None.
+
+    Org-scoped role (org_admin/org_member) lives on OrganizationMembership,
+    not on CustomUser — this is the one place that lookup happens, so
+    every organization view/permission goes through the same query.
+    """
+    if not (user and user.is_authenticated and organization):
+        return None
+    return organization.memberships.filter(user=user).first()
+
+
+def is_organization_member(user, organization) -> bool:
+    """True if `user` has any membership (org_admin or org_member) in `organization`."""
+    return organization_membership(user, organization) is not None
+
+
+def is_organization_admin(user, organization) -> bool:
+    """True if `user`'s membership in `organization` has role='org_admin'.
+
+    Super Admins (site-wide) are deliberately NOT granted implicit org_admin
+    here — organization management is customer-side self-service, not an
+    Operations/Admin surface (see Sidebar's role gating: Organization only
+    ever appears under the customer nav).
+    """
+    membership = organization_membership(user, organization)
+    return bool(membership and membership.role == "org_admin")
+
+
 # ── Permission classes ────────────────────────────────────────────
 
 class IsAdminUser(BasePermission):

@@ -192,6 +192,17 @@ class Customer(models.Model):
     oauth_provider = models.CharField(max_length=64, blank=True, null=True)
     oauth_id = models.CharField(max_length=255, blank=True, null=True)
     mfa_enabled = models.BooleanField(default=False)
+    # Nullable so this is non-breaking for any row created before the
+    # Organization system existed — the 0029 migration backfills every
+    # existing Customer with an auto-created Organization, so in practice
+    # this is always set once that migration has run. "Organization" is a
+    # forward string reference since Organization is defined further down
+    # this file (after Freelancer) to keep it near Ticket/Payment, which it
+    # deliberately does NOT change the ownership of — see Organization's
+    # own docstring.
+    organization = models.ForeignKey(
+        "Organization", on_delete=models.SET_NULL, null=True, blank=True, related_name="customers",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -252,6 +263,102 @@ class Freelancer(models.Model):
         indexes = [
             models.Index(fields=["onboarding_status", "active"], name="idx_freelancer_status_active"),
         ]
+
+
+# ── Organizations & Multi-Tenant Management ────────────────────────
+#
+# Additive layer on top of the existing Customer model, not a replacement
+# for it. Ticket/Payment/Subscription still FK to Customer exactly as
+# before this system existed — Organization does not (yet) change who can
+# see or create tickets. What it adds: a team container (Organization) that
+# multiple CustomUsers can belong to (OrganizationMembership, with an
+# org-scoped role independent of CustomUser.role), and an invitation flow
+# for an org_admin to bring new members in. The Customer who self-registers
+# becomes org_admin of their own auto-created Organization (see
+# RegisterSerializer.create() in serializers.py).
+
+
+class Organization(models.Model):
+    """Top-level multi-tenant container — see section docstring above."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=True)
+    # Free-form settings bag (e.g. display preferences) — JSONField avoids a
+    # new migration every time a new org-level setting is added.
+    settings = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class OrganizationMembership(models.Model):
+    """
+    Links a CustomUser to an Organization with an org-scoped role. This role
+    is intentionally separate from CustomUser.role (customer/freelancer/
+    admin/...) — a member's org_admin/org_member standing describes their
+    authority within THIS organization, not their site-wide account type.
+    """
+    ROLE_CHOICES = [
+        ("org_admin", "Organization Admin"),
+        ("org_member", "Member"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="memberships")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="organization_memberships",
+    )
+    role = models.CharField(max_length=32, choices=ROLE_CHOICES, default="org_member")
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.email} in {self.organization.name} ({self.role})"
+
+    class Meta:
+        ordering = ["-joined_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["organization", "user"], name="unique_org_membership"),
+        ]
+
+
+class OrganizationInvitation(models.Model):
+    """
+    A pending (or resolved) invitation for someone to join an Organization.
+    Tracked as a real row — not a stateless signed token like the password-
+    reset flow — because "pending invitations" needs to be a queryable list
+    an org_admin can see and revoke from, not just a link that either works
+    or doesn't.
+    """
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("accepted", "Accepted"),
+        ("revoked", "Revoked"),
+        ("expired", "Expired"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="invitations")
+    email = models.EmailField()
+    role = models.CharField(max_length=32, choices=OrganizationMembership.ROLE_CHOICES, default="org_member")
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="sent_invitations",
+    )
+    token = models.CharField(max_length=64, unique=True)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    accepted_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Invite {self.email} to {self.organization.name} ({self.status})"
+
+    class Meta:
+        ordering = ["-created_at"]
 
 
 # ── Ticket System ────────────────────────────────────────────────
