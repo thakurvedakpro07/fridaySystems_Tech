@@ -141,6 +141,10 @@ function TicketStatusTracker({ status, ticket, role, isPendingPayment = false })
   const lifecycle = getLifecycle(role);
   const currentIdx = lifecycle.findIndex((s) => s.status === status);
   const { label: etaLabel, overdue: etaOverdue, kind: etaKind, target: etaTarget } = useTicketETA(ticket);
+  // How far through the lifecycle this ticket has progressed — reuses the
+  // exact same currentIdx/lifecycle the milestone list below already
+  // computes, just visualized as a fill rather than only a dot-per-step.
+  const progressPct = lifecycle.length > 1 ? Math.round((currentIdx / (lifecycle.length - 1)) * 100) : 0;
 
   return (
     <div>
@@ -150,6 +154,13 @@ function TicketStatusTracker({ status, ticket, role, isPendingPayment = false })
           {etaKind} {etaLabel}
         </p>
       )}
+
+      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-2.5" aria-hidden="true">
+        <div
+          className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+          style={{ width: `${Math.max(progressPct, 4)}%` }}
+        />
+      </div>
 
       <ol className="space-y-1.5">
         {lifecycle.map((step, idx) => {
@@ -808,6 +819,13 @@ function TicketHeroHeader({ ticket }) {
   );
 }
 
+// Ticket lifecycle statuses where a customer has something to do —
+// PaymentGateway/PostPaymentCard/CustomerResolutionActions/CSATWidget each
+// gate on exactly one of these (mutually exclusive by ticket.status), so at
+// most one ever renders — this just decides whether to show the grouping
+// heading around whichever one is currently relevant.
+const CUSTOMER_ACTION_STATUSES = ["pending_payment", "open", "resolved", "closed"];
+
 export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
   const [draftMessage, setDraftMessage] = useState("");
   const handleUpdate = onUpdate ?? (() => {});
@@ -816,6 +834,7 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
   if (!ticket) return null;
 
   const isPendingPayment = role === "customer" && ticket.status === "pending_payment";
+  const hasCustomerAction = role === "customer" && CUSTOMER_ACTION_STATUSES.includes(ticket.status);
 
   const focusComposer = () => {
     requestAnimationFrame(() => {
@@ -847,20 +866,28 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
           {/* ══ Contextual action cards — real next-step moments (payment, ══
               resolution decision, CSAT), not decorative. They stack above
               the feed but stay inside the conversation column so the grid
-              itself begins right under the header. */}
-          {isPendingPayment && (
-            <PaymentGateway ticket={ticket} onPaymentSuccess={handleUpdate} />
-          )}
+              itself begins right under the header. Grouped under one clear
+              heading so "here's what you can do" reads as a distinct zone
+              from the read-only conversation feed below it — previously an
+              unlabeled stack of cards. */}
+          {hasCustomerAction && (
+            <div>
+              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-2 px-0.5">
+                Your Next Step
+              </p>
+              <div className="space-y-4">
+                {isPendingPayment && (
+                  <PaymentGateway ticket={ticket} onPaymentSuccess={handleUpdate} />
+                )}
 
-          {role === "customer" && ticket.status === "open" && (
-            <PostPaymentCard ticket={ticket} onUpdate={handleUpdate} />
-          )}
+                {ticket.status === "open" && (
+                  <PostPaymentCard ticket={ticket} onUpdate={handleUpdate} />
+                )}
 
-          {role === "customer" && (
-            <>
-              <CustomerResolutionActions ticket={ticket} onUpdate={handleUpdate} />
-              <CSATWidget ticket={ticket} onUpdate={handleUpdate} />
-            </>
+                <CustomerResolutionActions ticket={ticket} onUpdate={handleUpdate} />
+                <CSATWidget ticket={ticket} onUpdate={handleUpdate} />
+              </div>
+            </div>
           )}
 
           {ticket.remote_session_url && (

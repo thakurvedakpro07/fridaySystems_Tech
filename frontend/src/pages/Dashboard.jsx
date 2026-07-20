@@ -9,13 +9,19 @@ import { SkeletonCard } from "../components/ui/Spinner";
 import Alert from "../components/ui/Alert";
 import Card from "../components/ui/Card";
 import Badge from "../components/ui/Badge";
+import Button from "../components/ui/Button";
+import Input from "../components/ui/Input";
 import EmptyState from "../components/ui/EmptyState";
+import Modal from "../components/ui/Modal";
 import PageHeader from "../components/ui/PageHeader";
 import KpiRow from "../components/dashboard/KpiRow";
+import FilterBar from "../components/filters/FilterBar";
+import QuickViews from "../components/filters/QuickViews";
 import { useAuthStore } from "../store/authStore";
 import { useTickets } from "../hooks/useTickets";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { useSavedFilters } from "../hooks/useSavedFilters";
 import { useToast } from "../context/ToastContext";
 import { getDisplayName } from "../utils/displayName";
 import { bucketCustomerTickets } from "../utils/customerTicketPriority";
@@ -29,6 +35,20 @@ const STATUS_OPTIONS = [
   { value: "resolved",         label: "Resolved" },
   { value: "closed",           label: "Closed" },
 ];
+
+// "newest"/"oldest" map straight to the backend's already-supported
+// `ordering` param (TicketListCreateView allows created_at/-created_at —
+// zero backend changes needed). The backend's severity ordering is a plain
+// alphabetical `.order_by("severity")`, which does NOT produce a meaningful
+// critical→low order, so priority sort is done client-side against a real
+// severity rank instead of relying on that param.
+const SORT_OPTIONS = [
+  { value: "newest",        label: "Sort: Newest first" },
+  { value: "oldest",        label: "Sort: Oldest first" },
+  { value: "severity_desc", label: "Sort: Priority high→low" },
+  { value: "severity_asc",  label: "Sort: Priority low→high" },
+];
+const SEVERITY_RANK = { critical: 4, high: 3, medium: 2, low: 1 };
 
 // Fetches every non-closed ticket in one page so the triage sections below
 // can bucket/sort client-side — same "fetch-all-once" strategy as the
@@ -81,34 +101,34 @@ function salutation(name) {
   return name ? `${base}, ${name}` : base;
 }
 
-function humanizeStatus(status) {
-  return (status ?? "").replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-// ── Recent Activity — tickets opened in the last 24 hours ───────────
-// The customer-facing ticket list serializer only exposes `created_at`
-// (no `updated_at`), so "what changed today" is scoped to new tickets
-// for v1 rather than status-change events we can't see yet.
-function RecentActivity({ tickets }) {
-  const recent = useMemo(() => {
-    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-    return tickets
-      .filter((t) => new Date(t.created_at).getTime() >= cutoff)
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  }, [tickets]);
+// ── Recent Tickets widget ────────────────────────────────────────
+// Previously windowed to "created in the last 24h" (RecentActivity), which
+// meant the card simply didn't render most of the time for any established
+// account — the customer ticket-list serializer has no `updated_at`, so
+// this still can't reflect status changes, but showing the N most-recently
+// *created* tickets regardless of age makes the widget actually useful on
+// every visit instead of only the day a ticket happens to be opened.
+function RecentTickets({ tickets }) {
+  const recent = useMemo(() => (
+    [...tickets]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 5)
+  ), [tickets]);
 
   if (recent.length === 0) return null;
 
   return (
-    <Card title="Recent Activity" className="mb-6">
-      <div className="space-y-2.5">
-        {recent.slice(0, 4).map((t) => (
-          <Link key={t.id} to={`/tickets/${t.id}`} className="flex items-center gap-2.5 text-sm hover:text-indigo-700 transition-colors">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
-            <span className="text-slate-700 truncate">
-              <span className="font-mono text-xs text-slate-500 mr-1.5">{t.ticket_number}</span>
-              opened as {humanizeStatus(t.status)}
-            </span>
+    <Card title="Recent Tickets" className="mb-6">
+      <div className="space-y-1">
+        {recent.map((t) => (
+          <Link
+            key={t.id}
+            to={`/tickets/${t.id}`}
+            className="flex items-center gap-3 py-1.5 px-1.5 -mx-1.5 rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            <span className="font-mono text-xs text-slate-500 shrink-0">{t.ticket_number}</span>
+            <span className="flex-1 min-w-0 text-sm text-slate-700 truncate">{t.title}</span>
+            <Badge label={t.status} domain="ticketStatus" dot />
           </Link>
         ))}
       </div>
@@ -502,26 +522,62 @@ function CustomerDashboard() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch]           = useState("");
   const [status, setStatus]           = useState("");
+  const [sort, setSort]               = useState("newest");
   const debounceRef                   = useRef(null);
 
-  const handleSearchChange = (e) => {
-    const val = e.target.value;
+  const { views: savedViews, saveView, removeView } = useSavedFilters();
+  const [saveFilterOpen, setSaveFilterOpen] = useState(false);
+  const [saveFilterName, setSaveFilterName] = useState("");
+
+  const handleSearchChange = (val) => {
     setSearchInput(val);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => setSearch(val), 400);
   };
 
-  const clearSearch = () => { setSearchInput(""); setSearch(""); };
+  const clearFilters = () => {
+    setSearchInput(""); setSearch(""); setStatus(""); setSort("newest");
+  };
 
+  const applyFilters = (f) => {
+    setSearchInput(f.search ?? ""); setSearch(f.search ?? "");
+    setStatus(f.status ?? ""); setSort(f.sort ?? "newest");
+  };
+
+  const activeSavedKey = savedViews.find((v) =>
+    (v.filters.search ?? "") === search &&
+    (v.filters.status ?? "") === status &&
+    (v.filters.sort ?? "newest") === sort
+  )?.key;
+
+  const handleSaveFilter = () => {
+    saveView(saveFilterName, { search, status, sort });
+    setSaveFilterName("");
+    setSaveFilterOpen(false);
+    addToast("Filter saved.", "success");
+  };
+
+  // Only "newest"/"oldest" map to the backend's supported `ordering` param —
+  // priority sort is re-applied client-side below (see SORT_OPTIONS note).
   const filters = {};
   if (search) filters.search = search;
   if (status) filters.status = status;
+  if (sort === "oldest") filters.ordering = "created_at";
 
-  const { tickets, loading, error } = useTickets(filters);
+  const { tickets: fetchedTickets, loading, error } = useTickets(filters);
+  const tickets = useMemo(() => {
+    if (sort === "severity_desc") {
+      return [...fetchedTickets].sort((a, b) => (SEVERITY_RANK[b.severity] ?? 0) - (SEVERITY_RANK[a.severity] ?? 0));
+    }
+    if (sort === "severity_asc") {
+      return [...fetchedTickets].sort((a, b) => (SEVERITY_RANK[a.severity] ?? 0) - (SEVERITY_RANK[b.severity] ?? 0));
+    }
+    return fetchedTickets;
+  }, [fetchedTickets, sort]);
 
   // Unfiltered triage view: all active (non-closed) tickets in one page,
   // bucketed/sorted client-side — kept separate from `tickets` above so
-  // RecentActivity's data source/trigger conditions are untouched.
+  // RecentTickets's data source/trigger conditions are untouched.
   const { tickets: activeTickets, loading: activeLoading, error: activeError } =
     useTickets(ACTIVE_TICKETS_PARAMS);
 
@@ -546,7 +602,7 @@ function CustomerDashboard() {
   }, []);
 
   const name = getDisplayName(user);
-  const hasFilters = !!(search || status);
+  const hasFilters = !!(search || status || sort !== "newest");
 
   return (
     <AppShell>
@@ -572,8 +628,8 @@ function CustomerDashboard() {
       {/* ── Getting started — zero-ticket accounts ──────────── */}
       {!statsLoading && stats.total === 0 && <GettingStarted />}
 
-      {/* ── Recent activity — unfiltered view only ────────────── */}
-      {!hasFilters && !loading && !error && <RecentActivity tickets={tickets} />}
+      {/* ── Recent tickets — unfiltered view only ─────────────── */}
+      {!hasFilters && !loading && !error && <RecentTickets tickets={tickets} />}
 
       {/* ── Two-column layout ──────────────────────────────────── */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-8 items-start">
@@ -585,42 +641,45 @@ function CustomerDashboard() {
             <h2 className="text-section-title">My Tickets</h2>
           </div>
 
-          <div className="flex flex-wrap gap-2.5 mb-5">
-            <div className="relative flex-1 min-w-[160px]">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"
-                   fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round"
-                  d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search tickets…"
-                value={searchInput}
-                onChange={handleSearchChange}
-                className={`input-base pl-9 ${searchInput ? "pr-8" : ""}`}
-              />
-              {searchInput && (
+          <FilterBar
+            search={searchInput}
+            onSearchChange={handleSearchChange}
+            searchPlaceholder="Search tickets…"
+            status={status}
+            onStatusChange={setStatus}
+            statusOptions={STATUS_OPTIONS}
+            extraFilters={[
+              { key: "sort", value: sort, onChange: setSort, options: SORT_OPTIONS, ariaLabel: "Sort tickets" },
+            ]}
+            onClear={clearFilters}
+          />
+
+          {/* Saved filters — user-defined, persisted per-browser (see
+              hooks/useSavedFilters.js). "Save this filter" only shows once
+              there's something meaningful to save. */}
+          {(savedViews.length > 0 || hasFilters) && (
+            <div className="flex flex-wrap items-center gap-2.5 mt-3 mb-1">
+              {savedViews.length > 0 && (
+                <QuickViews
+                  views={savedViews}
+                  activeKey={activeSavedKey}
+                  onSelect={(v) => applyFilters(v.filters)}
+                  onRemove={(v) => removeView(v.key)}
+                />
+              )}
+              {hasFilters && (
                 <button
-                  onClick={clearSearch}
-                  aria-label="Clear search"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600"
+                  type="button"
+                  onClick={() => setSaveFilterOpen(true)}
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  + Save this filter
                 </button>
               )}
             </div>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="input-base w-auto"
-            >
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
-          </div>
+          )}
+
+          <div className="mb-5" />
 
           {/* Content */}
           {hasFilters ? (
@@ -668,6 +727,30 @@ function CustomerDashboard() {
           <InfoPanel />
         </div>
       </div>
+
+      <Modal
+        isOpen={saveFilterOpen}
+        onClose={() => setSaveFilterOpen(false)}
+        title="Save this filter"
+        footer={
+          <div className="flex justify-end gap-2.5">
+            <Button variant="secondary" onClick={() => setSaveFilterOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveFilter} disabled={!saveFilterName.trim()}>Save</Button>
+          </div>
+        }
+      >
+        <label htmlFor="save-filter-name" className="block text-sm font-medium text-slate-700 mb-1.5">
+          Name
+        </label>
+        <Input
+          id="save-filter-name"
+          value={saveFilterName}
+          onChange={(e) => setSaveFilterName(e.target.value)}
+          placeholder="e.g. Overdue critical tickets"
+          className="w-full"
+          autoFocus
+        />
+      </Modal>
     </AppShell>
   );
 }

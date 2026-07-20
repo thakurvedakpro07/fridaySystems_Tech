@@ -22,8 +22,10 @@ import {
   ExclamationCircleIcon,
 } from "./ActionIcons";
 
-const MAX_SIZE_MB = 5;
-const ALLOWED_EXT = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".txt", ".csv", ".zip", ".xls", ".xlsx"];
+// Exported so the ticket-creation wizard's attachments step validates
+// against the exact same rules instead of re-declaring them.
+export const MAX_SIZE_MB = 5;
+export const ALLOWED_EXT = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".txt", ".csv", ".zip", ".xls", ".xlsx"];
 
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -285,6 +287,25 @@ function FeedAttachmentCard({ attachment, ticket, canDelete, onDelete }) {
   );
 }
 
+// Tone per action — same palette conventions as Badge's severity/status
+// domains (rose=negative, amber=caution, emerald=positive, indigo=neutral
+// progress) — gives the timeline a richer, at-a-glance-scannable marker
+// instead of a bare small icon.
+const ACTION_TONE = {
+  created:          "bg-indigo-100 text-indigo-600",
+  status_changed:   "bg-amber-100 text-amber-600",
+  severity_changed: "bg-amber-100 text-amber-600",
+  assigned:         "bg-indigo-100 text-indigo-600",
+  reassigned:       "bg-indigo-100 text-indigo-600",
+  unassigned:       "bg-slate-200 text-slate-600",
+  comment_added:    "bg-slate-100 text-slate-500",
+  resolved:         "bg-emerald-100 text-emerald-600",
+  closed:           "bg-slate-200 text-slate-600",
+  reopened:         "bg-amber-100 text-amber-600",
+  sla_breached:     "bg-rose-100 text-rose-600",
+  escalated:        "bg-rose-100 text-rose-600",
+};
+
 function FeedActivityDivider({ entry, currentUser }) {
   const ActionIconComp = ACTION_META[entry.action];
   const hasTransition = entry.from_value && entry.to_value;
@@ -294,7 +315,11 @@ function FeedActivityDivider({ entry, currentUser }) {
       <div className="flex-1 h-px bg-slate-200" />
       <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs text-slate-500 shrink-0">
         {ActionIconComp
-          ? <ActionIconComp className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          ? (
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${ACTION_TONE[entry.action] ?? "bg-slate-100 text-slate-500"}`}>
+              <ActionIconComp className="w-3 h-3" />
+            </span>
+          )
           : <span className="text-sm leading-none">•</span>}
         <span>
           <span className="font-medium text-slate-600">{actorLabel(entry.actor_email, currentUser)}</span>

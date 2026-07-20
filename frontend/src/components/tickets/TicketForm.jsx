@@ -1,25 +1,25 @@
-import { useEffect, useState } from "react";
-import { listServices } from "../../api/tickets";
-import Alert from "../ui/Alert";
-import Button from "../ui/Button";
-
-const GST_RATE = 0.18;
+// Shared pieces of the ticket-creation flow — the single-page form this
+// file used to export was replaced by TicketWizard.jsx (multi-step flow,
+// see NewTicket.jsx), but the pricing logic and severity catalog are still
+// the single source of truth, reused by the wizard's Priority and Review
+// steps rather than re-derived.
+export const GST_RATE = 0.18;
 
 // sla = how quickly a Support Agent contacts you for a consultation (NOT resolution speed)
-const SEVERITY_OPTIONS = [
+export const SEVERITY_OPTIONS = [
   { value: "low",      label: "Low",      hint: "Non-urgent — can wait",                   sla: "Consultation within 4 hours" },
   { value: "medium",   label: "Medium",   hint: "Work affected but partially accessible",   sla: "Consultation within 2 hours" },
   { value: "high",     label: "High",     hint: "System down, blocking your team",          sla: "Consultation within 1 hour"  },
   { value: "critical", label: "Critical", hint: "Complete outage — urgent response needed", sla: "Consultation within 30 minutes" },
 ];
 
-const SEVERITY_LABELS = Object.fromEntries(SEVERITY_OPTIONS.map((o) => [o.value, o.label]));
+export const SEVERITY_LABELS = Object.fromEntries(SEVERITY_OPTIONS.map((o) => [o.value, o.label]));
 
-function fmt(n) {
+export function fmt(n) {
   return "₹" + Number(n).toLocaleString("en-IN");
 }
 
-function PricingPreview({ service, severity, severitySurcharges, consultingFee }) {
+export function PricingPreview({ service, severity, severitySurcharges, consultingFee }) {
   if (!service || !severitySurcharges) return null;
 
   const baseFee   = service.resolution_fee;
@@ -97,184 +97,5 @@ function PricingPreview({ service, severity, severitySurcharges, consultingFee }
         </p>
       </div>
     </div>
-  );
-}
-
-export default function TicketForm({ onSubmit, loading }) {
-  const [catalog,      setCatalog]      = useState(null);
-  const [serviceError, setServiceError] = useState(false);
-  const [form, setForm] = useState({
-    title:        "",
-    description:  "",
-    service_type: "",
-    severity:     "medium",
-  });
-
-  useEffect(() => {
-    listServices()
-      .then(({ data }) => setCatalog(data))
-      .catch(() => setServiceError(true));
-  }, []);
-
-  const services           = catalog?.services ?? [];
-  const severitySurcharges = catalog?.severity_surcharges ?? null;
-  const consultingFee      = catalog?.consulting_fee ?? 299;
-  const selectedService    = services.find((s) => s.key === form.service_type) ?? null;
-
-  const handleChange = (e) =>
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit(form);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-
-      {/* 1 — Service */}
-      <div>
-        <label htmlFor="ticket-service" className="block text-sm font-semibold text-slate-700 mb-1.5">
-          What do you need help with? <span className="text-rose-500">*</span>
-        </label>
-        {serviceError ? (
-          <Alert severity="error">Could not load services. Please refresh the page.</Alert>
-        ) : !catalog ? (
-          <div className="h-10 bg-slate-100 rounded-xl animate-pulse" />
-        ) : (
-          <select
-            id="ticket-service"
-            name="service_type"
-            value={form.service_type}
-            onChange={handleChange}
-            required
-            className="input-base"
-          >
-            <option value="">Choose a service…</option>
-            {services.map((s) => (
-              <option key={s.key} value={s.key}>{s.name}</option>
-            ))}
-          </select>
-        )}
-        {selectedService?.scope && (
-          <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{selectedService.scope}</p>
-        )}
-      </div>
-
-      {/* 2 — Urgency (severity) */}
-      <div>
-        <label className="block text-sm font-semibold text-slate-700 mb-2">
-          How urgent is this? <span className="text-rose-500">*</span>
-        </label>
-        <p className="text-xs text-slate-500 mb-2.5">
-          Priority determines how quickly a Support Agent contacts you — it does not affect resolution speed.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {SEVERITY_OPTIONS.map((opt) => {
-            const selected = form.severity === opt.value;
-            return (
-              <label
-                key={opt.value}
-                className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-150
-                  ${selected
-                    ? "border-indigo-400 bg-indigo-50 ring-1 ring-indigo-300"
-                    : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
-                  }`}
-              >
-                <input
-                  type="radio"
-                  name="severity"
-                  value={opt.value}
-                  checked={selected}
-                  onChange={handleChange}
-                  className="mt-0.5 accent-indigo-600 shrink-0"
-                />
-                <div className="min-w-0">
-                  <p className={`text-sm font-semibold ${selected ? "text-indigo-900" : "text-slate-800"}`}>
-                    {opt.label}
-                  </p>
-                  <p className="text-xs text-slate-500 leading-snug mt-0.5">{opt.hint}</p>
-                  <p className={`text-[10px] font-semibold mt-1 ${selected ? "text-indigo-600" : "text-slate-500"}`}>
-                    {opt.sla}
-                  </p>
-                </div>
-              </label>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 3 — Issue title */}
-      <div>
-        <label htmlFor="ticket-title" className="block text-sm font-semibold text-slate-700 mb-1.5">
-          What's the issue? <span className="text-rose-500">*</span>
-        </label>
-        <input
-          id="ticket-title"
-          name="title"
-          value={form.title}
-          onChange={handleChange}
-          required
-          placeholder="e.g. Cannot SSH into production server after reboot"
-          className="input-base"
-        />
-      </div>
-
-      {/* 4 — Description */}
-      <div>
-        <label htmlFor="ticket-description" className="block text-sm font-semibold text-slate-700 mb-1.5">
-          Describe the problem <span className="text-rose-500">*</span>
-        </label>
-        <textarea
-          id="ticket-description"
-          name="description"
-          value={form.description}
-          onChange={handleChange}
-          required
-          rows={4}
-          placeholder="What happened? When did it start? What have you already tried?"
-          className="input-base resize-none"
-        />
-        <p className="text-xs text-slate-500 mt-1.5">
-          The more detail you provide, the faster your engineer can help.
-          You can attach screenshots and log files after submitting.
-        </p>
-      </div>
-
-      {/* 5 — Fee breakdown */}
-      {selectedService ? (
-        <PricingPreview
-          service={selectedService}
-          severity={form.severity}
-          severitySurcharges={severitySurcharges}
-          consultingFee={consultingFee}
-        />
-      ) : (
-        <div className="flex items-start gap-3 bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-sm text-indigo-800">
-          <svg className="w-4 h-4 mt-0.5 shrink-0 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-          </svg>
-          <span>
-            A <strong>₹299 + GST consulting fee</strong> is charged when you open your ticket.
-            Select a service above to see the full fee breakdown.
-          </span>
-        </div>
-      )}
-
-      {/* 6 — Submit */}
-      <div>
-        <Button
-          type="submit"
-          disabled={loading || serviceError || !catalog}
-          className="w-full"
-          size="lg"
-        >
-          {loading ? "Opening ticket…" : "Open Ticket →"}
-        </Button>
-        <p className="text-xs text-slate-500 text-center mt-2">
-          Payment is collected on the next screen.
-        </p>
-      </div>
-    </form>
   );
 }
