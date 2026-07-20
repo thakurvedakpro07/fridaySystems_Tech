@@ -83,7 +83,7 @@ function NotificationRow({ n, onMarkRead, onNavigate }) {
             <button
               onClick={(e) => { e.stopPropagation(); onMarkRead(n.id); }}
               title="Mark as read"
-              className="text-[10px] text-indigo-500 hover:text-indigo-700 leading-none"
+              className="p-1.5 -m-1.5 text-[10px] text-indigo-500 hover:text-indigo-700 leading-none"
               aria-label="Mark as read"
             >
               ✓
@@ -97,7 +97,7 @@ function NotificationRow({ n, onMarkRead, onNavigate }) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 export default function NotificationBell() {
-  const { unreadCount, notifications, listLoading, listFetched, fetchList, markOne, markAll } =
+  const { unreadCount, notifications, listLoading, listFetched, listError, fetchList, markOne, markAll } =
     useNotifications();
   const [open, setOpen]           = useState(false);
   const [prevCount, setPrevCount] = useState(0);
@@ -223,8 +223,26 @@ export default function NotificationBell() {
               </>
             )}
 
-            {/* Empty state */}
-            {!listLoading && listFetched && notifications.length === 0 && (
+            {/* Error state — previously a failed fetch rendered nothing at
+                all here (listFetched stayed false, so neither the empty-
+                state nor the grouped-list branch matched), silently
+                showing an empty dropdown with no indication anything had
+                gone wrong. */}
+            {!listLoading && listFetched && listError && (
+              <div className="flex flex-col items-center gap-2 py-10 px-4">
+                <svg className="w-6 h-6 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+                <p className="text-sm text-slate-600 font-medium text-center">Couldn't load notifications</p>
+                <button onClick={fetchList} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+                  Try again
+                </button>
+              </div>
+            )}
+
+            {/* Empty state — genuinely zero notifications, not a failed fetch */}
+            {!listLoading && listFetched && !listError && notifications.length === 0 && (
               <div className="flex flex-col items-center gap-3 py-10 px-4">
                 <BellIcon className="w-8 h-8 text-slate-400" />
                 <p className="text-sm text-slate-500 font-medium text-center">You're all caught up!</p>
@@ -233,7 +251,7 @@ export default function NotificationBell() {
             )}
 
             {/* Grouped notifications */}
-            {!listLoading && grouped.map(([label, items]) => (
+            {!listLoading && !listError && grouped.map(([label, items]) => (
               <div key={label}>
                 <div className="px-4 py-1.5 bg-slate-50/80 sticky top-0 z-10">
                   <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">

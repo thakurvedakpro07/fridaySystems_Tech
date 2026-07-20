@@ -16,6 +16,7 @@ import { formatAbsoluteTime, formatRelativeTime } from "../../utils/time";
 import Spinner from "../ui/Spinner";
 import Badge from "../ui/Badge";
 import FileTypeBadge from "../ui/FileTypeBadge";
+import ImageLightbox from "../ui/ImageLightbox";
 import {
   TicketIcon, ArrowsPathIcon, ChartBarIcon, UserPlusIcon, UserMinusIcon,
   ChatBubbleIcon, SuccessCheckIcon, WarningTriangleIcon, LockOpenIcon,
@@ -209,6 +210,7 @@ function AttachmentActions({ attachment, canDelete, deleting, onDelete, light })
 function FeedAttachmentCard({ attachment, ticket, canDelete, onDelete }) {
   const [deleting, setDeleting] = useState(false);
   const [textPreview, setTextPreview] = useState(null); // null = loading, false = unavailable, string = content
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const role = senderRole(attachment.uploaded_by_email, ticket);
   const isEngineer = role === "engineer";
@@ -251,16 +253,28 @@ function FeedAttachmentCard({ attachment, ticket, canDelete, onDelete }) {
 
         {isImage ? (
           <div className="rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-white">
-            <a href={attachment.file_url} target="_blank" rel="noreferrer">
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(true)}
+              className="block w-full cursor-zoom-in"
+              aria-label={`View ${attachment.file_name} full size`}
+            >
               <img
                 src={attachment.file_url} alt={attachment.file_name}
-                className="max-h-64 max-w-full object-contain bg-slate-50 block"
+                className="max-h-64 max-w-full object-contain bg-slate-50 block mx-auto"
               />
-            </a>
+            </button>
             <div className="flex items-center justify-between gap-3 px-3 py-2 border-t border-slate-100">
               <p className="text-xs font-medium text-slate-700 truncate">{attachment.file_name}</p>
               <AttachmentActions attachment={attachment} canDelete={canDelete} deleting={deleting} onDelete={handleDelete} />
             </div>
+            {lightboxOpen && (
+              <ImageLightbox
+                src={attachment.file_url}
+                alt={attachment.file_name}
+                onClose={() => setLightboxOpen(false)}
+              />
+            )}
           </div>
         ) : isTextLike && textPreview ? (
           <div className="w-full rounded-xl border border-slate-700 bg-slate-900 overflow-hidden shadow-sm">

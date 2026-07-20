@@ -69,6 +69,10 @@ test.describe("Create Ticket wizard", () => {
 
     await page.getByRole("button", { name: "Create Ticket →" }).click();
     await page.waitForURL(/\/tickets\/[a-f0-9-]+$/, { timeout: 15_000 });
-    await expect(page.getByText(ticketTitle)).toBeVisible();
+    // Scoped to the hero header specifically — a freshly-created ticket is
+    // "pending_payment", so PaymentGateway's own ticket-context display also
+    // renders the same title on this page (correct, expected UI), which
+    // would make an unscoped text match ambiguous.
+    await expect(page.getByRole("heading", { name: ticketTitle })).toBeVisible();
   });
 });

@@ -81,7 +81,7 @@ function ServiceStep({ services, serviceError, catalog, value, onChange }) {
           {[1, 2, 3].map((n) => <div key={n} className="h-14 bg-slate-100 rounded-xl animate-pulse" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <div role="group" aria-label="Service" className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {services.map((s) => {
             const isSelected = value === s.key;
             const unavailable = s.is_available === false;
@@ -90,6 +90,7 @@ function ServiceStep({ services, serviceError, catalog, value, onChange }) {
               <button
                 key={s.key}
                 type="button"
+                aria-pressed={isSelected}
                 disabled={unavailable}
                 aria-disabled={unavailable}
                 onClick={() => { if (!unavailable) onChange(s.key); }}
@@ -144,13 +145,14 @@ function PriorityStep({ value, onChange }) {
         description="Priority determines how quickly a Support Agent contacts you — it does not affect resolution speed."
         accentClassName="text-indigo-600"
       />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+      <div role="group" aria-label="Priority" className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {SEVERITY_OPTIONS.map((opt) => {
           const selected = value === opt.value;
           return (
             <button
               key={opt.value}
               type="button"
+              aria-pressed={selected}
               onClick={() => onChange(opt.value)}
               className={`text-left flex items-start gap-3 p-3.5 rounded-xl border transition-all duration-150 ${
                 selected
@@ -293,7 +295,7 @@ function AttachmentsStep({ files, onAdd, onRemove }) {
                 type="button"
                 onClick={() => onRemove(i)}
                 aria-label={`Remove ${f.name}`}
-                className="text-slate-400 hover:text-rose-600 shrink-0"
+                className="p-2 -m-2 text-slate-400 hover:text-rose-600 shrink-0"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -373,12 +375,22 @@ export default function TicketWizard() {
   const [files, setFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState([]);
+  const stepContentRef = useRef(null);
 
   useEffect(() => {
     listServices()
       .then(({ data }) => setCatalog(data))
       .catch(() => setServiceError(true));
   }, []);
+
+  // Move focus to the new step's content on Continue/Back — previously
+  // focus stayed on the (now possibly relocated) nav button with nothing
+  // announced to screen-reader users that the step had changed. Focusing a
+  // tabIndex=-1 wrapper containing the step's heading has the same effect
+  // as an aria-live announcement here, without one more moving part.
+  useEffect(() => {
+    stepContentRef.current?.focus();
+  }, [step]);
 
   const services = catalog?.services ?? [];
   const severitySurcharges = catalog?.severity_surcharges ?? null;
@@ -462,34 +474,36 @@ export default function TicketWizard() {
           </Alert>
         )}
 
-        {step === 0 && (
-          <ServiceStep
-            services={services}
-            serviceError={serviceError}
-            catalog={catalog}
-            value={form.service_type}
-            onChange={setField("service_type")}
-          />
-        )}
-        {step === 1 && <PriorityStep value={form.severity} onChange={setField("severity")} />}
-        {step === 2 && (
-          <DescriptionStep
-            title={form.title}
-            description={form.description}
-            onTitleChange={setField("title")}
-            onDescriptionChange={setField("description")}
-          />
-        )}
-        {step === 3 && <AttachmentsStep files={files} onAdd={addFiles} onRemove={removeFile} />}
-        {step === 4 && (
-          <ReviewStep
-            form={form}
-            selectedService={selectedService}
-            severitySurcharges={severitySurcharges}
-            consultingFee={consultingFee}
-            files={files}
-          />
-        )}
+        <div ref={stepContentRef} tabIndex={-1} className="focus:outline-none">
+          {step === 0 && (
+            <ServiceStep
+              services={services}
+              serviceError={serviceError}
+              catalog={catalog}
+              value={form.service_type}
+              onChange={setField("service_type")}
+            />
+          )}
+          {step === 1 && <PriorityStep value={form.severity} onChange={setField("severity")} />}
+          {step === 2 && (
+            <DescriptionStep
+              title={form.title}
+              description={form.description}
+              onTitleChange={setField("title")}
+              onDescriptionChange={setField("description")}
+            />
+          )}
+          {step === 3 && <AttachmentsStep files={files} onAdd={addFiles} onRemove={removeFile} />}
+          {step === 4 && (
+            <ReviewStep
+              form={form}
+              selectedService={selectedService}
+              severitySurcharges={severitySurcharges}
+              consultingFee={consultingFee}
+              files={files}
+            />
+          )}
+        </div>
 
         {/* ── Footer nav ─────────────────────────────────────────── */}
         <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-100">

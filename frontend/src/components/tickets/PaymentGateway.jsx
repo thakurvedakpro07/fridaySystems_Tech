@@ -16,6 +16,7 @@ import { useState } from "react";
 import { useAuthStore } from "../../store/authStore";
 import { initiatePayment, verifyPayment } from "../../api/payments";
 import { CONTACT } from "../../config/contact";
+import Button from "../ui/Button";
 
 // ── Razorpay script loader ────────────────────────────────────────
 
@@ -250,52 +251,29 @@ export default function PaymentGateway({ ticket, onPaymentSuccess }) {
           </div>
         )}
 
-        {/* ── Primary CTA ──────────────────────────────────────── */}
+        {/* ── Primary CTA — reuses the shared Button (loading state, disabled
+            state) instead of hand-rolled buttons with a duplicated inline
+            spinner SVG (one copy per branch, previously identical). ── */}
         {!orderData ? (
-          <button
+          <Button
             onClick={handleInitiate}
             disabled={loading}
-            className="w-full bg-indigo-600 text-white font-semibold text-sm py-3 rounded-xl
-                       hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50
-                       transition-colors flex items-center justify-center gap-2 shadow-sm
-                       shadow-indigo-200"
+            loading={loading}
+            size="lg"
+            className="w-full shadow-indigo-200"
           >
-            {loading ? (
-              <>
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                </svg>
-                Loading payment…
-              </>
-            ) : (
-              <>
-                {CARD_ICON}
-                Proceed to Payment · ₹{total}
-              </>
-            )}
-          </button>
+            {loading ? "Loading payment…" : (<>{CARD_ICON} Proceed to Payment · ₹{total}</>)}
+          </Button>
         ) : orderData.mode === "sandbox" ? (
-          <button
+          <Button
             onClick={handleSimulate}
             disabled={loading}
-            className="w-full bg-indigo-600 text-white font-semibold text-sm py-3 rounded-xl
-                       hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50
-                       transition-colors flex items-center justify-center gap-2 shadow-sm
-                       shadow-indigo-200"
+            loading={loading}
+            size="lg"
+            className="w-full shadow-indigo-200"
           >
-            {loading ? (
-              <>
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                </svg>
-                Processing…
-              </>
-            ) : (
-              "Simulate Payment (Sandbox)"
-            )}
-          </button>
+            {loading ? "Processing…" : "Simulate Payment (Sandbox)"}
+          </Button>
         ) : null}
 
         {/* ── Trust footer ─────────────────────────────────────── */}

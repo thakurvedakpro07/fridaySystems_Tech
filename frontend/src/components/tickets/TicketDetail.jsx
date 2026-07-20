@@ -350,19 +350,7 @@ function PostPaymentCard({ ticket, onUpdate }) {
             <div>
               <dt className="text-xs font-medium text-slate-500 mb-1">Communication Method</dt>
               <dd className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
-                {commPref === "phone" ? (
-                  <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none"
-                       viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round"
-                      d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-                  </svg>
-                ) : commPref === "chat" ? (
-                  <svg className="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none"
-                       viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round"
-                      d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-                  </svg>
-                ) : null}
+                <CommIcon method={commPref} />
                 {COMM_LABEL[commPref] || "—"}
               </dd>
             </div>
@@ -441,9 +429,11 @@ function PostPaymentCard({ ticket, onUpdate }) {
                 <button
                   key={opt.value}
                   type="button"
+                  disabled={saving}
                   onClick={() => setCommPref(opt.value)}
                   className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm
                               font-medium transition-all duration-150 text-left
+                              disabled:opacity-50 disabled:cursor-not-allowed
                     ${selected
                       ? "bg-indigo-50 border-indigo-300 text-indigo-700 shadow-sm"
                       : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
@@ -475,9 +465,11 @@ function PostPaymentCard({ ticket, onUpdate }) {
                 <button
                   key={opt.value}
                   type="button"
+                  disabled={saving}
                   onClick={() => setLanguage(opt.value)}
                   className={`px-4 py-2 rounded-lg border text-sm font-medium
                               transition-all duration-150
+                              disabled:opacity-50 disabled:cursor-not-allowed
                     ${selected
                       ? "bg-indigo-600 border-indigo-600 text-white shadow-sm"
                       : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"

@@ -23,6 +23,7 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState([]);
   const [listLoading,   setListLoading]   = useState(false);
   const [listFetched,   setListFetched]   = useState(false);
+  const [listError,     setListError]     = useState(false);
 
   const intervalRef   = useRef(null);
   const cancelledRef  = useRef(false);
@@ -62,8 +63,13 @@ export function useNotifications() {
   }, [pollCount]);
 
   // ── Lazy list fetch (called when dropdown opens) ─────────────────
+  // `listFetched` means "an attempt completed" (success OR failure) —
+  // `listError` is the orthogonal flag that lets callers tell a genuinely
+  // empty inbox apart from a failed fetch, which previously both rendered
+  // as either nothing or a misleading "You're all caught up!" empty state.
   const fetchList = useCallback(() => {
     setListLoading(true);
+    setListError(false);
     listNotifications()
       .then(({ data }) => {
         if (!cancelledRef.current) {
@@ -72,7 +78,11 @@ export function useNotifications() {
         }
       })
       .catch(() => {
-        if (!cancelledRef.current) setNotifications([]);
+        if (!cancelledRef.current) {
+          setNotifications([]);
+          setListFetched(true);
+          setListError(true);
+        }
       })
       .finally(() => {
         if (!cancelledRef.current) setListLoading(false);
@@ -111,6 +121,7 @@ export function useNotifications() {
     notifications,
     listLoading,
     listFetched,
+    listError,
     fetchList,
     markOne,
     markAll,

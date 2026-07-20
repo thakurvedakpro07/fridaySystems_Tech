@@ -91,7 +91,7 @@ export default function CSATWidget({ ticket, onUpdate }) {
         className="input-base resize-none mb-3"
       />
 
-      <Button disabled={!score || saving} onClick={handleSubmit}>
+      <Button disabled={!score || saving} loading={saving} onClick={handleSubmit}>
         {saving ? "Submitting…" : "Submit Rating"}
       </Button>
     </div>

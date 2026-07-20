@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AppShell from "../components/layout/AppShell";
 import { usePageTitle } from "../hooks/usePageTitle";
@@ -7,8 +7,22 @@ import { useToast } from "../context/ToastContext";
 import { formatAbsoluteTime, formatRelativeTime, groupByDate } from "../utils/time";
 import PageHeader from "../components/ui/PageHeader";
 import EmptyState from "../components/ui/EmptyState";
+import Alert from "../components/ui/Alert";
 import { CATEGORY_META, DEFAULT_CATEGORY_META } from "../components/ui/notificationCategoryMeta";
 import { BellIcon } from "../components/tickets/ActionIcons";
+
+// Filtered client-side over the already-fetched list — the notifications
+// endpoint has no category query param, and the full list is small enough
+// (customer-facing, capped by usage) that a server round-trip isn't needed.
+const CATEGORY_FILTER_OPTIONS = [
+  { value: "",                  label: "All categories" },
+  { value: "ticket_assigned",   label: "Ticket assigned" },
+  { value: "ticket_resolved",   label: "Ticket resolved" },
+  { value: "comment_added",     label: "Comments" },
+  { value: "status_changed",    label: "Status changes" },
+  { value: "sla_breach",        label: "SLA breaches" },
+  { value: "payment_confirmed", label: "Payments" },
+];
 
 function SkeletonRow() {
   return (
@@ -59,7 +73,8 @@ function NotificationRow({ n, onMarkRead, onNavigate }) {
             <button
               onClick={(e) => { e.stopPropagation(); onMarkRead(n.id); }}
               title="Mark as read"
-              className="text-[10px] text-indigo-500 hover:text-indigo-700 leading-none"
+              aria-label="Mark as read"
+              className="p-1.5 -m-1.5 text-[10px] text-indigo-500 hover:text-indigo-700 leading-none"
             >
               ✓
             </button>
@@ -74,8 +89,9 @@ export default function NotificationsPage() {
   usePageTitle("Notifications");
   const navigate  = useNavigate();
   const toast     = useToast();
-  const { unreadCount, notifications, listLoading, listFetched, fetchList, markOne, markAll } =
+  const { unreadCount, notifications, listLoading, listFetched, listError, fetchList, markOne, markAll } =
     useNotifications();
+  const [category, setCategory] = useState("");
 
   useEffect(() => {
     if (!listFetched) fetchList();
@@ -95,7 +111,11 @@ export default function NotificationsPage() {
     if (n.ticket) navigate(`/tickets/${n.ticket}`);
   };
 
-  const grouped = groupByDate(notifications, (n) => n.created_at);
+  const filtered = useMemo(
+    () => (category ? notifications.filter((n) => n.category === category) : notifications),
+    [notifications, category],
+  );
+  const grouped = groupByDate(filtered, (n) => n.created_at);
 
   return (
     <AppShell maxWidth="max-w-2xl">
@@ -122,6 +142,22 @@ export default function NotificationsPage() {
         )}
       </div>
 
+      {/* Category filter — client-side, see CATEGORY_FILTER_OPTIONS note above */}
+      {notifications.length > 0 && (
+        <div className="mb-4">
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            aria-label="Filter by category"
+            className="input-base w-auto"
+          >
+            {CATEGORY_FILTER_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Content */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
            style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.07)" }}>
@@ -132,15 +168,31 @@ export default function NotificationsPage() {
           </div>
         )}
 
-        {!listLoading && listFetched && notifications.length === 0 && (
+        {/* Error state — see NotificationBell.jsx for why this branch matters:
+            a failed fetch previously rendered as an indistinguishable empty
+            inbox with no indication anything had gone wrong. */}
+        {!listLoading && listFetched && listError && (
+          <div className="p-5">
+            <Alert severity="error">
+              Couldn't load notifications.{" "}
+              <button onClick={fetchList} className="font-semibold underline underline-offset-2">
+                Try again
+              </button>
+            </Alert>
+          </div>
+        )}
+
+        {!listLoading && listFetched && !listError && filtered.length === 0 && (
           <EmptyState
             icon={<BellIcon className="w-8 h-8 text-slate-500" />}
-            title="You're all caught up!"
-            description="Notifications appear here when tickets are updated, comments are added, or payments are confirmed."
+            title={category ? "No notifications in this category" : "You're all caught up!"}
+            description={category
+              ? "Try a different category, or clear the filter to see everything."
+              : "Notifications appear here when tickets are updated, comments are added, or payments are confirmed."}
           />
         )}
 
-        {!listLoading && grouped.map(([label, items]) => (
+        {!listLoading && !listError && grouped.map(([label, items]) => (
           <div key={label} className="border-b border-slate-100 last:border-0">
             <div className="px-5 py-2 bg-slate-50/80 sticky top-0 z-10 border-b border-slate-100">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
@@ -161,9 +213,9 @@ export default function NotificationsPage() {
         ))}
       </div>
 
-      {notifications.length > 0 && (
+      {filtered.length > 0 && (
         <p className="text-xs text-slate-500 text-center mt-4">
-          Showing {notifications.length} notification{notifications.length !== 1 ? "s" : ""}
+          Showing {filtered.length}{category ? ` of ${notifications.length}` : ""} notification{filtered.length !== 1 ? "s" : ""}
         </p>
       )}
     </AppShell>
