@@ -35,6 +35,12 @@ const IC = {
         d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
     </svg>
   ),
+  executiveOverview: (
+    <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <rect x="3" y="3.75" width="18" height="16.5" rx="2.25" strokeLinecap="round" strokeLinejoin="round" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 15.75V12M12 15.75V9M16.5 15.75v-4.5" />
+    </svg>
+  ),
   billing: (
     <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round"
@@ -298,6 +304,7 @@ export default function Sidebar({ open, onClose }) {
             {/* Finance — Finance Manager + Super Admin (Ops Manager sees read-only) */}
             {(isSuperAdmin || isFinanceManager || isOpsManager) && (
               <NavSection label="Finance">
+                <NavItem to="/operations/executive-overview" icon={IC.executiveOverview} label="Executive Overview" />
                 <NavItem to="/operations/payments"  icon={IC.payments}  label="Payments" />
                 <NavItem to="/operations/analytics" icon={IC.analytics} label="Analytics" />
                 <NavItem to="/operations/executive-analytics" icon={IC.executive} label="Executive Analytics" />

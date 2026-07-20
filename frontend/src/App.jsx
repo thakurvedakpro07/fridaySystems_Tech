@@ -48,6 +48,7 @@ const OpsSLAPolicies    = lazy(() => import("./pages/ops/OpsSLAPolicies"));
 const OpsPayments       = lazy(() => import("./pages/ops/OpsPayments"));
 const OpsAnalytics      = lazy(() => import("./pages/ops/OpsAnalytics"));
 const ExecutiveAnalytics = lazy(() => import("./pages/ops/ExecutiveAnalytics"));
+const ExecutiveOperations = lazy(() => import("./pages/ops/ExecutiveOperations"));
 const OpsSettings       = lazy(() => import("./pages/ops/OpsSettings"));
 const OpsKnowledgeBase  = lazy(() => import("./pages/ops/OpsKnowledgeBase"));
 
@@ -345,6 +346,7 @@ export default function App() {
           <Route path="/operations/payments"    element={<PaymentRoute><OpsPayments /></PaymentRoute>} />
           <Route path="/operations/analytics"   element={<PaymentRoute><OpsAnalytics /></PaymentRoute>} />
           <Route path="/operations/executive-analytics" element={<PaymentRoute><ExecutiveAnalytics /></PaymentRoute>} />
+          <Route path="/operations/executive-overview" element={<PaymentRoute><ExecutiveOperations /></PaymentRoute>} />
 
           {/* Operations — all staff roles */}
           <Route path="/operations/notifications" element={<OpsRoute><NotificationsPage /></OpsRoute>} />
