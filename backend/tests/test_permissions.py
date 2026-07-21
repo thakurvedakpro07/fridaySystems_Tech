@@ -34,8 +34,11 @@ GET  /api/tickets/                     ✗      ✗     ✗       ✗       ✗ 
 PATCH /api/tickets/{id}/               ✓*     ✗     ✗       ✗       ✗        ✓*
 GET  /api/tickets/{id}/comments/       ✓      ✓     ✓       ✓       ✓**      ✓**
 GET  /api/tickets/{id}/activity/       ✓      ✓     ✓       ✓       ✓**      ✓**
+GET  /api/freelancer/payouts/          ✗      ✗     ✗       ✗       ✓***     ✗
+GET  /api/freelancer/stats/            ✗      ✗     ✗       ✗       ✓***     ✗
 
 *  = only own ticket for customer; all tickets for Super Admin
+*** = engineer must be approved (onboarding_status="approved"); own payouts/stats only
 ** = only assigned ticket for engineer; own ticket for customer
 """
 
@@ -590,6 +593,46 @@ def test_engineer_freelancer_list_only_assigned(engineer_user, open_ticket, assi
 def test_engineer_cannot_access_ops_ticket_list(engineer_user):
     resp = _client(engineer_user).get("/api/ops/tickets/")
     assert resp.status_code == 403, "Engineer must not access the ops ticket queue"
+
+
+@pytest.mark.django_db
+def test_engineer_can_access_own_payouts(engineer_user):
+    resp = _client(engineer_user).get("/api/freelancer/payouts/")
+    assert resp.status_code == 200
+
+
+@pytest.mark.django_db
+def test_unapproved_engineer_cannot_access_payouts(db):
+    u = _user("pending-eng@perm.test", "freelancer")
+    Freelancer.objects.create(user=u, onboarding_status="pending", active=True)
+    resp = _client(u).get("/api/freelancer/payouts/")
+    assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "role_fixture", ["super_admin", "ops_manager", "finance_manager", "support_agent", "customer_user"]
+)
+def test_non_engineer_roles_cannot_access_freelancer_payouts(request, role_fixture):
+    user = request.getfixturevalue(role_fixture)
+    resp = _client(user).get("/api/freelancer/payouts/")
+    assert resp.status_code == 403, f"{role_fixture} must not access freelancer payouts"
+
+
+@pytest.mark.django_db
+def test_engineer_can_access_own_stats(engineer_user):
+    resp = _client(engineer_user).get("/api/freelancer/stats/")
+    assert resp.status_code == 200
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "role_fixture", ["super_admin", "ops_manager", "finance_manager", "support_agent", "customer_user"]
+)
+def test_non_engineer_roles_cannot_access_freelancer_stats(request, role_fixture):
+    user = request.getfixturevalue(role_fixture)
+    resp = _client(user).get("/api/freelancer/stats/")
+    assert resp.status_code == 403, f"{role_fixture} must not access freelancer stats"
 
 
 # ── 9. Customer cannot access ops/admin endpoints ────────────────

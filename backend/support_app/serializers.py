@@ -26,6 +26,7 @@ from .models import (
     OrganizationInvitation,
     OrganizationMembership,
     Payment,
+    Payout,
     RoleChangeAudit,
     Service,
     SLALog,
@@ -690,6 +691,31 @@ class OpsPaymentSerializer(AdminPaymentSerializer):
         if obj.status != "completed":
             return False
         return (timezone.now() - obj.created_at) < timedelta(days=30)
+
+
+class FreelancerPayoutSerializer(serializers.ModelSerializer):
+    """
+    A freelancer's own payout history. Fully read-only.
+
+    Deliberately excludes `platform_share` (ResolveHQ's cut — no reason to
+    expose it to the engineer), `payment` (internal gateway FK), and
+    `freelancer` (redundant — always "me"). `Freelancer.payout_details`
+    (bank/UPI info) lives on a different model and is never reachable
+    through this serializer.
+    """
+    ticket_number = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Payout
+        fields = [
+            "id", "ticket", "ticket_number", "resolution_fee",
+            "severity_surcharge", "engineer_share", "status",
+            "utr_number", "created_at", "processed_at",
+        ]
+        read_only_fields = fields
+
+    def get_ticket_number(self, obj):
+        return obj.ticket.ticket_number if obj.ticket_id else None
 
 
 class PaymentVerifySerializer(serializers.Serializer):

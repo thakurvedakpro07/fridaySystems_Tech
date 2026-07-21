@@ -28,7 +28,7 @@ from django.utils import timezone
 
 from ..models import Customer, Freelancer, Ticket, TicketActivityLog
 from . import service_catalog
-from .executive_analytics_service import ACTIVE_STATUSES, CLOSED_STATUSES, _AVAILABILITY_CAPACITY
+from .executive_analytics_service import ACTIVE_STATUSES, CLOSED_STATUSES, _utilization_pct
 from .ticket_signals import annotate_reply_ownership_signals
 
 # Service Health status-tone thresholds — a first-pass heuristic, not yet
@@ -131,10 +131,7 @@ def get_engineer_capacity():
 
     data = []
     for f in freelancers:
-        capacity = _AVAILABILITY_CAPACITY.get(f.availability, 0)
-        utilization_pct = (
-            round(f.active_ticket_count / capacity * 100, 1) if capacity else None
-        )
+        utilization_pct = _utilization_pct(f.active_ticket_count, f.availability)
         first = f.user.first_name.strip()
         last = f.user.last_name.strip()
         data.append({

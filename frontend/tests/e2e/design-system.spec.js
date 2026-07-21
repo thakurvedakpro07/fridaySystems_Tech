@@ -245,4 +245,28 @@ test.describe("Engineer-facing pages", () => {
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("heading", { name: "What's your availability?" })).toBeVisible();
   });
+
+  // Freelancer Portal Phase D: the wizard used to discard skills/availability
+  // on navigation instead of persisting them — this confirms the "Looks
+  // good" step now saves via PATCH /api/auth/profile/ and it round-trips
+  // onto /settings.
+  test("Freelancer onboarding persists skills and availability", async ({ page }) => {
+    await page.goto("/onboarding/freelancer");
+    await page.getByRole("button", { name: "AWS Support" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
+
+    await page.getByRole("button", { name: /1–2 years/ }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
+
+    await page.getByRole("button", { name: /Part time/ }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
+
+    await expect(page.getByRole("heading", { name: "Your profile looks great" })).toBeVisible();
+    await page.getByRole("button", { name: "Looks good" }).click();
+    await expect(page.getByRole("heading", { name: /Application submitted/ })).toBeVisible();
+
+    await page.goto("/settings");
+    await expect(page.locator('input[placeholder="aws, azure, kubernetes, server_admin"]')).toHaveValue(/aws/);
+    await expect(page.locator("select")).toHaveValue("part_time");
+  });
 });

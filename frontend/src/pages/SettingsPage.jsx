@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { changePassword, getProfile, updateProfile } from "../api/settings";
 import AppShell from "../components/layout/AppShell";
+import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import FormSection from "../components/ui/FormSection";
 import PageHeader from "../components/ui/PageHeader";
@@ -138,6 +139,14 @@ function ProfileTab({ profile, setProfile, role }) {
 
       {role === "freelancer" && (
         <FormSection title="Engineer Profile" description="Your skills and current availability.">
+          <FieldRow label="Approval status">
+            <Badge domain="onboarding" label={profile?.onboarding_status} />
+          </FieldRow>
+          <FieldRow label="Rating">
+            <span className="text-sm text-slate-700">
+              {profile?.rating && Number(profile.rating) > 0 ? `★ ${profile.rating}` : "No rating yet"}
+            </span>
+          </FieldRow>
           <FieldRow label="Skills">
             <input
               className="input-base w-full"

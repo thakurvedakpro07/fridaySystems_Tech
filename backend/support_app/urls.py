@@ -14,7 +14,7 @@ ROUTE GROUPS:
   /api/customers/      — customer profile and payment history
   /api/services/       — service catalogue (public)
   /api/tickets/        — customer ticket operations
-  /api/freelancer/     — freelancer ticket operations
+  /api/freelancer/     — freelancer ticket, payout, and stats operations
   /api/admin/          — admin-only operations
   /api/notifications/  — in-app notification inbox
   /api/payments/       — payment details and webhooks
@@ -81,6 +81,8 @@ urlpatterns = [
     path("freelancer/tickets/<uuid:pk>/", views.FreelancerTicketDetailView.as_view(), name="freelancer-ticket-detail"),
     path("freelancer/tickets/<uuid:ticket_id>/status/", views.freelancer_update_status, name="freelancer-ticket-status"),
     path("freelancer/tickets/<uuid:ticket_id>/remote-session/", views.freelancer_start_remote_session, name="freelancer-ticket-remote-session"),
+    path("freelancer/payouts/", views.FreelancerPayoutListView.as_view(), name="freelancer-payout-list"),
+    path("freelancer/stats/", views.freelancer_my_stats, name="freelancer-my-stats"),
 
     # ── Payments ─────────────────────────────────────────────────
     # NOTE: webhook/ MUST precede <uuid:pk>/ so the literal path matches first.

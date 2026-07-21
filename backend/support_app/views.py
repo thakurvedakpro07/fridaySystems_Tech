@@ -108,6 +108,7 @@ from .serializers import (
     CustomerSerializer,
     CustomerTicketListSerializer,
     FreelancerCreateSerializer,
+    FreelancerPayoutSerializer,
     FreelancerSerializer,
     FreelancerStatusSerializer,
     FreelancerTicketListSerializer,
@@ -1393,6 +1394,51 @@ def freelancer_start_remote_session(request, ticket_id):
     return Response(TicketDetailSerializer(ticket).data)
 
 
+class FreelancerPayoutListView(generics.ListAPIView):
+    """
+    GET /api/freelancer/payouts/
+    Lists this freelancer's own payout history, newest first.
+
+    Query params:
+      ?status=pending|processed — filter by status
+    """
+    serializer_class = FreelancerPayoutSerializer
+    permission_classes = [permissions.IsAuthenticated, IsFreelancer]
+    pagination_class = OpsPageNumberPagination  # reuse: gives ?page_size= up to 100
+
+    def get_queryset(self):
+        qs = Payout.objects.filter(
+            freelancer=self.request.user.freelancer_profile
+        ).select_related("ticket").order_by("-created_at")
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        return qs
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, IsFreelancer])
+def freelancer_my_stats(request):
+    """
+    GET /api/freelancer/stats/
+    A freelancer's own utilization, resolution, CSAT, and lifetime-earnings
+    numbers — the "My Stats" panel on the Engineer Workspace.
+
+    Query params:
+      period  — "7d" | "30d" (default) | "90d" | "all"
+      start, end — ISO date strings; override `period` when both are given
+    """
+    from .services.executive_analytics_service import resolve_period
+    from .services.freelancer_stats_service import get_my_stats
+
+    start, end, _prev_start, _prev_end = resolve_period(
+        request.query_params.get("period"),
+        request.query_params.get("start"),
+        request.query_params.get("end"),
+    )
+    return Response(get_my_stats(request.user.freelancer_profile, start, end))
+
+
 # ── Admin: Ticket Management ──────────────────────────────────────
 
 class AdminTicketListView(generics.ListAPIView):
@@ -1647,6 +1693,9 @@ def user_profile(request):
             p = user.freelancer_profile
             data["skills"] = p.skills
             data["availability"] = p.availability
+            # Read-only — never accepted on the PATCH path below.
+            data["rating"] = str(p.rating)
+            data["onboarding_status"] = p.onboarding_status
         return Response(data)
 
     # PATCH
@@ -1724,15 +1773,20 @@ def analytics_view(request):
         if avg_result:
             avg_hours = round(avg_result.total_seconds() / 3600, 1)
 
-    # CSAT average (admin/customer only)
+    # CSAT average — scoped per role. Freelancers previously fell through
+    # this block entirely and always saw csat_avg=None (bug fixed here):
+    # every engineer's "Your CSAT Score" card showed "No ratings yet" even
+    # with real 5-star surveys on their resolved tickets.
     csat_avg = None
     csat_count = 0
-    if not hasattr(user, "freelancer_profile"):
+    if hasattr(user, "freelancer_profile"):
+        csat_filter = {"ticket__assigned_to": user.freelancer_profile}
+    else:
         csat_filter = {} if user.is_staff else {"ticket__customer": user.customer_profile}
-        surveys = CSATSurvey.objects.filter(**csat_filter)
-        csat_count = surveys.count()
-        if csat_count:
-            csat_avg = round(float(surveys.aggregate(avg=Avg("score"))["avg"]), 1)
+    surveys = CSATSurvey.objects.filter(**csat_filter)
+    csat_count = surveys.count()
+    if csat_count:
+        csat_avg = round(float(surveys.aggregate(avg=Avg("score"))["avg"]), 1)
 
     # Tickets over last 30 days — single query, then Python bucketing (was 7 COUNT queries)
     recent_qs = qs.filter(created_at__gte=thirty_days_ago)

@@ -6,6 +6,8 @@ Run with:
   pytest tests/test_auth.py -v
 """
 
+from decimal import Decimal
+
 import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
@@ -465,3 +467,60 @@ def test_change_password_throttle_resets_after_window(db):
         "new_password": "FinallyChanged789!",
     }, format="json")
     assert response.status_code == 200
+
+
+# ── Freelancer profile GET/PATCH ──────────────────────────────────
+
+@pytest.fixture
+def freelancer_sample_user(db):
+    """A saved CustomUser + Freelancer for profile-endpoint tests."""
+    from support_app.models import Freelancer
+    user = User.objects.create_user(
+        email="engineer-profile@example.com",
+        password="StrongPass123!",
+        role="freelancer",
+    )
+    Freelancer.objects.create(
+        user=user,
+        skills="aws,kubernetes",
+        availability="part_time",
+        rating=Decimal("4.50"),
+        onboarding_status="approved",
+    )
+    return user
+
+
+@pytest.mark.django_db
+def test_freelancer_profile_get_includes_rating_and_onboarding_status(client, freelancer_sample_user):
+    """GET /api/auth/profile/ must expose rating/onboarding_status (read-only) for freelancers."""
+    from rest_framework_simplejwt.tokens import RefreshToken as RT
+    access = str(RT.for_user(freelancer_sample_user).access_token)
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+
+    response = client.get("/api/auth/profile/")
+
+    assert response.status_code == 200
+    assert response.data["skills"] == "aws,kubernetes"
+    assert response.data["availability"] == "part_time"
+    assert response.data["rating"] == "4.50"
+    assert response.data["onboarding_status"] == "approved"
+
+
+@pytest.mark.django_db
+def test_freelancer_profile_patch_cannot_write_rating_or_onboarding_status(client, freelancer_sample_user):
+    """PATCH must silently ignore attempts to write rating/onboarding_status."""
+    from rest_framework_simplejwt.tokens import RefreshToken as RT
+    access = str(RT.for_user(freelancer_sample_user).access_token)
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+
+    response = client.patch("/api/auth/profile/", {
+        "rating": "5.00",
+        "onboarding_status": "suspended",
+        "skills": "aws,kubernetes,terraform",
+    }, format="json")
+
+    assert response.status_code == 200
+    freelancer_sample_user.freelancer_profile.refresh_from_db()
+    assert freelancer_sample_user.freelancer_profile.rating == Decimal("4.50")
+    assert freelancer_sample_user.freelancer_profile.onboarding_status == "approved"
+    assert freelancer_sample_user.freelancer_profile.skills == "aws,kubernetes,terraform"

@@ -91,6 +91,15 @@ const DOMAINS = {
       refunded:  { tone: "violet",  label: "Refunded" },
     },
   },
+  // Freelancer Portal — Payout.status (distinct from paymentStatus above:
+  // a payout only ever has two states, pending → processed).
+  payoutStatus: {
+    shape: "pill",
+    entries: {
+      pending:   { tone: "amber",   label: "Pending" },
+      processed: { tone: "emerald", label: "Processed" },
+    },
+  },
   // Replaces: pages/ops/OpsRoles.jsx and pages/ops/OpsUsers.jsx's identical
   // ROLE_COLORS/ROLE_DISPLAY maps (previously duplicated verbatim).
   role: {

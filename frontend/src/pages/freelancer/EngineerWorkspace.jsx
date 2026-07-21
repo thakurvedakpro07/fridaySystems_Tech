@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { freelancerListActiveTickets, freelancerListTickets } from "../../api/tickets";
+import { freelancerGetMyStats } from "../../api/freelancer";
 import { getAnalytics } from "../../api/analytics";
 import AppShell from "../../components/layout/AppShell";
 import Card from "../../components/ui/Card";
@@ -96,8 +98,12 @@ export default function EngineerWorkspace() {
   const prevCountRef = useRef(null);
 
   // ── Stats (Productivity KPIs) ────────────────────────────────────────
-  const [stats, setStats] = useState({ total: 0, active: 0, resolved: 0, csatAvg: null, avgHours: null });
+  const [stats, setStats] = useState({ total: 0, active: 0, resolved: 0, avgHours: null });
   const [statsLoading, setStatsLoading] = useState(true);
+
+  // ── My Stats (utilization, CSAT, lifetime earnings) ──────────────────
+  const [myStats, setMyStats] = useState(null);
+  const [myStatsLoading, setMyStatsLoading] = useState(true);
 
   // ── Recently Closed (separate, server-paginated) ─────────────────────
   const [closedTickets, setClosedTickets] = useState([]);
@@ -118,11 +124,17 @@ export default function EngineerWorkspace() {
         total: data.total,
         active: data.in_progress,
         resolved: data.resolved,
-        csatAvg: data.csat_avg,
         avgHours: data.avg_resolution_hours,
       }))
       .catch(() => {})
       .finally(() => setStatsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    freelancerGetMyStats()
+      .then(({ data }) => setMyStats(data))
+      .catch(() => {})
+      .finally(() => setMyStatsLoading(false));
   }, []);
 
   const loadActiveTickets = useCallback((silent = false) => {
@@ -325,16 +337,46 @@ export default function EngineerWorkspace() {
           {!loading && <AIDailyBriefCard brief={brief} />}
           {!loading && <WorkloadSummaryPanel tickets={filteredTickets} />}
 
-          <Card title="Your CSAT Score">
-            {statsLoading ? (
+          <Card title="My Stats">
+            {myStatsLoading ? (
               <div className="h-8 w-24 shimmer rounded-lg" />
-            ) : stats.csatAvg != null ? (
-              <div className="flex items-end gap-2">
-                <span className="text-4xl font-black text-amber-500 leading-none">{stats.csatAvg}</span>
-                <span className="text-sm text-slate-500 mb-1 font-medium">/ 5.0</span>
-              </div>
             ) : (
-              <p className="text-sm text-slate-500">No ratings yet</p>
+              <div className="space-y-3">
+                {myStats?.csat_avg != null ? (
+                  <div className="flex items-end gap-2">
+                    <span className="text-4xl font-black text-amber-500 leading-none">{myStats.csat_avg}</span>
+                    <span className="text-sm text-slate-500 mb-1 font-medium">/ 5.0 CSAT</span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500">No ratings yet</p>
+                )}
+                <div className="flex items-center justify-between text-xs text-slate-600 pt-2 border-t border-slate-100">
+                  <span>Utilization</span>
+                  <span className="font-semibold text-slate-800">
+                    {myStats?.utilization_pct != null ? `${myStats.utilization_pct}%` : "—"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-600">
+                  <span>Lifetime earned</span>
+                  <span className="font-semibold text-emerald-600">
+                    ₹{Number(myStats?.earnings_processed ?? 0).toLocaleString("en-IN")}
+                  </span>
+                </div>
+                {Number(myStats?.earnings_pending ?? 0) > 0 && (
+                  <div className="flex items-center justify-between text-xs text-slate-600">
+                    <span>Pending payout</span>
+                    <span className="font-semibold text-amber-600">
+                      ₹{Number(myStats.earnings_pending).toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                )}
+                <Link
+                  to="/freelancer/payouts"
+                  className="block text-center text-xs font-medium text-indigo-600 hover:text-indigo-800 pt-2"
+                >
+                  View all payouts →
+                </Link>
+              </div>
             )}
           </Card>
 

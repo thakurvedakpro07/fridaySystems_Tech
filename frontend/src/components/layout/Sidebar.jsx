@@ -286,6 +286,7 @@ export default function Sidebar({ open, onClose }) {
               <NavItem to="/freelancer" icon={IC.dashboard} label="My Assignments" exact />
             </NavSection>
             <NavSection label="Manage">
+              <NavItem to="/freelancer/payouts" icon={IC.billing}      label="Payouts" />
               <NavItem to="/analytics"     icon={IC.analytics}     label="Analytics" />
               <NavItem to="/knowledge-base" icon={IC.knowledgeBase} label="Knowledge Base" />
               <NavItem to="/notifications" icon={IC.bell}          label="Notifications" />

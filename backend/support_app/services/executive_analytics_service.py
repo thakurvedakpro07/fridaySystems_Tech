@@ -237,18 +237,30 @@ def get_operational_health(start, end):
     }
 
 
-def get_engineer_utilization(start, end):
-    freelancers = Freelancer.objects.filter(active=True).select_related("user").annotate(
-        active_ticket_count=Count(
-            "assigned_tickets", filter=Q(assigned_tickets__status__in=ACTIVE_STATUSES)
-        ),
-    )
+def _utilization_pct(active_count, availability):
+    """
+    Approximate utilization % for one freelancer, given their current
+    active-ticket count and availability tier. Shared by
+    get_engineer_utilization() below and
+    ops_command_center_service.get_engineer_capacity() — previously
+    duplicated verbatim in both places.
+    """
+    capacity = _AVAILABILITY_CAPACITY.get(availability, 0)
+    return round(active_count / capacity * 100, 1) if capacity else None
 
-    resolved_stats = {
+
+def _resolved_stats_map(freelancer_ids, start, end):
+    """
+    Per-freelancer resolved-ticket count + avg resolution time within
+    [start, end], keyed by freelancer id. Accepts any iterable of ids —
+    a single-element list works for one freelancer's own stats just as
+    well as the full active roster.
+    """
+    return {
         row["assigned_to"]: row
         for row in (
             Ticket.objects.filter(
-                assigned_to__isnull=False, status__in=CLOSED_STATUSES,
+                assigned_to__in=freelancer_ids, status__in=CLOSED_STATUSES,
                 resolved_at__gte=start, resolved_at__lte=end,
             )
             .values("assigned_to")
@@ -261,13 +273,19 @@ def get_engineer_utilization(start, end):
         )
     }
 
+
+def get_engineer_utilization(start, end):
+    freelancers = Freelancer.objects.filter(active=True).select_related("user").annotate(
+        active_ticket_count=Count(
+            "assigned_tickets", filter=Q(assigned_tickets__status__in=ACTIVE_STATUSES)
+        ),
+    )
+
+    resolved_stats = _resolved_stats_map([f.id for f in freelancers], start, end)
+
     data = []
     for f in freelancers:
         stats = resolved_stats.get(f.id, {})
-        capacity = _AVAILABILITY_CAPACITY.get(f.availability, 0)
-        utilization_pct = (
-            round(f.active_ticket_count / capacity * 100, 1) if capacity else None
-        )
         first = f.user.first_name.strip()
         last = f.user.last_name.strip()
         data.append({
@@ -277,7 +295,7 @@ def get_engineer_utilization(start, end):
             "active_ticket_count": f.active_ticket_count,
             "resolved_count": stats.get("resolved_count", 0),
             "avg_resolution_hours": _hours(stats.get("avg_resolution")),
-            "utilization_pct": utilization_pct,
+            "utilization_pct": _utilization_pct(f.active_ticket_count, f.availability),
         })
 
     data.sort(key=lambda r: r["active_ticket_count"], reverse=True)

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useAuthStore } from "../../store/authStore";
+import { updateProfile } from "../../api/settings";
 import { getDisplayName } from "../../utils/displayName";
 import OnboardingShell from "../../components/onboarding/OnboardingShell";
 import OnboardingStepHeader from "../../components/onboarding/OnboardingStepHeader";
@@ -13,6 +14,20 @@ const SKILL_OPTIONS = [
   "Laptop / Desktop Support", "Server Administration Support", "AWS Support", "Azure Support",
   "Kubernetes Support", "Database Support", "DevOps CI/CD Support", "Infrastructure Platform Automation Support",
 ];
+
+// Maps each option's display label to the short skill tag Freelancer.skills
+// stores elsewhere in the app (service_catalog.SERVICE_CATALOG's `key`s —
+// these 8 options were deliberately written to mirror that catalog 1:1).
+const SKILL_TAG_MAP = {
+  "Laptop / Desktop Support": "laptop_desktop",
+  "Server Administration Support": "server_admin",
+  "AWS Support": "aws",
+  "Azure Support": "azure",
+  "Kubernetes Support": "kubernetes",
+  "Database Support": "database",
+  "DevOps CI/CD Support": "devops_cicd",
+  "Infrastructure Platform Automation Support": "infra_automation",
+};
 
 const EXPERIENCE_OPTIONS = [
   { value: "1-2", label: "1–2 years", desc: "Junior engineer, learning the ropes" },
@@ -69,6 +84,7 @@ export default function FreelancerOnboarding() {
   const user = useAuthStore((s) => s.user);
 
   const [step, setStep] = useState(0);
+  const [saving, setSaving] = useState(false);
   const [data, setData] = useState({
     skills: [],
     experience: "",
@@ -77,6 +93,24 @@ export default function FreelancerOnboarding() {
 
   const next = () => setStep((s) => s + 1);
   const skip = () => navigate("/freelancer");
+
+  const saveAndContinue = async () => {
+    setSaving(true);
+    try {
+      const payload = {};
+      const skillTags = data.skills.map((label) => SKILL_TAG_MAP[label]).filter(Boolean);
+      if (skillTags.length > 0) payload.skills = skillTags.join(",");
+      if (data.availability) payload.availability = data.availability;
+      if (Object.keys(payload).length > 0) {
+        await updateProfile(payload);
+      }
+    } catch {
+      // Non-blocking: onboarding save failure doesn't block progress
+    } finally {
+      setSaving(false);
+      next();
+    }
+  };
 
   const toggleSkill = (skill) => {
     setData((d) => ({
@@ -237,8 +271,9 @@ export default function FreelancerOnboarding() {
           <OnboardingFooterNav
             onSkip={skip}
             skipLabel="Skip to dashboard"
-            onContinue={next}
+            onContinue={saveAndContinue}
             continueLabel="Looks good"
+            loading={saving}
             accentClassName="bg-violet-600 hover:bg-violet-700"
           />
         </div>
