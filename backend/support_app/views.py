@@ -3666,6 +3666,22 @@ class OrganizationDetailView(generics.RetrieveUpdateAPIView):
             entity_id=org.id, metadata={"name": org.name}, request=self.request,
         )
 
+    def update(self, request, *args, **kwargs):
+        # OrganizationUpdateSerializer (used for input validation above) only
+        # declares ["name", "settings"] — writable fields. Respond with the
+        # full OrganizationSerializer representation instead of the input
+        # serializer's own .data (DRF's default), so the response still
+        # includes member_count/my_role/slug/created_at. A caller replacing
+        # its cached organization object with a partial response would
+        # otherwise silently lose those fields (e.g. `my_role` going
+        # `undefined`, breaking any admin-only UI gated on it).
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=kwargs.get("partial", False))
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        org = self.get_queryset().get(pk=instance.pk)
+        return Response(OrganizationSerializer(org, context=self.get_serializer_context()).data)
+
 
 class OrganizationMembershipListView(generics.ListAPIView):
     """GET /api/organizations/{org_id}/members/ — any member can view."""

@@ -125,6 +125,12 @@ const IC = {
         d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
     </svg>
   ),
+  organization: (
+    <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M3.75 21h16.5M4.5 3h10.5a1.5 1.5 0 011.5 1.5V21H4.5V3zM9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3.75-6h1.5m-1.5 3h1.5m-1.5 3h1.5M15 21v-3.375c0-.621-.504-1.125-1.125-1.125h-3.75c-.621 0-1.125.504-1.125 1.125V21" />
+    </svg>
+  ),
 };
 
 // ── NavItem ───────────────────────────────────────────────────────
@@ -267,6 +273,7 @@ export default function Sidebar({ open, onClose }) {
               <NavItem to="/notifications" icon={IC.bell}          label="Notifications" />
             </NavSection>
             <NavSection label="Account">
+              <NavItem to="/organization" icon={IC.organization} label="Organization" />
               <NavItem to="/settings"     icon={IC.settings} label="Settings" />
               <NavItem to="/help-center"  icon={IC.help}     label="Help Center" />
             </NavSection>

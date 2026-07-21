@@ -34,6 +34,8 @@ const HelpCenterPage       = lazy(() => import("./pages/HelpCenterPage"));
 const ResolveTicketPage    = lazy(() => import("./pages/ResolveTicketPage"));
 const KnowledgeBasePage        = lazy(() => import("./pages/KnowledgeBasePage"));
 const KnowledgeBaseArticlePage = lazy(() => import("./pages/KnowledgeBaseArticlePage"));
+const OrganizationPage         = lazy(() => import("./pages/OrganizationPage"));
+const InvitationAcceptPage     = lazy(() => import("./pages/InvitationAcceptPage"));
 
 // Operations Dashboard pages (all staff roles)
 const OpsDashboard      = lazy(() => import("./pages/ops/OpsDashboard"));
@@ -73,10 +75,12 @@ function PageLoader() {
   );
 }
 
-// Suppressed on the Ops Ticket Queue only — the fixed bottom-right widget
-// overlaps the ticket table's Assign/Reassign action column there. Every
-// other route keeps the widget; this is not a global removal.
-const FLOATING_WIDGET_HIDDEN_PATHS = ["/operations/tickets"];
+// Suppressed on the Ops Ticket Queue (the fixed bottom-right widget overlaps
+// the ticket table's Assign/Reassign action column) and on the Organization
+// page (it overlaps the Profile tab's bottom-right "Save Changes" button,
+// intercepting the click — caught by organizations.spec.js). Every other
+// route keeps the widget; this is not a global removal.
+const FLOATING_WIDGET_HIDDEN_PATHS = ["/operations/tickets", "/organization"];
 
 function FloatingSupportWidgets() {
   const { pathname } = useLocation();
@@ -239,6 +243,10 @@ export default function App() {
           <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPassword /></PublicOnlyRoute>} />
           <Route path="/reset-password"  element={<ResetPassword />} />
           <Route path="/verify-email"    element={<VerifyEmail />} />
+          {/* Organization invitation acceptance — reachable whether or not the
+              invitee is logged in (handles both cases itself), so it sits
+              outside PrivateRoute/PublicOnlyRoute like reset-password/verify-email. */}
+          <Route path="/invitations/:token" element={<InvitationAcceptPage />} />
 
           {/* Customer pages — require login */}
           <Route
@@ -320,6 +328,14 @@ export default function App() {
           <Route
             path="/knowledge-base/:id"
             element={<PrivateRoute><KnowledgeBaseArticlePage /></PrivateRoute>}
+          />
+
+          {/* Organization profile/members/invitations — any authenticated
+              customer-role user (covers both billing Customers and
+              invitee-only org members, who share role="customer") */}
+          <Route
+            path="/organization"
+            element={<PrivateRoute><OrganizationPage /></PrivateRoute>}
           />
 
           {/* Onboarding — post-registration guided setup (require auth) */}

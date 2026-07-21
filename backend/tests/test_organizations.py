@@ -108,6 +108,14 @@ def test_org_admin_can_view_and_update_organization(org_admin_user, organization
 
     resp = client.patch(f"/api/organizations/{organization.id}/", {"name": "Acme Corp Renamed"}, format="json")
     assert resp.status_code == 200
+    # The PATCH response must carry the full OrganizationSerializer shape, not
+    # just the writable ["name", "settings"] fields — a caller that replaces
+    # its cached organization object with this response (as the frontend
+    # does) would otherwise lose my_role/member_count and silently break any
+    # admin-gated UI on the next render.
+    assert resp.data["name"] == "Acme Corp Renamed"
+    assert resp.data["member_count"] == 1
+    assert resp.data["my_role"] == "org_admin"
     organization.refresh_from_db()
     assert organization.name == "Acme Corp Renamed"
     assert AuditLog.objects.filter(entity="organization", action="organization_updated", entity_id=organization.id).exists()

@@ -161,6 +161,36 @@ const DOMAINS = {
       sla_policy: { tone: "violet", label: "SLA Policy" },
     },
   },
+  // Organizations & Multi-Tenant Management (Phase 5) — OrganizationMembership.role.
+  orgRole: {
+    shape: "pill",
+    entries: {
+      org_admin:  { tone: "violet", label: "Admin" },
+      org_member: { tone: "slate",  label: "Member" },
+    },
+  },
+  // OrganizationInvitation.status
+  invitationStatus: {
+    shape: "pill",
+    entries: {
+      pending:  { tone: "amber",   label: "Pending" },
+      accepted: { tone: "emerald", label: "Accepted" },
+      revoked:  { tone: "rose",    label: "Revoked" },
+      expired:  { tone: "slate",   label: "Expired" },
+    },
+  },
+  // Organization audit log — action values written by views.py's Organizations section.
+  orgAuditAction: {
+    shape: "soft",
+    entries: {
+      organization_updated: { tone: "amber",   label: "Organization Updated" },
+      member_invited:       { tone: "indigo",  label: "Member Invited" },
+      member_role_changed:  { tone: "amber",   label: "Role Changed" },
+      member_removed:       { tone: "rose",    label: "Member Removed" },
+      invitation_revoked:   { tone: "rose",    label: "Invitation Revoked" },
+      invitation_accepted:  { tone: "emerald", label: "Invitation Accepted" },
+    },
+  },
 };
 
 const SIZES = {
