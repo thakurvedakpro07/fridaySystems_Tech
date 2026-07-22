@@ -120,6 +120,7 @@ from .serializers import (
     NotificationSerializer,
     OpsActivityLogSerializer,
     OpsPaymentSerializer,
+    OpsPayoutSerializer,
     OpsUserSerializer,
     OrganizationInvitationCreateSerializer,
     OrganizationInvitationSerializer,
@@ -3198,6 +3199,121 @@ def ops_payment_summary(request):
         ],
         "refund_count": refund_count,
     })
+
+
+# ══════════════════════════════════════════════════════════════════
+# PAYOUTS (Finance Manager + Super Admin write; Ops Manager read)
+# ══════════════════════════════════════════════════════════════════
+#
+# payout_service.py's mark_payout_processed()/create_payout_batch() already
+# existed but had zero call sites — nobody could actually mark a freelancer
+# payout paid through the product. These three endpoints are the finance
+# workspace surface over that existing service layer; no new money-movement
+# rail is introduced — per payout_service.py's own docstring, finance
+# completes the bank/UPI transfer outside the platform and records the UTR
+# reference here (mirrors ops_payment_confirm's "confirmed outside the
+# platform" shape).
+
+class OpsPayoutListView(generics.ListAPIView):
+    """
+    GET /api/ops/payouts/
+    All freelancer payouts, newest first. Finance Manager/Super Admin process
+    them from this list; Ops Manager gets the same data read-only (no action
+    buttons on the frontend).
+    """
+    permission_classes = [permissions.IsAuthenticated, IsPaymentReader]
+    serializer_class = OpsPayoutSerializer
+
+    def get_queryset(self):
+        qs = Payout.objects.select_related("ticket", "freelancer__user").order_by("-created_at")
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        return qs
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, IsFinanceManagerOrSuperAdmin])
+def ops_payout_summary(request):
+    """
+    GET /api/ops/payouts/summary/
+    Aggregate stats for the finance payouts workspace. Finance Manager/Super
+    Admin only, mirroring ops_payment_summary's access (Ops Manager sees the
+    full payouts list but not the aggregate financial summary). The payout
+    list itself is paginated (PAGE_SIZE=20), so totals need their own query
+    rather than being derived from whatever page happens to be on screen.
+    """
+    from decimal import Decimal
+    from django.db.models import Count, DecimalField, Sum, Value
+    from django.utils import timezone
+    from django.db.models.functions import Coalesce
+
+    pending_agg = Payout.objects.filter(status="pending").aggregate(
+        total=Coalesce(Sum("engineer_share"), Value(Decimal("0.00")), output_field=DecimalField()),
+        count=Count("id"),
+    )
+
+    month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    processed_agg = Payout.objects.filter(
+        status="processed", processed_at__gte=month_start
+    ).aggregate(
+        total=Coalesce(Sum("engineer_share"), Value(Decimal("0.00")), output_field=DecimalField()),
+        count=Count("id"),
+    )
+
+    return Response({
+        "pending_total": float(pending_agg["total"]),
+        "pending_count": pending_agg["count"],
+        "processed_this_month_total": float(processed_agg["total"]),
+        "processed_this_month_count": processed_agg["count"],
+    })
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsFinanceManagerOrSuperAdmin])
+def ops_payout_process(request, pk):
+    """
+    POST /api/ops/payouts/{id}/process/
+    Body: {"utr_number": "<bank/UPI transaction reference>"}
+
+    Mark a payout as processed after finance completes the transfer outside
+    the platform. Finance Manager or Super Admin only — Ops Manager can see
+    payouts but not process them (mirrors ops_payment_confirm/refund).
+    """
+    from .services.audit_service import log_action
+    from .services.payout_service import mark_payout_processed
+
+    payout = get_object_or_404(Payout.objects.select_related("ticket", "freelancer__user"), pk=pk)
+
+    utr_number = (request.data.get("utr_number") or "").strip()
+    if not utr_number:
+        return Response({"detail": "utr_number is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if payout.status != "pending":
+        return Response(
+            {"detail": f"Payout is already '{payout.status}' — cannot process."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    with transaction.atomic():
+        locked = Payout.objects.select_for_update(of=("self",)).get(pk=payout.pk)
+        if locked.status != "pending":
+            return Response(
+                {"detail": f"Payout is already '{locked.status}' — cannot process."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        mark_payout_processed(locked.id, utr_number)
+
+    payout = Payout.objects.select_related("ticket", "freelancer__user").get(pk=payout.pk)
+
+    log_action(
+        user=request.user, entity="payout", action="payout_processed",
+        entity_id=payout.pk,
+        metadata={"utr_number": utr_number, "engineer_share": str(payout.engineer_share)},
+        request=request,
+    )
+
+    return Response(OpsPayoutSerializer(payout).data)
 
 
 # ══════════════════════════════════════════════════════════════════

@@ -169,6 +169,11 @@ urlpatterns = [
     path("ops/payments/<uuid:pk>/refund/",                  views.ops_payment_refund,               name="ops-payment-refund"),
     path("ops/payments/",                                   views.OpsPaymentListView.as_view(),     name="ops-payment-list"),
 
+    # ── Ops: Payouts (Finance Manager write; Ops Manager read) ────
+    path("ops/payouts/summary/",                            views.ops_payout_summary,               name="ops-payout-summary"),
+    path("ops/payouts/<uuid:pk>/process/",                  views.ops_payout_process,               name="ops-payout-process"),
+    path("ops/payouts/",                                    views.OpsPayoutListView.as_view(),      name="ops-payout-list"),
+
     # ── Ops: Ticket Escalation (Ops Manager + Support Agent + Super Admin) ──
     path("ops/tickets/<uuid:ticket_id>/escalate/",          views.ops_ticket_escalate,              name="ops-ticket-escalate"),
 

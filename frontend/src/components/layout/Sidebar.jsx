@@ -314,6 +314,7 @@ export default function Sidebar({ open, onClose }) {
               <NavSection label="Finance">
                 <NavItem to="/operations/executive-overview" icon={IC.executiveOverview} label="Executive Overview" />
                 <NavItem to="/operations/payments"  icon={IC.payments}  label="Payments" />
+                <NavItem to="/operations/payouts"   icon={IC.billing}   label="Payouts" />
                 <NavItem to="/operations/analytics" icon={IC.analytics} label="Analytics" />
                 <NavItem to="/operations/executive-analytics" icon={IC.executive} label="Executive Analytics" />
               </NavSection>

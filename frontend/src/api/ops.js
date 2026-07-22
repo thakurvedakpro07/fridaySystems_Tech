@@ -104,6 +104,17 @@ export const opsConfirmPayment = (paymentId) =>
 export const opsRefundPayment = (paymentId) =>
   apiClient.post(`/ops/payments/${paymentId}/refund/`);
 
+// ── Payouts (Finance Manager write; Ops Manager read) ──────────────
+
+export const getOpsPayouts = (params = {}) =>
+  apiClient.get("/ops/payouts/", { params });
+
+export const getOpsPayoutSummary = () =>
+  apiClient.get("/ops/payouts/summary/");
+
+export const opsProcessPayout = (payoutId, utrNumber) =>
+  apiClient.post(`/ops/payouts/${payoutId}/process/`, { utr_number: utrNumber });
+
 // ── Ticket Escalation ─────────────────────────────────────────────
 
 export const opsEscalateTicket = (ticketId, note = "") =>

@@ -718,6 +718,38 @@ class FreelancerPayoutSerializer(serializers.ModelSerializer):
         return obj.ticket.ticket_number if obj.ticket_id else None
 
 
+class OpsPayoutSerializer(serializers.ModelSerializer):
+    """
+    Full payout view for the finance payouts workspace — Finance Manager and
+    Super Admin (write); Ops Manager (read-only, no action buttons on the FE).
+
+    Unlike FreelancerPayoutSerializer, this includes platform_share and the
+    freelancer's identity, which finance needs to reconcile and process a
+    transfer. Freelancer.payout_details (bank/UPI account info) is never
+    included — see the H-05 note on that field in models.py; it's stored
+    plaintext and stays excluded from every serializer until encrypted at rest.
+    """
+    ticket_number    = serializers.SerializerMethodField()
+    freelancer_name  = serializers.SerializerMethodField()
+    freelancer_email = serializers.EmailField(source="freelancer.user.email", read_only=True)
+
+    class Meta:
+        model = Payout
+        fields = [
+            "id", "ticket", "ticket_number", "freelancer_name", "freelancer_email",
+            "resolution_fee", "severity_surcharge", "engineer_share", "platform_share",
+            "status", "utr_number", "created_at", "processed_at",
+        ]
+        read_only_fields = fields
+
+    def get_ticket_number(self, obj):
+        return obj.ticket.ticket_number if obj.ticket_id else None
+
+    def get_freelancer_name(self, obj):
+        user = obj.freelancer.user
+        return f"{user.first_name} {user.last_name}".strip() or user.email
+
+
 class PaymentVerifySerializer(serializers.Serializer):
     """Validates the body of POST /api/tickets/{id}/verify-payment/."""
     payment_db_id        = serializers.UUIDField()
