@@ -19,6 +19,7 @@ ROUTE GROUPS:
   /api/notifications/  — in-app notification inbox
   /api/payments/       — payment details and webhooks
   /api/health/         — system health check
+  /api/admin/queue-status/ — Celery worker/queue liveness (Super Admin only)
 """
 
 from django.urls import path
@@ -29,6 +30,7 @@ from . import views
 urlpatterns = [
     # ── System ────────────────────────────────────────────────────
     path("health/", views.health_check, name="health-check"),
+    path("admin/queue-status/", views.queue_status, name="queue-status"),
 
     # ── Authentication ────────────────────────────────────────────
     path("auth/register/", views.RegisterView.as_view(), name="auth-register"),

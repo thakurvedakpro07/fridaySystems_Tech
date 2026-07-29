@@ -68,6 +68,149 @@ def send_ticket_assigned_notification(self, ticket_id: str) -> None:
         raise self.retry(exc=exc)
 
 
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_ticket_resolved_email(self, ticket_id: str) -> None:
+    """
+    Notify the customer when their ticket is marked resolved.
+    Retries up to 3 times on transient failures.
+    """
+    from .models import Ticket
+    from .services.email_service import send_ticket_resolved
+    try:
+        ticket = Ticket.objects.select_related("customer__user").get(pk=ticket_id)
+        send_ticket_resolved(ticket)
+        logger.info("Ticket resolved email sent for %s", ticket.ticket_number)
+    except Ticket.DoesNotExist:
+        logger.warning("send_ticket_resolved_email: ticket %s not found, skipping.", ticket_id)
+    except Exception as exc:
+        logger.exception("send_ticket_resolved_email failed for ticket %s", ticket_id)
+        raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_comment_notification_email(self, ticket_id: str, comment_id: str, recipient_user_id: str) -> None:
+    """
+    Notify the other party in a ticket conversation of a new public comment.
+    Retries up to 3 times on transient failures.
+    """
+    from django.contrib.auth import get_user_model
+    from .models import Ticket, TicketComment
+    from .services.email_service import send_comment_notification
+    User = get_user_model()
+    try:
+        ticket = Ticket.objects.select_related("customer__user").get(pk=ticket_id)
+        comment = TicketComment.objects.get(pk=comment_id)
+        recipient_user = User.objects.get(pk=recipient_user_id)
+        send_comment_notification(ticket, comment, recipient_user)
+        logger.info("Comment notification email sent for %s", ticket.ticket_number)
+    except (Ticket.DoesNotExist, TicketComment.DoesNotExist, User.DoesNotExist):
+        logger.warning(
+            "send_comment_notification_email: ticket %s / comment %s / recipient %s not found, skipping.",
+            ticket_id, comment_id, recipient_user_id,
+        )
+    except Exception as exc:
+        logger.exception("send_comment_notification_email failed for ticket %s", ticket_id)
+        raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_resolution_rejected_email(self, ticket_id: str, note: str = "") -> None:
+    """
+    Notify the assigned engineer that the customer rejected a resolution.
+    Retries up to 3 times on transient failures.
+    """
+    from .models import Ticket
+    from .services.email_service import send_resolution_rejected
+    try:
+        ticket = Ticket.objects.select_related("assigned_to__user").get(pk=ticket_id)
+        send_resolution_rejected(ticket, note=note)
+        logger.info("Resolution rejected email sent for %s", ticket.ticket_number)
+    except Ticket.DoesNotExist:
+        logger.warning("send_resolution_rejected_email: ticket %s not found, skipping.", ticket_id)
+    except Exception as exc:
+        logger.exception("send_resolution_rejected_email failed for ticket %s", ticket_id)
+        raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_welcome_email(self, user_id: str) -> None:
+    """
+    Send the welcome email to a newly registered customer.
+    Retries up to 3 times on transient failures.
+    """
+    from django.contrib.auth import get_user_model
+    from .services.email_service import send_welcome
+    User = get_user_model()
+    try:
+        user = User.objects.get(pk=user_id)
+        send_welcome(user)
+        logger.info("Welcome email sent for user %s", user_id)
+    except User.DoesNotExist:
+        logger.warning("send_welcome_email: user %s not found, skipping.", user_id)
+    except Exception as exc:
+        logger.exception("send_welcome_email failed for user %s", user_id)
+        raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_verification_email_task(self, user_id: str) -> None:
+    """
+    Send (or resend) the email-verification link to a user.
+    Retries up to 3 times on transient failures.
+    """
+    from django.contrib.auth import get_user_model
+    from .services.email_service import send_verification_email
+    User = get_user_model()
+    try:
+        user = User.objects.get(pk=user_id)
+        send_verification_email(user)
+        logger.info("Verification email sent for user %s", user_id)
+    except User.DoesNotExist:
+        logger.warning("send_verification_email_task: user %s not found, skipping.", user_id)
+    except Exception as exc:
+        logger.exception("send_verification_email_task failed for user %s", user_id)
+        raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_password_reset_email_task(self, user_id: str, uid: str, token: str) -> None:
+    """
+    Send a password reset link to a user.
+    Retries up to 3 times on transient failures.
+    """
+    from django.contrib.auth import get_user_model
+    from .services.email_service import send_password_reset_email
+    User = get_user_model()
+    try:
+        user = User.objects.get(pk=user_id)
+        send_password_reset_email(user, uid, token)
+        logger.info("Password reset email sent for user %s", user_id)
+    except User.DoesNotExist:
+        logger.warning("send_password_reset_email_task: user %s not found, skipping.", user_id)
+    except Exception as exc:
+        logger.exception("send_password_reset_email_task failed for user %s", user_id)
+        raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_organization_invitation_email(self, invitation_id: str) -> None:
+    """
+    Send an organization membership invitation email.
+    Retries up to 3 times on transient failures.
+    """
+    from .models import OrganizationInvitation
+    from .services.email_service import send_organization_invitation
+    try:
+        invitation = OrganizationInvitation.objects.select_related("organization", "invited_by").get(pk=invitation_id)
+        send_organization_invitation(invitation)
+        logger.info("Organization invitation email sent for invitation %s", invitation_id)
+    except OrganizationInvitation.DoesNotExist:
+        logger.warning("send_organization_invitation_email: invitation %s not found, skipping.", invitation_id)
+    except Exception as exc:
+        logger.exception("send_organization_invitation_email failed for invitation %s", invitation_id)
+        raise self.retry(exc=exc)
+
+
 @shared_task
 def check_sla_breaches() -> None:
     """

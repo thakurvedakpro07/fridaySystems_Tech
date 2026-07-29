@@ -39,8 +39,8 @@ def create_ticket(customer, validated_data: dict) -> Ticket:
         status="pending_payment",
         **validated_data,
     )
-    from .email_service import send_ticket_created
-    transaction.on_commit(lambda: send_ticket_created(ticket))
+    from ..tasks import send_ticket_opened_email
+    transaction.on_commit(lambda: send_ticket_opened_email.delay(str(ticket.id)))
     return ticket
 
 
@@ -103,8 +103,8 @@ def assign_ticket(ticket: Ticket, freelancer, assigned_by) -> TicketAssignment:
             to_value=freelancer.user.email,
         )
 
-        from .email_service import send_ticket_assigned
-        transaction.on_commit(lambda: send_ticket_assigned(ticket))
+        from ..tasks import send_ticket_assigned_notification
+        transaction.on_commit(lambda: send_ticket_assigned_notification.delay(str(ticket.id)))
 
     return assignment
 
@@ -197,15 +197,17 @@ def add_comment(
             # Notify the OTHER party (not the author):
             # If customer commented → notify assigned freelancer + admins
             # If freelancer/admin commented → notify customer
-            from .email_service import send_comment_notification
+            from ..tasks import send_comment_notification_email
             is_customer_comment = hasattr(author, "customer_profile") and author.customer_profile == ticket.customer
             if is_customer_comment and ticket.assigned_to:
+                recipient_id = str(ticket.assigned_to.user.id)
                 transaction.on_commit(
-                    lambda: send_comment_notification(ticket, comment, ticket.assigned_to.user)
+                    lambda: send_comment_notification_email.delay(str(ticket.id), str(comment.id), recipient_id)
                 )
             elif not is_customer_comment:
+                recipient_id = str(ticket.customer.user.id)
                 transaction.on_commit(
-                    lambda: send_comment_notification(ticket, comment, ticket.customer.user)
+                    lambda: send_comment_notification_email.delay(str(ticket.id), str(comment.id), recipient_id)
                 )
 
     return comment
@@ -252,7 +254,7 @@ def update_status(ticket: Ticket, new_status: str, actor, note: str = "") -> Tic
         # correct actor directly — no post-save patch query is needed.
 
         if new_status == "resolved":
-            from .email_service import send_ticket_resolved
-            transaction.on_commit(lambda: send_ticket_resolved(ticket))
+            from ..tasks import send_ticket_resolved_email
+            transaction.on_commit(lambda: send_ticket_resolved_email.delay(str(ticket.id)))
 
     return ticket

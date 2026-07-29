@@ -233,6 +233,43 @@ def health_check(request):
     return Response(payload, status=code)
 
 
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, IsSuperAdmin])
+def queue_status(request):
+    """
+    GET /api/admin/queue-status/ — Super Admin only.
+
+    Reports Celery worker liveness and in-flight task counts via Celery's
+    built-in control/inspect API. No new dependency, no stored history —
+    a live snapshot of the broker/worker state right now.
+    """
+    from supportmitra.celery import app as celery_app
+
+    inspector = celery_app.control.inspect(timeout=2.0)
+    ping = inspector.ping() or {}
+    active = inspector.active() or {}
+    reserved = inspector.reserved() or {}
+    scheduled = inspector.scheduled() or {}
+
+    workers = []
+    for worker_name in ping:
+        workers.append({
+            "name": worker_name,
+            "online": True,
+            "active_tasks": len(active.get(worker_name, [])),
+            "reserved_tasks": len(reserved.get(worker_name, [])),
+            "scheduled_tasks": len(scheduled.get(worker_name, [])),
+        })
+
+    payload = {
+        "status": "ok" if workers else "no_workers",
+        "worker_count": len(workers),
+        "workers": workers,
+    }
+    code = status.HTTP_200_OK if workers else status.HTTP_503_SERVICE_UNAVAILABLE
+    return Response(payload, status=code)
+
+
 # ── Authentication ────────────────────────────────────────────────
 
 class RegisterView(generics.CreateAPIView):
@@ -251,15 +288,10 @@ class RegisterView(generics.CreateAPIView):
         user = serializer.save()
 
         refresh = RefreshToken.for_user(user)
-        from .services.email_service import send_welcome, send_verification_email
-        try:
-            send_welcome(user)
-        except Exception:
-            pass
-        try:
-            send_verification_email(user)
-        except Exception:
-            pass
+        from .tasks import send_welcome_email, send_verification_email_task
+        user_id = str(user.id)
+        transaction.on_commit(lambda: send_welcome_email.delay(user_id))
+        transaction.on_commit(lambda: send_verification_email_task.delay(user_id))
         return Response(
             {
                 "access": str(refresh.access_token),
@@ -847,10 +879,10 @@ def reject_resolution(request, ticket_id):
         )
     note = request.data.get("note", "").strip()
     from .services.ticket_service import update_status
-    from .services.email_service import send_resolution_rejected
+    from .tasks import send_resolution_rejected_email
     update_status(ticket, "in_progress", actor=request.user, note=note)
     ticket.refresh_from_db()
-    send_resolution_rejected(ticket, note=note)
+    transaction.on_commit(lambda: send_resolution_rejected_email.delay(str(ticket.id), note))
     return Response(
         TicketDetailSerializer(ticket, context={"request": request}).data,
         status=status.HTTP_200_OK,
@@ -2096,11 +2128,8 @@ def resend_verification_email(request):
     if user.is_verified:
         return Response({"detail": "Email is already verified."})
 
-    from .services.email_service import send_verification_email
-    try:
-        send_verification_email(user)
-    except Exception:
-        pass
+    from .tasks import send_verification_email_task
+    transaction.on_commit(lambda: send_verification_email_task.delay(str(user.id)))
     return Response({"detail": "Verification email sent."})
 
 
@@ -2119,7 +2148,7 @@ def password_reset_request(request):
     from django.contrib.auth.tokens import default_token_generator
     from django.utils.http import urlsafe_base64_encode
     from django.utils.encoding import force_bytes
-    from .services.email_service import send_password_reset_email
+    from .tasks import send_password_reset_email_task
 
     email = request.data.get("email", "").strip().lower()
     if not email:
@@ -2132,10 +2161,8 @@ def password_reset_request(request):
         user = User.objects.get(email__iexact=email, is_active=True)
         uid = urlsafe_base64_encode(force_bytes(str(user.pk)))
         token = default_token_generator.make_token(user)
-        try:
-            send_password_reset_email(user, uid, token)
-        except Exception:
-            pass
+        user_id = str(user.id)
+        transaction.on_commit(lambda: send_password_reset_email_task.delay(user_id, uid, token))
     except User.DoesNotExist:
         pass  # always return 200 — never reveal whether email exists
 
@@ -3933,7 +3960,7 @@ class OrganizationInvitationListCreateView(generics.ListCreateAPIView):
         from datetime import timedelta
         from django.utils import timezone
         from .services.audit_service import log_action
-        from .services.email_service import send_organization_invitation
+        from .tasks import send_organization_invitation_email
 
         org = self._organization()
         serializer = self.get_serializer(data=request.data)
@@ -3951,7 +3978,7 @@ class OrganizationInvitationListCreateView(generics.ListCreateAPIView):
             token=secrets.token_urlsafe(32),
             expires_at=timezone.now() + timedelta(days=7),
         )
-        send_organization_invitation(invitation)
+        transaction.on_commit(lambda: send_organization_invitation_email.delay(str(invitation.id)))
         log_action(
             request.user, entity="organization", action="member_invited", entity_id=org.id,
             metadata={"email": email, "role": role}, request=request,

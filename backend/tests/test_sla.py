@@ -104,18 +104,32 @@ def test_notification_service_send_whatsapp_no_longer_raises():
 
 
 def test_celery_tasks_are_not_stubs():
-    """None of the 5 Celery tasks should have an empty body (just pass)."""
+    """None of the Celery tasks should have an empty body (just pass)."""
     import inspect
     from support_app.tasks import (
         check_sla_breaches,
         process_payout_batch,
+        send_comment_notification_email,
+        send_organization_invitation_email,
+        send_password_reset_email_task,
+        send_resolution_rejected_email,
         send_ticket_assigned_notification,
         send_ticket_opened_email,
+        send_ticket_resolved_email,
+        send_verification_email_task,
+        send_welcome_email,
         sync_ticket_to_osticket,
     )
     for task_fn in [
         send_ticket_opened_email,
         send_ticket_assigned_notification,
+        send_ticket_resolved_email,
+        send_comment_notification_email,
+        send_resolution_rejected_email,
+        send_welcome_email,
+        send_verification_email_task,
+        send_password_reset_email_task,
+        send_organization_invitation_email,
         check_sla_breaches,
         process_payout_batch,
         sync_ticket_to_osticket,

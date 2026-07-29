@@ -286,19 +286,23 @@ CACHES = {
 }
 
 # ── Email ─────────────────────────────────────────────────────────
-if DEBUG:
-    # Print emails to the terminal instead of actually sending them
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-else:
-    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# EMAIL_BACKEND can be forced explicitly via env (e.g. to test real SMTP
+# delivery in a DEBUG=1 dev environment without flipping DEBUG itself,
+# which also toggles unrelated things like CORS/security headers).
+# Falls back to the original DEBUG-based default when unset.
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend" if DEBUG
+    else "django.core.mail.backends.smtp.EmailBackend",
+)
 
-# SMTP credentials — only used when EMAIL_BACKEND is smtp (i.e. DEBUG=0).
+# SMTP credentials — only used when EMAIL_BACKEND is smtp.
 # In production set all five in backend/.env.
 EMAIL_HOST          = os.getenv("EMAIL_HOST", "smtp.sendgrid.net")
 EMAIL_PORT          = int(os.getenv("EMAIL_PORT", "587"))
-EMAIL_USE_TLS       = os.getenv("EMAIL_USE_TLS", "1") == "1"
+EMAIL_USE_TLS       = os.getenv("EMAIL_USE_TLS", "1").lower() in ("1", "true", "yes")
 EMAIL_HOST_USER     = os.getenv("EMAIL_HOST_USER", "apikey")  # SendGrid uses literal "apikey"
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")    # your SendGrid API key
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")    # your SendGrid API key (or Gmail App Password)
 
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "support@resolvehq.in")  # Temporary placeholder. Replace before production launch.
 

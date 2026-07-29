@@ -17,6 +17,18 @@ from support_app.models import Customer
 User = get_user_model()
 
 
+@pytest.fixture(autouse=True)
+def _celery_eager(settings):
+    """
+    Run Celery tasks synchronously, in-process, instead of enqueueing onto
+    the real Redis broker. Without this, .delay() calls during tests would
+    be picked up by the already-running dev `celery` worker container,
+    which connects to the main dev DB, not pytest's test_supportmitra DB.
+    """
+    settings.CELERY_TASK_ALWAYS_EAGER = True
+    settings.CELERY_TASK_EAGER_PROPAGATES = True
+
+
 @pytest.fixture
 def api_client():
     """An unauthenticated DRF test client."""
