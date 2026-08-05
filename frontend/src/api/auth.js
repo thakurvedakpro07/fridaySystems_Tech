@@ -30,3 +30,13 @@ export const getMyProfile = () =>
 
 export const updateMyProfile = (data) =>
   apiClient.patch("/customers/me/", data);
+
+// Email verification
+export const verifyEmail = (uid, token) =>
+  apiClient.post("/auth/verify-email/", { uid, token });
+
+export const resendVerificationEmail = () =>
+  apiClient.post("/auth/verify-email/resend/");
+
+export const resendVerificationEmailByEmail = (email) =>
+  apiClient.post("/auth/verify-email/resend-by-email/", { email });

@@ -8,7 +8,7 @@ Role hierarchy (lowest → highest privilege):
   customer < freelancer(engineer) < support_agent | finance_manager < operations_manager < admin(super_admin)
 """
 
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 
 # ── Helper predicates ─────────────────────────────────────────────
@@ -68,6 +68,11 @@ def is_internal_staff(user) -> bool:
             "admin", "operations_manager", "finance_manager", "support_agent"
         )
     )
+
+
+def is_verified(user) -> bool:
+    """True for authenticated users whose email address has been confirmed."""
+    return bool(user and user.is_authenticated and getattr(user, "is_verified", False))
 
 
 def is_super_admin(user) -> bool:
@@ -295,3 +300,34 @@ class IsOwnerOrStaff(BasePermission):
         if hasattr(obj, "customer"):
             return obj.customer.user == request.user
         return False
+
+
+class IsVerifiedOrReadOnly(BasePermission):
+    """
+    Safe methods (GET/HEAD/OPTIONS) are allowed for any authenticated user.
+    Unsafe methods (creating/modifying data) require a verified email.
+
+    Used on views where read access must stay open to unverified users
+    (e.g. a customer can always see their own tickets) but the write
+    action itself (opening a new ticket) is gated on email verification.
+    """
+    message = "Please verify your email address before creating a ticket. Check your inbox for the verification link, or request a new one."
+
+    def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated):
+            return False
+        if request.method in SAFE_METHODS:
+            return True
+        return is_verified(request.user)
+
+
+class IsVerified(BasePermission):
+    """
+    Requires a verified email address. No read path to protect — use this
+    on POST-only endpoints where IsVerifiedOrReadOnly's SAFE_METHODS branch
+    would be dead code.
+    """
+    message = "Please verify your email address before performing this action. Check your inbox for the verification link, or request a new one."
+
+    def has_permission(self, request, view):
+        return is_verified(request.user)

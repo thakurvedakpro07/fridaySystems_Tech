@@ -148,11 +148,11 @@ def send_resolution_rejected(ticket, note: str = "") -> None:
 
 def send_verification_email(user) -> None:
     """Send an email verification link after registration."""
-    from django.contrib.auth.tokens import default_token_generator
     from django.utils.http import urlsafe_base64_encode
     from django.utils.encoding import force_bytes
+    from ..tokens import email_verification_token_generator
     uid = urlsafe_base64_encode(force_bytes(str(user.pk)))
-    token = default_token_generator.make_token(user)
+    token = email_verification_token_generator.make_token(user)
     verify_url = f"{APP_URL}/verify-email?uid={uid}&token={token}"
     _send(
         to=user.email,

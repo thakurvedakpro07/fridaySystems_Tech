@@ -2,7 +2,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import NotificationBell from "../ui/NotificationBell";
+import Button from "../ui/Button";
 import { useAuthStore } from "../../store/authStore";
+import { useToast } from "../../context/ToastContext";
+import { resendVerificationEmail } from "../../api/auth";
 
 function UserAvatar({ user }) {
   const first    = (user?.first_name ?? "").trim();
@@ -24,6 +27,40 @@ function UserAvatar({ user }) {
     >
       {initials}
     </Link>
+  );
+}
+
+function UnverifiedEmailBanner() {
+  const addToast = useToast();
+  const [resending, setResending] = useState(false);
+
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      const { data } = await resendVerificationEmail();
+      if (data.code === "cooldown") {
+        addToast(data.detail, "warning");
+      } else {
+        addToast(data.detail ?? "Verification email sent.", "success");
+      }
+    } catch (err) {
+      addToast(err.response?.data?.detail ?? "Could not send verification email.", "error");
+    } finally {
+      setResending(false);
+    }
+  };
+
+  return (
+    <div className="bg-amber-50 border-b border-amber-200 px-4 sm:px-6 py-2.5">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 text-sm">
+        <span className="text-amber-800">
+          Please verify your email address to unlock ticket creation and other actions.
+        </span>
+        <Button size="sm" variant="secondary" onClick={handleResend} loading={resending}>
+          Resend email
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -52,6 +89,8 @@ export default function AppShell({ children, maxWidth, noPad = false }) {
 
       {/* ── Main area (offset by sidebar on desktop) ─────────── */}
       <div className="lg:pl-64 flex flex-col min-h-screen">
+
+        {user?.is_verified === false && <UnverifiedEmailBanner />}
 
         {/* ── Topbar ─────────────────────────────────────────── */}
         <header className="sticky top-0 z-30 h-[72px] bg-white/95 backdrop-blur-md

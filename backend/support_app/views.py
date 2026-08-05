@@ -610,7 +610,7 @@ class TicketListCreateView(generics.ListCreateAPIView):
       ?ordering=created_at,-severity
       ?page_size=<n>     (up to 100 — default 20)
     """
-    permission_classes = [permissions.IsAuthenticated, IsCustomer]
+    permission_classes = [permissions.IsAuthenticated, IsCustomer, IsVerifiedOrReadOnly]
     pagination_class = OpsPageNumberPagination  # adds ?page_size= (max 100), matches freelancer
 
     def get_serializer_class(self):
@@ -1397,7 +1397,7 @@ class FreelancerTicketDetailView(generics.RetrieveAPIView):
 
 
 @api_view(["POST"])
-@permission_classes([permissions.IsAuthenticated, IsFreelancer])
+@permission_classes([permissions.IsAuthenticated, IsFreelancer, IsVerified])
 def freelancer_update_status(request, ticket_id):
     """
     POST /api/freelancer/tickets/{id}/status/
@@ -1440,7 +1440,7 @@ def freelancer_update_status(request, ticket_id):
 
 
 @api_view(["POST"])
-@permission_classes([permissions.IsAuthenticated, IsFreelancer])
+@permission_classes([permissions.IsAuthenticated, IsFreelancer, IsVerified])
 def freelancer_start_remote_session(request, ticket_id):
     """
     POST /api/freelancer/tickets/{id}/remote-session/
@@ -2128,56 +2128,123 @@ def verify_email(request):
 
     Marks the user's email as verified. The uid/token pair is sent in the
     verification link emailed after registration.
+
+    Every response includes a machine-readable "code" so the frontend can
+    show a genuinely distinct state (expired vs. invalid vs. already
+    verified) instead of one generic error. "invalid_link" deliberately
+    covers malformed uid, tampered token, AND deleted user alike — these
+    are not distinguished in the response, to avoid leaking which case
+    occurred (enumeration-safety).
     """
-    from django.contrib.auth.tokens import default_token_generator
+    from django.core.exceptions import ValidationError as DjangoValidationError
     from django.utils.http import urlsafe_base64_decode
+    from .tokens import email_verification_token_generator
 
     uid_b64 = request.data.get("uid", "")
     token = request.data.get("token", "")
 
     if not uid_b64 or not token:
         return Response(
-            {"detail": "uid and token are required."},
+            {"detail": "This verification link is missing required information.", "code": "missing_params"},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     try:
         uid = urlsafe_base64_decode(uid_b64).decode()
         user = User.objects.get(pk=uid)
-    except (TypeError, ValueError, User.DoesNotExist):
+    except (TypeError, ValueError, DjangoValidationError, User.DoesNotExist):
         return Response(
-            {"detail": "Invalid or expired verification link."},
+            {"detail": "This verification link is invalid.", "code": "invalid_link"},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    if not default_token_generator.check_token(user, token):
-        return Response(
-            {"detail": "Invalid or expired verification link."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
+    # Check already-verified BEFORE token validity — a stale-but-structurally
+    # well-formed replay of an old link (e.g. double-click, or clicked again
+    # after already verifying) should read as "already verified", not "invalid".
     if user.is_verified:
-        return Response({"detail": "Email already verified."})
+        return Response({"detail": "Your email is already verified.", "code": "already_verified"})
+
+    if not email_verification_token_generator.check_token(user, token):
+        code = email_verification_token_generator.classify_failure(user, token)
+        detail = (
+            "This verification link has expired." if code == "expired_link"
+            else "This verification link is invalid."
+        )
+        return Response({"detail": detail, "code": code}, status=status.HTTP_400_BAD_REQUEST)
 
     user.is_verified = True
     user.save(update_fields=["is_verified"])
-    return Response({"detail": "Email verified successfully."})
+    return Response({"detail": "Your email has been verified.", "code": "success"})
 
 
 @api_view(["POST"])
 @permission_classes([permissions.IsAuthenticated])
+@throttle_classes_dec([AuthRateThrottle])
 def resend_verification_email(request):
     """
     POST /api/auth/verify-email/resend/
     Re-sends the verification email to the current user.
+
+    A 60-second per-user cooldown (via cache.add — atomic set-if-absent, so
+    a double-click can't slip two sends past a get()+set() race) sits on top
+    of the AuthRateThrottle to stop impatient repeat-clicking from queuing a
+    burst of emails within the same throttle window.
     """
     user = request.user
     if user.is_verified:
-        return Response({"detail": "Email is already verified."})
+        return Response({"detail": "Email is already verified.", "code": "already_verified"})
+
+    from django.core.cache import cache
+    if not cache.add(f"verify-resend-cooldown:user:{user.id}", 1, timeout=60):
+        return Response(
+            {
+                "detail": "A verification email was already sent recently. Please wait a moment and try again.",
+                "code": "cooldown",
+            },
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
 
     from .tasks import send_verification_email_task
     transaction.on_commit(lambda: send_verification_email_task.delay(str(user.id)))
-    return Response({"detail": "Verification email sent."})
+    return Response({"detail": "Verification email sent.", "code": "sent"})
+
+
+@api_view(["POST"])
+@permission_classes([permissions.AllowAny])
+@throttle_classes_dec([AuthRateThrottle])
+def resend_verification_email_by_email(request):
+    """
+    POST /api/auth/verify-email/resend-by-email/
+    Body: { "email": "..." }
+
+    Same purpose as resend_verification_email, but reachable without being
+    logged in — needed when a verification link expires on a device/browser
+    where the user isn't (or is no longer) authenticated. Always returns 200
+    and never reveals whether the account exists or is already verified,
+    mirroring password_reset_request's enumeration-safe contract.
+    """
+    from django.core.cache import cache
+
+    email = request.data.get("email", "").strip().lower()
+    if not email:
+        return Response({"detail": "email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # cache.add() fires unconditionally on the email string, before the user
+    # lookup, so cooldown behavior is identical whether or not the account
+    # exists — the timing/response shape never reveals which case occurred.
+    if cache.add(f"verify-resend-cooldown:email:{email}", 1, timeout=60):
+        try:
+            user = User.objects.get(email__iexact=email, is_active=True)
+            if not user.is_verified:
+                from .tasks import send_verification_email_task
+                user_id = str(user.id)
+                transaction.on_commit(lambda: send_verification_email_task.delay(user_id))
+        except User.DoesNotExist:
+            pass
+
+    return Response(
+        {"detail": "If an account with that email exists and isn't verified yet, a verification link has been sent."}
+    )
 
 
 # ── Password Reset ────────────────────────────────────────────────
@@ -2191,8 +2258,17 @@ def password_reset_request(request):
     Body: { "email": "..." }
 
     Sends a password reset link. Always returns 200 to prevent user enumeration.
+
+    A 60-second per-email cooldown (via cache.add — atomic set-if-absent,
+    fired before the user lookup) sits underneath AuthRateThrottle's per-IP
+    5/minute limit, mirroring resend_verification_email_by_email's pattern —
+    stops a distributed attacker from spamming one victim's inbox with reset
+    emails from many different IPs. The cooldown is silent by design: the
+    response is identical whether it fired or not, so it adds no enumeration
+    or abuse-detection signal of its own.
     """
     from django.contrib.auth.tokens import default_token_generator
+    from django.core.cache import cache
     from django.utils.http import urlsafe_base64_encode
     from django.utils.encoding import force_bytes
     from .tasks import send_password_reset_email_task
@@ -2204,14 +2280,15 @@ def password_reset_request(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    try:
-        user = User.objects.get(email__iexact=email, is_active=True)
-        uid = urlsafe_base64_encode(force_bytes(str(user.pk)))
-        token = default_token_generator.make_token(user)
-        user_id = str(user.id)
-        transaction.on_commit(lambda: send_password_reset_email_task.delay(user_id, uid, token))
-    except User.DoesNotExist:
-        pass  # always return 200 — never reveal whether email exists
+    if cache.add(f"reset-request-cooldown:email:{email}", 1, timeout=settings.PASSWORD_RESET_REQUEST_COOLDOWN_SECONDS):
+        try:
+            user = User.objects.get(email__iexact=email, is_active=True)
+            uid = urlsafe_base64_encode(force_bytes(str(user.pk)))
+            token = default_token_generator.make_token(user)
+            user_id = str(user.id)
+            transaction.on_commit(lambda: send_password_reset_email_task.delay(user_id, uid, token))
+        except User.DoesNotExist:
+            pass  # always return 200 — never reveal whether email exists
 
     return Response(
         {"detail": "If an account with that email exists, a reset link has been sent."}

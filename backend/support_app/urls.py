@@ -113,6 +113,7 @@ urlpatterns = [
     # ── Email Verification ────────────────────────────────────────
     path("auth/verify-email/", views.verify_email, name="verify-email"),
     path("auth/verify-email/resend/", views.resend_verification_email, name="verify-email-resend"),
+    path("auth/verify-email/resend-by-email/", views.resend_verification_email_by_email, name="verify-email-resend-by-email"),
 
     # ── Password Reset ────────────────────────────────────────────
     path("auth/password/reset/", views.password_reset_request, name="password-reset-request"),
