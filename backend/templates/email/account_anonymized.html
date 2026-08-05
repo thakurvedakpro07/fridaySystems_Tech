@@ -1,0 +1,10 @@
+{% extends "email/base.html" %}
+{% block subject %}Your ResolveHQ account has been deleted{% endblock %}
+{% block preheader %}Your account deletion request has now been processed.{% endblock %}
+{% block content %}
+<h1>Your account has been deleted</h1>
+<p>Hi {{ first_name|default:"there" }},</p>
+<p>As requested, your ResolveHQ account has now been deleted. Your personal data (name, contact details, and login credentials) has been permanently anonymized and your account can no longer be signed into.</p>
+<p>Records we're legally required to retain — such as GST invoices and payment history — are kept in an anonymized form as required by Indian tax law, but are no longer linked to your personal identity.</p>
+<p>This is the last email you'll receive from us. Thank you for using ResolveHQ.</p>
+{% endblock %}

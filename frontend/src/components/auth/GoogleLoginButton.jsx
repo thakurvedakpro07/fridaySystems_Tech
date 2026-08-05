@@ -27,14 +27,14 @@ const GOOGLE_ICON = (
   </svg>
 );
 
-export function GoogleLoginButton({ onSuccess, onError, loading = false }) {
+export function GoogleLoginButton({ onSuccess, onError, loading = false, disabled = false }) {
   const triggerLogin = useGoogleLogin({ onSuccess, onError });
 
   return (
     <button
       type="button"
       onClick={() => triggerLogin()}
-      disabled={loading}
+      disabled={loading || disabled}
       className="w-full flex items-center justify-center gap-3 px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
     >
       {loading ? SPINNER : GOOGLE_ICON}

@@ -70,6 +70,7 @@ export default function RegisterFreelancer() {
     name: "", email: "", experience: "", password: "", password2: "",
   });
   const [selectedSkills, setSelectedSkills] = useState([]);
+  const [consent, setConsent] = useState(false);
   const [errors, setErrors] = useState([]);
 
   async function copyNumber() {
@@ -97,6 +98,10 @@ export default function RegisterFreelancer() {
       setErrors(["Passwords do not match."]);
       return;
     }
+    if (!consent) {
+      setErrors(["You must accept the Terms of Service and Privacy Policy to register."]);
+      return;
+    }
     const result = await registerUser({
       name: form.name,
       email: form.email,
@@ -104,6 +109,7 @@ export default function RegisterFreelancer() {
       skills: selectedSkills.join(","),
       password: form.password,
       password2: form.password2,
+      consent,
     });
     if (result.success) {
       navigate("/onboarding/freelancer");
@@ -338,10 +344,33 @@ export default function RegisterFreelancer() {
                   className="input-auth"
                 />
               </div>
+
+              {/* Consent checkbox */}
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                />
+                <span className="text-xs text-slate-500 leading-relaxed">
+                  I agree to the{" "}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer"
+                     className="text-slate-600 hover:text-slate-800 underline underline-offset-2 transition-colors">
+                    Terms of Service
+                  </a>
+                  {" "}and{" "}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer"
+                     className="text-slate-600 hover:text-slate-800 underline underline-offset-2 transition-colors">
+                    Privacy Policy
+                  </a>.
+                </span>
+              </label>
+
               <div className="pt-1">
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !consent}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-xl font-semibold
                              text-sm py-3 px-5 transition-colors disabled:opacity-60
                              bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white"
@@ -360,13 +389,6 @@ export default function RegisterFreelancer() {
                 Freelancer accounts are reviewed by our admin team. You'll receive an email within 24 hours once approved.
               </p>
             </div>
-
-            <p className="text-xs text-slate-500 text-center mt-4 leading-relaxed">
-              By registering you agree to our{" "}
-              <a href="#" className="text-slate-500 hover:text-slate-700 underline underline-offset-2 transition-colors">Terms of Service</a>
-              {" "}and{" "}
-              <a href="#" className="text-slate-500 hover:text-slate-700 underline underline-offset-2 transition-colors">Privacy Policy</a>.
-            </p>
 
             <p className="text-sm text-center text-slate-500 mt-4">
               Already have an account?{" "}

@@ -1,0 +1,15 @@
+{% extends "email/base.html" %}
+{% block subject %}Account deletion requested — ResolveHQ{% endblock %}
+{% block preheader %}Your account is scheduled for deletion on {{ scheduled_for }}. You can cancel any time before then.{% endblock %}
+{% block content %}
+<h1>Account deletion requested</h1>
+<p>Hi {{ email }},</p>
+<p>We received a request to delete your ResolveHQ account. Your account will remain fully accessible until then — nothing changes today.</p>
+
+{% include "email/components/_info_card.html" with row1_label="Requested" row1_value=requested_at row2_label="Scheduled for" row2_value=scheduled_for %}
+
+<p>If this wasn't you, or you've changed your mind, sign in and cancel the request from Settings &rarr; Privacy &amp; Data before the scheduled date.</p>
+{% include "email/components/_button.html" with button_url=settings_url button_label="Go to Settings" %}
+{% include "email/components/_link_fallback.html" with link_url=settings_url %}
+<p style="margin-top:4px;font-size:13px;line-height:1.6;color:#475569;">After the scheduled date, your personal data (name, contact details, etc.) is permanently anonymized. Records we're legally required to keep — such as GST invoices — are retained in an anonymized form as required by Indian tax law.</p>
+{% endblock %}

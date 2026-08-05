@@ -16,6 +16,7 @@ User = get_user_model()
 
 from .models import (
     AuditLog,
+    ConsentRecord,
     CSATSurvey,
     Customer,
     Freelancer,
@@ -56,14 +57,26 @@ class RegisterSerializer(serializers.ModelSerializer):
         required=False,
     )
     skills = serializers.CharField(required=False, allow_blank=True, default="")
+    # DPDP Act 2023: explicit, informed consent must be captured at registration —
+    # required=True alone isn't enough, since a form-encoded POST silently reads an
+    # absent key as False rather than "missing"; validate_consent() below rejects
+    # both cases the same way.
+    consent = serializers.BooleanField(required=True)
 
     class Meta:
         model = User
-        fields = ["email", "password", "password2", "name", "company", "phone", "role", "skills"]
+        fields = ["email", "password", "password2", "name", "company", "phone", "role", "skills", "consent"]
 
     def validate_email(self, value):
         if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("An account with this email already exists.")
+        return value
+
+    def validate_consent(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                "You must accept the Terms of Service and Privacy Policy to register."
+            )
         return value
 
     def validate_password(self, value):
@@ -81,12 +94,17 @@ class RegisterSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        from django.conf import settings as django_settings
         from django.db import transaction
+
+        from .services.audit_service import get_client_ip
+
         company = validated_data.pop("company", "")
         phone = validated_data.pop("phone", "")
         name = validated_data.pop("name", "")
         role = validated_data.pop("role", "customer")
         skills = validated_data.pop("skills", "")
+        validated_data.pop("consent", None)
 
         # Split full name into first/last for AbstractUser fields
         parts = name.strip().split(" ", 1) if name.strip() else []
@@ -101,6 +119,12 @@ class RegisterSerializer(serializers.ModelSerializer):
                 is_verified=False,
                 first_name=first_name,
                 last_name=last_name,
+            )
+            ConsentRecord.objects.create(
+                user=user,
+                consent_type="registration_privacy_policy",
+                policy_version=django_settings.DPDP_POLICY_VERSION,
+                ip_address=get_client_ip(self.context.get("request")),
             )
             if role == "freelancer":
                 Freelancer.objects.create(
@@ -588,6 +612,16 @@ class TicketDetailSerializer(
 
     def get_customer(self, obj):
         u = obj.customer.user
+        # DPDP anonymization scrubs email to an irreversible placeholder and
+        # clears first/last name, but Ticket.customer is on_delete=PROTECT so
+        # the FK is never null — without this check the fallback below would
+        # render the raw "deleted-<uuid>" placeholder as a display name.
+        if u.anonymized_at:
+            return {
+                "email": "", "name": "Deleted User",
+                "company": "", "phone": "",
+                "plan": getattr(obj.customer, "plan", None) or "",
+            }
         first = u.first_name.strip()
         last  = u.last_name.strip()
         return {

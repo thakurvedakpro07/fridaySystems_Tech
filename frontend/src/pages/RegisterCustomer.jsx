@@ -69,6 +69,7 @@ export default function RegisterCustomer() {
   const [form, setForm] = useState({
     name: "", email: "", company: "", password: "", password2: "",
   });
+  const [consent, setConsent] = useState(false);
   const [errors, setErrors] = useState([]);
 
   // Google OAuth state
@@ -81,7 +82,7 @@ export default function RegisterCustomer() {
     setGoogleLoading(true);
     setErrors([]);
     try {
-      const { data } = await googleLoginApi(tokenResponse.access_token);
+      const { data } = await googleLoginApi(tokenResponse.access_token, consent);
       setTokens(data.access, data.refresh);
       setUser(data.user);
       if (data.needs_company) {
@@ -134,6 +135,10 @@ export default function RegisterCustomer() {
       setErrors(["Passwords do not match."]);
       return;
     }
+    if (!consent) {
+      setErrors(["You must accept the Terms of Service and Privacy Policy to register."]);
+      return;
+    }
     const result = await registerUser({
       name: form.name,
       email: form.email,
@@ -141,6 +146,7 @@ export default function RegisterCustomer() {
       company: form.company,
       password: form.password,
       password2: form.password2,
+      consent,
     });
     if (result.success) {
       navigate("/onboarding/customer");
@@ -310,6 +316,28 @@ export default function RegisterCustomer() {
               </p>
             </div>
 
+            {/* Consent checkbox — gates both the Google button below and the password form's submit. */}
+            <label className="flex items-start gap-2.5 mb-5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="text-xs text-slate-500 leading-relaxed">
+                I agree to the{" "}
+                <a href="/terms" target="_blank" rel="noopener noreferrer"
+                   className="text-slate-600 hover:text-slate-800 underline underline-offset-2 transition-colors">
+                  Terms of Service
+                </a>
+                {" "}and{" "}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer"
+                   className="text-slate-600 hover:text-slate-800 underline underline-offset-2 transition-colors">
+                  Privacy Policy
+                </a>.
+              </span>
+            </label>
+
             {/* Google sign-in — only rendered when VITE_GOOGLE_CLIENT_ID is set */}
             {GOOGLE_ENABLED && (
               <div className="mb-5">
@@ -317,7 +345,13 @@ export default function RegisterCustomer() {
                   onSuccess={handleGoogleSuccess}
                   onError={() => addToast("Google sign-in was cancelled or failed.", "warning")}
                   loading={googleLoading}
+                  disabled={!consent}
                 />
+                {!consent && (
+                  <p className="text-xs text-slate-400 mt-1.5">
+                    Accept the Terms of Service and Privacy Policy below to continue with Google.
+                  </p>
+                )}
                 <div className="flex items-center gap-3 mt-5">
                   <div className="flex-1 h-px bg-slate-200" />
                   <span className="text-xs text-slate-500 font-medium">OR</span>
@@ -413,18 +447,11 @@ export default function RegisterCustomer() {
                 />
               </div>
               <div className="pt-1">
-                <Button type="submit" disabled={loading} className="w-full" size="lg">
+                <Button type="submit" disabled={loading || !consent} className="w-full" size="lg">
                   {loading ? "Creating account…" : "Create Customer Account →"}
                 </Button>
               </div>
             </form>
-
-            <p className="text-xs text-slate-500 text-center mt-4 leading-relaxed">
-              By registering you agree to our{" "}
-              <a href="#" className="text-slate-500 hover:text-slate-700 underline underline-offset-2 transition-colors">Terms of Service</a>
-              {" "}and{" "}
-              <a href="#" className="text-slate-500 hover:text-slate-700 underline underline-offset-2 transition-colors">Privacy Policy</a>.
-            </p>
 
             <p className="text-sm text-center text-slate-500 mt-4">
               Already have an account?{" "}

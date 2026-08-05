@@ -210,3 +210,49 @@ def send_password_reset_email(user, uid: str, token: str) -> None:
             "requested_at": timezone.now().strftime("%d %b %Y, %I:%M %p %Z"),
         },
     )
+
+
+def send_deletion_requested(user, scheduled_for) -> None:
+    """
+    DPDP Act 2023 — notify the user that their self-service deletion
+    request started the grace-period countdown. Links to the app's
+    Settings page (not a token-based magic link) since the account stays
+    fully accessible and cancelling is a normal authenticated action.
+    """
+    _send(
+        to=user.email,
+        subject="Account deletion requested — ResolveHQ",
+        template="email/deletion_requested.html",
+        context={
+            "email": user.email,
+            "requested_at": user.deletion_requested_at.strftime("%d %b %Y, %I:%M %p %Z"),
+            "scheduled_for": scheduled_for.strftime("%d %b %Y"),
+            "settings_url": f"{APP_URL}/settings",
+        },
+    )
+
+
+def send_deletion_cancelled(user) -> None:
+    """DPDP Act 2023 — confirm a self-service deletion request was cancelled."""
+    _send(
+        to=user.email,
+        subject="Account deletion cancelled — ResolveHQ",
+        template="email/deletion_cancelled.html",
+        context={"email": user.email},
+    )
+
+
+def send_account_anonymized(email: str, first_name: str) -> None:
+    """
+    DPDP Act 2023 — final notice that the grace period elapsed and PII has
+    been anonymized. Takes a raw email/first_name (not a user object) because
+    the caller (tasks.anonymize_pending_deletions) must send this BEFORE
+    anonymize_user() overwrites those fields — there's no user.email left to
+    read afterward.
+    """
+    _send(
+        to=email,
+        subject="Your ResolveHQ account has been deleted",
+        template="email/account_anonymized.html",
+        context={"first_name": first_name},
+    )

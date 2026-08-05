@@ -139,6 +139,22 @@ class CustomUser(AbstractUser):
     # user clicks the verification link emailed to them.
     is_verified = models.BooleanField(default=True)
 
+    # ── DPDP Act 2023 self-service erasure ─────────────────────────
+    # deletion_requested_at: set when the user self-requests account
+    # deletion via Settings → Privacy & Data. Non-null while the 30-day
+    # grace period is running; the user keeps normal access and can
+    # self-service-cancel (clearing this back to null) at any time.
+    # anonymized_at: set once the scheduled Celery Beat task
+    # (tasks.anonymize_pending_deletions) has actually scrubbed this
+    # user's PII, 30+ days after deletion_requested_at. We never hard-
+    # delete the row — Payment/Payout/Subscription/Ticket all use
+    # on_delete=PROTECT against Customer/Freelancer, and GST law
+    # requires retaining invoice records — so "erasure" means the PII
+    # fields get anonymized in place while the row (and every financial
+    # record pointing at it) stays intact.
+    deletion_requested_at = models.DateTimeField(null=True, blank=True)
+    anonymized_at = models.DateTimeField(null=True, blank=True)
+
     # ── Auth configuration ───────────────────────────────────────
     # USERNAME_FIELD: tells Django, SimpleJWT, and allauth: "use email to log in"
     USERNAME_FIELD = "email"
@@ -159,7 +175,36 @@ class CustomUser(AbstractUser):
         verbose_name_plural = "Users"
         indexes = [
             models.Index(fields=["role", "is_active"], name="idx_user_role_active"),
+            models.Index(fields=["deletion_requested_at"], name="idx_user_deletion_requested"),
         ]
+
+
+class ConsentRecord(models.Model):
+    """
+    Immutable record of a user's explicit consent to the Terms of Service /
+    Privacy Policy — the DPDP Act 2023 requires this to be captured with a
+    timestamp and IP address at the moment consent is given, not just implied
+    by account creation. One row per consent event (currently only fires
+    once, at registration); never updated after creation.
+    """
+    CONSENT_TYPE_CHOICES = [
+        ("registration_privacy_policy", "Registration — Privacy Policy & Terms"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="consent_records",
+    )
+    consent_type = models.CharField(max_length=64, choices=CONSENT_TYPE_CHOICES)
+    policy_version = models.CharField(max_length=32)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    accepted_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.email} accepted {self.consent_type} v{self.policy_version}"
+
+    class Meta:
+        ordering = ["-accepted_at"]
 
 
 class Customer(models.Model):

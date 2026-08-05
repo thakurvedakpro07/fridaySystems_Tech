@@ -12,6 +12,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
+from celery.schedules import crontab
 from dotenv import load_dotenv
 
 # ── Base directory ────────────────────────────────────────────────
@@ -283,6 +284,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "support_app.tasks.check_sla_breaches",
         "schedule": 300,  # seconds
     },
+    "anonymize-pending-deletions-daily": {
+        "task": "support_app.tasks.anonymize_pending_deletions",
+        "schedule": crontab(hour=2, minute=0),
+    },
 }
 
 # ── Cache ─────────────────────────────────────────────────────────
@@ -338,6 +343,16 @@ BUSINESS_NAME = os.getenv("BUSINESS_NAME", "SupportMitra Technologies")
 BUSINESS_SUPPORT_EMAIL = os.getenv("BUSINESS_SUPPORT_EMAIL", "")
 BUSINESS_SUPPORT_PHONE = os.getenv("BUSINESS_SUPPORT_PHONE", "")
 APP_URL = os.getenv("APP_URL", "http://localhost:5173")
+
+# ── DPDP Act 2023 Compliance ─────────────────────────────────────
+# Bumped whenever the Privacy Policy / Terms materially change, so each
+# ConsentRecord row stays tied to the exact policy version the user agreed
+# to (not just "some version, at some point").
+DPDP_POLICY_VERSION = os.getenv("DPDP_POLICY_VERSION", "2026-07-31")
+# Days between a self-service deletion request and automatic anonymization
+# (tasks.anonymize_pending_deletions). Matches the grace period documented
+# in docs/PROJECT_DOCUMENTATION.md §23.
+ACCOUNT_DELETION_GRACE_PERIOD_DAYS = int(os.getenv("ACCOUNT_DELETION_GRACE_PERIOD_DAYS", "30"))
 
 # ── Google OAuth ─────────────────────────────────────────────────
 # Set GOOGLE_OAUTH_CLIENT_ID in backend/.env to enable "Sign in with Google".

@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { changePassword, getProfile, updateProfile } from "../api/settings";
+import {
+  cancelAccountDeletion, changePassword, exportMyData,
+  getProfile, requestAccountDeletion, updateProfile,
+} from "../api/settings";
 import AppShell from "../components/layout/AppShell";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -10,11 +13,12 @@ import { useToast } from "../context/ToastContext";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useAuthStore } from "../store/authStore";
 import { getDisplayName } from "../utils/displayName";
-import { UserCircleIcon, LockClosedIcon } from "../components/tickets/ActionIcons";
+import { UserCircleIcon, LockClosedIcon, ShieldCheckIcon } from "../components/tickets/ActionIcons";
 
 const TABS = [
-  { id: "profile",  label: "Profile",  Icon: UserCircleIcon },
-  { id: "security", label: "Security", Icon: LockClosedIcon },
+  { id: "profile",  label: "Profile",       Icon: UserCircleIcon },
+  { id: "security", label: "Security",      Icon: LockClosedIcon },
+  { id: "privacy",  label: "Privacy & Data", Icon: ShieldCheckIcon },
 ];
 
 function FieldRow({ label, children }) {
@@ -280,6 +284,139 @@ function SecurityTab() {
   );
 }
 
+function PrivacyTab({ profile, setProfile }) {
+  const toast = useToast();
+  const [exporting, setExporting] = useState(false);
+  const [requesting, setRequesting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const { data } = await exportMyData();
+      const url = window.URL.createObjectURL(new Blob([data], { type: "application/json" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `resolvehq-data-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast("Could not download your data. Please try again.", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleRequestDeletion = async (e) => {
+    e.preventDefault();
+    setError("");
+    setRequesting(true);
+    try {
+      const { data } = await requestAccountDeletion({ current_password: password });
+      setProfile((p) => ({ ...p, deletion_requested_at: data.deletion_requested_at }));
+      setShowConfirm(false);
+      setPassword("");
+      toast("Account deletion requested.", "success");
+    } catch (err) {
+      setError(err.response?.data?.detail || "Could not request deletion. Please try again.");
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    setCancelling(true);
+    try {
+      await cancelAccountDeletion();
+      setProfile((p) => ({ ...p, deletion_requested_at: null }));
+      toast("Account deletion cancelled.", "success");
+    } catch {
+      toast("Could not cancel deletion request. Please try again.", "error");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const deletionRequestedAt = profile?.deletion_requested_at;
+  const scheduledFor = deletionRequestedAt
+    ? new Date(new Date(deletionRequestedAt).getTime() + 30 * 24 * 60 * 60 * 1000)
+    : null;
+
+  return (
+    <div className="space-y-5">
+      <FormSection title="Your Data" description="Download a copy of everything ResolveHQ has on file for your account.">
+        <p className="text-sm text-slate-600 mb-4">
+          Includes your profile, tickets, comments, and payment/payout history — a machine-readable JSON file, in
+          line with your rights under India's DPDP Act 2023.
+        </p>
+        <Button variant="secondary" onClick={handleExport} loading={exporting}>
+          Download my data
+        </Button>
+      </FormSection>
+
+      <FormSection title="Delete Account" description="Permanently remove your personal data from ResolveHQ.">
+        {deletionRequestedAt ? (
+          <div className="space-y-4">
+            <div className="flex items-start gap-2.5 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <span>
+                Your account is scheduled for deletion on{" "}
+                <strong>
+                  {scheduledFor?.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+                </strong>
+                . You can cancel any time before then.
+              </span>
+            </div>
+            <Button variant="secondary" onClick={handleCancel} loading={cancelling}>
+              Cancel deletion request
+            </Button>
+          </div>
+        ) : showConfirm ? (
+          <form onSubmit={handleRequestDeletion} className="space-y-3">
+            <p className="text-sm text-slate-600">
+              This starts a 30-day grace period. Your account stays fully active until then, and you can cancel any
+              time. Enter your password to confirm.
+            </p>
+            <input
+              type="password"
+              className="input-base w-full"
+              value={password}
+              onChange={(e) => { setError(""); setPassword(e.target.value); }}
+              placeholder="Current password"
+              autoComplete="current-password"
+              required
+            />
+            {error && <p className="text-sm text-rose-600">{error}</p>}
+            <div className="flex gap-2">
+              <Button type="submit" variant="danger" loading={requesting}>Confirm deletion request</Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => { setShowConfirm(false); setPassword(""); setError(""); }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <>
+            <p className="text-sm text-slate-600 mb-4">
+              Deleting your account starts a 30-day grace period, after which your personal data is permanently
+              anonymized. Records we're legally required to keep (like GST invoices) are retained in an anonymized
+              form, as Indian tax law requires.
+            </p>
+            <Button variant="danger" onClick={() => setShowConfirm(true)}>Delete my account</Button>
+          </>
+        )}
+      </FormSection>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   usePageTitle("Account Settings");
   const user = useAuthStore((s) => s.user);
@@ -332,8 +469,10 @@ export default function SettingsPage() {
           </div>
         ) : activeTab === "profile" ? (
           <ProfileTab profile={profile} setProfile={setProfile} role={role} />
-        ) : (
+        ) : activeTab === "security" ? (
           <SecurityTab />
+        ) : (
+          <PrivacyTab profile={profile} setProfile={setProfile} />
         )}
       </div>
     </AppShell>

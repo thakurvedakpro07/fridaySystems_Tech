@@ -450,6 +450,17 @@ def google_auth_view(request):
     first_name = google_data.get("given_name", "")
     last_name = google_data.get("family_name", "")
 
+    # DPDP Act 2023: Google sign-up bypasses RegisterSerializer entirely (it's a
+    # separate get_or_create path), so consent has to be captured here too, on
+    # first-time account creation only — an existing user re-authenticating via
+    # Google every login shouldn't be asked again.
+    is_new_account = not User.objects.filter(email=email).exists()
+    if is_new_account and not request.data.get("consent"):
+        return Response(
+            {"detail": "You must accept the Terms of Service and Privacy Policy to register."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     with transaction.atomic():
         user, created = User.objects.get_or_create(
             email=email,
@@ -465,6 +476,14 @@ def google_auth_view(request):
             user.set_unusable_password()
             user.save(update_fields=["password"])
             Customer.objects.get_or_create(user=user)
+            from .models import ConsentRecord
+            from .services.audit_service import get_client_ip
+            ConsentRecord.objects.create(
+                user=user,
+                consent_type="registration_privacy_policy",
+                policy_version=_settings.DPDP_POLICY_VERSION,
+                ip_address=get_client_ip(request),
+            )
 
     profile = getattr(user, "customer_profile", None)
     needs_company = not (profile and profile.company)
@@ -1759,6 +1778,7 @@ def user_profile(request):
             "last_name": user.last_name,
             "role": user.role,
             "is_staff": user.is_staff,
+            "deletion_requested_at": user.deletion_requested_at,
         }
         if hasattr(user, "customer_profile"):
             p = user.customer_profile
@@ -1801,6 +1821,250 @@ def user_profile(request):
         p.save()
 
     return Response({"detail": "Profile updated."})
+
+
+# ── DPDP Act 2023 — Personal Data Export & Right to Erasure ───────
+# See docs/PROJECT_DOCUMENTATION.md §23 "Legal & Compliance" for the
+# obligations these three endpoints close: self-service data access/
+# portability (export), and a 30-day-grace-period erasure request.
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def export_my_data(request):
+    """
+    GET /api/auth/profile/export/
+
+    Downloads a JSON snapshot of the caller's own personal data — the
+    DPDP Act 2023 "right to data portability." Scoped strictly to data the
+    requesting user owns or authored: never another org-mate's tickets,
+    never internal-only comments, never a freelancer's payout_details
+    (excluded from every API surface per the H-05 rule on Freelancer.payout_details).
+    """
+    import json
+    from django.core.serializers.json import DjangoJSONEncoder
+    from django.http import HttpResponse
+    from django.utils import timezone
+
+    user = request.user
+    data = {
+        "account": {
+            "id": str(user.id),
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "role": user.role,
+            "date_joined": user.date_joined,
+            "is_verified": user.is_verified,
+        },
+        "consent_records": [
+            {
+                "consent_type": c.consent_type,
+                "policy_version": c.policy_version,
+                "ip_address": c.ip_address,
+                "accepted_at": c.accepted_at,
+            }
+            for c in user.consent_records.all()
+        ],
+        "notifications": [
+            {
+                "category": n.category,
+                "title": n.title,
+                "body": n.body,
+                "is_read": n.is_read,
+                "created_at": n.created_at,
+            }
+            for n in user.notifications.all()
+        ],
+    }
+
+    if hasattr(user, "customer_profile"):
+        profile = user.customer_profile
+        data["customer_profile"] = {
+            "company": profile.company,
+            "phone": profile.phone,
+            "address": profile.address,
+            "plan": profile.plan,
+            "gstin": profile.gstin,
+            "created_at": profile.created_at,
+        }
+        data["tickets"] = [
+            {
+                "ticket_number": t.ticket_number,
+                "title": t.title,
+                "service_type": t.service_type,
+                "severity": t.severity,
+                "status": t.status,
+                "created_at": t.created_at,
+                "resolved_at": t.resolved_at,
+            }
+            for t in Ticket.objects.filter(customer=profile)
+        ]
+        data["comments_authored"] = [
+            {
+                "ticket_number": c.ticket.ticket_number,
+                "body": c.body,
+                "created_at": c.created_at,
+            }
+            for c in TicketComment.objects.filter(author=user, is_internal=False)
+        ]
+        data["payments"] = [
+            {
+                "invoice_number": p.invoice_number,
+                "payment_type": p.payment_type,
+                "amount": p.amount,
+                "gst_amount": p.gst_amount,
+                "currency": p.currency,
+                "status": p.status,
+                "created_at": p.created_at,
+            }
+            for p in Payment.objects.filter(customer=profile)
+        ]
+        data["subscriptions"] = [
+            {
+                "plan": s.plan,
+                "billing_cycle": s.billing_cycle,
+                "status": s.status,
+                "started_at": s.started_at,
+                "expires_at": s.expires_at,
+            }
+            for s in Subscription.objects.filter(customer=profile)
+        ]
+    elif hasattr(user, "freelancer_profile"):
+        profile = user.freelancer_profile
+        data["freelancer_profile"] = {
+            "skills": profile.skills,
+            "availability": profile.availability,
+            "rating": profile.rating,
+            "onboarding_status": profile.onboarding_status,
+            "contract_signed": profile.contract_signed,
+            "created_at": profile.created_at,
+            # payout_details deliberately excluded — never exposed via any API (H-05).
+        }
+        data["assigned_tickets"] = [
+            {
+                "ticket_number": t.ticket_number,
+                "title": t.title,
+                "service_type": t.service_type,
+                "status": t.status,
+                "created_at": t.created_at,
+                "resolved_at": t.resolved_at,
+            }
+            for t in Ticket.objects.filter(assigned_to=profile)
+        ]
+        data["comments_authored"] = [
+            {
+                "ticket_number": c.ticket.ticket_number,
+                "body": c.body,
+                "created_at": c.created_at,
+            }
+            for c in TicketComment.objects.filter(author=user, is_internal=False)
+        ]
+        data["payouts"] = [
+            {
+                "ticket_number": p.ticket.ticket_number,
+                "resolution_fee": p.resolution_fee,
+                "engineer_share": p.engineer_share,
+                "status": p.status,
+                "created_at": p.created_at,
+                "processed_at": p.processed_at,
+            }
+            for p in Payout.objects.filter(freelancer=profile)
+        ]
+
+    body = json.dumps(data, cls=DjangoJSONEncoder, indent=2)
+    filename = f"resolvehq-data-export-{timezone.now().date().isoformat()}.json"
+    response = HttpResponse(body, content_type="application/json")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def request_account_deletion(request):
+    """
+    POST /api/auth/deletion-request/
+    Body: { "current_password": "..." }
+
+    Starts the DPDP Act 2023 right-to-erasure grace period. The account
+    stays fully usable for ACCOUNT_DELETION_GRACE_PERIOD_DAYS (default 30);
+    the user can self-service-cancel any time before then via
+    /api/auth/deletion-request/cancel/. After the grace period, the
+    scheduled tasks.anonymize_pending_deletions Celery Beat job scrubs PII
+    in place — see services/anonymization_service.py for why this can
+    never be a hard row delete.
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from .services.audit_service import log_action
+
+    user = request.user
+    if user.deletion_requested_at:
+        return Response(
+            {"detail": "Account deletion has already been requested."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    current_password = request.data.get("current_password", "")
+    if not user.check_password(current_password):
+        return Response(
+            {"detail": "Current password is incorrect."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user.deletion_requested_at = timezone.now()
+    user.save(update_fields=["deletion_requested_at"])
+
+    grace_days = settings.ACCOUNT_DELETION_GRACE_PERIOD_DAYS
+    scheduled_for = user.deletion_requested_at + timedelta(days=grace_days)
+
+    from .tasks import send_deletion_requested_email
+    user_id = str(user.id)
+    transaction.on_commit(lambda: send_deletion_requested_email.delay(user_id))
+
+    log_action(
+        user=user, entity="user", action="deletion_requested",
+        entity_id=user.pk, request=request,
+    )
+
+    return Response({
+        "detail": "Account deletion requested.",
+        "deletion_requested_at": user.deletion_requested_at,
+        "scheduled_for": scheduled_for,
+    })
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def cancel_account_deletion(request):
+    """
+    POST /api/auth/deletion-request/cancel/
+    Cancels a pending deletion request started via request_account_deletion,
+    as long as the grace period hasn't already been processed.
+    """
+    from .services.audit_service import log_action
+
+    user = request.user
+    if not user.deletion_requested_at:
+        return Response(
+            {"detail": "No pending deletion request to cancel."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user.deletion_requested_at = None
+    user.save(update_fields=["deletion_requested_at"])
+
+    from .tasks import send_deletion_cancelled_email
+    user_id = str(user.id)
+    transaction.on_commit(lambda: send_deletion_cancelled_email.delay(user_id))
+
+    log_action(
+        user=user, entity="user", action="deletion_cancelled",
+        entity_id=user.pk, request=request,
+    )
+
+    return Response({"detail": "Account deletion cancelled."})
 
 
 # ── Analytics ────────────────────────────────────────────────────

@@ -227,3 +227,11 @@ export function TrashIcon({ className = base }) {
     </svg>
   );
 }
+
+export function ShieldCheckIcon({ className = base }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 4.556-3.06 8.397-7.24 9.582a1.5 1.5 0 01-.52 0C8.06 20.397 5 16.556 5 12V6.741a1.5 1.5 0 01.826-1.342l6-3a1.5 1.5 0 011.348 0l6 3A1.5 1.5 0 0121 6.74V12z" />
+    </svg>
+  );
+}

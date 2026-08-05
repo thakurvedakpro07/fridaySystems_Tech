@@ -101,8 +101,8 @@ export default function PrivacyPage() {
 
             <Section id="data-retention" title="5. Data Retention">
               <p>We retain your data for as long as your account is active and for a period of 7 years thereafter to comply with Indian tax and financial regulations (GST invoice records).</p>
-              <p>If you request account deletion, we will delete your personal profile data within 30 days. Billing records and transaction logs are retained for 7 years as required by law.</p>
-              <p>To request account deletion, contact <a href={CONTACT.supportMailto} className="text-indigo-600 hover:underline">{CONTACT.supportEmail}</a>.</p>
+              <p>If you request account deletion, your account stays active for a 30-day grace period (so you can change your mind), after which your personal data is permanently anonymized. Billing records and transaction logs are retained in anonymized form for 7 years as required by law.</p>
+              <p>If you're signed in, you can request deletion yourself any time from Settings &rarr; Privacy &amp; Data. If you're unable to sign in, contact <a href={CONTACT.supportMailto} className="text-indigo-600 hover:underline">{CONTACT.supportEmail}</a>.</p>
             </Section>
 
             <Section id="cookies" title="6. Cookies">
@@ -115,24 +115,25 @@ export default function PrivacyPage() {
             </Section>
 
             <Section id="your-rights" title="7. Your Rights">
-              <p>Under applicable Indian data protection law and our policies, you have the right to:</p>
+              <p>Under India's Digital Personal Data Protection Act, 2023 and our policies, you have the right to:</p>
               <ul className="list-disc pl-5 space-y-1.5">
-                <li><strong className="font-semibold text-slate-800">Access:</strong> Request a copy of the personal data we hold about you</li>
+                <li><strong className="font-semibold text-slate-800">Access:</strong> View the personal data we hold about you from Settings, or download a full machine-readable copy from Settings &rarr; Privacy &amp; Data</li>
                 <li><strong className="font-semibold text-slate-800">Correction:</strong> Update inaccurate personal data via Settings or by contacting us</li>
-                <li><strong className="font-semibold text-slate-800">Deletion:</strong> Request deletion of your account and personal data (subject to legal retention requirements)</li>
-                <li><strong className="font-semibold text-slate-800">Portability:</strong> Request an export of your ticket and billing data in a machine-readable format</li>
-                <li><strong className="font-semibold text-slate-800">Complaint:</strong> Lodge a complaint with the appropriate data protection authority</li>
+                <li><strong className="font-semibold text-slate-800">Deletion:</strong> Request deletion of your account and personal data, self-service, from Settings &rarr; Privacy &amp; Data (subject to legal retention requirements — see "Data Retention" above)</li>
+                <li><strong className="font-semibold text-slate-800">Portability:</strong> Download an export of your ticket, comment, and billing data in a machine-readable (JSON) format from Settings &rarr; Privacy &amp; Data</li>
+                <li><strong className="font-semibold text-slate-800">Complaint:</strong> Lodge a complaint with our Data Protection Officer (below) or the Data Protection Board of India</li>
               </ul>
-              <p>To exercise any of these rights, email <a href={CONTACT.supportMailto} className="text-indigo-600 hover:underline">{CONTACT.supportEmail}</a>. We respond within 15 business days.</p>
+              <p>If you're unable to sign in to use these self-service tools, email <a href={CONTACT.supportMailto} className="text-indigo-600 hover:underline">{CONTACT.supportEmail}</a>. We respond within 15 business days.</p>
             </Section>
 
             <Section id="contact" title="8. Contact Us">
-              <p>For privacy-related questions or requests:</p>
+              <p>For privacy-related questions, requests, or complaints:</p>
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mt-2 space-y-1.5">
                 <p><strong className="font-semibold text-slate-800">Friday Tech Systems Pvt. Ltd.</strong></p>
                 <p>Bengaluru, Karnataka, India</p>
                 <p>Email: <a href={CONTACT.supportMailto} className="text-indigo-600 hover:underline">{CONTACT.supportEmail}</a></p>
                 <p>Phone: {CONTACT.tollFree} (Toll-free)</p>
+                <p>Data Protection Officer: <a href={CONTACT.supportMailto} className="text-indigo-600 hover:underline">{CONTACT.supportEmail}</a></p>
               </div>
               <p className="mt-3">We may update this Privacy Policy from time to time. Changes will be notified via email and the "Last updated" date above will be revised.</p>
             </Section>

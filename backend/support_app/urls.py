@@ -110,6 +110,11 @@ urlpatterns = [
     path("auth/profile/", views.user_profile, name="user-profile"),
     path("auth/change-password/", views.change_password, name="change-password"),
 
+    # ── DPDP Act 2023: Data Export & Right to Erasure ─────────────
+    path("auth/profile/export/", views.export_my_data, name="profile-export"),
+    path("auth/deletion-request/", views.request_account_deletion, name="deletion-request"),
+    path("auth/deletion-request/cancel/", views.cancel_account_deletion, name="deletion-request-cancel"),
+
     # ── Email Verification ────────────────────────────────────────
     path("auth/verify-email/", views.verify_email, name="verify-email"),
     path("auth/verify-email/resend/", views.resend_verification_email, name="verify-email-resend"),

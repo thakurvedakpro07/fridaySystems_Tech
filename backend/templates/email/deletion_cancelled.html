@@ -1,0 +1,9 @@
+{% extends "email/base.html" %}
+{% block subject %}Account deletion cancelled — ResolveHQ{% endblock %}
+{% block preheader %}Your account deletion request has been cancelled. Your account remains active as normal.{% endblock %}
+{% block content %}
+<h1>Account deletion cancelled</h1>
+<p>Hi {{ email }},</p>
+<p>Your pending account deletion request has been cancelled. Your ResolveHQ account remains active and nothing was changed or removed.</p>
+<p>If you didn't cancel this yourself, please contact us at <a href="mailto:{{ support_email }}" style="color:#5B5CEB;">{{ support_email }}</a>.</p>
+{% endblock %}

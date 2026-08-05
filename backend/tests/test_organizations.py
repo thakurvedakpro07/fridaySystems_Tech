@@ -70,7 +70,7 @@ def test_customer_registration_creates_organization_and_admin_membership():
     client = _client()
     resp = client.post("/api/auth/register/", {
         "email": "newcust@org.test", "password": "StrongPass123!", "password2": "StrongPass123!",
-        "company": "New Co", "role": "customer",
+        "company": "New Co", "role": "customer", "consent": True,
     }, format="json")
     assert resp.status_code == 201
 
@@ -88,7 +88,7 @@ def test_freelancer_registration_does_not_create_organization():
     client = _client()
     resp = client.post("/api/auth/register/", {
         "email": "newfreelancer@org.test", "password": "StrongPass123!", "password2": "StrongPass123!",
-        "role": "freelancer",
+        "role": "freelancer", "consent": True,
     }, format="json")
     assert resp.status_code == 201
     user = User.objects.get(email="newfreelancer@org.test")

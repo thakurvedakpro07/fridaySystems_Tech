@@ -292,6 +292,50 @@ def check_sla_breaches() -> None:
 
 
 @shared_task
+def anonymize_pending_deletions() -> None:
+    """
+    DPDP Act 2023 right to erasure — runs daily. Anonymizes any user whose
+    self-service deletion grace period (ACCOUNT_DELETION_GRACE_PERIOD_DAYS,
+    default 30) has elapsed. See services/anonymization_service.py for why
+    this scrubs PII in place rather than deleting the row.
+
+    Per-row try/except (unlike this module's other single-outer-try tasks):
+    this task loops over multiple independent users, so one bad row must not
+    abort the whole batch. A failed row simply retries on tomorrow's run,
+    since anonymized_at stays null until anonymize_user() actually succeeds.
+    """
+    from datetime import timedelta
+
+    from django.conf import settings
+    from django.contrib.auth import get_user_model
+    from django.utils import timezone
+
+    from .services import email_service
+    from .services.anonymization_service import anonymize_user
+    from .services.audit_service import log_action
+
+    User = get_user_model()
+    cutoff = timezone.now() - timedelta(days=settings.ACCOUNT_DELETION_GRACE_PERIOD_DAYS)
+    due_users = User.objects.filter(
+        deletion_requested_at__isnull=False,
+        deletion_requested_at__lte=cutoff,
+        anonymized_at__isnull=True,
+    )
+    for user in due_users:
+        try:
+            email_service.send_account_anonymized(user.email, user.first_name)
+            anonymize_user(user)
+            log_action(
+                user=None, entity="user", action="user_anonymized",
+                entity_id=user.pk, request=None,
+            )
+            logger.info("Anonymized user %s after deletion grace period elapsed", user.pk)
+        except Exception:
+            logger.exception("anonymize_pending_deletions failed for user %s", user.pk)
+            continue
+
+
+@shared_task
 def process_payout_batch() -> None:
     """
     Collect all closed tickets with unpaid freelancer payouts and

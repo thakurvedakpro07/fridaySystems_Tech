@@ -44,6 +44,7 @@ def test_register_creates_user_and_customer(client):
         "password2": "StrongPass123!",
         "company": "Acme Pvt Ltd",
         "phone": "+91 98765 43210",
+        "consent": True,
     }
     response = client.post("/api/auth/register/", payload, format="json")
 
@@ -86,6 +87,7 @@ def test_register_duplicate_email_returns_400(client):
         "password": "StrongPass123!",
         "password2": "StrongPass123!",
         "company": "Acme",
+        "consent": True,
     }
     # First registration succeeds
     r1 = client.post("/api/auth/register/", payload, format="json")
@@ -126,12 +128,14 @@ def test_register_duplicate_email_case_insensitive_returns_400(client):
         "email": "case@example.com",
         "password": "StrongPass123!",
         "password2": "StrongPass123!",
+        "consent": True,
     }, format="json")
 
     response = client.post("/api/auth/register/", {
         "email": "CASE@EXAMPLE.COM",
         "password": "StrongPass123!",
         "password2": "StrongPass123!",
+        "consent": True,
     }, format="json")
     assert response.status_code == 400
     errors = response.data.get("errors", response.data)
@@ -333,6 +337,7 @@ def test_register_returns_tokens_and_user(client):
         "password": "StrongPass123!",
         "password2": "StrongPass123!",
         "company": "Test Company",
+        "consent": True,
     }, format="json")
 
     assert response.status_code == 201
@@ -352,6 +357,7 @@ def test_register_mismatched_passwords_returns_400(db):
         "email": "mismatch@example.com",
         "password": "StrongPass123!",
         "password2": "DifferentPass456!",
+        "consent": True,
     }, format="json")
 
     assert response.status_code == 400
@@ -368,6 +374,7 @@ def test_register_missing_password2_returns_400(db):
     response = c.post("/api/auth/register/", {
         "email": "nopw2@example.com",
         "password": "StrongPass123!",
+        "consent": True,
     }, format="json")
 
     assert response.status_code == 400

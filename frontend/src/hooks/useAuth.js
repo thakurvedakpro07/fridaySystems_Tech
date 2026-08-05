@@ -44,11 +44,11 @@ export function useAuth() {
     }
   };
 
-  const registerUser = async ({ name = "", email, role = "customer", company = "", phone = "", password, password2, skills = "" }) => {
+  const registerUser = async ({ name = "", email, role = "customer", company = "", phone = "", password, password2, skills = "", consent = false }) => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await registerApi(name, email, role, company, phone, password, password2, skills);
+      const { data } = await registerApi(name, email, role, company, phone, password, password2, skills, consent);
       setTokens(data.access, data.refresh);
       setUser(data.user);
       toast("Account created! Welcome to ResolveHQ.", "success");

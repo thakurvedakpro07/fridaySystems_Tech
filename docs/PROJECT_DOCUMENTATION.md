@@ -1500,19 +1500,20 @@ The Digital Personal Data Protection Act 2023 governs how ResolveHQ handles pers
 - Collect only data necessary for the stated purpose (data minimisation)
 - Obtain explicit, informed consent at registration before collecting personal data
 - Allow data principals (users) to:
-  - Access their data: `GET /customers/me/`
-  - Correct their data: `PATCH /customers/me/`
-  - Request erasure: `DELETE /customers/me/` (30-day grace period)
+  - Access their data: `GET /api/auth/profile/` (also `GET /customers/me/` for the customer-specific subset)
+  - Correct their data: `PATCH /api/auth/profile/` (also `PATCH /customers/me/`)
+  - Export their data: `GET /api/auth/profile/export/` — full machine-readable (JSON) personal-data export, self-service via Settings → Privacy & Data. Covers both Customer and Freelancer roles.
+  - Request erasure: `POST /api/auth/deletion-request/` (self-service via Settings → Privacy & Data), `POST /api/auth/deletion-request/cancel/` to cancel within the grace period. 30-day grace period, then automatic anonymization (not hard deletion — `Payment`/`Payout`/`Subscription`/`Ticket` are `on_delete=PROTECT` against `Customer`/`Freelancer`, and GST law requires retaining invoice records; erasure scrubs PII fields in place instead, see `services/anonymization_service.py`). Covers both Customer and Freelancer roles.
 - Notify the Data Protection Board of India (DPBI) within 72 hours of a data breach
 - Appoint a Data Protection Officer (DPO) — required when processing large-scale personal data
 - Do not transfer personal data outside India without adequate safeguards
 
 **Implementation Checklist:**
-- [ ] Consent checkbox at registration (non-pre-checked, links to Privacy Policy)
-- [ ] Consent record stored with timestamp and IP address
-- [ ] Data deletion workflow implemented and tested
+- [x] Consent checkbox at registration (non-pre-checked, links to Privacy Policy) — password registration (`RegisterSerializer`) and Google OAuth first-time sign-up (`google_auth_view`), both roles
+- [x] Consent record stored with timestamp and IP address — `ConsentRecord` model, `policy_version` tied to `DPDP_POLICY_VERSION` setting
+- [x] Data deletion workflow implemented and tested — self-service request/cancel + daily `anonymize_pending_deletions` Celery Beat task; `backend/tests/test_dpdp_compliance.py`
 - [ ] Breach notification runbook documented
-- [ ] DPO contact published in Privacy Policy
+- [x] DPO contact published in Privacy Policy — currently routes to the general support email (`frontend/src/pages/PrivacyPage.jsx`); a dedicated DPO mailbox is a future follow-up, not a code gap
 
 ### GST Compliance
 

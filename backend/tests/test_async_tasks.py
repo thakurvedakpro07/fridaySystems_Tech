@@ -150,6 +150,7 @@ def test_register_view_queues_welcome_and_verification_emails(django_capture_on_
                 "password": "StrongPass123!",
                 "password2": "StrongPass123!",
                 "company": "New Co",
+                "consent": True,
             },
             format="json",
         )
