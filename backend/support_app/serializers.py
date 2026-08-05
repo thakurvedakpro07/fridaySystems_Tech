@@ -452,6 +452,12 @@ class CustomerTicketListSerializer(
     FreelancerTicketListSerializer — see ReplyOwnershipSignalsMixin and
     TicketListCreateView.get_queryset's use of
     services.ticket_signals.annotate_reply_ownership_signals.
+
+    requested_by: since this list can now include organization-mates'
+    tickets (TicketListCreateView.get_queryset), the frontend needs a way
+    to tell "my own ticket" from "a teammate's ticket" — email/name only,
+    matching the always-safe subset already exposed by TicketDetailSerializer's
+    `customer` field.
     """
     sla_status = serializers.SerializerMethodField()
     assigned_to = FreelancerPublicSerializer(read_only=True)
@@ -459,12 +465,24 @@ class CustomerTicketListSerializer(
     awaiting_engineer_reply = serializers.SerializerMethodField()
     waiting_on_internal = serializers.SerializerMethodField()
     last_public_comment_at = serializers.SerializerMethodField()
+    requested_by = serializers.SerializerMethodField()
+
+    def get_requested_by(self, obj):
+        u = obj.customer.user
+        if u.anonymized_at:
+            return {"email": "", "name": "Deleted User"}
+        first = u.first_name.strip()
+        last = u.last_name.strip()
+        return {
+            "email": u.email,
+            "name": f"{first} {last}".strip() or u.email.split("@")[0],
+        }
 
     class Meta(TicketListSerializer.Meta):
         fields = TicketListSerializer.Meta.fields + [
             "updated_at", "due_at", "first_response_due_at", "sla_status", "assigned_to",
             "waiting_on_customer", "awaiting_engineer_reply",
-            "waiting_on_internal", "last_public_comment_at",
+            "waiting_on_internal", "last_public_comment_at", "requested_by",
         ]
 
 
@@ -623,9 +641,18 @@ class TicketAttachmentSerializer(serializers.ModelSerializer):
     uploaded_by_email = serializers.EmailField(source="uploaded_by.email", read_only=True, allow_null=True)
 
     def get_file_url(self, obj):
+        # Points at the authenticated ticket_attachment_download view, NOT
+        # the raw storage path — obj.file.url would be a publicly-guessable
+        # /media/... URL bypassing every ticket-access check. See
+        # ticket_attachment_download in views.py.
         request = self.context.get("request")
         if obj.file and request:
-            return request.build_absolute_uri(obj.file.url)
+            from django.urls import reverse
+            path = reverse(
+                "ticket-attachment-download",
+                kwargs={"ticket_id": obj.ticket_id, "attachment_id": obj.id},
+            )
+            return request.build_absolute_uri(path)
         return obj.storage_url or None
 
     class Meta:

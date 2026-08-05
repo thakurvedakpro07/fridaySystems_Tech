@@ -3,7 +3,6 @@ Root URL configuration for ResolveHQ.
 
 Every URL in the project is listed here (or included from an app).
 """
-from django.conf import settings
 from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import include, path
@@ -27,7 +26,8 @@ urlpatterns = [
     path("metrics/", staff_member_required(prometheus_exports.ExportToDjangoView), name="prometheus-metrics"),
 ]
 
-# Serve uploaded media files in development
-if settings.DEBUG:
-    from django.conf.urls.static import static
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# NOTE: MEDIA_URL is deliberately NOT served here, even in DEBUG. Every file
+# under MEDIA_ROOT is a ticket attachment, which must go through
+# ticket_attachment_download (support_app/views.py) so ticket-ownership
+# rules apply consistently in dev and prod — a bare static() route here
+# would let anyone with a guessed URL bypass that check entirely.

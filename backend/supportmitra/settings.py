@@ -181,6 +181,14 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "mediafiles"
 
+# /media/ is NOT served publicly (nginx marks it `internal;` in prod; there is
+# no dev static() route for it either — see supportmitra/urls.py). All file
+# reads go through ticket_attachment_download, which enforces the same
+# ticket-ownership rules as every other ticket endpoint. When true, that view
+# hands the actual byte-streaming off to nginx via X-Accel-Redirect instead
+# of streaming through the Django/gunicorn worker itself.
+USE_X_ACCEL_REDIRECT = os.getenv("USE_X_ACCEL_REDIRECT", "false").lower() == "true"
+
 # ── Custom User Model ─────────────────────────────────────────────
 # CRITICAL: must be set before the first migration.
 # Tells Django to use support_app.CustomUser instead of auth.User everywhere:

@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { addComment } from "../api/tickets";
 import { uploadAttachment, deleteAttachment } from "../api/attachments";
+import { openAttachment } from "../utils/attachmentDownload";
 import { useConversationFeed } from "../hooks/useConversationFeed";
 import { useRoleTicketFetcher } from "../hooks/useRoleTicketFetcher";
 import { useRoles } from "../hooks/useRoles";
@@ -184,9 +185,21 @@ function AttachmentsSection({ ticketId, attachments, loading, onUploaded, onDele
   const toast = useToast();
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [openingId, setOpeningId] = useState(null);
   const [isDraggingOver, setDraggingOver] = useState(false);
   const dragCounter = useRef(0);
   const fileInputRef = useRef(null);
+
+  const handleView = async (attachment) => {
+    setOpeningId(attachment.id);
+    try {
+      await openAttachment(ticketId, attachment);
+    } catch {
+      toast("Could not open attachment.", "error");
+    } finally {
+      setOpeningId(null);
+    }
+  };
 
   const uploadFile = async (file) => {
     if (!file) return;
@@ -293,11 +306,14 @@ function AttachmentsSection({ ticketId, attachments, loading, onUploaded, onDele
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  {a.file_url && (
-                    <a href={a.file_url} target="_blank" rel="noreferrer" className="text-xs font-medium text-indigo-600 hover:text-indigo-700">
-                      View
-                    </a>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleView(a)}
+                    disabled={openingId === a.id}
+                    className="text-xs font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+                  >
+                    {openingId === a.id ? "Opening…" : "View"}
+                  </button>
                   <button
                     onClick={() => handleDelete(a.id, a.file_name)}
                     disabled={deletingId === a.id}

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import Badge from "../ui/Badge";
 import SLABadge from "../dashboard/SLABadge";
+import { useAuthStore } from "../../store/authStore";
 
 function humanize(str) {
   if (!str) return "";
@@ -19,6 +20,7 @@ const WAITING_STATE_CHIPS = [
 ];
 
 export default function TicketCard({ ticket, reasonLabel }) {
+  const currentUser = useAuthStore((s) => s.user);
   const createdAt = new Date(ticket.created_at).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
@@ -26,6 +28,11 @@ export default function TicketCard({ ticket, reasonLabel }) {
   });
 
   const waitingChip = WAITING_STATE_CHIPS.find((c) => ticket[c.key]);
+  // requested_by only appears on CustomerTicketListSerializer — a customer's
+  // ticket list can now include organization-mates' tickets, not just their
+  // own, so this distinguishes the two. Absent on every other serializer
+  // (freelancer/ops queues), so this stays a no-op there.
+  const isOrgMateTicket = ticket.requested_by && ticket.requested_by.email !== currentUser?.email;
 
   return (
     <Link
@@ -50,6 +57,13 @@ export default function TicketCard({ ticket, reasonLabel }) {
 
           {/* Service type */}
           <p className="text-xs text-slate-500 mt-1">{humanize(ticket.service_type)}</p>
+
+          {/* Requested by — only shown for an organization-mate's ticket */}
+          {isOrgMateTicket && (
+            <p className="text-[11px] text-indigo-600 font-medium mt-1">
+              Requested by {ticket.requested_by.name}
+            </p>
+          )}
 
           {/* Waiting-state chip + optional reason (Engineer Workspace only) */}
           {(waitingChip || reasonLabel) && (

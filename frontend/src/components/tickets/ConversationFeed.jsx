@@ -9,10 +9,12 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { addComment } from "../../api/tickets";
-import { deleteAttachment, uploadAttachment } from "../../api/attachments";
+import { deleteAttachment, downloadAttachment, uploadAttachment } from "../../api/attachments";
 import { useToast } from "../../context/ToastContext";
 import { useAuthStore } from "../../store/authStore";
 import { formatAbsoluteTime, formatRelativeTime } from "../../utils/time";
+import { openAttachment } from "../../utils/attachmentDownload";
+import useAttachmentBlobUrl from "../../hooks/useAttachmentBlobUrl";
 import Spinner from "../ui/Spinner";
 import Badge from "../ui/Badge";
 import FileTypeBadge from "../ui/FileTypeBadge";
@@ -184,17 +186,26 @@ function FeedCommentBubble({ comment, ticket, currentUser }) {
   );
 }
 
-function AttachmentActions({ attachment, canDelete, deleting, onDelete, light }) {
+function AttachmentActions({ ticketId, attachment, canDelete, deleting, onDelete, light }) {
+  const [opening, setOpening] = useState(false);
+  const handleView = async () => {
+    setOpening(true);
+    try {
+      await openAttachment(ticketId, attachment);
+    } finally {
+      setOpening(false);
+    }
+  };
   return (
     <div className="flex items-center gap-3 shrink-0">
-      {attachment.file_url && (
-        <a
-          href={attachment.file_url} target="_blank" rel="noreferrer"
-          className={`text-xs font-medium ${light ? "text-slate-200 hover:text-white" : "text-brand-600 hover:text-brand-700"}`}
-        >
-          View
-        </a>
-      )}
+      <button
+        type="button"
+        onClick={handleView}
+        disabled={opening}
+        className={`text-xs font-medium disabled:opacity-50 ${light ? "text-slate-200 hover:text-white" : "text-brand-600 hover:text-brand-700"}`}
+      >
+        {opening ? "Opening…" : "View"}
+      </button>
       {canDelete && (
         <button
           onClick={onDelete} disabled={deleting}
@@ -207,7 +218,7 @@ function AttachmentActions({ attachment, canDelete, deleting, onDelete, light })
   );
 }
 
-function FeedAttachmentCard({ attachment, ticket, canDelete, onDelete }) {
+function FeedAttachmentCard({ ticketId, attachment, ticket, canDelete, onDelete }) {
   const [deleting, setDeleting] = useState(false);
   const [textPreview, setTextPreview] = useState(null); // null = loading, false = unavailable, string = content
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -217,17 +228,22 @@ function FeedAttachmentCard({ attachment, ticket, canDelete, onDelete }) {
   const isImage = attachment.mime_type?.startsWith("image/");
   const isTextLike = attachment.mime_type?.startsWith("text/") && !isImage;
 
+  // Images need an eager blob: URL for inline <img>/lightbox rendering — a
+  // plain <img src="..."> can't attach the auth header the download
+  // endpoint requires. Non-image files stay lazy (fetched on "View" click).
+  const { blobUrl: imageBlobUrl } = useAttachmentBlobUrl(ticketId, attachment, isImage);
+
   useEffect(() => {
-    if (!isTextLike || !attachment.file_url) return;
+    if (!isTextLike) return undefined;
     let cancelled = false;
-    fetch(attachment.file_url)
-      .then((r) => (r.ok ? r.text() : Promise.reject()))
+    downloadAttachment(ticketId, attachment.id)
+      .then(({ data }) => data.text())
       .then((content) => {
         if (!cancelled) setTextPreview(content.split("\n").slice(0, 8).join("\n"));
       })
       .catch(() => { if (!cancelled) setTextPreview(false); });
     return () => { cancelled = true; };
-  }, [isTextLike, attachment.file_url]);
+  }, [isTextLike, ticketId, attachment.id]);
 
   const handleDelete = async () => {
     if (!window.confirm(`Delete "${attachment.file_name}"?`)) return;
@@ -255,22 +271,28 @@ function FeedAttachmentCard({ attachment, ticket, canDelete, onDelete }) {
           <div className="rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-white">
             <button
               type="button"
-              onClick={() => setLightboxOpen(true)}
+              onClick={() => imageBlobUrl && setLightboxOpen(true)}
               className="block w-full cursor-zoom-in"
               aria-label={`View ${attachment.file_name} full size`}
             >
-              <img
-                src={attachment.file_url} alt={attachment.file_name}
-                className="max-h-64 max-w-full object-contain bg-slate-50 block mx-auto"
-              />
+              {imageBlobUrl ? (
+                <img
+                  src={imageBlobUrl} alt={attachment.file_name}
+                  className="max-h-64 max-w-full object-contain bg-slate-50 block mx-auto"
+                />
+              ) : (
+                <div className="h-32 flex items-center justify-center bg-slate-50">
+                  <Spinner size="sm" />
+                </div>
+              )}
             </button>
             <div className="flex items-center justify-between gap-3 px-3 py-2 border-t border-slate-100">
               <p className="text-xs font-medium text-slate-700 truncate">{attachment.file_name}</p>
-              <AttachmentActions attachment={attachment} canDelete={canDelete} deleting={deleting} onDelete={handleDelete} />
+              <AttachmentActions ticketId={ticketId} attachment={attachment} canDelete={canDelete} deleting={deleting} onDelete={handleDelete} />
             </div>
-            {lightboxOpen && (
+            {lightboxOpen && imageBlobUrl && (
               <ImageLightbox
-                src={attachment.file_url}
+                src={imageBlobUrl}
                 alt={attachment.file_name}
                 onClose={() => setLightboxOpen(false)}
               />
@@ -280,7 +302,7 @@ function FeedAttachmentCard({ attachment, ticket, canDelete, onDelete }) {
           <div className="w-full rounded-xl border border-slate-700 bg-slate-900 overflow-hidden shadow-sm">
             <div className="flex items-center justify-between gap-3 px-3 py-2 bg-slate-800/70 border-b border-slate-700/60">
               <span className="text-xs font-medium text-slate-200 truncate">{attachment.file_name}</span>
-              <AttachmentActions attachment={attachment} canDelete={canDelete} deleting={deleting} onDelete={handleDelete} light />
+              <AttachmentActions ticketId={ticketId} attachment={attachment} canDelete={canDelete} deleting={deleting} onDelete={handleDelete} light />
             </div>
             <pre className="text-[11.5px] font-mono text-slate-300 px-3 py-2.5 overflow-x-auto max-h-40 whitespace-pre">
               {textPreview}
@@ -293,7 +315,7 @@ function FeedAttachmentCard({ attachment, ticket, canDelete, onDelete }) {
               <p className="text-sm font-medium text-slate-800 truncate">{attachment.file_name}</p>
               {meta}
             </div>
-            <AttachmentActions attachment={attachment} canDelete={canDelete} deleting={deleting} onDelete={handleDelete} />
+            <AttachmentActions ticketId={ticketId} attachment={attachment} canDelete={canDelete} deleting={deleting} onDelete={handleDelete} />
           </div>
         )}
       </div>
@@ -358,6 +380,7 @@ function FeedActivityDivider({ entry, currentUser }) {
 export default function ConversationFeed({
   ticketId, ticket, items, loading, error, refetch,
   draftMessage, onDraftChange, composerId = "conversation-composer", role = "customer",
+  canReply = true,
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading]   = useState(false);
@@ -528,6 +551,7 @@ export default function ConversationFeed({
             node = (
               <FeedAttachmentCard
                 key={`a-${item.id}`}
+                ticketId={ticketId}
                 attachment={item}
                 ticket={ticket}
                 canDelete={user?.is_staff || item.uploaded_by_email === user?.email}
@@ -547,6 +571,11 @@ export default function ConversationFeed({
         })}
       </div>
 
+      {!canReply ? (
+        <div className="border-t border-slate-100 p-4 text-center text-xs text-slate-400">
+          Only the ticket requester can reply or attach files here.
+        </div>
+      ) : (
       <form
         onSubmit={handleSend}
         onDragEnter={handleDragEnter}
@@ -640,6 +669,7 @@ export default function ConversationFeed({
           </button>
         </div>
       </form>
+      )}
     </div>
   );
 }

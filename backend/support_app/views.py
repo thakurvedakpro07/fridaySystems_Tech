@@ -619,9 +619,16 @@ class TicketListCreateView(generics.ListCreateAPIView):
         return CustomerTicketListSerializer
 
     def get_queryset(self):
-        qs = Ticket.objects.filter(
-            customer=self.request.user.customer_profile
-        ).select_related("customer__user", "assigned_to__user")
+        from django.db.models import Q
+        profile = self.request.user.customer_profile
+        # Own tickets, plus (if the customer belongs to an Organization) every
+        # other ticket raised by a teammate in that same Organization — a
+        # customer with no organization keeps exactly the old own-tickets-only
+        # behaviour. See _get_ticket_for_user for the matching single-ticket rule.
+        org_q = Q(customer=profile)
+        if profile.organization_id:
+            org_q |= Q(customer__organization_id=profile.organization_id)
+        qs = Ticket.objects.filter(org_q).select_related("customer__user", "assigned_to__user")
 
         status_filter = self.request.query_params.get("status")
         if status_filter:
@@ -672,13 +679,17 @@ class TicketDetailView(generics.RetrieveUpdateAPIView):
     GET   /api/tickets/{id}/  — get ticket detail
     PATCH /api/tickets/{id}/  — customer updates description/notes before assignment
 
-    Read access: ticket owner, any internal staff role (support_agent, ops, finance, admin).
-    Write access (PATCH): ticket owner and super admin only.
+    Read access: ticket owner, any customer in the same Organization as the
+    owner, any internal staff role (support_agent, ops, finance, admin).
+    Write access (PATCH): ticket owner and super admin only — organization
+    membership never grants write access (enforced by IsOwnerOrStaff's
+    method-aware has_object_permission, not by this queryset).
     """
     serializer_class = TicketDetailSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrStaff]
 
     def get_queryset(self):
+        from django.db.models import Q
         from .services.ticket_signals import annotate_reply_ownership_signals
         qs = annotate_reply_ownership_signals(
             Ticket.objects.select_related("customer__user", "assigned_to__user")
@@ -689,7 +700,11 @@ class TicketDetailView(generics.RetrieveUpdateAPIView):
         if hasattr(user, "freelancer_profile"):
             return qs.filter(assigned_to=user.freelancer_profile)
         if hasattr(user, "customer_profile"):
-            return qs.filter(customer=user.customer_profile)
+            profile = user.customer_profile
+            org_q = Q(customer=profile)
+            if profile.organization_id:
+                org_q |= Q(customer__organization_id=profile.organization_id)
+            return qs.filter(org_q)
         raise PermissionDenied()
 
     def update(self, request, *args, **kwargs):
@@ -721,28 +736,18 @@ class TicketCommentListCreateView(generics.ListCreateAPIView):
 
     def _get_ticket(self):
         """
-        Fetch the ticket and enforce ownership, cached on the view instance
-        so get_queryset() and perform_create() share the same DB lookup.
+        Fetch the ticket and enforce ownership via the shared
+        _get_ticket_for_user helper, cached on the view instance so
+        get_queryset() and perform_create() share the same DB lookup.
+        Listing (GET) follows the ticket's organization-wide read scope;
+        posting a comment (POST) requires literal ticket ownership.
         """
         if not hasattr(self, "_cached_ticket"):
-            user = self.request.user
-            if user.is_staff or is_internal_staff(user):
-                ticket = get_object_or_404(Ticket, pk=self.kwargs["ticket_id"])
-            elif hasattr(user, "freelancer_profile"):
-                ticket = get_object_or_404(
-                    Ticket,
-                    pk=self.kwargs["ticket_id"],
-                    assigned_to=user.freelancer_profile,
-                )
-            elif hasattr(user, "customer_profile"):
-                ticket = get_object_or_404(
-                    Ticket,
-                    pk=self.kwargs["ticket_id"],
-                    customer=user.customer_profile,
-                )
-            else:
-                raise PermissionDenied()
-            self._cached_ticket = ticket
+            self._cached_ticket = _get_ticket_for_user(
+                self.request.user,
+                self.kwargs["ticket_id"],
+                require_write=(self.request.method == "POST"),
+            )
         return self._cached_ticket
 
     def get_queryset(self):
@@ -783,31 +788,16 @@ class TicketActivityLogListView(generics.ListAPIView):
     Returns the chronological event timeline for a ticket.
     This is the "history" view shown in the ticket detail page.
 
-    Visibility rules:
+    Visibility rules (see _get_ticket_for_user, the shared source of truth):
       - Super Admin / internal staff (ops, finance, support): all tickets
-      - Customer: only own tickets
+      - Customer: own tickets, plus teammates' tickets in the same Organization
       - Freelancer: only their currently-assigned tickets
     """
     serializer_class = TicketActivityLogSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        ticket_id = self.kwargs["ticket_id"]
-
-        if user.is_staff or is_internal_staff(user):
-            ticket = get_object_or_404(Ticket, pk=ticket_id)
-        elif hasattr(user, "freelancer_profile"):
-            ticket = get_object_or_404(
-                Ticket, pk=ticket_id, assigned_to=user.freelancer_profile
-            )
-        elif hasattr(user, "customer_profile"):
-            ticket = get_object_or_404(
-                Ticket, pk=ticket_id, customer=user.customer_profile
-            )
-        else:
-            raise PermissionDenied()
-
+        ticket = _get_ticket_for_user(self.request.user, self.kwargs["ticket_id"])
         return TicketActivityLog.objects.filter(ticket=ticket).select_related("actor").order_by("created_at")
 
 
@@ -1996,14 +1986,33 @@ _BLOCKED_EXTENSIONS = {
 }
 
 
-def _get_ticket_for_user(user, ticket_id):
-    """Return the ticket if the user is allowed to access it, or raise 404."""
+def _get_ticket_for_user(user, ticket_id, require_write=False):
+    """Return the ticket if the user is allowed to access it, or raise 404.
+
+    This is the single source of truth for ticket-level object access —
+    every ticket sub-resource view (comments, attachments, activity log,
+    KB links) should call this rather than re-deriving the same branching.
+
+    require_write=True is the strict, literal-ownership check (used for
+    any endpoint that creates/modifies/deletes something on the ticket:
+    posting a comment, uploading an attachment, etc.). require_write=False
+    (the default) additionally allows a customer to read a ticket owned by
+    a different Customer in the same Organization — organization
+    membership grants read visibility only, never write access.
+    """
     if user.is_staff or is_internal_staff(user):
         return get_object_or_404(Ticket, pk=ticket_id)
     if hasattr(user, "freelancer_profile"):
         return get_object_or_404(Ticket, pk=ticket_id, assigned_to=user.freelancer_profile)
     if hasattr(user, "customer_profile"):
-        return get_object_or_404(Ticket, pk=ticket_id, customer=user.customer_profile)
+        profile = user.customer_profile
+        if require_write or not profile.organization_id:
+            return get_object_or_404(Ticket, pk=ticket_id, customer=profile)
+        from django.db.models import Q
+        qs = Ticket.objects.filter(
+            Q(customer=profile) | Q(customer__organization_id=profile.organization_id)
+        )
+        return get_object_or_404(qs, pk=ticket_id)
     raise PermissionDenied()
 
 
@@ -2013,8 +2022,12 @@ def ticket_attachments(request, ticket_id):
     """
     GET  /api/tickets/{id}/attachments/  — list all attachments
     POST /api/tickets/{id}/attachments/  — upload a new attachment (multipart)
+
+    Listing follows the ticket's read scope (organization-wide for
+    customers); uploading requires literal ticket ownership — an org-mate
+    can see a colleague's attachments but cannot add new ones.
     """
-    ticket = _get_ticket_for_user(request.user, ticket_id)
+    ticket = _get_ticket_for_user(request.user, ticket_id, require_write=(request.method == "POST"))
 
     if request.method == "GET":
         qs = TicketAttachment.objects.filter(ticket=ticket).select_related("uploaded_by")
@@ -2090,6 +2103,52 @@ def ticket_attachment_delete(request, ticket_id, attachment_id):
         attachment.file.delete(save=False)
     attachment.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def ticket_attachment_download(request, ticket_id, attachment_id):
+    """
+    GET /api/tickets/{ticket_id}/attachments/{attachment_id}/download/
+
+    Streams the actual file bytes. This is the ONLY authorized way to read
+    an attachment's contents — unlike the old raw /media/... URL it used
+    to expose, this endpoint goes through the exact same _get_ticket_for_user
+    check as every other ticket sub-resource (staff: any ticket; freelancer:
+    assigned tickets; customer: own ticket or same-organization ticket).
+
+    In production, nginx serves /media/ as `internal;` (unreachable directly
+    by a client) and this view hands the actual byte-streaming off to nginx
+    via X-Accel-Redirect so a Django/gunicorn worker isn't tied up for the
+    duration of a large download. In dev (no nginx in front, no
+    USE_X_ACCEL_REDIRECT setting), it streams the file directly.
+    """
+    ticket = _get_ticket_for_user(request.user, ticket_id)
+    attachment = get_object_or_404(TicketAttachment, pk=attachment_id, ticket=ticket)
+
+    if not attachment.file:
+        from django.http import Http404
+        raise Http404("This attachment has no downloadable file.")
+
+    content_type = attachment.mime_type or "application/octet-stream"
+    disposition = f'attachment; filename="{attachment.file_name}"'
+
+    if getattr(settings, "USE_X_ACCEL_REDIRECT", False):
+        from django.http import HttpResponse
+        response = HttpResponse(status=200)
+        response["Content-Type"] = content_type
+        response["Content-Disposition"] = disposition
+        response["X-Accel-Redirect"] = f"/media/{attachment.file.name}"
+        return response
+
+    from django.http import FileResponse
+    response = FileResponse(
+        attachment.file.open("rb"),
+        content_type=content_type,
+        as_attachment=True,
+        filename=attachment.file_name,
+    )
+    return response
 
 
 # ── Related Tickets ─────────────────────────────────────────────

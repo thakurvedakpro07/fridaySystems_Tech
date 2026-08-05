@@ -113,6 +113,22 @@ def is_organization_admin(user, organization) -> bool:
     return bool(membership and membership.role == "org_admin")
 
 
+def customer_in_same_organization(user, other_customer) -> bool:
+    """True if `user`'s own Customer profile shares a non-null organization
+    with `other_customer` (a Customer instance, e.g. ticket.customer).
+
+    This grants READ visibility only (org-wide ticket/comment/attachment/
+    activity-log access) — it is never used to gate writes. A customer with
+    no organization (organization_id=None) always returns False here, so
+    legacy/unaffiliated accounts keep exactly their pre-Organizations
+    behaviour (own tickets only).
+    """
+    profile = getattr(user, "customer_profile", None)
+    if profile is None or profile.organization_id is None or other_customer is None:
+        return False
+    return other_customer.organization_id == profile.organization_id
+
+
 # ── Permission classes ────────────────────────────────────────────
 
 class IsAdminUser(BasePermission):
@@ -291,14 +307,25 @@ class IsOwnerOrStaff(BasePermission):
     Object-level permission.
     The object's owner OR any internal staff role can access it.
     Finance Managers and Support Agents need read access to ticket details.
+
+    Safe methods (GET/HEAD/OPTIONS) additionally allow a customer whose
+    organization matches the object's owning customer's organization — this
+    is the sole route through which organization-wide ticket *read* access
+    is granted. Unsafe methods (PATCH) deliberately do NOT get this
+    extension: only the literal owner or internal staff may write, so an
+    org-mate can view a colleague's ticket but never edit it.
     """
     message = "You do not have permission to access this resource."
 
     def has_object_permission(self, request, view, obj):
         if is_internal_staff(request.user):
             return True
-        if hasattr(obj, "customer"):
-            return obj.customer.user == request.user
+        if not hasattr(obj, "customer"):
+            return False
+        if obj.customer.user == request.user:
+            return True
+        if request.method in SAFE_METHODS:
+            return customer_in_same_organization(request.user, obj.customer)
         return False
 
 

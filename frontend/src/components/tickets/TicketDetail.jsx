@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useConversationFeed } from "../../hooks/useConversationFeed";
 import { useCountdown } from "../../hooks/useCountdown";
 import { useRoles } from "../../hooks/useRoles";
+import { useAuthStore } from "../../store/authStore";
 import ConversationFeed from "./ConversationFeed";
 import TicketSLAPanel from "./TicketSLAPanel";
 import ResolutionPanel from "./ResolutionPanel";
@@ -536,7 +537,7 @@ function CommIcon({ method }) {
 // how Jira Service Management / Zendesk / Freshservice lay out ticket
 // sidebars, and each fact still appears exactly once across the stack.
 function TicketSummarySidebar({
-  ticket, role, isPendingPayment, onOpenChat, handleUpdate,
+  ticket, role, isOwnTicket, isPendingPayment, onOpenChat, handleUpdate,
   draftMessage, onDraftChange, onFeedRefresh, composerId,
 }) {
   const assignedTo = ticket.assigned_to;
@@ -547,7 +548,11 @@ function TicketSummarySidebar({
   // collapse to one string at that layer) — AdminTicketActions itself narrows
   // further via useRoles().isTicketManagementStaff so Finance Manager still sees
   // no ticket-management actions despite sharing this string.
-  const showQuickActions = role === "customer" || role === "freelancer" || role === "admin" || role === "support_agent";
+  // A customer viewing an organization-mate's ticket (isOwnTicket=false) only
+  // ever gets read access — Reply/Add File are for the requester only, so the
+  // whole customer Quick Actions block is skipped for them.
+  const showQuickActions =
+    (role === "customer" && isOwnTicket) || role === "freelancer" || role === "admin" || role === "support_agent";
   // Same condition that used to gate the standalone "Contact Preferences"
   // card: customer only, once an engineer is assigned and past the
   // pending-payment/open stages.
@@ -822,11 +827,19 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
   const [draftMessage, setDraftMessage] = useState("");
   const handleUpdate = onUpdate ?? (() => {});
   const feed = useConversationFeed(ticket?.id);
+  const authUser = useAuthStore((s) => s.user);
 
   if (!ticket) return null;
 
+  // Organization-wide visibility (backend) means a customer's ticket list/
+  // detail can now include a teammate's ticket, not just their own — every
+  // write action (reply, upload, pay, accept/reject, CSAT) stays restricted
+  // to the literal requester. Only meaningful for role==="customer"; other
+  // roles have their own unrelated ownership rules (assigned_to, staff-wide).
+  const isOwnTicket = role !== "customer" || !ticket.customer?.email || ticket.customer.email === authUser?.email;
+
   const isPendingPayment = role === "customer" && ticket.status === "pending_payment";
-  const hasCustomerAction = role === "customer" && CUSTOMER_ACTION_STATUSES.includes(ticket.status);
+  const hasCustomerAction = role === "customer" && isOwnTicket && CUSTOMER_ACTION_STATUSES.includes(ticket.status);
 
   const focusComposer = () => {
     requestAnimationFrame(() => {
@@ -843,6 +856,16 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
         <BackButton />
         {/* ══ Section 1 — Hero Header (see TicketHeroHeader above) ══ */}
         <TicketHeroHeader ticket={ticket} />
+        {/* Organization-wide visibility: a customer can land here on a
+            teammate's ticket, not just their own — make that unambiguous
+            up top, since every write action below is hidden for them. */}
+        {role === "customer" && !isOwnTicket && ticket.customer?.name && (
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-50 border border-indigo-100 text-xs text-indigo-700">
+            <span className="font-semibold">Requested by {ticket.customer.name}</span>
+            <span className="text-indigo-400">·</span>
+            <span>You're viewing this as a member of the same organization — read-only.</span>
+          </div>
+        )}
       </div>
 
       {/* ══ Resolution Summary — read-only, only renders once status === "resolved" ══ */}
@@ -913,6 +936,7 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
             draftMessage={draftMessage}
             onDraftChange={setDraftMessage}
             role={role}
+            canReply={role !== "customer" || isOwnTicket}
             composerId={CONVERSATION_COMPOSER_ID}
           />
         </div>
@@ -921,6 +945,7 @@ export default function TicketDetail({ ticket, onUpdate, role = "customer" }) {
           <TicketSummarySidebar
             ticket={ticket}
             role={role}
+            isOwnTicket={isOwnTicket}
             isPendingPayment={isPendingPayment}
             onOpenChat={focusComposer}
             handleUpdate={handleUpdate}

@@ -21,9 +21,11 @@
  *     only render for non-customer roles; every role still gets the
  *     Resolved by / Resolved at confirmation.
  */
+import { useState } from "react";
 import { formatAbsoluteTime } from "../../utils/time";
 import { getDisplayName } from "../../utils/displayName";
 import { findLatestResolution } from "../../utils/resolution";
+import { openAttachment } from "../../utils/attachmentDownload";
 import FileTypeBadge from "../ui/FileTypeBadge";
 
 function formatBytes(bytes) {
@@ -73,7 +75,18 @@ function ContentBlock({ title, value, emptyText }) {
 }
 
 export default function ResolutionSummary({ ticket, feedItems, role }) {
+  const [openingId, setOpeningId] = useState(null);
+
   if (ticket?.status !== "resolved") return null;
+
+  const handleOpen = async (attachment) => {
+    setOpeningId(attachment.id);
+    try {
+      await openAttachment(ticket.id, attachment);
+    } finally {
+      setOpeningId(null);
+    }
+  };
 
   const items = feedItems ?? [];
   const resolvedEvent = items.find((i) => i._kind === "activity" && i.action === "resolved");
@@ -122,17 +135,19 @@ export default function ResolutionSummary({ ticket, feedItems, role }) {
               {attachments.length > 0 ? (
                 <div className="space-y-2">
                   {attachments.map((a) => (
-                    <a
+                    <button
                       key={a.id}
-                      href={a.file_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors"
+                      type="button"
+                      onClick={() => handleOpen(a)}
+                      disabled={openingId === a.id}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors disabled:opacity-50"
                     >
                       <FileTypeBadge mimeType={a.mime_type} fileName={a.file_name} />
-                      <span className="flex-1 min-w-0 text-sm font-medium text-slate-700 truncate">{a.file_name}</span>
-                      <span className="text-xs text-slate-400 shrink-0">{formatBytes(a.file_size)}</span>
-                    </a>
+                      <span className="flex-1 min-w-0 text-sm font-medium text-slate-700 truncate text-left">{a.file_name}</span>
+                      <span className="text-xs text-slate-400 shrink-0">
+                        {openingId === a.id ? "Opening…" : formatBytes(a.file_size)}
+                      </span>
+                    </button>
                   ))}
                 </div>
               ) : (

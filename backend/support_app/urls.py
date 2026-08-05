@@ -125,6 +125,7 @@ urlpatterns = [
     # ── Attachments ──────────────────────────────────────────────
     path("tickets/<uuid:ticket_id>/attachments/", views.ticket_attachments, name="ticket-attachments"),
     path("tickets/<uuid:ticket_id>/attachments/<uuid:attachment_id>/", views.ticket_attachment_delete, name="ticket-attachment-delete"),
+    path("tickets/<uuid:ticket_id>/attachments/<uuid:attachment_id>/download/", views.ticket_attachment_download, name="ticket-attachment-download"),
 
     # ── Related Tickets ──────────────────────────────────────────
     path("tickets/<uuid:ticket_id>/related/", views.ticket_related, name="ticket-related"),
