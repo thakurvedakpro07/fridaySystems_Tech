@@ -1,13 +1,12 @@
 {% extends "email/base.html" %}
+{% block subject %}Verify your ResolveHQ email address{% endblock %}
+{% block preheader %}Verify your email address — this link expires in 24 hours.{% endblock %}
 {% block content %}
 <h1>Verify your email address</h1>
 <p>Hi {{ email }},</p>
 <p>Thank you for registering with ResolveHQ. Please verify your email address by clicking the button below.</p>
-<a href="{{ verify_url }}" class="cta-btn">Verify Email Address →</a>
-<p style="margin-top:20px; font-size:12px; color:#94a3b8;">
-  This link expires in 24 hours. If you did not create a ResolveHQ account, you can safely ignore this email.
-</p>
-<p style="font-size:12px; color:#94a3b8; word-break:break-all;">
-  Or copy this link: {{ verify_url }}
-</p>
+
+{% include "email/components/_button.html" with button_url=verify_url button_label="Verify Email Address" %}
+{% include "email/components/_link_fallback.html" with link_url=verify_url %}
+{% include "email/components/_security_notice.html" with expires_in="24 hours" %}
 {% endblock %}

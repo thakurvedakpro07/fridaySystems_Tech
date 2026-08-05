@@ -1,0 +1,40 @@
+{% comment %}
+Info card — replaces hand-rolled meta-box/meta-row markup shared by every ticket/notification email.
+Rows are plain include params (Django's {% include %} can't take a list-of-dicts literal without a
+custom template tag, so this stays a flat, vanilla-template component): row1_label/row1_value/
+row1_badge_color/row1_badge_bg, row2_*, ... up to row6_*. Badge params are optional — a row renders
+as a plain value unless *_badge_color is set. Omit unused rowN_label to skip a row.
+
+Usage (must stay on one line — Django template tags cannot span multiple lines):
+  {% include "email/components/_info_card.html" with row1_label="Ticket" row1_value=ticket_number row2_label="Status" row2_value="Open" row2_badge_color="#4338ca" row2_badge_bg="#EEF0FD" %}
+{% endcomment %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="info-card" style="background:#F7F8FC;border:1px solid #E7E8F0;border-radius:10px;margin:4px 0 22px;">
+  <tr><td style="padding:14px 18px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      {% if row1_label %}<tr>
+        <td class="ic-label" style="padding:6px 0;font-size:13px;color:#667085;font-family:'Segoe UI',Inter,Arial,sans-serif;">{{ row1_label }}</td>
+        <td align="right" style="padding:6px 0;font-size:13px;font-weight:600;color:#101828;font-family:'Segoe UI',Inter,Arial,sans-serif;">{% if row1_badge_color %}<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;background:{{ row1_badge_bg|default:"#EEF0FD" }};color:{{ row1_badge_color }};">{{ row1_value }}</span>{% else %}{{ row1_value }}{% endif %}</td>
+      </tr>{% endif %}
+      {% if row2_label %}<tr>
+        <td class="ic-label" style="padding:6px 0;font-size:13px;color:#667085;font-family:'Segoe UI',Inter,Arial,sans-serif;">{{ row2_label }}</td>
+        <td align="right" style="padding:6px 0;font-size:13px;font-weight:600;color:#101828;font-family:'Segoe UI',Inter,Arial,sans-serif;">{% if row2_badge_color %}<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;background:{{ row2_badge_bg|default:"#EEF0FD" }};color:{{ row2_badge_color }};">{{ row2_value }}</span>{% else %}{{ row2_value }}{% endif %}</td>
+      </tr>{% endif %}
+      {% if row3_label %}<tr>
+        <td class="ic-label" style="padding:6px 0;font-size:13px;color:#667085;font-family:'Segoe UI',Inter,Arial,sans-serif;">{{ row3_label }}</td>
+        <td align="right" style="padding:6px 0;font-size:13px;font-weight:600;color:#101828;font-family:'Segoe UI',Inter,Arial,sans-serif;">{% if row3_badge_color %}<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;background:{{ row3_badge_bg|default:"#EEF0FD" }};color:{{ row3_badge_color }};">{{ row3_value }}</span>{% else %}{{ row3_value }}{% endif %}</td>
+      </tr>{% endif %}
+      {% if row4_label %}<tr>
+        <td class="ic-label" style="padding:6px 0;font-size:13px;color:#667085;font-family:'Segoe UI',Inter,Arial,sans-serif;">{{ row4_label }}</td>
+        <td align="right" style="padding:6px 0;font-size:13px;font-weight:600;color:#101828;font-family:'Segoe UI',Inter,Arial,sans-serif;">{% if row4_badge_color %}<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;background:{{ row4_badge_bg|default:"#EEF0FD" }};color:{{ row4_badge_color }};">{{ row4_value }}</span>{% else %}{{ row4_value }}{% endif %}</td>
+      </tr>{% endif %}
+      {% if row5_label %}<tr>
+        <td class="ic-label" style="padding:6px 0;font-size:13px;color:#667085;font-family:'Segoe UI',Inter,Arial,sans-serif;">{{ row5_label }}</td>
+        <td align="right" style="padding:6px 0;font-size:13px;font-weight:600;color:#101828;font-family:'Segoe UI',Inter,Arial,sans-serif;">{% if row5_badge_color %}<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;background:{{ row5_badge_bg|default:"#EEF0FD" }};color:{{ row5_badge_color }};">{{ row5_value }}</span>{% else %}{{ row5_value }}{% endif %}</td>
+      </tr>{% endif %}
+      {% if row6_label %}<tr>
+        <td class="ic-label" style="padding:6px 0;font-size:13px;color:#667085;font-family:'Segoe UI',Inter,Arial,sans-serif;">{{ row6_label }}</td>
+        <td align="right" style="padding:6px 0;font-size:13px;font-weight:600;color:#101828;font-family:'Segoe UI',Inter,Arial,sans-serif;">{% if row6_badge_color %}<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;background:{{ row6_badge_bg|default:"#EEF0FD" }};color:{{ row6_badge_color }};">{{ row6_value }}</span>{% else %}{{ row6_value }}{% endif %}</td>
+      </tr>{% endif %}
+    </table>
+  </td></tr>
+</table>

@@ -1,32 +1,16 @@
 {% extends "email/base.html" %}
+{% block subject %}[{{ ticket_number }}] Resolution rejected — customer needs more help{% endblock %}
+{% block preheader %}Customer reopened ticket {{ ticket_number }} — follow up needed.{% endblock %}
 {% block content %}
 <h1>Customer Needs More Help</h1>
 <p>Hi {{ email }},</p>
 <p>The customer has indicated that their issue is <strong>not yet resolved</strong> and has reopened the ticket.</p>
-<div class="meta-box">
-  <div class="meta-row">
-    <span class="meta-label">Ticket</span>
-    <span class="meta-value">{{ ticket_number }}</span>
-  </div>
-  <div class="meta-row">
-    <span class="meta-label">Title</span>
-    <span class="meta-value">{{ title }}</span>
-  </div>
-  <div class="meta-row">
-    <span class="meta-label">Customer</span>
-    <span class="meta-value">{{ customer_email }}</span>
-  </div>
-  <div class="meta-row">
-    <span class="meta-label">Status</span>
-    <span class="meta-value"><span class="status-badge" style="background:#fef3c7;color:#92400e;">In Progress</span></span>
-  </div>
-  {% if note %}
-  <div class="meta-row">
-    <span class="meta-label">Customer note</span>
-    <span class="meta-value">{{ note }}</span>
-  </div>
-  {% endif %}
-</div>
+
+{% include "email/components/_info_card.html" with row1_label="Ticket" row1_value=ticket_number row2_label="Title" row2_value=title row3_label="Customer" row3_value=customer_email row4_label="Status" row4_value="In Progress" row4_badge_color="#92400e" row4_badge_bg="#FEF3C7" row5_label=note|yesno:"Customer note," row5_value=note %}
+
 <p>Please review the ticket and follow up with the customer.</p>
-<a href="{{ app_url }}/freelancer/tickets/{{ ticket_id }}" class="cta-btn">View Ticket →</a>
+
+{% with ticket_url=app_url|add:"/freelancer/tickets/"|add:ticket_id %}
+{% include "email/components/_button.html" with button_url=ticket_url button_label="View Ticket" %}
+{% endwith %}
 {% endblock %}

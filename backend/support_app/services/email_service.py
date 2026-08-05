@@ -31,6 +31,10 @@ def _send(to: str, subject: str, template: str, context: dict) -> None:
     """Render an HTML template and send as a multi-part email."""
     try:
         context.setdefault("app_url", APP_URL)
+        context.setdefault(
+            "support_email",
+            getattr(settings, "BUSINESS_SUPPORT_EMAIL", "") or settings.DEFAULT_FROM_EMAIL,
+        )
         html_body  = render_to_string(template, context)
         plain_body = strip_tags(html_body)
         msg = EmailMultiAlternatives(
@@ -177,10 +181,16 @@ def send_organization_invitation(invitation) -> None:
 
 def send_password_reset_email(user, uid: str, token: str) -> None:
     """Send a password reset link."""
+    from django.utils import timezone
+
     reset_url = f"{APP_URL}/reset-password?uid={uid}&token={token}"
     _send(
         to=user.email,
         subject="Reset your ResolveHQ password",
         template="email/password_reset.html",
-        context={"email": user.email, "reset_url": reset_url},
+        context={
+            "email": user.email,
+            "reset_url": reset_url,
+            "requested_at": timezone.now().strftime("%d %b %Y, %I:%M %p %Z"),
+        },
     )

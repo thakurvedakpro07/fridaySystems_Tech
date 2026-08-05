@@ -1,19 +1,16 @@
 {% extends "email/base.html" %}
+{% block subject %}Welcome to ResolveHQ{% endblock %}
+{% block preheader %}Your account is ready — submit your first support ticket.{% endblock %}
 {% block content %}
 <h1>Welcome to ResolveHQ! 🎉</h1>
 <p>Hi {{ email }},</p>
 <p>Your account is ready. You can now submit IT support tickets and track them in real time.</p>
-<div class="meta-box">
-  <div class="meta-row">
-    <span class="meta-label">Account email</span>
-    <span class="meta-value">{{ email }}</span>
-  </div>
-  <div class="meta-row">
-    <span class="meta-label">Plan</span>
-    <span class="meta-value">Free</span>
-  </div>
-</div>
+
+{% include "email/components/_info_card.html" with row1_label="Account email" row1_value=email row2_label="Plan" row2_value="Free" %}
+
 <p>Start by submitting your first ticket — a Support Agent will contact you within your chosen response window (30 minutes to 4 hours) to begin the consultation.</p>
-<a href="{{ app_url }}/tickets/new" class="cta-btn">Open Your First Ticket →</a>
-<p style="margin-top:20px;">Need help getting started? Reply to this email and we'll guide you.</p>
+
+{% include "email/components/_button.html" with button_url=app_url|add:"/tickets/new" button_label="Open Your First Ticket" %}
+
+<p class="muted" style="font-size:13px;">Need help getting started? Reply to this email and we'll guide you.</p>
 {% endblock %}

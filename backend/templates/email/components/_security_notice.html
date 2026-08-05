@@ -1,0 +1,16 @@
+{% comment %}
+Security notice box — expiration, ignore-if-not-you, never-share-link, support contact.
+Params: expires_in (e.g. "1 hour"), requested_at (optional datetime — row hidden if absent).
+Reads support_email from ambient context (set by email_service._send()).
+Usage: {% include "email/components/_security_notice.html" with expires_in="1 hour" %}
+{% endcomment %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="security-notice" style="background:#F7F7FD;border-left:3px solid #5B5CEB;border-radius:0 10px 10px 0;margin:4px 0 22px;">
+  <tr><td style="padding:16px 18px;">
+    <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#101828;font-family:'Segoe UI',Inter,Arial,sans-serif;">🔒 Security notice</p>
+    {% if requested_at %}<p style="margin:0 0 6px;font-size:13px;line-height:1.6;color:#475569;font-family:'Segoe UI',Inter,Arial,sans-serif;">Requested at <strong>{{ requested_at }}</strong>.</p>{% endif %}
+    <p style="margin:0 0 6px;font-size:13px;line-height:1.6;color:#475569;font-family:'Segoe UI',Inter,Arial,sans-serif;">This link expires in <strong>{{ expires_in }}</strong>.</p>
+    <p style="margin:0 0 6px;font-size:13px;line-height:1.6;color:#475569;font-family:'Segoe UI',Inter,Arial,sans-serif;">If you didn't request this, you can safely ignore this email — no changes will be made to your account.</p>
+    <p style="margin:0 0 6px;font-size:13px;line-height:1.6;color:#475569;font-family:'Segoe UI',Inter,Arial,sans-serif;">Never share this link with anyone, including anyone claiming to be ResolveHQ staff.</p>
+    <p style="margin:0;font-size:13px;line-height:1.6;color:#475569;font-family:'Segoe UI',Inter,Arial,sans-serif;">Need help? Contact <a href="mailto:{{ support_email }}" style="color:#5B5CEB;">{{ support_email }}</a>.</p>
+  </td></tr>
+</table>

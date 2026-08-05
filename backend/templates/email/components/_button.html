@@ -1,0 +1,37 @@
+{% comment %}
+Bulletproof CTA button — the canonical single-anchor pattern (Campaign Monitor / Litmus
+"bulletproof button"), not a custom nested-table construction. No flexbox, no CSS variables,
+no external stylesheet dependency for appearance: every visual property (background, radius,
+color, padding) is inline on the elements themselves. Outlook desktop gets a real VML
+roundrect (its Word engine ignores CSS border-radius and can mis-clip <a> click targets and
+is hidden from every other client via mso-hide:all on the plain anchor); every other client
+(Gmail web/Android/iOS, Apple Mail, Yahoo, ...) renders the plain <a> directly — no wrapping
+<table>/<td> around it, because a real Chromium DOM inspection (see project notes) proved
+every inline declaration already computes correctly in isolation, so the previous nested
+table+td+span+class construction was strictly more complexity than the color bug needed;
+removing it rules out nesting depth as a variable entirely.
+
+Color is applied redundantly on the anchor AND both spans AND a legacy <font color> around
+each (four independent declarations of white per piece of text) — none of them rely on
+inheritance from a parent. `!important` is kept on the inline declarations only to survive
+this file's own dark-mode media query in base.html (a real, local specificity fight); the
+`btn-link` class is carried along purely as an optional extra CSS hook (dark-mode override +
+a Gmail-DOM-only selector in base.html) and is not required for the button to render
+correctly — every inline declaration here is independently sufficient on its own.
+
+Params: button_url, button_label — pass the label WITHOUT a trailing arrow; this component
+appends its own arrow in a second span/font pair.
+
+Usage: {% include "email/components/_button.html" with button_url=reset_url button_label="Reset Password" %}
+{% endcomment %}
+<!--[if mso]>
+<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ button_url }}" style="height:52px;v-text-anchor:middle;width:240px;" arcsize="30%" strokecolor="#5B5CEB" fillcolor="#5B5CEB">
+<w:anchorlock/>
+<center style="color:#ffffff;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">{{ button_label }} &#8594;</center>
+</v:roundrect>
+<![endif]-->
+<!--[if !mso]><!-->
+<a href="{{ button_url }}" target="_blank" class="btn-link" style="background-color:#5B5CEB;border:0;border-radius:16px;color:#ffffff !important;display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;margin:10px 0 22px;padding:16px 30px;text-align:center;text-decoration:none !important;-webkit-text-size-adjust:none;mso-hide:all;">
+  <font color="#ffffff"><span class="btn-link" style="color:#ffffff !important;">{{ button_label }}</span></font>&nbsp;<font color="#ffffff"><span class="btn-link" style="display:inline-block;vertical-align:middle;color:#ffffff !important;">&#8594;</span></font>
+</a>
+<!--<![endif]-->

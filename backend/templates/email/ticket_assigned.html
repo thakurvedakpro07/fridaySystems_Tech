@@ -1,22 +1,16 @@
 {% extends "email/base.html" %}
+{% block subject %}[{{ ticket_number }}] Engineer assigned — ResolveHQ{% endblock %}
+{% block preheader %}An engineer has been assigned to ticket {{ ticket_number }}.{% endblock %}
 {% block content %}
 <h1>Engineer Assigned</h1>
 <p>Hi {{ email }},</p>
 <p>A support engineer has been assigned to your ticket following the consultation and will begin working on it shortly.</p>
-<div class="meta-box">
-  <div class="meta-row">
-    <span class="meta-label">Ticket</span>
-    <span class="meta-value">{{ ticket_number }}</span>
-  </div>
-  <div class="meta-row">
-    <span class="meta-label">Engineer</span>
-    <span class="meta-value">{{ engineer_email }}</span>
-  </div>
-  <div class="meta-row">
-    <span class="meta-label">Status</span>
-    <span class="meta-value"><span class="status-badge">In Progress</span></span>
-  </div>
-</div>
+
+{% include "email/components/_info_card.html" with row1_label="Ticket" row1_value=ticket_number row2_label="Engineer" row2_value=engineer_email row3_label="Status" row3_value="In Progress" row3_badge_color="#4338ca" row3_badge_bg="#EEF0FD" %}
+
 <p>You can track progress and reply to your engineer directly on the ticket page.</p>
-<a href="{{ app_url }}/tickets/{{ ticket_id }}" class="cta-btn">View Ticket →</a>
+
+{% with ticket_url=app_url|add:"/tickets/"|add:ticket_id %}
+{% include "email/components/_button.html" with button_url=ticket_url button_label="View Ticket" %}
+{% endwith %}
 {% endblock %}

@@ -1,18 +1,15 @@
 {% extends "email/base.html" %}
+{% block subject %}You've been invited to join {{ organization_name }} on ResolveHQ{% endblock %}
+{% block preheader %}{{ invited_by_email }} invited you to join {{ organization_name }} on ResolveHQ.{% endblock %}
 {% block content %}
 <h1>You've been invited to join {{ organization_name }}</h1>
 <p>Hi,</p>
 <p>{{ invited_by_email }} has invited you to join <strong>{{ organization_name }}</strong> on ResolveHQ as a{% if role == "Organization Admin" %}n{% endif %} <strong>{{ role }}</strong>.</p>
-<div class="meta-box">
-  <div class="meta-row">
-    <span class="meta-label">Organization</span>
-    <span class="meta-value">{{ organization_name }}</span>
-  </div>
-  <div class="meta-row">
-    <span class="meta-label">Role</span>
-    <span class="meta-value"><span class="status-badge">{{ role }}</span></span>
-  </div>
-</div>
+
+{% include "email/components/_info_card.html" with row1_label="Organization" row1_value=organization_name row2_label="Role" row2_value=role row2_badge_color="#4338ca" row2_badge_bg="#EEF0FD" %}
+
 <p>Click below to accept the invitation. This link expires in 7 days.</p>
-<a href="{{ accept_url }}" class="cta-btn">Accept Invitation →</a>
+
+{% include "email/components/_button.html" with button_url=accept_url button_label="Accept Invitation" %}
+{% include "email/components/_link_fallback.html" with link_url=accept_url %}
 {% endblock %}
