@@ -15,7 +15,7 @@ cd "$APP_DIR"
 MODE="${1:-dev}"
 
 if [[ "$MODE" == "prod" ]]; then
-    BASE_URL="https://supportmitra.in"
+    BASE_URL="https://resolvehq.in"
 else
     BASE_URL="http://localhost:8000"
 fi
@@ -55,8 +55,8 @@ check "My profile"       "$BASE_URL/api/customers/me/"         401
 
 # ── Static files (only in prod via nginx) ─────────────────────────────────────
 if [[ "$MODE" == "prod" ]]; then
-    check "Frontend (SPA)" "https://supportmitra.in/"          200
-    check "HTTPS redirect" "http://supportmitra.in/"           301
+    check "Frontend (SPA)" "https://resolvehq.in/"          200
+    check "HTTPS redirect" "http://resolvehq.in/"           301
 fi
 
 # ── Docker container status ───────────────────────────────────────────────────

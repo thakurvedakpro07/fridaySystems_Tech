@@ -18,6 +18,7 @@
 #   5. Collects static files
 #   6. Restarts backend, celery, celerybeat containers (zero-downtime rolling)
 #   7. Runs a health check to verify the deployment succeeded
+#   8. Ensures the nightly backup cron job is installed (idempotent)
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail   # exit on error, undefined variable, or pipe failure
@@ -25,7 +26,7 @@ set -euo pipefail   # exit on error, undefined variable, or pipe failure
 # ── Configuration ─────────────────────────────────────────────────────────────
 APP_DIR="${APP_DIR:-/opt/supportmitra}"
 COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
-HEALTH_URL="${HEALTH_URL:-https://supportmitra.in/api/health/}"
+HEALTH_URL="${HEALTH_URL:-https://resolvehq.in/api/health/}"
 HEALTH_RETRIES=10
 HEALTH_WAIT=5   # seconds between retries
 
@@ -91,6 +92,10 @@ for i in $(seq 1 $HEALTH_RETRIES); do
     warn "Attempt $i/$HEALTH_RETRIES failed — retrying in ${HEALTH_WAIT}s..."
     sleep $HEALTH_WAIT
 done
+
+# ── 8. Ensure the backup cron job is installed ────────────────────────────────
+log "Ensuring nightly backup cron job is installed..."
+bash "$APP_DIR/scripts/install_cron.sh" || warn "Could not install backup cron job — see output above"
 
 log "Deployment complete."
 log "Version: $(git rev-parse --short HEAD) — $(git log -1 --format='%s')"

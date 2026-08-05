@@ -72,6 +72,9 @@ jobs:
             docker compose -f docker-compose.yml -f docker-compose.prod.yml \
               up -d --no-deps --remove-orphans backend celery celerybeat
 
+            echo "=== Ensuring backup cron job is installed ==="
+            bash scripts/install_cron.sh || echo "WARNING: could not install backup cron job"
+
             echo "=== Deploy complete: $(git rev-parse --short HEAD) ==="
 
       # ── Health check — wait up to 60s for the API to respond ──────────────
@@ -79,7 +82,7 @@ jobs:
         run: |
           echo "Waiting for backend to start..."
           for i in $(seq 1 12); do
-            if curl -sf https://supportmitra.in/api/health/ > /dev/null 2>&1; then
+            if curl -sf https://resolvehq.in/api/health/ > /dev/null 2>&1; then
               echo "Health check passed on attempt $i"
               exit 0
             fi

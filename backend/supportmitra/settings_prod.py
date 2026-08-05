@@ -112,9 +112,12 @@ LOGGING = {
 }
 
 # ── Sentry (optional — set SENTRY_DSN in prod .env to enable) ────────────────
+import logging as _logging  # noqa: E402
 import os as _os  # noqa: E402
 
 _SENTRY_DSN = _os.getenv("SENTRY_DSN", "")
+_SENTRY_ENVIRONMENT = _os.getenv("SENTRY_ENVIRONMENT", "production")
+
 if _SENTRY_DSN:
     import sentry_sdk  # noqa: E402
     from sentry_sdk.integrations.django import DjangoIntegration  # noqa: E402
@@ -122,7 +125,18 @@ if _SENTRY_DSN:
 
     sentry_sdk.init(
         dsn=_SENTRY_DSN,
+        environment=_SENTRY_ENVIRONMENT,
         integrations=[DjangoIntegration(), CeleryIntegration()],
         traces_sample_rate=0.1,   # capture 10% of transactions for performance
         send_default_pii=False,   # never send user PII to Sentry
+    )
+else:
+    # Not fatal (unlike _REQUIRED_PROD_VARS above) — Sentry being unset shouldn't
+    # block a production deploy. But it must be loud, not silent: this exact gap
+    # (SENTRY_DSN blank, nobody noticing) has already shipped to production once.
+    # Uses the stdlib logging default handler directly, since Django's LOGGING
+    # dictConfig hasn't been applied yet at settings-module-import time.
+    _logging.getLogger("support_app").warning(
+        "SENTRY_DSN is not set — running in production with NO error tracking. "
+        "Set SENTRY_DSN in backend/.env (see docs/ENVIRONMENT_VARIABLES.md) to fix this."
     )
