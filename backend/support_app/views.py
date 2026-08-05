@@ -45,7 +45,7 @@ _logger = logging.getLogger(__name__)
 User = get_user_model()
 from rest_framework import filters, generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes as throttle_classes_dec
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import AuthenticationFailed, PermissionDenied, Throttled, ValidationError
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
