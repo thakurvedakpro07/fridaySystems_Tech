@@ -1103,10 +1103,16 @@ class AuditLog(models.Model):
         ("operations_manager", "Operations Manager"),
         ("finance_manager", "Finance Manager"),
         ("support_agent", "Support Agent"),
+        # No CustomUser actor exists for this event — e.g. a brute-force
+        # lockout triggered against an email that doesn't map to a real
+        # account. See account_protection_service.py / log_action().
+        ("system", "System"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user_id = models.UUIDField()
+    # Nullable: a "system" event (see USER_TYPE_CHOICES above) has no real
+    # actor to attribute the row to.
+    user_id = models.UUIDField(null=True, blank=True)
     user_type = models.CharField(max_length=32, choices=USER_TYPE_CHOICES)
     entity = models.CharField(max_length=64, help_text="Table name, e.g. 'tickets'")
     entity_id = models.UUIDField(null=True, blank=True)

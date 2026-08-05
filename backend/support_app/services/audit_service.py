@@ -17,12 +17,15 @@ from ..models import AuditLog
 logger = logging.getLogger(__name__)
 
 
-def _client_ip(request):
+def get_client_ip(request):
     """
     Behind the Nginx reverse proxy (see admin.py's note on /django-admin/ routing),
     the real client IP arrives in X-Forwarded-For, not REMOTE_ADDR. Take the first
     (client) address in that comma-separated chain; fall back to REMOTE_ADDR for
     local/dev requests where no proxy sets the header.
+
+    Public (no leading underscore) because it also has a call site outside this
+    module — RegisterSerializer/google_auth_view use it to stamp ConsentRecord.ip_address.
     """
     if request is None:
         return None
@@ -41,7 +44,11 @@ def log_action(user, entity: str, action: str, entity_id=None, metadata=None, re
     here must not turn that success into a 500 response; log and move on instead.
 
     Args:
-        user:      CustomUser instance who performed the action (the actor).
+        user:      CustomUser instance who performed the action (the actor),
+                   or None for a system-detected event with no real actor
+                   (e.g. a brute-force lockout against a nonexistent email —
+                   see account_protection_service.py). Written as
+                   user_id=None, user_type="system".
         entity:    Short name of the thing acted on, e.g. "user", "service", "payment".
         action:    Short event name, e.g. "user_deactivated", "service_created".
         entity_id: UUID of the affected row, if any.
@@ -50,13 +57,13 @@ def log_action(user, entity: str, action: str, entity_id=None, metadata=None, re
     """
     try:
         AuditLog.objects.create(
-            user_id=user.pk,
-            user_type=getattr(user, "role", "admin"),
+            user_id=user.pk if user is not None else None,
+            user_type=getattr(user, "role", "admin") if user is not None else "system",
             entity=entity,
             entity_id=entity_id,
             action=action,
             metadata=metadata or {},
-            ip_address=_client_ip(request),
+            ip_address=get_client_ip(request),
         )
     except Exception:
         logger.exception("log_action failed for entity=%s action=%s", entity, action)

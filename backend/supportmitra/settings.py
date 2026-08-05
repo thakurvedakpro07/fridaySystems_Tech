@@ -345,6 +345,22 @@ RAZORPAY_WEBHOOK_SECRET = os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
 ENABLE_WHATSAPP_NOTIFICATIONS = os.getenv("ENABLE_WHATSAPP_NOTIFICATIONS", "false").lower() == "true"
 ENABLE_AUTO_ASSIGNMENT = os.getenv("ENABLE_AUTO_ASSIGNMENT", "false").lower() == "true"
 
+# ── Brute-Force / Account Lockout Protection ────────────────────────
+# See support_app/services/account_protection_service.py. Identifier-based
+# (email for login, reset-token-uid for password-reset-confirm) failed-
+# attempt counting with a temporary lockout; repeat lockouts within
+# LOGIN_LOCKOUT_STRIKE_WINDOW_SECONDS double the lockout duration each time,
+# capped at LOGIN_LOCKOUT_MAX_DURATION_SECONDS. Complements, not replaces,
+# AuthRateThrottle (per-IP) — this layer is per-account/per-identifier, so it
+# also catches attacks distributed across many source IPs.
+BRUTE_FORCE_PROTECTION_ENABLED = os.getenv("BRUTE_FORCE_PROTECTION_ENABLED", "true").lower() == "true"
+LOGIN_LOCKOUT_THRESHOLD = int(os.getenv("LOGIN_LOCKOUT_THRESHOLD", 5))
+LOGIN_LOCKOUT_WINDOW_SECONDS = int(os.getenv("LOGIN_LOCKOUT_WINDOW_SECONDS", 900))  # 15 min
+LOGIN_LOCKOUT_BASE_DURATION_SECONDS = int(os.getenv("LOGIN_LOCKOUT_BASE_DURATION_SECONDS", 900))  # 15 min
+LOGIN_LOCKOUT_MAX_DURATION_SECONDS = int(os.getenv("LOGIN_LOCKOUT_MAX_DURATION_SECONDS", 86400))  # 24h cap
+LOGIN_LOCKOUT_STRIKE_WINDOW_SECONDS = int(os.getenv("LOGIN_LOCKOUT_STRIKE_WINDOW_SECONDS", 86400))
+PASSWORD_RESET_REQUEST_COOLDOWN_SECONDS = int(os.getenv("PASSWORD_RESET_REQUEST_COOLDOWN_SECONDS", 60))
+
 # ── Logging ───────────────────────────────────────────────────────
 LOGGING = {
     "version": 1,

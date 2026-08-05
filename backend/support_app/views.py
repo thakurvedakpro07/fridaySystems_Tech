@@ -194,17 +194,64 @@ class PasswordChangeRateThrottle(UserRateThrottle):
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
-    Extends the default SimpleJWT login serializer to include user data.
-    SimpleJWT returns only {access, refresh} by default; the frontend
-    needs {id, email, is_staff, role} to set up the auth store correctly.
+    Extends the default SimpleJWT login serializer to include user data and
+    brute-force / account-lockout protection.
+
+    SimpleJWT returns only {access, refresh} by default; the frontend needs
+    {id, email, is_staff, role} to set up the auth store correctly.
+
+    Lockout is layered on top of (not instead of) AuthRateThrottle: that's a
+    per-IP request-rate limit on the view; this is a per-identifier (email)
+    failed-attempt counter via account_protection_service, so a credential-
+    stuffing attack spread across many source IPs against one account is
+    still caught. Keyed on the raw, lowercased submitted email — looked up
+    *before* Django's authenticate() ever runs — so lockout state, timing,
+    and the resulting response are identical whether or not the email maps
+    to a real account. No enumeration channel is introduced.
     """
     def validate(self, attrs):
-        data = super().validate(attrs)
+        from .services import account_protection_service
+        from .services.audit_service import log_action
+
+        identifier = str(attrs.get(self.username_field, "")).strip().lower()
+        request = self.context.get("request")
+
+        lockout = account_protection_service.is_locked(identifier)
+        if lockout.locked:
+            raise Throttled(
+                wait=lockout.retry_after_seconds,
+                detail="Too many failed login attempts. Please try again later.",
+            )
+
+        try:
+            data = super().validate(attrs)
+        except AuthenticationFailed:
+            lockout = account_protection_service.record_failed_attempt(identifier)
+            if lockout.locked:
+                # Rare path (only on the request that crosses the threshold) —
+                # a direct DB lookup here is fine and reveals nothing to the
+                # client; the response above never depends on this. Only staff
+                # ever read the audit log.
+                matched_user = User.objects.filter(email__iexact=identifier).first()
+                log_action(
+                    user=matched_user,
+                    entity="auth",
+                    action="account_locked",
+                    metadata={
+                        "identifier": identifier,
+                        "retry_after_seconds": lockout.retry_after_seconds,
+                    },
+                    request=request,
+                )
+            raise
+
+        account_protection_service.clear_attempts(identifier)
         data["user"] = {
             "id": str(self.user.id),
             "email": self.user.email,
             "is_staff": self.user.is_staff,
             "role": self.user.role,
+            "is_verified": self.user.is_verified,
             "first_name": self.user.first_name,
             "last_name": self.user.last_name,
         }
@@ -2173,17 +2220,26 @@ def password_reset_request(request):
 
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
+@throttle_classes_dec([AuthRateThrottle])
 def password_reset_confirm(request):
     """
     POST /api/auth/password/reset/confirm/
     Body: { "uid": "...", "token": "...", "new_password": "..." }
 
     Validates the token and sets the new password.
+
+    Beyond the per-IP AuthRateThrottle (this endpoint previously had none at
+    all), invalid-token attempts against one specific uid are counted via
+    account_protection_service and lock that uid out after
+    LOGIN_LOCKOUT_THRESHOLD attempts — defense-in-depth against guessing a
+    valid reset token for a known account, independent of source IP.
     """
     from django.contrib.auth.tokens import default_token_generator
     from django.utils.http import urlsafe_base64_decode
     from django.contrib.auth.password_validation import validate_password
     from django.core.exceptions import ValidationError as DjangoValidationError
+    from .services import account_protection_service
+    from .services.audit_service import log_action
 
     uid_b64 = request.data.get("uid", "")
     token = request.data.get("token", "")
@@ -2204,7 +2260,24 @@ def password_reset_confirm(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    lockout_identifier = f"reset-token:{uid}"
+    lockout = account_protection_service.is_locked(lockout_identifier)
+    if lockout.locked:
+        raise Throttled(
+            wait=lockout.retry_after_seconds,
+            detail="Too many attempts on this reset link. Please request a new one.",
+        )
+
     if not default_token_generator.check_token(user, token):
+        lockout = account_protection_service.record_failed_attempt(lockout_identifier)
+        if lockout.locked:
+            log_action(
+                user=user,
+                entity="auth",
+                action="account_locked",
+                metadata={"identifier": lockout_identifier, "retry_after_seconds": lockout.retry_after_seconds},
+                request=request,
+            )
         return Response(
             {"detail": "Invalid or expired reset link."},
             status=status.HTTP_400_BAD_REQUEST,
@@ -2220,6 +2293,7 @@ def password_reset_confirm(request):
 
     user.set_password(new_password)
     user.save(update_fields=["password"])
+    account_protection_service.clear_attempts(lockout_identifier)
     return Response({"detail": "Password reset successfully. You can now log in."})
 
 
