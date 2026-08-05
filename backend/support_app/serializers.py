@@ -31,6 +31,7 @@ from .models import (
     Service,
     SLALog,
     SLAPolicy,
+    StaffInvitation,
     Subscription,
     Ticket,
     TicketActivityLog,
@@ -218,6 +219,58 @@ class InvitationAcceptSerializer(serializers.Serializer):
     email has no existing account yet — accepting then also creates it.
     An already-registered invitee just needs to be logged in and pass the
     token (see the view for exactly how that branch is chosen).
+    """
+    token = serializers.CharField()
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    first_name = serializers.CharField(required=False, allow_blank=True, default="")
+    last_name = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+# ── Staff Invitations ─────────────────────────────────────────────
+
+class StaffInvitationSerializer(serializers.ModelSerializer):
+    role_display = serializers.CharField(source="get_role_display", read_only=True)
+    invited_by_email = serializers.EmailField(source="invited_by.email", read_only=True, default=None)
+
+    class Meta:
+        model = StaffInvitation
+        fields = [
+            "id", "email", "role", "role_display", "invited_by_email",
+            "status", "created_at", "expires_at",
+        ]
+        read_only_fields = fields
+
+
+class StaffInvitationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StaffInvitation
+        fields = ["email", "role"]
+
+    def validate_email(self, value):
+        return value.strip().lower()
+
+
+class StaffInvitationPreviewSerializer(serializers.ModelSerializer):
+    """GET /staff-invitations/{token}/ — no auth required, so an invitee can
+    see what they're accepting before logging in/registering."""
+    role_display = serializers.CharField(source="get_role_display", read_only=True)
+    invited_by_email = serializers.EmailField(source="invited_by.email", read_only=True, default=None)
+    account_exists = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StaffInvitation
+        fields = ["email", "role", "role_display", "invited_by_email", "status", "expires_at", "account_exists"]
+
+    def get_account_exists(self, obj):
+        return User.objects.filter(email__iexact=obj.email).exists()
+
+
+class StaffInvitationAcceptSerializer(serializers.Serializer):
+    """POST /staff-invitations/accept/
+
+    `password`/`first_name`/`last_name` are only required when the invited
+    email has no existing account yet — accepting then also creates it. An
+    already-registered invitee just needs to be logged in and pass the token.
     """
     token = serializers.CharField()
     password = serializers.CharField(write_only=True, required=False, allow_blank=True)

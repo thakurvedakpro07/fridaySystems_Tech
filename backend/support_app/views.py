@@ -68,6 +68,7 @@ from .models import (
     RoleChangeAudit,
     Service,
     SLAPolicy,
+    StaffInvitation,
     Subscription,
     Ticket,
     TicketActivityLog,
@@ -139,6 +140,10 @@ from .serializers import (
     RoleChangeSerializer,
     ServiceSerializer,
     SLAPolicySerializer,
+    StaffInvitationAcceptSerializer,
+    StaffInvitationCreateSerializer,
+    StaffInvitationPreviewSerializer,
+    StaffInvitationSerializer,
     SubscriptionSerializer,
     TicketActivityLogSerializer,
     TicketAttachmentSerializer,
@@ -2768,17 +2773,6 @@ _ROLE_DISPLAY = {
     "support_agent": "Support Agent",
 }
 
-# Transitions that require Super Admin. All transitions listed here
-# are ALLOWED for Super Admin. Operations Managers cannot change any roles.
-_ALLOWED_TRANSITIONS = {
-    "customer":            {"freelancer", "operations_manager", "finance_manager", "support_agent", "admin"},
-    "freelancer":          {"customer", "operations_manager", "finance_manager", "support_agent", "admin"},
-    "operations_manager":  {"customer", "freelancer", "finance_manager", "support_agent", "admin"},
-    "finance_manager":     {"customer", "operations_manager", "support_agent"},
-    "support_agent":       {"customer", "operations_manager", "finance_manager"},
-    "admin":               {"operations_manager"},  # Super Admin can step down to ops_manager
-}
-
 
 class OpsUserListView(generics.ListAPIView):
     """
@@ -2841,7 +2835,7 @@ def ops_change_role(request, user_id):
     Super Admin only. Promote or demote a user's role.
     Writes an immutable RoleChangeAudit entry on every successful change.
     """
-    from django.db import transaction
+    from .services.role_service import apply_role_change, RoleTransitionError
 
     target = get_object_or_404(User, pk=user_id)
 
@@ -2859,43 +2853,10 @@ def ops_change_role(request, user_id):
     note = serializer.validated_data.get("note", "")
     old_role = target.role
 
-    if old_role == new_role:
-        return Response(
-            {"detail": f"User already has role '{_ROLE_DISPLAY.get(old_role, old_role)}'."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    allowed = _ALLOWED_TRANSITIONS.get(old_role, set())
-    if new_role not in allowed:
-        return Response(
-            {
-                "detail": (
-                    f"Cannot change role from '{_ROLE_DISPLAY.get(old_role, old_role)}' "
-                    f"to '{_ROLE_DISPLAY.get(new_role, new_role)}'."
-                )
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    with transaction.atomic():
-        # Update role field
-        target.role = new_role
-
-        # Sync is_staff: only admin (Super Admin) should have is_staff=True
-        target.is_staff = (new_role == "admin")
-        target.is_superuser = (new_role == "admin")
-
-        target.save(update_fields=["role", "is_staff", "is_superuser"])
-
-        # Write the immutable audit entry
-        RoleChangeAudit.objects.create(
-            changed_by=request.user,
-            target_user=target,
-            target_email=target.email,
-            old_role=old_role,
-            new_role=new_role,
-            note=note,
-        )
+    try:
+        apply_role_change(target, new_role, changed_by=request.user, note=note)
+    except RoleTransitionError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
     return Response({
         "detail": (
@@ -4327,3 +4288,238 @@ class OrganizationAuditLogListView(generics.ListAPIView):
             .annotate(user_email=Subquery(email_subquery))
             .order_by("-created_at")
         )
+
+
+# ══════════════════════════════════════════════════════════════════
+# STAFF INVITATIONS (Super Admin only)
+# ══════════════════════════════════════════════════════════════════
+#
+# Invite a known/vetted person directly into a site-wide staff role
+# (Engineer = the "freelancer" CustomUser role, or Admin) by email —
+# distinct from OrganizationInvitation above, which invites into an
+# Organization's membership. Mirrors that same model/view/email/audit
+# shape (see models.py's Staff Invitations section docstring for why
+# "Engineer" means freelancer here).
+
+class OpsStaffInvitationListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /api/ops/staff-invitations/ — all invitations (pending/accepted/
+         revoked/expired), Super Admin only. Filterable by ?status= and ?role=.
+    POST /api/ops/staff-invitations/ — send a new invitation, Super Admin only.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
+    pagination_class = OpsPageNumberPagination
+
+    def get_serializer_class(self):
+        return StaffInvitationCreateSerializer if self.request.method == "POST" else StaffInvitationSerializer
+
+    def get_queryset(self):
+        qs = StaffInvitation.objects.select_related("invited_by").order_by("-created_at")
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        role_filter = self.request.query_params.get("role")
+        if role_filter:
+            qs = qs.filter(role=role_filter)
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        import secrets
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from .services.audit_service import log_action
+        from .services.role_service import can_transition
+        from .tasks import send_staff_invitation_email
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        role = serializer.validated_data["role"]
+        role_display = dict(StaffInvitation.ROLE_CHOICES).get(role, role)
+
+        if StaffInvitation.objects.filter(email__iexact=email, status="pending").exists():
+            raise ValidationError({"email": "There's already a pending staff invitation for this email."})
+
+        existing_user = User.objects.filter(email__iexact=email).first()
+        if existing_user:
+            if existing_user.role == role:
+                raise ValidationError({"email": f"This person already has the '{role_display}' role."})
+            if not can_transition(existing_user.role, role):
+                current_display = _ROLE_DISPLAY.get(existing_user.role, existing_user.role)
+                raise ValidationError({
+                    "email": (
+                        f"Cannot invite {email} as {role_display} — their account currently has the "
+                        f"'{current_display}' role, which can't transition directly to '{role_display}'. "
+                        "Change their role via Role Management first."
+                    )
+                })
+
+        invitation = StaffInvitation.objects.create(
+            email=email, role=role, invited_by=request.user,
+            token=secrets.token_urlsafe(32),
+            expires_at=timezone.now() + timedelta(days=7),
+        )
+        transaction.on_commit(lambda: send_staff_invitation_email.delay(str(invitation.id)))
+        log_action(
+            request.user, entity="staff_invitation", action="staff_invited", entity_id=invitation.id,
+            metadata={"email": email, "role": role}, request=request,
+        )
+        return Response(StaffInvitationSerializer(invitation).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsSuperAdmin])
+def staff_invitation_revoke(request, invitation_id):
+    """POST /api/ops/staff-invitations/{id}/revoke/ — Super Admin only."""
+    from .services.audit_service import log_action
+
+    invitation = get_object_or_404(StaffInvitation, pk=invitation_id)
+    if invitation.status != "pending":
+        raise ValidationError({"detail": f"This invitation is {invitation.status}, not pending."})
+    invitation.status = "revoked"
+    invitation.save(update_fields=["status"])
+    log_action(
+        request.user, entity="staff_invitation", action="staff_invitation_revoked", entity_id=invitation.id,
+        metadata={"email": invitation.email, "role": invitation.role}, request=request,
+    )
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsSuperAdmin])
+def staff_invitation_resend(request, invitation_id):
+    """
+    POST /api/ops/staff-invitations/{id}/resend/ — Super Admin only.
+    Regenerates the token and extends the expiry on the same row (no
+    duplicate invitation created); re-dispatches the email.
+    """
+    import secrets
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from .services.audit_service import log_action
+    from .tasks import send_staff_invitation_email
+
+    invitation = get_object_or_404(StaffInvitation, pk=invitation_id)
+    if invitation.status not in ("pending", "expired"):
+        raise ValidationError({"detail": f"This invitation is {invitation.status} and can't be resent."})
+
+    invitation.token = secrets.token_urlsafe(32)
+    invitation.expires_at = timezone.now() + timedelta(days=7)
+    invitation.status = "pending"
+    invitation.save(update_fields=["token", "expires_at", "status"])
+
+    transaction.on_commit(lambda: send_staff_invitation_email.delay(str(invitation.id)))
+    log_action(
+        request.user, entity="staff_invitation", action="staff_invitation_resent", entity_id=invitation.id,
+        metadata={"email": invitation.email, "role": invitation.role}, request=request,
+    )
+    return Response(StaffInvitationSerializer(invitation).data)
+
+
+@api_view(["GET"])
+@permission_classes([permissions.AllowAny])
+def staff_invitation_preview(request, token):
+    """GET /api/staff-invitations/{token}/ — no auth required, so the
+    invite-accept page can show what's being accepted before login."""
+    invitation = get_object_or_404(StaffInvitation, token=token)
+    return Response(StaffInvitationPreviewSerializer(invitation).data)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.AllowAny])
+def staff_invitation_accept(request):
+    """
+    POST /api/staff-invitations/accept/
+    Body: { token, password?, first_name?, last_name? }
+
+    Two paths:
+      - Invitee already has an account: must already be logged in as that
+        exact email; the role is applied via apply_role_change (guarded by
+        the same _ALLOWED_TRANSITIONS matrix as ops_change_role).
+      - Invitee has no account: password required; creates the CustomUser
+        (starts at the default role="customer", is_verified=True — clicking
+        the emailed link proves control of the inbox, same reasoning as the
+        organization-invite flow), then immediately applies the invited role
+        via the same apply_role_change helper. If the role is "freelancer",
+        also creates the companion Freelancer profile row, exactly mirroring
+        RegisterSerializer.create()'s freelancer branch — otherwise the
+        account would be missing the row the rest of the Freelancer Portal
+        expects.
+    """
+    from django.utils import timezone
+
+    from .services.audit_service import log_action
+    from .services.role_service import apply_role_change, RoleTransitionError
+
+    serializer = StaffInvitationAcceptSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    invitation = get_object_or_404(StaffInvitation, token=data["token"])
+    if invitation.status != "pending":
+        raise ValidationError({"detail": f"This invitation is {invitation.status}, not pending."})
+    if invitation.expires_at < timezone.now():
+        invitation.status = "expired"
+        invitation.save(update_fields=["status"])
+        raise ValidationError({"detail": "This invitation has expired."})
+
+    existing_user = User.objects.filter(email__iexact=invitation.email).first()
+
+    try:
+        with transaction.atomic():
+            if existing_user:
+                if not request.user.is_authenticated or request.user.pk != existing_user.pk:
+                    raise PermissionDenied("Please log in as the invited email address to accept this invitation.")
+                user = existing_user
+                apply_role_change(
+                    user, invitation.role, changed_by=invitation.invited_by, note="Accepted staff invitation",
+                )
+            else:
+                if not data.get("password"):
+                    raise ValidationError({"password": "Set a password to create your account."})
+                from django.contrib.auth.password_validation import validate_password
+                from django.core.exceptions import ValidationError as DjangoValidationError
+                try:
+                    validate_password(data["password"])
+                except DjangoValidationError as exc:
+                    raise ValidationError({"password": list(exc.messages)})
+                # is_verified=True: receiving and clicking the emailed invite
+                # link already proves control of this inbox, same guarantee the
+                # standalone email-verification flow exists to provide.
+                user = User.objects.create_user(
+                    email=invitation.email, password=data["password"], role="customer",
+                    is_verified=True, first_name=data.get("first_name", ""), last_name=data.get("last_name", ""),
+                )
+                apply_role_change(
+                    user, invitation.role, changed_by=invitation.invited_by, note="Accepted staff invitation",
+                )
+                if invitation.role == "freelancer":
+                    Freelancer.objects.create(
+                        user=user, skills="", availability="ad_hoc", onboarding_status="pending",
+                    )
+
+            invitation.status = "accepted"
+            invitation.accepted_at = timezone.now()
+            invitation.save(update_fields=["status", "accepted_at"])
+    except RoleTransitionError as exc:
+        raise ValidationError({"detail": str(exc)})
+
+    log_action(
+        user, entity="staff_invitation", action="staff_invitation_accepted", entity_id=invitation.id,
+        metadata={"email": user.email, "role": invitation.role}, request=request,
+    )
+
+    refresh = RefreshToken.for_user(user)
+    return Response({
+        "access": str(refresh.access_token),
+        "refresh": str(refresh),
+        "user": {
+            "id": str(user.id), "email": user.email, "is_staff": user.is_staff,
+            "role": user.role, "is_verified": user.is_verified,
+            "first_name": user.first_name, "last_name": user.last_name,
+        },
+    }, status=status.HTTP_200_OK)

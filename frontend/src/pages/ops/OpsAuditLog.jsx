@@ -17,6 +17,7 @@ const ENTITY_OPTIONS = [
   { value: "service", label: "Service" },
   { value: "payment", label: "Payment" },
   { value: "sla_policy", label: "SLA Policy" },
+  { value: "staff_invitation", label: "Staff Invitation" },
 ];
 
 const ACTION_OPTIONS = [
@@ -34,6 +35,10 @@ const ACTION_OPTIONS = [
   { value: "sla_policy_created", label: "SLA Policy Created" },
   { value: "sla_policy_updated", label: "SLA Policy Updated" },
   { value: "sla_policy_deleted", label: "SLA Policy Deleted" },
+  { value: "staff_invited", label: "Staff Invited" },
+  { value: "staff_invitation_revoked", label: "Staff Invitation Revoked" },
+  { value: "staff_invitation_resent", label: "Staff Invitation Resent" },
+  { value: "staff_invitation_accepted", label: "Staff Invitation Accepted" },
 ];
 
 // metadata keys are written by services/audit_service.py call sites — pick
@@ -44,6 +49,7 @@ function formatDetails(metadata) {
   if (metadata.invoice_number) return `Invoice ${metadata.invoice_number}`;
   if (metadata.name) return metadata.name;
   if (metadata.service_type) return `${metadata.service_type} / ${metadata.severity} (${metadata.plan})`;
+  if (metadata.email) return metadata.email;
   return "—";
 }
 

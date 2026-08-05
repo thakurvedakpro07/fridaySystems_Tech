@@ -211,6 +211,73 @@ def send_organization_invitation_email(self, invitation_id: str) -> None:
         raise self.retry(exc=exc)
 
 
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_staff_invitation_email(self, invitation_id: str) -> None:
+    """
+    Send a staff invitation email (Engineer/Admin role).
+    Retries up to 3 times on transient failures.
+    """
+    from .models import StaffInvitation
+    from .services.email_service import send_staff_invitation
+    try:
+        invitation = StaffInvitation.objects.select_related("invited_by").get(pk=invitation_id)
+        send_staff_invitation(invitation)
+        logger.info("Staff invitation email sent for invitation %s", invitation_id)
+    except StaffInvitation.DoesNotExist:
+        logger.warning("send_staff_invitation_email: invitation %s not found, skipping.", invitation_id)
+    except Exception as exc:
+        logger.exception("send_staff_invitation_email failed for invitation %s", invitation_id)
+        raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_deletion_requested_email(self, user_id: str) -> None:
+    """
+    Confirm a self-service DPDP account-deletion request and its scheduled
+    grace-period deadline. Retries up to 3 times on transient failures.
+    """
+    from datetime import timedelta
+
+    from django.conf import settings
+    from django.contrib.auth import get_user_model
+
+    from .services.email_service import send_deletion_requested
+    User = get_user_model()
+    try:
+        user = User.objects.get(pk=user_id)
+        scheduled_for = user.deletion_requested_at + timedelta(
+            days=settings.ACCOUNT_DELETION_GRACE_PERIOD_DAYS
+        )
+        send_deletion_requested(user, scheduled_for)
+        logger.info("Deletion requested email sent for user %s", user_id)
+    except User.DoesNotExist:
+        logger.warning("send_deletion_requested_email: user %s not found, skipping.", user_id)
+    except Exception as exc:
+        logger.exception("send_deletion_requested_email failed for user %s", user_id)
+        raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_deletion_cancelled_email(self, user_id: str) -> None:
+    """
+    Confirm a self-service DPDP account-deletion request was cancelled.
+    Retries up to 3 times on transient failures.
+    """
+    from django.contrib.auth import get_user_model
+
+    from .services.email_service import send_deletion_cancelled
+    User = get_user_model()
+    try:
+        user = User.objects.get(pk=user_id)
+        send_deletion_cancelled(user)
+        logger.info("Deletion cancelled email sent for user %s", user_id)
+    except User.DoesNotExist:
+        logger.warning("send_deletion_cancelled_email: user %s not found, skipping.", user_id)
+    except Exception as exc:
+        logger.exception("send_deletion_cancelled_email failed for user %s", user_id)
+        raise self.retry(exc=exc)
+
+
 @shared_task
 def check_sla_breaches() -> None:
     """

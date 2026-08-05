@@ -1,0 +1,15 @@
+{% extends "email/base.html" %}
+{% block subject %}You've been invited to join ResolveHQ as {{ role }}{% endblock %}
+{% block preheader %}{{ invited_by_email }} invited you to join ResolveHQ as {{ role }}.{% endblock %}
+{% block content %}
+<h1>You've been invited to join ResolveHQ</h1>
+<p>Hi,</p>
+<p>{{ invited_by_email }} has invited you to join ResolveHQ as a{% if role == "Engineer" %}n{% endif %} <strong>{{ role }}</strong>.</p>
+
+{% include "email/components/_info_card.html" with row1_label="Role" row1_value=role row1_badge_color="#4338ca" row1_badge_bg="#EEF0FD" %}
+
+<p>Click below to accept the invitation. This link expires in 7 days.</p>
+
+{% include "email/components/_button.html" with button_url=accept_url button_label="Accept Invitation" %}
+{% include "email/components/_link_fallback.html" with link_url=accept_url %}
+{% endblock %}

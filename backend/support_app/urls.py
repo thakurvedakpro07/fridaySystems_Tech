@@ -167,6 +167,12 @@ urlpatterns = [
     path("ops/sla-policies/",                               views.OpsSLAPolicyListCreateView.as_view(), name="ops-sla-policy-list"),
     path("ops/sla-policies/<uuid:pk>/",                     views.OpsSLAPolicyDetailView.as_view(), name="ops-sla-policy-detail"),
 
+    # ── Staff Invitations (Super Admin only) ──────────────────────
+    # NOTE: action sub-paths must precede <uuid:invitation_id>/ if one is added later.
+    path("ops/staff-invitations/",                          views.OpsStaffInvitationListCreateView.as_view(), name="ops-staff-invitation-list"),
+    path("ops/staff-invitations/<uuid:invitation_id>/revoke/", views.staff_invitation_revoke,        name="ops-staff-invitation-revoke"),
+    path("ops/staff-invitations/<uuid:invitation_id>/resend/", views.staff_invitation_resend,        name="ops-staff-invitation-resend"),
+
     # ── Ops: Payments (Finance Manager write; Ops Manager read) ───
     path("ops/payments/summary/",                           views.ops_payment_summary,              name="ops-payment-summary"),
     path("ops/payments/<uuid:pk>/confirm/",                 views.ops_payment_confirm,              name="ops-payment-confirm"),
@@ -212,4 +218,10 @@ urlpatterns = [
     path("organizations/<uuid:org_id>/invitations/",         views.OrganizationInvitationListCreateView.as_view(), name="organization-invitation-list"),
     path("organizations/<uuid:org_id>/invitations/<uuid:invitation_id>/", views.organization_invitation_revoke, name="organization-invitation-revoke"),
     path("organizations/<uuid:org_id>/audit/",                views.OrganizationAuditLogListView.as_view(), name="organization-audit-log"),
+
+    # ── Staff Invitations: public preview/accept ───────────────────
+    # NOTE: "accept/" must precede <str:token>/ so Django doesn't try to
+    # parse that literal segment as a token.
+    path("staff-invitations/accept/",                        views.staff_invitation_accept,           name="staff-invitation-accept"),
+    path("staff-invitations/<str:token>/",                    views.staff_invitation_preview,          name="staff-invitation-preview"),
 ]

@@ -158,6 +158,10 @@ const DOMAINS = {
       sla_policy_created: { tone: "indigo", label: "SLA Policy Created" },
       sla_policy_updated: { tone: "amber",  label: "SLA Policy Updated" },
       sla_policy_deleted: { tone: "rose",   label: "SLA Policy Deleted" },
+      staff_invited:              { tone: "indigo",  label: "Staff Invited" },
+      staff_invitation_revoked:   { tone: "rose",    label: "Staff Invitation Revoked" },
+      staff_invitation_resent:    { tone: "amber",   label: "Staff Invitation Resent" },
+      staff_invitation_accepted:  { tone: "emerald", label: "Staff Invitation Accepted" },
     },
   },
   // System Audit Log's "Entity" column — matches the `entity` value passed to log_action().
@@ -168,6 +172,7 @@ const DOMAINS = {
       service: { tone: "indigo", label: "Service" },
       payment: { tone: "teal",   label: "Payment" },
       sla_policy: { tone: "violet", label: "SLA Policy" },
+      staff_invitation: { tone: "indigo", label: "Staff Invitation" },
     },
   },
   // Organizations & Multi-Tenant Management (Phase 5) — OrganizationMembership.role.

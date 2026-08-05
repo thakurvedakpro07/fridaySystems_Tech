@@ -35,6 +35,7 @@ from .models import (
     Payment,
     SLALog,
     SLAPolicy,
+    StaffInvitation,
     Subscription,
     Ticket,
     TicketActivityLog,
@@ -131,6 +132,14 @@ class OrganizationMembershipAdmin(admin.ModelAdmin):
 class OrganizationInvitationAdmin(admin.ModelAdmin):
     list_display   = ["email", "organization", "role", "status", "created_at", "expires_at"]
     search_fields  = ["email", "organization__name"]
+    list_filter    = ["status", "role"]
+    readonly_fields = ["token", "created_at", "accepted_at"]
+
+
+@admin.register(StaffInvitation)
+class StaffInvitationAdmin(admin.ModelAdmin):
+    list_display   = ["email", "role", "status", "invited_by", "created_at", "expires_at"]
+    search_fields  = ["email"]
     list_filter    = ["status", "role"]
     readonly_fields = ["token", "created_at", "accepted_at"]
 

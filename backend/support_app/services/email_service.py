@@ -179,6 +179,22 @@ def send_organization_invitation(invitation) -> None:
     )
 
 
+def send_staff_invitation(invitation) -> None:
+    """Send a staff invitation email (Engineer/Admin role) with an accept link."""
+    accept_url = f"{APP_URL}/staff-invitations/{invitation.token}"
+    _send(
+        to=invitation.email,
+        subject=f"You've been invited to join ResolveHQ as {invitation.get_role_display()}",
+        template="email/staff_invitation.html",
+        context={
+            "email": invitation.email,
+            "invited_by_email": invitation.invited_by.email if invitation.invited_by else "A team member",
+            "role": invitation.get_role_display(),
+            "accept_url": accept_url,
+        },
+    )
+
+
 def send_password_reset_email(user, uid: str, token: str) -> None:
     """Send a password reset link."""
     from django.utils import timezone

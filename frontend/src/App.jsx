@@ -37,6 +37,7 @@ const KnowledgeBasePage        = lazy(() => import("./pages/KnowledgeBasePage"))
 const KnowledgeBaseArticlePage = lazy(() => import("./pages/KnowledgeBaseArticlePage"));
 const OrganizationPage         = lazy(() => import("./pages/OrganizationPage"));
 const InvitationAcceptPage     = lazy(() => import("./pages/InvitationAcceptPage"));
+const StaffInvitationAcceptPage = lazy(() => import("./pages/StaffInvitationAcceptPage"));
 
 // Operations Dashboard pages (all staff roles)
 const OpsDashboard      = lazy(() => import("./pages/ops/OpsDashboard"));
@@ -55,6 +56,7 @@ const ExecutiveAnalytics = lazy(() => import("./pages/ops/ExecutiveAnalytics"));
 const ExecutiveOperations = lazy(() => import("./pages/ops/ExecutiveOperations"));
 const OpsSettings       = lazy(() => import("./pages/ops/OpsSettings"));
 const OpsKnowledgeBase  = lazy(() => import("./pages/ops/OpsKnowledgeBase"));
+const OpsStaffInvitations = lazy(() => import("./pages/ops/OpsStaffInvitations"));
 
 // Public website pages
 const AboutPage    = lazy(() => import("./pages/AboutPage"));
@@ -249,6 +251,9 @@ export default function App() {
               invitee is logged in (handles both cases itself), so it sits
               outside PrivateRoute/PublicOnlyRoute like reset-password/verify-email. */}
           <Route path="/invitations/:token" element={<InvitationAcceptPage />} />
+          {/* Staff invitation acceptance — same reachable-either-way shape as
+              the organization invite flow above. */}
+          <Route path="/staff-invitations/:token" element={<StaffInvitationAcceptPage />} />
 
           {/* Customer pages — require login */}
           <Route
@@ -380,6 +385,7 @@ export default function App() {
           <Route path="/operations/roles"       element={<SuperAdminOpsRoute><OpsRoles /></SuperAdminOpsRoute>} />
           <Route path="/operations/audit-log"   element={<SuperAdminOpsRoute><OpsAuditLog /></SuperAdminOpsRoute>} />
           <Route path="/operations/settings"    element={<SuperAdminOpsRoute><OpsSettings /></SuperAdminOpsRoute>} />
+          <Route path="/operations/staff-invitations" element={<SuperAdminOpsRoute><OpsStaffInvitations /></SuperAdminOpsRoute>} />
 
           {/* Named error pages */}
           <Route path="/403" element={<ForbiddenPage />} />

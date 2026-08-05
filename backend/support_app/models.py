@@ -361,6 +361,56 @@ class OrganizationInvitation(models.Model):
         ordering = ["-created_at"]
 
 
+# ── Staff Invitations ───────────────────────────────────────────────
+#
+# Site-wide (not org-scoped) — invites someone directly into a staff
+# CustomUser.role, distinct from OrganizationInvitation which invites into
+# an Organization's org_admin/org_member membership. "Engineer" here is
+# CustomUser's "freelancer" role (see _ROLE_DISPLAY in views.py) — the same
+# role the self-service Freelancer Portal uses; a Staff Invitation just
+# fast-tracks a known/vetted person straight into that role (or "admin"),
+# skipping self-registration. Deliberately scoped to just these two roles
+# for now — Ops Manager / Finance Manager promotions still go through the
+# existing ops_change_role flow.
+
+
+class StaffInvitation(models.Model):
+    """
+    A pending (or resolved) invitation for someone to be granted a staff
+    role (Engineer/freelancer or Admin) by email. Mirrors OrganizationInvitation's
+    shape (real row, not a stateless signed token) for the same reason: a Super
+    Admin needs a queryable, revocable/resendable list of pending invitations.
+    """
+    ROLE_CHOICES = [
+        ("freelancer", "Engineer"),
+        ("admin", "Super Admin"),
+    ]
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("accepted", "Accepted"),
+        ("revoked", "Revoked"),
+        ("expired", "Expired"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField()
+    role = models.CharField(max_length=32, choices=ROLE_CHOICES)
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="sent_staff_invitations",
+    )
+    token = models.CharField(max_length=64, unique=True)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    accepted_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Staff invite {self.email} as {self.get_role_display()} ({self.status})"
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
 # ── Ticket System ────────────────────────────────────────────────
 #
 # The ticket is the central object in ResolveHQ. Everything else
